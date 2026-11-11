@@ -2372,6 +2372,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#werkzeuge-prüfen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Werkzeuge prüfen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#embedding-modell-wechseln" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4223,6 +4234,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#werkzeuge-prüfen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Werkzeuge prüfen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#embedding-modell-wechseln" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4380,11 +4402,12 @@ nicht fähig ist und die Systemverwaltung das ändern kann. OPAA beantwortet ein
 stillschweigend ohne Werkzeuge. Der gewöhnliche Chat funktioniert mit jedem Wert.</p>
 <p>Die Spalte „Werkzeuge“ zeigt neben dem Wert die <strong>Grundlage</strong> der Angabe und ihr Datum: „manuell
 gesetzt“ oder „gemessen“ mit dem Verweis auf den Messlauf. So ist erkennbar, ob „Fähig“ ein
-Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit der Messung unter
+Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit
+<a href="#werkzeuge-prüfen">Werkzeuge prüfen</a> oder mit der Messung unter
 <a href="../betrieb/modell-endpunkte.html#modell-auf-werkzeugaufrufe-messen">Modell auf Werkzeugaufrufe messen</a>:
-Ergebnis und Kennung des Messlaufs aus dem Kopf des Berichts tragen Sie im Dialog mit der Grundlage
-„Gemessen“ ein. Ersetzt eine Änderung eine gemessene Angabe, warnt der Dialog vorher, und die
-Schaltfläche heißt „Ersetzen“. Eine Person oder Gruppe steht nicht am
+Ergebnis und Kennung des Messlaufs tragen Sie im Dialog mit der Grundlage „Gemessen“ ein. Ersetzt
+eine Änderung eine gemessene Angabe, warnt der Dialog vorher, und die Schaltfläche heißt „Ersetzen“.
+Eine Person oder Gruppe steht nicht am
 Modell. Wer die Angabe geändert hat, steht im
 <a href="nachweisprotokoll-lesen.html">Nachweisprotokoll</a> als Änderung des Chat-Modells, mit dem Wert vorher
 und nachher.</p>
@@ -4399,6 +4422,31 @@ Instanz der alten Version die Adresse ändern, ohne die Angabe zurückzusetzen. 
 Instanzen die neue Version fahren, oder die Angabe danach selbst auf „Ungeprüft“ stellen.</p>
 <p>Ist das aktive Modell beim Start „Ungeprüft“, schreibt jede Instanz eine Warnung ins Log; der Start
 läuft weiter.</p>
+<h2 id="werkzeuge-prüfen">Werkzeuge prüfen<a class="headerlink" href="#werkzeuge-prüfen" title="Permanent link">&para;</a></h2>
+<p>Ist der Schalter „Agenten“ eingeschaltet, misst OPAA die Werkzeugfähigkeit eines Chat-Modells selbst,
+ohne Quellstand und ohne Kommandozeile. Ist er aus, fehlt der Menüpunkt.</p>
+<p>Für Agenten braucht OPAA ein Modell mindestens der Klasse Gemma 4 31B. Kleinere Modelle rufen
+Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorher.</p>
+<ol>
+<li>Im Zeilenmenü „Werkzeuge prüfen“.</li>
+<li>Umfang wählen: „Schnell“ (jeder Fall einmal) für einen ersten Eindruck, „Gründlich“ (jeder Fall
+   dreimal) für eine Angabe, die Sie festhalten wollen. „Prüfung starten“.</li>
+<li>Nach einigen Minuten zeigt der Dialog je Prüffrage das Ergebnis und ob die Mindestanforderung
+   erfüllt ist. „Ergebnis übernehmen“ öffnet „Werkzeugfähigkeit festlegen“ mit „Fähig“ oder
+   „Nicht fähig“, Grundlage „Gemessen“ und der Kennung des Messlaufs; Speichern hält es fest.</li>
+</ol>
+<p><strong>Gut zu wissen:</strong></p>
+<ul>
+<li>Die Prüfung stellt dem Modell erfundene Fragen mit dem Suchwerkzeug der Agenten; Bibliotheken und
+  Chats berührt sie nicht. Sie läuft auf dem Server weiter, wenn Sie den Dialog schließen, und es
+  läuft höchstens eine zur selben Zeit. Ein Neustart des Servers bricht sie ab; bis OPAA das
+  merkt, erscheint sie bis zu 15 Minuten als laufend, und so lange lässt sich keine neue starten.</li>
+<li>Schaltet jemand die Agenten ab, bricht eine laufende Prüfung nach dem aktuellen Fall ab. Scheitern
+  Aufrufe am Endpunkt, etwa an einer Drosselung, endet sie als gescheitert statt mit einem Ergebnis.</li>
+<li>„Bericht herunterladen“ liefert den vollständigen Bericht mit jedem Lauf im Wortlaut, wie die
+  Messung unter <a href="../betrieb/modell-endpunkte.html#modell-auf-werkzeugaufrufe-messen">Modell auf Werkzeugaufrufe messen</a>.</li>
+<li>Ein Ergebnis für eine frühere Basis-Adresse oder Modell-Kennung lässt sich nicht übernehmen.</li>
+</ul>
 <h2 id="embedding-modell-wechseln">Embedding-Modell wechseln<a class="headerlink" href="#embedding-modell-wechseln" title="Permanent link">&para;</a></h2>
 <p>Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:</p>
 <ol>

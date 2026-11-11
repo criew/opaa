@@ -4313,7 +4313,12 @@ der Blick in diese Tabelle und auf die Metriken der Agentenläufe
 <tr>
 <td>„Gerade arbeiten zu viele Agenten gleichzeitig“</td>
 <td>Platzlimit der Installation erreicht</td>
-<td><code>OPAA_AGENT_WORKSPACE_CAPACITY</code> anheben, wenn der Modellserver es trägt; <code>opaa_agent_workspace_rejected_total</code> beobachten</td>
+<td><code>OPAA_AGENT_WORKSPACE_CAPACITY</code> anheben, wenn der Modellserver es trägt; <code>opaa_agent_workspace_rejected_total{reason="full"}</code> beobachten</td>
+</tr>
+<tr>
+<td>„Sie haben bereits so viele Agentenläufe gestartet, wie gleichzeitig möglich sind“</td>
+<td>Die Person hat ihren Anteil an den Plätzen belegt, etwa mit Läufen in mehreren Browserfenstern</td>
+<td>warten, bis ein eigener Lauf endet; häuft es sich, <code>OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON</code> prüfen und <code>opaa_agent_workspace_rejected_total{reason="person_limit"}</code> beobachten</td>
 </tr>
 <tr>
 <td>„Dieser Agent ist nicht verfügbar“ oder der Agent fehlt im <code>@</code>-Menü</td>

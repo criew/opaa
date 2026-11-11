@@ -4587,7 +4587,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_agent_workspace_occupied</code>, <code>opaa_agent_workspace_capacity</code>, <code>opaa_agent_workspace_rejected_total</code></td>
-<td>belegte und verfügbare Plätze für gleichzeitige Agentenläufe, abgewiesene Läufe; steigt <code>rejected</code> stetig, <code>OPAA_AGENT_WORKSPACE_CAPACITY</code> anheben</td>
+<td>belegte und verfügbare Plätze für gleichzeitige Agentenläufe, abgewiesene Läufe nach Grund (<code>reason</code>: <code>full</code> alle Plätze belegt, <code>person_limit</code> Anteil der Person belegt); steigt <code>full</code> stetig, <code>OPAA_AGENT_WORKSPACE_CAPACITY</code> anheben, steigt <code>person_limit</code> stetig, <code>OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON</code> prüfen</td>
 </tr>
 <tr>
 <td><code>opaa_agent_citations_unverifiable_total</code></td>

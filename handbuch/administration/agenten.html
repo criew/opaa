@@ -2529,6 +2529,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#agent-oder-vorlage-sperren" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent oder Vorlage sperren
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wenn-die-verantwortliche-stelle-fehlt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wenn die verantwortliche Stelle fehlt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#grenzen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4168,6 +4190,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#agent-oder-vorlage-sperren" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent oder Vorlage sperren
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wenn-die-verantwortliche-stelle-fehlt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wenn die verantwortliche Stelle fehlt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#grenzen" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4217,6 +4261,25 @@ Wiedereinschalten unverändert da.</p>
 <p>Das Anlegerecht „Agenten anlegen“ hat ab Werk niemand außer der Systemverwaltung. Vergeben Sie es
 unter <a href="anlegerechte.html">Anlegerechte vergeben</a> an die Personen oder Gruppen, die Agenten für
 andere einrichten sollen.</p>
+<h2 id="agent-oder-vorlage-sperren">Agent oder Vorlage sperren<a class="headerlink" href="#agent-oder-vorlage-sperren" title="Permanent link">&para;</a></h2>
+<p>Jeder Agent und jede Vorlage nennt eine verantwortliche Stelle: eine Gruppe, Organisationseinheit
+oder Funktion, nie eine Person allein. Wer ein Objekt anlegt, muss sie angeben. Ein einzelnes
+Objekt nehmen Sie so aus dem Betrieb, ohne es zu löschen:</p>
+<ol>
+<li>Auf der Seite des Agenten oder der Vorlage den Reiter „Freigaben“ öffnen.</li>
+<li>In der Zeile „Sperre“ auf „Sperren“, einen Grund eintragen und „Sperren“ bestätigen.</li>
+</ol>
+<p>Ein gesperrter Agent fehlt in der Auswahl im Chat, und jeder Aufruf wird mit einer Meldung
+abgewiesen. Eine gesperrte Vorlage bietet kein Agent mehr an; er antwortet stattdessen im Chat und
+sagt das. Die Sperre gilt auf allen Instanzen ab dem nächsten Aufruf. „Entsperren“ in derselben
+Zeile hebt sie auf.</p>
+<h2 id="wenn-die-verantwortliche-stelle-fehlt">Wenn die verantwortliche Stelle fehlt<a class="headerlink" href="#wenn-die-verantwortliche-stelle-fehlt" title="Permanent link">&para;</a></h2>
+<p>Wird die Gruppe der Stelle gelöscht oder steht der Eigentümer auf „Nachfolge offen“, fehlt die
+Stelle. Die Seite des Objekts zeigt dann, wann es gesperrt wird. Wird bis dahin keine neue Stelle
+benannt, sperrt OPAA das Objekt, löscht es aber nicht. Die Frist stellen Sie unter
+„Administration → Ohne Zuständigkeit“ im Abschnitt „Sperre ohne verantwortliche Stelle“ ein, ab
+Werk 30 Tage. Nach dem Benennen einer neuen Stelle heben Sie die Sperre mit „Entsperren“
+auf; fehlt die Stelle dann noch, sperrt OPAA beim nächsten Lauf wieder.</p>
 <h2 id="grenzen">Grenzen<a class="headerlink" href="#grenzen" title="Permanent link">&para;</a></h2>
 <p>Jeder Lauf hat Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge. Ein Agent kann sie
 unter „Ablauf → Erweitert“ senken; ein Lauf nimmt immer den kleineren Wert aus Agent und
@@ -4224,6 +4287,8 @@ Installation.</p>
 <p><strong>Gut zu wissen:</strong></p>
 <ul>
 <li>Ein Agent liest nie mehr als die aufrufende Person; eine Freigabe am Agenten öffnet kein Wissen.</li>
+<li>Ändern der Stelle, Sperren und Entsperren stehen im
+  <a href="nachweisprotokoll-lesen.html">Nachweisprotokoll</a>, mit dem Grund der Sperre; das Nutzen nicht.</li>
 <li>Wie ein Agent angelegt und eingerichtet wird: <a href="../benutzer/agent-anlegen.html">Agent anlegen</a>.</li>
 <li>Vor dem Einschalten braucht das aktive Chat-Modell die Werkzeugfähigkeit „Fähig“; was nach
   einem Update zu tun ist und welche Störungen wie ein unfähiges Modell aussehen, steht unter

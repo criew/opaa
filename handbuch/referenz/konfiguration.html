@@ -4907,6 +4907,12 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Agentenläufe, die in der ganzen Installation gleichzeitig laufen dürfen, über alle Instanzen. Ein weiterer Lauf wird mit <code>429</code> abgewiesen, die Person sieht „Gerade arbeiten zu viele Agenten gleichzeitig"</td>
 </tr>
 <tr>
+<td><code>OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON</code></td>
+<td><code>1</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Agentenläufe, die eine Person gleichzeitig laufen haben darf, über alle Instanzen; mindestens <code>1</code>, höchstens <code>OPAA_AGENT_WORKSPACE_CAPACITY</code>, sonst startet die Anwendung nicht. Solange der Wert unter <code>OPAA_AGENT_WORKSPACE_CAPACITY</code> liegt, belegt eine Person nie alle Plätze. Ein weiterer Lauf dieser Person wird mit <code>429</code> abgewiesen, sie sieht „Sie haben bereits so viele Agentenläufe gestartet, wie gleichzeitig möglich sind"</td>
+</tr>
+<tr>
 <td><code>OPAA_AGENT_CLOSING_CALL_ALLOWANCE</code></td>
 <td><code>60s</code></td>
 <td>nicht gesetzt (Anwendungs-Default gilt)</td>
@@ -7015,7 +7021,7 @@ feste Grenzen stehen hier mit ihrem Wert.</p>
 </tr>
 <tr>
 <td>Agenten</td>
-<td>Werkzeugaufrufe und Suchen je Lauf, Dauer, gesammelte Zeichen, gleichzeitige Läufe in der Installation</td>
+<td>Werkzeugaufrufe und Suchen je Lauf, Dauer, gesammelte Zeichen, gleichzeitige Läufe in der Installation und je Person</td>
 <td><code>OPAA_AGENT_*</code>; ein Agent kann seine Grenzen nur senken</td>
 </tr>
 <tr>
