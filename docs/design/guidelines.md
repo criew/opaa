@@ -720,6 +720,15 @@ Die Bestätigung bleibt das Overlay aus 5.10.
 Geprüft in `frontend/src/shared/ui/dialog/*.test.tsx`; das Zählbudget `disabledSubmits` = 0 der
 [Prüfliste](./ui-pruefliste.md) misst gesperrtes Absenden im UI-Lab.
 
+**Ansichten im Seitenpanel folgen dem Belegfenster des Chats** (5.8). Das Panel öffnet rechts
+neben dem Inhalt, der dahinter lesbar bleibt, und ist unter 600 px Bildschirmbreite
+bildschirmfüllend. Sein Kopf trägt nur den Titel der Ansicht und rechts das ✕ mit einem Namen,
+der das Panel nennt („Belegfenster schließen“); eine Trennlinie setzt den Kopf vom Inhalt ab.
+Darunter folgen, wo die Ansicht sie braucht, ein Suchfeld über der Liste und die Liste selbst; keine
+Fußzeile mit „Schließen“. Das Panel ist ein benannter Dialog (`role="dialog"` mit `aria-label`);
+öffnet es an einer bestimmten Stelle, liegt der Fokus dort, beim Schließen kehrt er auf den
+Auslöser zurück. Escape und ein Klick daneben schließen es.
+
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
 Jeder Bereich, der Daten lädt, kennt fünf Zustände: lädt, erstmals leer, kein Treffer, kein
@@ -761,8 +770,12 @@ Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteine
    (5.9), nie über eine eigene Snackbar; ihr laufender Zustand bleibt am Ort sichtbar und über
    Seitenwechsel erhalten.
 
-**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (`ChatStatusLine`) zeigt einen Spinner mit kurzem Satz wie „Antwort wird geschrieben …“; sie
-beschreibt einen Vorgang, keinen ladenden Inhalt. Anmeldung und Installation stehen vor der
+**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (`ChatStatusLine` in
+`frontend/src/features/chat/components/`) ist die einzige Stelle mit Spinner und sichtbarem Text.
+Sie ist eine Auskunft, kein Ladezustand: Spinner und ein kurzer Satz, was gerade geschieht („Denkt
+nach …“, „Antwort wird geschrieben …“, bei Agenten der laufende Schritt). Sie bleibt von der Frage
+bis zur fertigen Antwort stehen und wechselt nur ihren Text, den ein Screenreader höflich ansagt;
+Spinnergröße und Abstände ändern sich dabei nicht. Anmeldung und Installation stehen vor der
 Anwendung und folgen eigenen Mustern. Der Quelltext-Test nimmt die Statuszeile nur von der
 Spinner-Regel aus, Anmeldung und Installation von allen Regeln.
 
@@ -809,6 +822,20 @@ Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Ak
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
 Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259).
+
+**Während die Antwort entsteht** steht sie vorläufig unter der Statuszeile (5.7), ohne Fußnoten,
+Belegknopf und Aktionen. Der Hinweis, dass die Belege noch nicht geprüft sind, steht genau einmal,
+in der Statuszeile; die fertige Antwort ersetzt die vorläufige an derselben Stelle. Das gilt auch
+für Agentenläufe: Ihre Schritte stehen unter derselben Statuszeile, die den laufenden Schritt nennt.
+
+**Kopf des Chats.** Der Kopf steht von Anfang an, auch im leeren Chat, mit „Neuer Chat“ als
+Titel, bis der Chat einen eigenen hat. Nichts rutscht, wenn die erste Antwort fertig ist oder der
+Titel eintrifft: Die erste Nachricht steht während der laufenden und nach der fertigen Antwort an
+derselben Stelle (geprüft in `e2e/tests/chat-streaming.spec.ts`).
+
+**KI-Hinweis einmal je Fläche.** Der Hinweis auf die KI-Nutzung steht im leeren Chat einmal in
+der Mitte, sobald eine Frage gestellt ist, einmal als ruhige Zeile unter dem Eingabefeld – nie an
+beiden Stellen zugleich.
 
 ### 5.9 Popup-Benachrichtigungen
 

@@ -23,8 +23,7 @@ interface ProvisionalAnswerProps {
  * The answer while the model writes it. Marked as provisional and without any action: it is not
  * validated yet and cannot be copied or exported; the final answer replaces it. The growing text is
  * no live region, so a screen reader is not read every word; {@link PROVISIONAL_ANSWER_LABEL} is
- * shown by the list's loading status above it, which stays mounted from "Denkt nach …" on so the
- * change is announced once.
+ * shown once, by the chat's status line (`ChatStatusLine`) above it.
  */
 export default function ProvisionalAnswer({ text, run }: ProvisionalAnswerProps) {
   return (

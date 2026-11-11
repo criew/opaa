@@ -266,7 +266,7 @@ describe('SuccessionPage', () => {
     await user.click(within(pagination).getByRole('button', { name: /2/ }))
 
     expect(await screen.findByText(/Diese Seite ist inzwischen leer/)).toBeInTheDocument()
-    expect(screen.queryByText('Zurzeit ist hier nichts offen.')).toBeNull()
+    expect(screen.queryByText(/^Zurzeit ist hier nichts offen\./)).toBeNull()
     expect(
       within(screen.getByRole('navigation', { name: 'Seiten der Liste' })).getByRole('button', {
         name: /1/,
@@ -291,7 +291,7 @@ describe('SuccessionPage', () => {
     )
     renderPage()
 
-    expect(await screen.findByText('Zurzeit ist hier nichts offen.')).toBeInTheDocument()
+    expect(await screen.findByText(/^Zurzeit ist hier nichts offen\./)).toBeInTheDocument()
     expect(lists).toEqual(['OPEN_SUCCESSION 50'])
   })
 

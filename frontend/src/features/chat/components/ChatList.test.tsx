@@ -404,6 +404,8 @@ describe('ChatList ordering', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
+    // Reported as a popup only: the chat overview must not show it a second time.
+    expect(useChatListStore.getState().error).toBeNull()
   })
 
   it('opens the chat search with an empty term and no links below the list', async () => {

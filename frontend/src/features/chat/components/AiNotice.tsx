@@ -11,8 +11,8 @@ const NOTICE_NAME = 'Hinweis zur KI-Nutzung'
  * The authority's notice that answers come from an AI (Art. 50 AI Act), in the wording the
  * branding carries. The store always holds a text - the OPAA standard until the branding arrives
  * or when its request fails - so the notice cannot be off. `variant="prominent"` is the empty
- * chat's notice before the first question, `variant="line"` the quiet permanent line under the
- * input.
+ * chat's notice before the first question, `variant="line"` the quiet line under the input from
+ * the first question on - one notice per surface.
  */
 export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
   const notice = useBrandingStore((s) => s.branding.aiNotice)
