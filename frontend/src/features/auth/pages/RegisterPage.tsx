@@ -4,14 +4,14 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { Navigate, Link as RouterLink } from 'react-router'
+import { Navigate } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
-import SectionEyebrow from '../components/SectionEyebrow'
-import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import SectionHead from '@/shared/ui/SectionHead'
+import FormField from '@/shared/ui/form/FormField'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
@@ -105,9 +105,7 @@ export default function RegisterPage() {
           detail="Über den Link darin bestätigen Sie Ihre E-Mail-Adresse und legen Ihren Namen und Ihr Passwort fest; der Link gilt 24 Stunden. Erst danach können Sie sich anmelden."
         >
           <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-            <Link component={RouterLink} to={LOGIN_ROUTE}>
-              Zur Anmeldung
-            </Link>
+            <SignInLink />
             {/* A second registration of an address that is still unconfirmed sends the
                 verification link again - so "no mail arrived" has a way out that needs no
                 administrator. */}
@@ -138,36 +136,35 @@ export default function RegisterPage() {
         noValidate
         sx={{ mt: 3 }}
       >
-        <SectionEyebrow id="register-title">Neues Konto</SectionEyebrow>
+        <SectionHead id="register-title" underline={false}>
+          Neues Konto
+        </SectionHead>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Ihr Haus lässt die Registrierung für bestimmte E-Mail-Domänen zu. Nach der Registrierung
           schicken wir Ihnen einen Link; darüber bestätigen Sie Ihre Adresse und legen Ihren Namen
           und Ihr Passwort fest.
         </Typography>
         <Stack spacing={2}>
-          <Box>
-            <FormFieldLabel htmlFor="register-email">E-Mail-Adresse</FormFieldLabel>
-            <TextField
-              id="register-email"
-              inputRef={emailRef}
-              type="email"
-              size="small"
-              fullWidth
-              autoComplete="username"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.email)}
-              helperText={fieldErrors.email}
-            />
-          </Box>
+          <FormField
+            id="register-email"
+            label="E-Mail-Adresse"
+            inputRef={emailRef}
+            type="email"
+            size="small"
+            autoComplete="username"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={busy}
+            error={Boolean(fieldErrors.email)}
+            helperText={fieldErrors.email}
+          />
           <Button
             type="submit"
             variant="contained"
             disabled={busy}
             sx={{ alignSelf: 'flex-start', borderRadius: `${radius.md}px`, minWidth: 140 }}
           >
-            {busy ? 'Wird registriert …' : 'Konto registrieren'}
+            {busy ? 'Wird registriert …' : 'Registrieren'}
           </Button>
         </Stack>
       </Box>
@@ -178,11 +175,7 @@ export default function RegisterPage() {
         Bestätigung auch Ihr Name. Den Datenschutzhinweis Ihres Hauses erhalten Sie von Ihrer
         Systemverwaltung.
       </Typography>
-      <Typography sx={{ mt: 2, fontSize: fontSize.meta, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
-          Sie haben schon ein Konto? Zur Anmeldung
-        </Link>
-      </Typography>
+      <SignInLink sx={{ mt: 3 }} />
     </AuthLayout>
   )
 }

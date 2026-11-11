@@ -188,6 +188,12 @@ zwei Einträgen.
     640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
     ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
     `FormField.test.tsx` und `fieldHeight.test.tsx`
+54. **Seiten vor der Anmeldung wie die Anwendung:** Bausteine `FormField`, `SecretField`,
+    `TextLink`, `SectionHead`; Rückweg überall „Zur Anmeldung" als Textlink unter dem Formular;
+    Abschnittsköpfe grau, auch im Installationsassistenten; die Primärschaltfläche trägt das Verb
+    der Seite ([guidelines.md](./guidelines.md), 5.1 und 5.12). – gemessen wie jede Seite
+    (`capture.mjs --flow pages --profile signed-out`) und Sicht; im Code geprüft durch
+    `preSignInRules.test.ts`
 
 ## Pflege
 

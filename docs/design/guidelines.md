@@ -256,8 +256,10 @@ steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber kei
   UI-Texte) · 1.5 (Fließtext) · 1.7 (lange Lesetexte, z. B. Chat-Antworten).
 - **Laufweiten:** −0.02em (Überschriften ab xl) · −0.005em (Fließtext) · +0.08em
   (Versal-Etiketten).
-- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten): 11–12 px, Versalien,
-  +0.08em, Gewicht 500, Farbe `accent` über Überschriften bzw. `fg-3` in Tabellen.
+- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten, Abschnittskopf): 11–12 px,
+  Versalien, +0.08em, Gewicht 500, Farbe `fg-2` bzw. `fg-3` in Tabellen. Nie `accent`: Blau bleibt
+  Handlung und Zustand vorbehalten (2.3), auch auf den Seiten vor der Anmeldung und im
+  Installationsassistenten.
 
 ---
 
@@ -473,7 +475,8 @@ beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"
 ist. Wie eine Schaltfläche sieht ein solcher Verweis nur aus, wenn er die eine Handlung eines
 Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
 zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
-Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs („Zur Anmeldung")
+Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs ohne Formular
+(„Zur Anmeldung" nach Installation, Kontoübergabe und gescheiterter Rückkehr vom Anbieter)
 sind Handlungen und bleiben Schaltflächen. Reiter, globale Leiste, Zeilen der Seitenleiste und von
 Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
@@ -481,6 +484,23 @@ Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
 Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
 Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
+
+**Seiten vor der Anmeldung** (Anmelden, Systemanmeldung, Registrieren, Passwort vergessen,
+Passwort festlegen, E-Mail-Adresse bestätigen, Kontoübergabe) folgen denselben Regeln und
+Bausteinen wie die Anwendung (`FormField`, `SecretField`, `TextLink`, `SectionHead`):
+
+- Die Primärschaltfläche trägt das Verb der Seite, nicht ihren Titel: „Anmelden", „Registrieren",
+  „Link anfordern", „Passwort festlegen".
+- Der Rückweg heißt überall „Zur Anmeldung" und steht als Textlink unter dem Formular, nach einem
+  Ergebnishinweis unter diesem. Andere Wortlaute („Zurück zur Anmeldung", „Sie haben schon ein
+  Konto?") gibt es nicht.
+- Frei stehende Verweise („Passwort vergessen?", „Anmeldung für die Systemverwaltung", „Neuen Link
+  anfordern") sind Textlinks in 14 px, unterstrichen beim Zeigen; nur der Link im Satz („Noch kein
+  Konto? Konto registrieren") bleibt dauerhaft unterstrichen.
+- Identitätsanbieter stehen zuerst, der vorgeschlagene gefüllt; die lokale Anmeldung darunter ist
+  dann sekundär (eine primäre Schaltfläche je Fläche).
+
+`preSignInRules.test.ts` prüft Wortlaut, Bausteine und Verben im Quelltext.
 
 ### 5.2 Formularfelder
 
@@ -1068,6 +1088,11 @@ es nichts weiter zu gliedern gibt.
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
+
+**Abschnittsköpfe sind überall grau.** Der Versal-Abschnittskopf (`SectionHead`, Eyebrow-Muster
+aus 3.3) steht in `fg-2`, auch auf den Seiten vor der Anmeldung („Identitätsanbieter", „Konto
+dieser Installation") und über dem Schritttitel des Installationsassistenten. Akzentfarbe an einem
+Abschnittskopf gibt es nicht (2.3; Prüfliste P54, geprüft durch `preSignInRules.test.ts`).
 
 ### 5.13 Seitenleiste des Space
 

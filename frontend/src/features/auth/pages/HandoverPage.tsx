@@ -3,13 +3,13 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
-import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import AuthNotice from '../components/AuthNotice'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import SectionEyebrow from '../components/SectionEyebrow'
+import SectionHead from '@/shared/ui/SectionHead'
 import HandoverScopeSummary from '../components/HandoverScopeSummary'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
@@ -215,9 +215,7 @@ export default function HandoverPage() {
           message={LINK_INVALID_MESSAGE}
           detail="Der Link gilt 72 Stunden und nur einmal. Ein erneutes Laden dieser Seite hilft nicht — bitten Sie Ihre Systemverwaltung, die Übergabe erneut anzustoßen."
         >
-          <Link component={RouterLink} to={LOGIN_ROUTE}>
-            Zur Anmeldung
-          </Link>
+          <SignInLink />
         </AuthNotice>
       </AuthLayout>
     )
@@ -232,9 +230,7 @@ export default function HandoverPage() {
           message={message ?? 'Die Übergabe konnte nicht abgeschlossen werden.'}
           detail="Ihr bisheriger Zugang besteht unverändert weiter."
         >
-          <Link component={RouterLink} to={LOGIN_ROUTE}>
-            Zur Anmeldung
-          </Link>
+          <SignInLink />
         </AuthNotice>
       </AuthLayout>
     )
@@ -254,7 +250,9 @@ export default function HandoverPage() {
       </Alert>
 
       <Box component="section" aria-labelledby="handover-scope-title" sx={{ mt: 3 }}>
-        <SectionEyebrow id="handover-scope-title">Das geht mit</SectionEyebrow>
+        <SectionHead id="handover-scope-title" underline={false}>
+          Das geht mit
+        </SectionHead>
         <HandoverScopeSummary scope={scope} />
       </Box>
 

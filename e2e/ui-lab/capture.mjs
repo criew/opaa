@@ -7,17 +7,19 @@
  *        [--types filesystem,confluence,...] [--scenarios small,scale,...]
  *        [--schemes light,dark] [--widths 1280,320] [--areas wizard,review,detail,edit]
  *        [--quick] [--no-axe] [--no-full] [--concurrency 2] [--chromium <path>] [--variant <id>]
+ *        [--profile admin|user|auditor|signed-out]
  *
  * Each scheme gets its own browser context that loads every page in that scheme from the start;
  * in the "slow" scenario listings and connection tests never answer, so its shots show one state.
  * Per job (type or page × scenario) the flow runs in a new tab, so in-memory mock state and the
  * tab's sessionStorage (scenario, pending consents) start anew; a state that cannot be reached is recorded as {"status":"not-found"} instead of
- * failing the run. --variant appends ?variant=<id> to every URL a flow opens. Output: <name>.png, <name>__full.png, metrics.jsonl and run.json in --out.
+ * failing the run. --variant appends ?variant=<id> to every URL a flow opens; --profile loads every
+ * page as that mock profile (signed-out: the pages before the sign-in). Output: <name>.png, <name>__full.png, metrics.jsonl and run.json in --out.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { launch, pinVariant, schemeContext } from './lib/browser.mjs'
+import { launch, MOCK_PROFILES, pinProfile, pinVariant, schemeContext } from './lib/browser.mjs'
 import { createRecorder } from './lib/measure.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -53,12 +55,14 @@ function parseArgs(argv) {
     else if (a === '--concurrency') args.concurrency = count(a, next())
     else if (a === '--chromium') args.chromium = next()
     else if (a === '--variant') args.variant = next()
+    else if (a === '--profile') args.profile = next()
     else if (a === '--help' || a === '-h') {
       console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0])
       process.exit(0)
     } else throw new Error(`unknown argument ${a}`)
   }
   if (!FLOWS.includes(args.flow)) throw new Error(`unknown flow ${args.flow}; known: ${FLOWS.join(', ')}`)
+  if (args.profile && !MOCK_PROFILES.includes(args.profile)) throw new Error(`unknown profile ${args.profile}; known: ${MOCK_PROFILES.join(', ')}`)
   return args
 }
 
@@ -81,7 +85,7 @@ const log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0).padS
 const recorder = createRecorder({ out: ARGS.out, widths: ARGS.widths, noAxe: ARGS.noAxe, noFull: ARGS.noFull, log })
 flow.setup?.({ out: ARGS.out })
 
-log(`flow ${ARGS.flow} | base ${ARGS.base}${ARGS.variant ? ` | variant ${ARGS.variant}` : ''} -> ${ARGS.out}`)
+log(`flow ${ARGS.flow} | base ${ARGS.base}${ARGS.variant ? ` | variant ${ARGS.variant}` : ''}${ARGS.profile ? ` | profile ${ARGS.profile}` : ''} -> ${ARGS.out}`)
 log(`scenarios ${ARGS.scenarios.join(',')} | schemes ${ARGS.schemes.join(',')} | widths ${ARGS.widths.join(',')}`)
 const browser = await launch(ARGS.chromium)
 for (const scheme of ARGS.schemes) {
@@ -100,6 +104,7 @@ for (const scheme of ARGS.schemes) {
       // a new tab per job: its sessionStorage (scenario, pending consents) starts empty
       const page = await context.newPage()
       await pinVariant(page, ARGS.variant)
+      await pinProfile(page, ARGS.profile)
       page.on('pageerror', (e) => log('  PAGEERROR', e.message.slice(0, 160)))
       const key = { type: job.type, scenario: job.scenario, scheme }
       log(`== ${job.type} / ${job.scenario} / ${scheme}`)
