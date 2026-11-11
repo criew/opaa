@@ -500,7 +500,7 @@ Fehler im Log; Anmeldung, Konten, Spaces, Bibliotheken und die Verwaltung arbeit
 
 | Fehlt | Wirkung | Abhilfe |
 |---|---|---|
-| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modelle ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
+| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modell ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
 | Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit (der nächste Lauf nach dem Festlegen deckt sie ab). Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)) |
 
 Readiness und `/actuator/health` bleiben `UP`; die Health Groups `chat-model`, `embedding-model`

@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import Typography from '@mui/material/Typography'
 import { secretPart } from '@/shared/ui/setup/setupDrafts'
 import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import { originOf, providerOf } from '@/shared/ui/modelDiscovery/modelEndpoint'
@@ -208,7 +209,11 @@ export default function TranscriptionModelStep({
         }}
         batchPrefilled={prefill !== null}
         externalNoticeGiven={batchExternal && sharesOrigin(realtime.url, baseUrl)}
-      />
+      >
+        <Typography variant="body2" color="text.secondary">
+          Eine Live-Sitzung zur Zeit; mehr legen Sie später unter „Modelle → Spracheingabe“ fest.
+        </Typography>
+      </RealtimeTranscriptionFields>
     </StepFrame>
   )
 }
