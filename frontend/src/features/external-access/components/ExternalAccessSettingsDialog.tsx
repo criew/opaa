@@ -141,6 +141,16 @@ export default function ExternalAccessSettingsDialog({
   )
 }
 
+/** The fields that show a server's field error at themselves. */
+const FIELDS_WITH_MESSAGE = new Set([
+  'tokenMaxLifetimeDays',
+  'tokenRateLimitPerHour',
+  'massRetrievalAlertThreshold',
+  'allowedCidrs',
+  'releaseReminderLeadDays',
+  'serverInstructions',
+])
+
 function ExternalAccessSettingsEditor({
   settings,
   onClose,
@@ -156,6 +166,7 @@ function ExternalAccessSettingsEditor({
   const [fieldMessages, setFieldMessages] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const errorRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const dirty = !sameDraft(draft, initial)
 
   async function requestClose() {
@@ -175,10 +186,13 @@ function ExternalAccessSettingsEditor({
     onClose()
   }
 
-  // After a failed save the focus goes to the message (docs/design/accessibility.md, 2.7).
+  // After a failed save the focus goes to the first field with an error, or to the message of an
+  // error without a field (guidelines 5.6, accessibility.md 2.7).
   useEffect(() => {
-    if (error) errorRef.current?.focus()
-  }, [error])
+    const invalid = contentRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    if (invalid) invalid.focus()
+    else if (error) errorRef.current?.focus()
+  }, [error, fieldMessages])
 
   function update(change: Partial<Draft>) {
     setDraft((current) => ({ ...current, ...change }))
@@ -204,8 +218,8 @@ function ExternalAccessSettingsEditor({
     const typed = draft.releaseReminderLeadDays
     if (typed !== null && !/^\d+$/.test(typed.trim())) {
       const message = `Bitte eine ganze Zahl von 0 bis ${settings.maxReleaseReminderLeadDays} eingeben.`
+      setError(null)
       setFieldMessages({ releaseReminderLeadDays: message })
-      setError(`Die Erinnerung vor Ablauf ist nicht gespeichert: ${message}`)
       return
     }
     const lead = typed === null ? settings.defaultReleaseReminderLeadDays : Number(typed)
@@ -234,9 +248,20 @@ function ExternalAccessSettingsEditor({
     try {
       onSaved(await updateExternalAccessSettings(requestOf(draft)))
     } catch (err: unknown) {
+      // A field the dialog shows tells its error itself; only the rest becomes the message.
       const perField = apiFieldErrors(err)
-      setFieldMessages(Object.fromEntries(perField.map((e) => [e.field, e.message])))
-      setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
+      const shown = perField.filter((e) => FIELDS_WITH_MESSAGE.has(e.field))
+      setFieldMessages(Object.fromEntries(shown.map((e) => [e.field, e.message])))
+      const unshown = perField.filter((e) => !FIELDS_WITH_MESSAGE.has(e.field))
+      setError(
+        shown.length > 0 && unshown.length === 0
+          ? null
+          : unshown.length > 0
+            ? unshown.map((e) => e.message).join(' ')
+            : err instanceof Error
+              ? err.message
+              : 'Speichern fehlgeschlagen.',
+      )
     } finally {
       setBusy(false)
     }
@@ -251,6 +276,7 @@ function ExternalAccessSettingsEditor({
       onClose={() => void requestClose()}
       busy={busy}
       busyAnnouncement="Einstellungen werden gespeichert"
+      contentRef={contentRef}
     >
       <Stack spacing={3.5}>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>

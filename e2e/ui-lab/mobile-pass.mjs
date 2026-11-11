@@ -134,7 +134,7 @@ function measureInPage() {
     if (rect.width < 1) continue
     if (rect.left < -1 || rect.right > vw + 1) cutOff.push(node.textContent.trim().slice(0, 40))
   }
-  const create = [...document.querySelectorAll('[data-area-page-header] .MuiButton-contained')].find(visible)
+  const create = [...document.querySelectorAll('[data-area-page-header] [data-create-button]')].find(visible)
   const title = document.querySelector('[data-area-page-header] h1')
   const createButton = create
     ? {
@@ -181,7 +181,7 @@ function violations(m, width) {
 
 /** Opens the dialog of the header's create button and measures it; `null` without a dialog. */
 async function openDialog(page) {
-  const button = page.locator('[data-area-page-header] .MuiButton-contained:not([disabled])').first()
+  const button = page.locator('[data-area-page-header] [data-create-button]:not([disabled])').first()
   if (!(await button.isVisible().catch(() => false))) return null
   await button.click()
   const dialog = page.locator('[role=dialog]').last()

@@ -38,6 +38,8 @@ export default function CreateButton({
   const button = (
     <Button
       {...buttonProps}
+      // found by e2e/ui-lab/mobile-pass.mjs, which measures the create button on the phone
+      data-create-button=""
       disabled={disabled}
       variant={placement === 'header' ? 'contained' : 'outlined'}
       startIcon={<AddIcon />}

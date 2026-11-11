@@ -23,7 +23,7 @@ export interface SettingsFormProps {
   onDiscard: () => void
   /** At most one secondary action beside „Speichern“: {@link ConnectionTestButton}. */
   secondaryAction?: ReactNode
-  /** What the secondary action found, below the footer. */
+  /** What the secondary action found, or a save error without a field (5.16), below the footer. */
   result?: ReactNode
   /** Names the form where no heading around it does. */
   'aria-label'?: string

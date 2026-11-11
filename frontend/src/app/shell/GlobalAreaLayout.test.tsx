@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ThemeProvider } from '@mui/material/styles'
@@ -226,6 +226,37 @@ describe('GlobalAreaLayout below 900 px', () => {
     expect(row.scrollLeft).toBe(0)
     expect(row).not.toHaveAttribute('data-edge-start')
     expect(row).toHaveAttribute('data-edge-end', 'true')
+  })
+
+  it('measures the edges again when the row changes size without a scroll', () => {
+    const observed: { callback: ResizeObserverCallback; target: Element | null }[] = []
+    const original = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class {
+      private entry: { callback: ResizeObserverCallback; target: Element | null }
+      constructor(callback: ResizeObserverCallback) {
+        this.entry = { callback, target: null }
+        observed.push(this.entry)
+      }
+      observe(target: Element) {
+        this.entry.target = target
+      }
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver
+    try {
+      renderNarrow('/admin/branding')
+      const row = screen.getByRole('list')
+      expect(row).not.toHaveAttribute('data-edge-start')
+      const entry = observed.find((candidate) => candidate.target === row)
+      expect(entry).toBeDefined()
+
+      // e.g. the phone turned and the browser kept a scroll offset
+      row.scrollLeft = 120
+      act(() => entry!.callback([], {} as ResizeObserver))
+      expect(row).toHaveAttribute('data-edge-start', 'true')
+    } finally {
+      globalThis.ResizeObserver = original
+    }
   })
 
   it('keeps a section marked on its subroutes and stops at the end of the row', () => {

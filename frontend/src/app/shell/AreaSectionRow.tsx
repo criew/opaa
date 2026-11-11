@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, useLocation } from 'react-router'
@@ -45,6 +45,15 @@ export default function AreaSectionRow({
     measureEdges()
   }, [location.pathname, measureEdges])
 
+  // The edges also change without a scroll: turning the phone, resizing the window, a late font.
+  useEffect(() => {
+    const row = rowRef.current
+    if (!row || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measureEdges)
+    observer.observe(row)
+    return () => observer.disconnect()
+  }, [measureEdges])
+
   const mask = `linear-gradient(to right, ${edges.start ? 'transparent' : '#000'} 0, #000 ${EDGE_FADE_PX}px, #000 calc(100% - ${EDGE_FADE_PX}px), ${edges.end ? 'transparent' : '#000'} 100%)`
 
   return (
@@ -60,14 +69,24 @@ export default function AreaSectionRow({
         data-edge-start={edges.start || undefined}
         data-edge-end={edges.end || undefined}
         sx={{
+          // the offset parent of the entries, so centring does not depend on the page around it
+          position: 'relative',
           listStyle: 'none',
           m: 0,
           px: '12px',
           display: 'flex',
           gap: 0.5,
           overflowX: 'auto',
+          // an entry reached by Tab scrolls clear of the fading edge
+          scrollPaddingInline: `${EDGE_FADE_PX}px`,
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
+          // With a mouse (a desktop window at 400 % zoom) a thin scrollbar shows that the row
+          // scrolls; on touch screens the swipe needs none.
+          '@media (pointer: fine)': {
+            scrollbarWidth: 'thin',
+            '&::-webkit-scrollbar': { display: 'block', height: 6 },
+          },
           maskImage: mask,
           WebkitMaskImage: mask,
         }}

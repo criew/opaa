@@ -392,8 +392,8 @@ nur die Breite:
 
 | Unter | Was sich ändert |
 | --- | --- |
-| 900 px | Die Seitenleiste wird zur Schublade hinter „Menü öffnen“. Die Bereichsnavigation steht als eine Zeile über der Seite. Jede Liste aus `AdminList` ist eine Kartenliste (5.3); eine `<table>` ist nicht sichtbar. Die Schrittliste eines Assistenten zeigt nur „Schritt 2 von 12 · Erstes Konto“ (5.15, 5.17). |
-| 600 px | Dialoge und Seitenpanels füllen den Bildschirm, die Fußzeile steht unten (5.6). Der Anlege-Knopf steht in voller Breite in einer eigenen Zeile unter dem Titel (`AreaPageHeader`, 4.6). |
+| 900 px | Die Seitenleiste wird zur Schublade hinter „Menü öffnen“. Die Bereichsnavigation steht als eine Zeile über der Seite. Jede Liste aus `AdminList` ist eine Kartenliste (5.3); eine `<table>` ist nicht sichtbar. Die Schrittliste des Installationsassistenten zeigt nur „Schritt 2 von 12 · Erstes Konto“ (5.17). |
+| 600 px | Dialoge und Seitenpanels füllen den Bildschirm, die Fußzeile steht unten (5.6). Der Anlege-Knopf steht in voller Breite in einer eigenen Zeile unter dem Titel (`AreaPageHeader`, 4.6). Die Schrittleiste der übrigen Assistenten (`WizardStepBar`) nennt nur beim aktiven Schritt den Namen, die anderen zeigen ihre Nummer; vorgelesen werden alle mit Namen (5.15). |
 
 **Bereichsnavigation in einer Zeile** (`frontend/src/app/shell/AreaSectionRow.tsx`): Unter 900 px
 stehen die Einträge von Administration und Revision nebeneinander in einer Zeile, die sich
@@ -413,8 +413,9 @@ Zeile, nicht ihr Text.
 
 - **320 px** ist die Untergrenze für Reflow nach WCAG 1.4.10
   ([Barrierefreiheit](./accessibility.md), 2.5): Nichts bricht, nichts ist abgeschnitten,
-  nichts scrollt waagerecht. Gemessen in `e2e/ui-lab/capture.mjs` und `mobile-pass.mjs`
-  (`overflowX`, `cutOff`) und in der E2E-Suite (`admin-area-navigation.spec.ts`).
+  nichts scrollt waagerecht. Gemessen in `e2e/ui-lab/capture.mjs` (`overflowX`, `clippedText`),
+  in `mobile-pass.mjs` (`overflowX`, `cutOff`) und in der E2E-Suite
+  (`admin-area-navigation.spec.ts`).
 - **360 px** ist das Telefon, an dem die Regeln dieses Abschnitts gemessen und Screenshots
   bewertet werden: `e2e/ui-lab/mobile-pass.mjs` lädt alle Verwaltungs- und Hauptseiten mit den
   Mock-Profilen `admin`, `user` und `auditor` und misst Inhaltsbeginn, waagerechtes Scrollen,
