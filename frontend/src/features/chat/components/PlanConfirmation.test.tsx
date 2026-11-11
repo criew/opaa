@@ -15,8 +15,8 @@ describe('PlanConfirmation', () => {
     expect(change.className).not.toMatch(/contained/)
     expect(screen.getByRole('group', { name: 'Plan von Recherche' })).toBeInTheDocument()
 
-    await userEvent.click(confirm)
     await userEvent.click(change)
+    await userEvent.click(confirm)
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledTimes(1)
   })
@@ -25,6 +25,17 @@ describe('PlanConfirmation', () => {
     render(
       <PlanConfirmation agentName="Recherche" onConfirm={vi.fn()} onChange={vi.fn()} disabled />,
     )
+    expect(screen.getByRole('button', { name: 'Bestätigen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Ändern' })).toBeDisabled()
+  })
+
+  it('locks both buttons at the first click so a double click confirms once', async () => {
+    const onConfirm = vi.fn()
+    render(<PlanConfirmation agentName="Recherche" onConfirm={onConfirm} onChange={vi.fn()} />)
+
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Bestätigen' }))
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Bestätigen' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Ändern' })).toBeDisabled()
   })

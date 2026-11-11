@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 
@@ -13,7 +14,7 @@ interface PlanConfirmationProps {
 /**
  * The two answers to an agent's plan under the chat's latest answer: confirming it is the one
  * primary action, changing it is secondary and happens in the input, as a new message to the same
- * agent. Either one starts the run that works the plan off.
+ * agent. Confirming locks both buttons at once, so a double click sends one confirmation.
  */
 export default function PlanConfirmation({
   agentName,
@@ -21,6 +22,8 @@ export default function PlanConfirmation({
   onChange,
   disabled = false,
 }: PlanConfirmationProps) {
+  const [confirmed, setConfirmed] = useState(false)
+  const locked = disabled || confirmed
   return (
     <Box
       role="group"
@@ -28,10 +31,18 @@ export default function PlanConfirmation({
       data-testid="plan-confirmation"
       sx={{ display: 'flex', gap: 1, pl: 7, pr: 2, mb: 2 }}
     >
-      <Button variant="contained" size="small" onClick={onConfirm} disabled={disabled}>
+      <Button
+        variant="contained"
+        size="small"
+        onClick={() => {
+          setConfirmed(true)
+          onConfirm()
+        }}
+        disabled={locked}
+      >
         Bestätigen
       </Button>
-      <Button variant="outlined" size="small" onClick={onChange} disabled={disabled}>
+      <Button variant="outlined" size="small" onClick={onChange} disabled={locked}>
         Ändern
       </Button>
     </Box>
