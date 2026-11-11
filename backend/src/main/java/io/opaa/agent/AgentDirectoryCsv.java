@@ -56,15 +56,19 @@ final class AgentDirectoryCsv {
 
   static final String ALL_READABLE_LIBRARIES =
       "Alle Bibliotheken, die die fragende Person lesen darf";
-  static final String ASSIGNED_LIBRARIES_DELETED = "keine (zugeordnete Bibliothek gelöscht)";
+  static final String NO_VISIBLE_LIBRARY =
+      "keine einsehbare Bibliothek (gelöscht oder nicht einsehbar)";
 
-  /** All readable only without any assignment; an assignment whose libraries are gone is none. */
+  /**
+   * All readable only without any assignment; an assignment whose libraries are all gone or private
+   * is none.
+   */
   static String libraries(AgentEntry agent) {
     if (agent.allReadableLibraries()) {
       return ALL_READABLE_LIBRARIES;
     }
     return agent.libraryNames().isEmpty()
-        ? ASSIGNED_LIBRARIES_DELETED
+        ? NO_VISIBLE_LIBRARY
         : String.join(LIST_SEPARATOR, agent.libraryNames());
   }
 

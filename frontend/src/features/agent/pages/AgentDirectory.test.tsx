@@ -98,7 +98,9 @@ describe('Agentenverzeichnis', () => {
       ),
     )
     const orphaned = renderAt('/agent-directory/agents/agent-orphaned')
-    expect(await screen.findByText('keine (zugeordnete Bibliothek gelöscht)')).toBeVisible()
+    expect(
+      await screen.findByText('keine einsehbare Bibliothek (gelöscht oder nicht einsehbar)'),
+    ).toBeVisible()
     orphaned.unmount()
 
     useAgentDirectoryStore.getState().reset()

@@ -46,7 +46,7 @@ class AgentDirectoryCsvTest {
     assertThat(AgentDirectoryCsv.libraries(agent(List.of(), true)))
         .isEqualTo("Alle Bibliotheken, die die fragende Person lesen darf");
     assertThat(AgentDirectoryCsv.libraries(agent(List.of(), false)))
-        .isEqualTo("keine (zugeordnete Bibliothek gelöscht)");
+        .isEqualTo("keine einsehbare Bibliothek (gelöscht oder nicht einsehbar)");
     assertThat(AgentDirectoryCsv.libraries(agent(List.of("A", "B"), false))).isEqualTo("A, B");
   }
 

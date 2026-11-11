@@ -716,9 +716,9 @@ components:
         libraryNames:
           type: array
           description: >
-            The names of the assigned libraries that still exist, by name; never their content.
-            Empty with allReadableLibraries false means every assigned library was deleted and
-            the agent searches nothing.
+            The names of the assigned libraries that still exist and are not private, by name;
+            never their content. Empty with allReadableLibraries false means no assigned library
+            is visible here, as every one is deleted or private; the directory does not tell which.
           items:
             type: string
         allReadableLibraries:

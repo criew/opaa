@@ -456,8 +456,13 @@ public class AgentService {
     Set<UUID> existing = new HashSet<>();
     for (KnowledgeLibrary library : libraryRepository.findAllById(assigned)) {
       if (library.getOrganizationId().equals(caller.organizationId())) {
-        existing.add(library.getId());
-        if (readable.contains(library.getId())) {
+        boolean readableByCaller = readable.contains(library.getId());
+        // Somebody else's private library does not exist for the caller: neither named nor
+        // counted as hidden.
+        if (readableByCaller || !library.isOwnerOnly()) {
+          existing.add(library.getId());
+        }
+        if (readableByCaller) {
           names.put(library.getId(), library.getName());
         }
       }

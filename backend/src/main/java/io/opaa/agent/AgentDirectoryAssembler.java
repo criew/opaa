@@ -29,8 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
  * single objects; the right to the directory is {@link AgentDirectoryService}'s to check. A library
  * is read for its name only, never for its content, and a private library not at all: it does not
  * exist for anyone but its owner (ADR-0041), so it drops out of the list of an agent like a deleted
- * one. A lock is read only for since when - its reason stays with the system administration and the
- * managers of the object.
+ * one, without a count and without a hint, while the agent still uses it for its owner. A lock is
+ * read only for since when - its reason stays with the system administration and the managers of
+ * the object.
  */
 @Component
 class AgentDirectoryAssembler {
