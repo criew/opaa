@@ -6,6 +6,7 @@ import RecognizedTextNotice from '@/shared/ui/RecognizedTextNotice'
 import { getDocumentText } from '../api/libraryApi'
 import { comparableText } from '../utils/textPassage'
 import { fontSize } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface RecognizedTextPanelProps {
   id: string
@@ -78,9 +79,7 @@ export default function RecognizedTextPanel({
         {[pageLabel(anchor), section].filter(Boolean).join(' · ')}
       </Typography>
       {pending ? (
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-          Text wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={3} />
       ) : (
         <Typography
           component="blockquote"

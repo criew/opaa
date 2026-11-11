@@ -16,7 +16,8 @@ Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
    Ausschnitten für einige Werkzeuge.
 
 Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
-anzeigen: neues Token erzeugen, altes widerrufen.
+anzeigen: neues Token erzeugen, altes widerrufen. Eine Bibliothek, die Sie nicht mehr lesen dürfen,
+steht in der Liste als „(kein Leserecht)“ statt mit ihrem Namen.
 
 Wie viele gültige Tokens Sie zugleich haben dürfen, ist begrenzt; ist die Grenze erreicht, erst ein
 altes widerrufen ([Konfiguration](../referenz/konfiguration.md)). Das Kontingent an Anfragen je
@@ -45,7 +46,7 @@ Andere MCP-fähige Werkzeuge brauchen dieselben Angaben: Adresse `https://<host>
 **Gut zu wissen:**
 
 - Der Tokenwert gehört in keine Datei, die in eine Versionsverwaltung wandert.
-- Ein neues Passwort beendet alle Ihre Tokens.
+- Ein neues Passwort beendet alle Ihre Tokens, ebenso die Systemverwaltung als neue Rolle.
 - Jedes neue Token meldet OPAA per Mail. Nicht selbst erzeugt? Widerrufen und die Systemverwaltung
   informieren.
 - Verbindet nichts, fehlt meist die Freigabe der Bibliothek, ein gültiges Token oder ein

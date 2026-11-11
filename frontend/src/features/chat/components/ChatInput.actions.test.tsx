@@ -75,10 +75,9 @@ describe('ChatInput: the "/" menu collects the active action sources', () => {
     texts: {
       heading: 'Begriff einsetzen',
       listLabel: 'Begriffe',
-      loading: 'Begriffe werden geladen …',
-      none: 'Keine Begriffe vorhanden',
-      noMatch: 'Kein passender Begriff gefunden',
-      loadFailed: 'Begriffe konnten nicht geladen werden',
+      none: 'Keine Begriffe vorhanden.',
+      noMatch: 'Keine Treffer.',
+      loadFailed: 'Begriffe konnten nicht geladen werden.',
       chooseFailed: 'Der Begriff konnte nicht geladen werden',
     },
     load: async () => [

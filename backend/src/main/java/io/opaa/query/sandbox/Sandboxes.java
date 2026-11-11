@@ -10,6 +10,12 @@ import java.time.Duration;
  */
 public interface Sandboxes {
 
+  /** The working directory of a sandbox. */
+  String WORKSPACE_DIR = "/workspace";
+
+  /** Where the sandbox image keeps the fixed scripts of the application's tools. */
+  String INSTALLED_DIR = "/opt/opaa";
+
   /** The directory a script writes its result files to; the only one read back. */
   String OUTPUT_DIR = "/workspace/out";
 

@@ -228,6 +228,15 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
   }
 
   /**
+   * The configured identifier of the model {@code chatClient} was built for, {@code null} for a
+   * client this resolver did not build: the model a caller actually talks to, even if the active
+   * model changes after the client was resolved.
+   */
+  public String modelIdentifierOf(ChatClient chatClient) {
+    return chatClient == null ? null : modelIdentifiers.get(chatClient);
+  }
+
+  /**
    * Counts the tokens {@code response} reports under {@code purpose} and the configured identifier
    * of the model {@code chatClient} was built for ({@code opaa.model.tokens}); a response without
    * usage counts nothing, a client this resolver did not build counts as model {@code unknown}.

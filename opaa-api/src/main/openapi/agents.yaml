@@ -78,6 +78,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/AgentAvailabilityResponse"
 
+  /api/v1/agents/available:
+    get:
+      operationId: listAvailableAgents
+      tags: [agent]
+      summary: >
+        The agents the caller can choose in a chat of the space: every agent that is associated
+        with the space and readable by the caller by the formula - nothing else. Ordered by name.
+        Empty while agents are switched off. Choosing one sends its id as agentId with the
+        question.
+      parameters:
+        - name: spaceId
+          in: query
+          required: true
+          description: The space of the chat; the caller must be a member of it.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The agents the caller may choose
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableAgent"
+        "404":
+          $ref: "#/components/responses/SpaceNotFound"
+
   /api/v1/agents/{agentId}:
     parameters:
       - name: agentId
@@ -109,8 +138,11 @@ paths:
       summary: >
         Replace name, purpose and configuration (MANAGER or above). A library is accepted only if
         the caller may read it; an assigned library the caller may not read stays assigned even
-        when the request leaves it out, because the caller cannot see it. Every change counts the
-        revision up. A caller reaching the agent only through the system administration cannot
+        when the request leaves it out, because the caller cannot see it. Document templates follow
+        the same rule; a deleted template drops out, and while the switch "Vorlagen" is off the
+        assignment is kept as stored. A change of instruction, libraries, tools, templates, plan
+        step or limits counts the revision up; a new name or purpose alone does not. A caller
+        reaching the agent only through the system administration cannot
         change the instruction; it is kept. A run takes the lower of an agent's limit and the installation's.
       requestBody:
         required: true
@@ -231,6 +263,16 @@ components:
         name:
           type: string
 
+    AgentTemplate:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
     AgentCreateRequest:
       type: object
       required: [name]
@@ -287,12 +329,24 @@ components:
           items:
             type: string
           description: >
-            Any of search_knowledge, read_document, list_sources, run_code, ask_user. A run is
-            offered only those the installation has switched on.
+            Any of search_knowledge, read_document, list_sources, run_code, ask_user,
+            fill_template. A run is offered only those the installation has switched on;
+            fill_template only while the agent has a template the calling person may read.
         planStep:
           $ref: "#/components/schemas/AgentPlanStep"
         limits:
           $ref: "#/components/schemas/AgentLimits"
+        templateIds:
+          type: array
+          maxItems: 20
+          nullable: true
+          items:
+            type: string
+            format: uuid
+          description: >
+            The document templates the agent fills its result into. Omitted or null keeps the
+            assignment as stored; a template is accepted only if the caller may read it, and an
+            assigned one the caller may not read stays.
 
     AgentResponse:
       type: object
@@ -302,6 +356,8 @@ components:
         - instruction
         - libraries
         - hiddenLibraryCount
+        - templates
+        - hiddenTemplateCount
         - toolNames
         - planStep
         - limits
@@ -339,6 +395,16 @@ components:
           description: >
             Assigned libraries the caller may not read or that no longer exist - counted, never
             named. A run never reads them for this caller.
+        templates:
+          type: array
+          description: The assigned document templates the caller may read, by name.
+          items:
+            $ref: "#/components/schemas/AgentTemplate"
+        hiddenTemplateCount:
+          type: integer
+          description: >
+            Assigned document templates the caller may not read - counted, never named. A run
+            never fills them for this caller.
         toolNames:
           type: array
           items:
@@ -349,7 +415,9 @@ components:
           $ref: "#/components/schemas/AgentLimits"
         revision:
           type: integer
-          description: Counts up with every saved change (the "Fassung").
+          description: >
+            Counts up with every saved change of what a run uses - instruction, libraries, tools,
+            plan step, limits - (the "Fassung"); a new name or purpose alone does not.
         delivered:
           type: boolean
           description: The installation delivered this agent ("Recherche"); it is changeable all the same.
@@ -386,6 +454,20 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    AvailableAgent:
+      type: object
+      required: [id, name]
+      description: An agent offered in the chat's @ menu; deliberately without its configuration.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
 
     AgentAvailabilityResponse:
       type: object

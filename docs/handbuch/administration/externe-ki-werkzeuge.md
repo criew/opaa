@@ -22,7 +22,7 @@ Der Kanal kann geeignet sein, Verhalten und Leistung zu überwachen. Vorher klä
 
 ## Einschalten
 
-1. Seitenpanel „Einstellungen“ öffnen.
+1. „Einstellungen“ öffnen.
 2. Höchstlaufzeit der Tokens, Anfragen je Token und Stunde, Abflussalarm und **Netzbereiche**
    prüfen. Ab Werk antwortet der Kanal nur aus dem Hausnetz.
 3. „Externe KI-Werkzeuge zulassen“ einschalten und speichern.
@@ -35,8 +35,9 @@ beim nächsten Aufruf für alle Tokens, und die Tokens bleiben erhalten.
 Die Liste „Zugangstokens“ zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand, bewusst ohne
 Nutzungsdatum und ohne Filter nach Person; auch die Tokens der Dienstkonten stehen darin, mit dem
 Dienstkonto als Besitzer. Sie können ein einzelnes Token oder alle Tokens einer Person oder eines
-Dienstkontos sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel und die Übergabe
-an einen Identitätsanbieter beenden die Tokens eines Kontos von selbst. Die Zahl der Tokens an
+Dienstkontos sperren; den Tokenwert sieht niemand. Sperre, Ablauf, Passwortwechsel, die Übergabe
+an einen Identitätsanbieter und die Vergabe der Systemverwaltung an ein lokales Konto beenden die
+Tokens eines Kontos von selbst. Die Zahl der Tokens an
 einer Bibliothek zählt die Tokens der Dienstkonten mit. Wie viele gültige Tokens ein Konto
 höchstens hat, legt `OPAA_EXTERNAL_ACCESS_MAX_ACTIVE_TOKENS_PER_ACCOUNT` fest.
 

@@ -4,6 +4,7 @@ import IconButton from '@mui/material/IconButton'
 import Box from '@mui/material/Box'
 import Tooltip from '@mui/material/Tooltip'
 import CloseIcon from '@mui/icons-material/Close'
+import { DIALOG_TITLE_SX } from './dialog/dialogWidth'
 
 interface DialogTitleWithCloseProps {
   /** The id the dialog's `aria-labelledby` points at. */
@@ -12,6 +13,8 @@ interface DialogTitleWithCloseProps {
   children: ReactNode
   /** Icon buttons for the whole view (a download, say), placed left of the ✕. */
   actions?: ReactNode
+  /** True while an action of the view runs and it must stay open. */
+  disabled?: boolean
 }
 
 /**
@@ -24,13 +27,20 @@ export default function DialogTitleWithClose({
   onClose,
   children,
   actions,
+  disabled = false,
 }: DialogTitleWithCloseProps) {
   return (
     // an id of its own, or DialogTitle takes the dialog's title id and the name would read the buttons
     <DialogTitle
       id={`${id}-bar`}
       component="div"
-      sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}
+      sx={{
+        ...DIALOG_TITLE_SX,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 1,
+      }}
     >
       {/* the id sits on the text, so the dialog's name leaves out the ✕ */}
       <Box
@@ -43,9 +53,12 @@ export default function DialogTitleWithClose({
       <Box sx={{ display: 'flex', flex: 'none', gap: 0.5, mt: -0.75, mr: -1.5 }}>
         {actions}
         <Tooltip title="Schließen">
-          <IconButton onClick={onClose} aria-label="Schließen">
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          {/* the span keeps the tooltip working while the button is disabled */}
+          <span>
+            <IconButton onClick={onClose} aria-label="Schließen" disabled={disabled}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </span>
         </Tooltip>
       </Box>
     </DialogTitle>

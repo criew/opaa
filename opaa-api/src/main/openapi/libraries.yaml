@@ -826,7 +826,9 @@ paths:
         same application service DELETE /api/v1/libraries/{libraryId}/documents/{documentId}
         already uses, never a database cascade (ADR-0020, Entscheidung 5) - the frontend shows the
         affected document count from GET on this folder first and requires explicit confirmation
-        before calling this endpoint.
+        before calling this endpoint. The deletion is not atomic: each document goes in its own
+        transaction, so a failure or a concurrent upload into the tree stops it with the documents
+        deleted so far gone and the rest kept; repeating the call completes it.
       responses:
         "204":
           description: Folder (and its contained subfolders/documents) deleted

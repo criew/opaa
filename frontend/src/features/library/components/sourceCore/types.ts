@@ -68,8 +68,6 @@ export interface SourceConfiguration<V> {
   isDirty: (values: V) => boolean
   /** The source fields of a LibraryRequest/LibraryUpdateRequest; call only on values without issues. */
   toPayload: (values: V) => LibrarySourceConfigPayload
-  /** The name the source already suggests for a new library, '' for none. */
-  nameFromSource: (values: V) => string
   /** The rows „Verbindung“ and „Umfang“ of the summary-row setup, with every issue at once. */
   setup: SourceSetupSpec<V>
   /**

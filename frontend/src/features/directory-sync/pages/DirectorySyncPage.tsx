@@ -15,9 +15,11 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import DirectorySyncOverview from '../components/DirectorySyncOverview'
-import DirectorySyncPanel from '../components/DirectorySyncPanel'
+import DirectorySyncDialog from '../components/DirectorySyncDialog'
 import DirectorySyncThresholdSection from '../components/DirectorySyncThresholdSection'
 import { usePendingPlans } from '../components/usePendingPlans'
 import {
@@ -60,7 +62,7 @@ function attentionSummary(entries: OverviewEntry[]) {
 /**
  * The directory sync per provider (ADR-0036, Entscheidung 3): one row per provider with its
  * mechanism, last and next run and what needs doing; report, plan, schedule and access open in
- * the side panel.
+ * the dialog.
  */
 export default function DirectorySyncPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -146,20 +148,20 @@ export default function DirectorySyncPage() {
           description="OPAA liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters, nur lesend."
         />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         <Box component="section" aria-labelledby="directory-sync-overview-heading">
           <SectionHead id="directory-sync-overview-heading">Abgleich je Anbieter</SectionHead>
-          {isLoading ? (
-            <ListLoading label="Abgleichstand wird geladen …" />
+          {error ? (
+            <LoadError
+              message="Der Abgleichstand konnte nicht geladen werden."
+              detail={error}
+              onRetry={() => void reload()}
+            />
+          ) : isLoading ? (
+            <LoadingState />
           ) : entries.length === 0 ? (
-            <ListEmptyState
-              title="Kein Identitätsanbieter hinterlegt"
-              hint="Ein Verzeichnisabgleich gehört immer zu einem Anbieter. Legen Sie ihn zuerst unter Administration → Identitätsanbieter an."
+            <EmptyState
+              framed
+              message="Noch keine Identitätsanbieter. Ein Verzeichnisabgleich gehört immer zu einem Anbieter; legen Sie ihn zuerst unter Administration → Identitätsanbieter an."
             />
           ) : (
             <>
@@ -190,15 +192,20 @@ export default function DirectorySyncPage() {
                     label="Anbieter suchen"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    slotProps={{ htmlInput: { 'data-list-search': '' } }}
                     sx={{ width: { sm: 260 } }}
                   />
                 </Stack>
               )}
 
               {visible.length === 0 ? (
-                <ListEmptyState
-                  title="Kein Anbieter passt zu dieser Auswahl"
-                  hint="Wählen Sie „Alle“ oder ändern Sie den Suchbegriff."
+                <EmptyState
+                  framed
+                  kind="noMatch"
+                  onReset={() => {
+                    setFilter('ALL')
+                    setQuery('')
+                  }}
                 />
               ) : (
                 <DirectorySyncOverview entries={visible} onOpen={setSelectedId} now={now} />
@@ -217,7 +224,7 @@ export default function DirectorySyncPage() {
         <DirectorySyncThresholdSection />
       </Box>
 
-      <DirectorySyncPanel
+      <DirectorySyncDialog
         key={selectedId ?? 'closed'}
         provider={selected?.provider ?? null}
         status={selected?.status}

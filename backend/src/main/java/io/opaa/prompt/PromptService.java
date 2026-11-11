@@ -14,6 +14,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.PromptText;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.SpaceAssetDirectory;
@@ -253,16 +254,19 @@ public class PromptService {
     return false;
   }
 
-  /** The content as it is stored: the text with its placeholders normalized. */
+  /**
+   * The content as it is stored: title, description and text without invisible characters ({@link
+   * PromptText}) - a text that reaches the model holds nothing its readers cannot see - and the
+   * text with its placeholders normalized.
+   */
   private static PromptContent normalized(PromptContent content) {
-    if (content.text() == null) {
-      return content;
-    }
     return new PromptContent(
         content.name(),
-        content.title(),
-        content.description(),
-        PromptTemplate.normalize(content.text()),
+        PromptText.withoutInvisible(content.title()),
+        PromptText.withoutInvisible(content.description()),
+        content.text() == null
+            ? null
+            : PromptTemplate.normalize(PromptText.withoutInvisible(content.text())),
         content.variables(),
         content.sortOrder());
   }

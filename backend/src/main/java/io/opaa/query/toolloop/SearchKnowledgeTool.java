@@ -69,6 +69,13 @@ class SearchKnowledgeTool implements AgentTool {
     return SearchKnowledgeDefinition.SCHEMA;
   }
 
+  /** The sub-question, as the step keeps it; none for a call that will be refused. */
+  @Override
+  public String startDetail(JsonNode arguments) {
+    String question = text(arguments.get("frage"));
+    return question == null || question.length() > MAX_QUESTION_CHARS ? null : question;
+  }
+
   @Override
   public ToolCallOutcome call(JsonNode arguments, AgentRun run) {
     String question = text(arguments.get(SearchKnowledgeDefinition.QUESTION));

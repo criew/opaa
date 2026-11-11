@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
-import type { ChatMessage } from '../types/chat'
+import type { ChatMessage, LiveAgentRun } from '../types/chat'
+import type { AgentRun } from '@/shared/api/types'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { AiNotice } from './AiNotice'
+import ChatStatusLine from './ChatStatusLine'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
-import ProvisionalAnswer, { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
+import ProvisionalAnswer, {
+  AGENT_PROVISIONAL_ANSWER_LABEL,
+  PROVISIONAL_ANSWER_LABEL,
+} from './ProvisionalAnswer'
+import { stepActivity, stepText } from './agentStepText'
 import { useCopyAnnouncement } from './copyAnnouncer'
 import { iconSize } from '@/shared/theme/tokens'
 
@@ -25,6 +30,38 @@ interface MessageListProps {
   targetMessageId?: string | null
   /** The provisional answer while the model writes it, null before its first part. */
   streamingAnswer?: string | null
+  /** The agent run this answer waits for while it works, null for an ordinary answer. */
+  streamingRun?: LiveAgentRun | null
+}
+
+export const THINKING_STATUS = 'Denkt nach …'
+export const LIMIT_REACHED_STATUS = 'Grenze erreicht, antwortet mit dem Gefundenen …'
+
+/**
+ * The status line of an agent run: once it ended, that its answer waits for the check of its
+ * Belege; before, its limit or its running step - the last one stays until the next begins, so
+ * each step is announced once - or null for "Denkt nach …".
+ */
+function runStatus(run: LiveAgentRun | null): string | null {
+  if (!run) return null
+  if (run.ended) return AGENT_PROVISIONAL_ANSWER_LABEL
+  if (run.limitReached) return LIMIT_REACHED_STATUS
+  const current = run.steps.find((step) => !step.status) ?? run.steps.at(-1)
+  return current ? stepActivity(current) : null
+}
+
+/** The steps of an ended run in the form the kept answer shows them. */
+function keptForm(run: LiveAgentRun): AgentRun {
+  return {
+    runId: run.runId ?? '',
+    endState: run.endState ?? 'COMPLETED',
+    steps: run.steps.map(({ tool, detail, hits, status }) => ({
+      tool,
+      detail,
+      hits,
+      status: status ?? 'DONE',
+    })),
+  }
 }
 
 function shouldShowDate(messages: ChatMessage[], index: number): boolean {
@@ -41,6 +78,7 @@ export default function MessageList({
   isLoading,
   targetMessageId,
   streamingAnswer = null,
+  streamingRun = null,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const targetRef = useRef<HTMLDivElement>(null)
@@ -183,22 +221,35 @@ export default function MessageList({
           )
         })}
 
-        {/* One status from "Denkt nach …" to the end of the answer: its text changes once the
-            first part arrives, which a screen reader announces; a region inserted with its text
-            would not be. */}
         {isLoading && (
+          <ChatStatusLine
+            text={
+              runStatus(streamingRun) ?? (streaming ? PROVISIONAL_ANSWER_LABEL : THINKING_STATUS)
+            }
+          />
+        )}
+        {/* The steps so far stay readable at the reader's pace below the status line; they are no
+            live region, the status line announces each one. Once the run ended they move under
+            the provisional answer in the form the kept answer shows them, so nothing shifts when
+            it arrives. */}
+        {isLoading && streamingRun && !streamingRun.ended && streamingRun.steps.length > 0 && (
           <Box
-            role="status"
-            aria-live="polite"
-            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: streaming ? 1 : 2 }}
+            component="ol"
+            aria-label="Schritte"
+            data-testid="live-agent-steps"
+            sx={{ m: 0, mb: 1, pl: 7, pr: 2, color: 'text.secondary', typography: 'body2' }}
           >
-            <CircularProgress size={streaming ? 16 : 20} aria-hidden />
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {streaming ? PROVISIONAL_ANSWER_LABEL : 'Denkt nach …'}
-            </Typography>
+            {streamingRun.steps.map((step) => (
+              <li key={step.index}>{stepText(step)}</li>
+            ))}
           </Box>
         )}
-        {isLoading && streamingAnswer !== null && <ProvisionalAnswer text={streamingAnswer} />}
+        {isLoading && (streamingAnswer !== null || streamingRun?.ended) && (
+          <ProvisionalAnswer
+            text={streamingAnswer ?? ''}
+            run={streamingRun?.ended ? keptForm(streamingRun) : undefined}
+          />
+        )}
 
         {liveRegion}
         <div ref={bottomRef} />

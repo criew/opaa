@@ -30,6 +30,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Label | 1–3 | Sicht (P12) |
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
+| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled` (P28) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
@@ -53,8 +54,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
    gemessen (`alertCount` im Zustand `wizard-validation`) und Sicht
 8. Bestätigungsdialog: [guidelines.md](./guidelines.md), 5.10. Darüber hinaus kein
    „Nicht mehr fragen“, kein „Später“, keine zusätzliche Warnbox. – Sicht
-9. **Stepper:** Schrittnamen aus einem Wort, keine Unterzeilen, keine Restzeit- oder
-   Prozentangaben. – Sicht
+9. **Stepper:** Schrittnamen und Schrittleiste: [guidelines.md](./guidelines.md), 5.15. Darüber
+   hinaus keine Unterzeilen, keine Restzeit- oder Prozentangaben. – Sicht
 10. **Filter:** schlichte Chips, gewählt heißt gefüllt. Keine Leisten „Gespeicherte Filter“ oder
     „Alle zurücksetzen“ ohne Bedarf. Ein Filter erscheint nur, wenn er kürzt
     ([guidelines.md](./guidelines.md), 5.3). Filterzeile für Assets: [guidelines.md](./guidelines.md),
@@ -112,14 +113,16 @@ zwei Einträgen.
     gemessen (`tabStops`, `title`) und Tastatur
 27. Fokus nicht verdeckt durch Sticky-Leiste oder Popup-Benachrichtigung (WCAG 2.4.11). –
     gemessen (`focusObscured`, `focusHidden`)
-28. **Absenden bleibt aktiv:** kein `disabled` wegen fehlender Eingaben; ein Doppelklick legt
-    nichts doppelt an. – gemessen (`disabledSubmits`) und Sicht
+28. Absenden bleibt aktiv, Fehler am Feld: [guidelines.md](./guidelines.md), 5.15; ein
+    Doppelklick legt nichts doppelt an. – gemessen (`disabledSubmits`, Budget 0) und Sicht
 29. **Validierung beim Verlassen des Felds oder beim Absenden**, nicht beim Tippen;
-    Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “. –
+    Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “.
+    Ausnahme Assistenten: Fehler am Feld, Zusammenfassung nur im Schritt „Quelle“
+    ([guidelines.md](./guidelines.md), 5.15). –
     gemessen (`title`, `invalidFields`) und Tastatur
 30. **Zurück verliert nichts**, weder im Assistenten noch über den Browser. – Video
 31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde. – Video
-32. **Prüfschritt** vor dem Anlegen, mit „Ändern“-Verweisen je Abschnitt. – Sicht
+32. Prüfschritt vor dem Anlegen: [guidelines.md](./guidelines.md), 5.15. – Sicht
 33. **Verbindungstest einheitlich:** automatisch bei „Weiter“ und über einen eigenen Knopf;
     Ergebnis inline, mit der Stufe (Adresse · Anmeldung · Rechte); es verfällt, sobald ein
     Verbindungsfeld geändert wird. – Sicht und Video
@@ -129,10 +132,9 @@ zwei Einträgen.
     [guidelines.md](./guidelines.md), 5.11. Stresstest mit 300 Assets. – Sicht im Szenario `scale`
 36. **Tri-State im Baum** (`aria-checked="mixed"`). – Tastatur oder Screenreader
 37. **„Alle auswählen“ nennt den Umfang**; ein Filter löscht nie die Auswahl. – Sicht
-38. **Drei Leerzustände** unterscheidbar: erstmals leer · 0 Treffer (mit „Filter zurücksetzen“)
-    · kein Zugriff. – Sicht in `empty` und `failed`
-39. **Kein Lade-Flackern** unter 300 ms; eine Aktion über 1 s zeigt Fortschritt im auslösenden
-    Knopf. – Video im Szenario `slow`
+38. **Leerzustände und Ladefehler:** [guidelines.md](./guidelines.md), 5.7, Regeln 2–7. – Sicht
+    in `empty` und `failed`
+39. **Laden:** [guidelines.md](./guidelines.md), 5.7, Regel 1. – Video im Szenario `slow`
 40. **Indizierungsstatus** überall gleich: Zustand, „n von m“, letzter Lauf, „Teilweise
     fehlgeschlagen“. – Sicht
 41. Popup-Benachrichtigungen: [guidelines.md](./guidelines.md), 5.9. – Sicht in `failed`
@@ -157,10 +159,21 @@ zwei Einträgen.
     Assistent, Prüfen und Detail. – Sicht (Querbögen)
 49. Gleichartige Wahl ohne unterscheidendes Icon: [guidelines.md](./guidelines.md), 5.11. – Sicht
 50. **Dieselbe Information nie zweimal auf einer Fläche** – weder als Kopfzeile und Abschnitt noch
-    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt. – Sicht
-    (Konsistenz-Review, Kategorie A)
+    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt; im Chat weder
+    der KI-Hinweis noch der Hinweis auf vorläufige Belege ([guidelines.md](./guidelines.md), 5.8). –
+    Sicht (Konsistenz-Review, Kategorie A)
 51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
+52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
+    öffnende Knopf, beim Bearbeiten „„<Name>“ bearbeiten“; die Handlung als Verb allein; links
+    höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Breite 600 oder 900 px,
+    444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
+    Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
+    wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`
+53. **Nichts rutscht, wenn ein Vorgang endet:** Kopf und Rahmen einer Fläche stehen vom ersten
+    Bild an, ein Titel, der später feststeht, hat bis dahin einen Platzhalter („Neuer Chat“). Was
+    schon steht, behält seine Position, wenn eine Antwort, ein Titel oder ein Ergebnis eintrifft
+    ([guidelines.md](./guidelines.md), 5.8). – Video im Szenario `slow`
 
 ## Pflege
 

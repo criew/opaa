@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -30,6 +26,8 @@ import {
   isMetadataValueComplete,
   metadataValueRequestFor,
 } from './metadataValues'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 interface BulkMetadataDialogProps {
   open: boolean
@@ -61,6 +59,7 @@ export default function BulkMetadataDialog({
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
   const [libraryFields, setLibraryFields] = useState<LibraryMetadataFieldResponse[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [valueMissing, setValueMissing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<BulkMetadataValueResponse | null>(null)
   // Captured when the assignment is sent: the parent may clear its selection on onDone while the
@@ -124,96 +123,104 @@ export default function BulkMetadataDialog({
 
   const complete = isMetadataValueComplete(fieldKey, value, libraryField)
 
-  return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        Feld für {documentCountLabel(submittedCount ?? documentIds.length)} setzen
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          {step === 'form' && (
-            <>
-              <FormControl fullWidth>
-                <InputLabel id="bulk-metadata-field-label">Feld</InputLabel>
-                <Select
-                  labelId="bulk-metadata-field-label"
-                  label="Feld"
-                  value={fieldKey}
-                  onChange={(e) => {
-                    setFieldKey(String(e.target.value))
-                    setValue({})
-                  }}
-                >
-                  {CORE_METADATA_FIELDS.map((field) => (
-                    <MenuItem key={field.key} value={field.key}>
-                      {field.label}
-                    </MenuItem>
-                  ))}
-                  {libraryFields.map((field) => (
-                    <MenuItem key={field.documentFieldKey} value={field.documentFieldKey}>
-                      {field.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <MetadataValueForm
-                fieldKey={fieldKey}
-                value={value}
-                onChange={setValue}
-                vocabulary={vocabulary}
-                libraryField={libraryField}
-              />
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Der Wert wird für jedes ausgewählte Dokument als „manuell" gesetzt und ersetzt dort
-                den bisherigen Wert des Feldes.
-              </Typography>
-            </>
-          )}
-          {step === 'confirm' && (
-            <Typography>
-              {fieldLabel} = „{describeMetadataValue(fieldKey, value, vocabulary, libraryField)}"
-              für {documentCountLabel(documentIds.length)} setzen?
-            </Typography>
-          )}
-          {step === 'result' && result && (
-            <Stack spacing={1}>
-              <Alert severity="success">
-                {result.updatedCount} {result.updatedCount === 1 ? 'Dokument' : 'Dokumente'}{' '}
-                aktualisiert, {result.unchangedCount} unverändert.
-              </Alert>
-              {result.rejectedDocumentIds.length > 0 && (
-                <Alert severity="warning">
-                  {result.rejectedDocumentIds.length}{' '}
-                  {result.rejectedDocumentIds.length === 1 ? 'Dokument wurde' : 'Dokumente wurden'}{' '}
-                  abgewiesen, weil sie nicht (mehr) zu dieser Bibliothek gehören.
-                </Alert>
-              )}
-            </Stack>
+  const title = `Feld für ${documentCountLabel(submittedCount ?? documentIds.length)} setzen`
+  const content = (
+    <Stack spacing={2} sx={{ mt: 1 }}>
+      {error && <Alert severity="error">{error}</Alert>}
+      {step === 'form' && (
+        <>
+          <FormControl fullWidth>
+            <InputLabel id="bulk-metadata-field-label">Feld</InputLabel>
+            <Select
+              labelId="bulk-metadata-field-label"
+              label="Feld"
+              value={fieldKey}
+              onChange={(e) => {
+                setFieldKey(String(e.target.value))
+                setValue({})
+                setValueMissing(false)
+              }}
+            >
+              {CORE_METADATA_FIELDS.map((field) => (
+                <MenuItem key={field.key} value={field.key}>
+                  {field.label}
+                </MenuItem>
+              ))}
+              {libraryFields.map((field) => (
+                <MenuItem key={field.documentFieldKey} value={field.documentFieldKey}>
+                  {field.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <MetadataValueForm
+            fieldKey={fieldKey}
+            value={value}
+            onChange={(next) => {
+              setValue(next)
+              setValueMissing(false)
+            }}
+            vocabulary={vocabulary}
+            libraryField={libraryField}
+            error={valueMissing ? 'Bitte einen Wert angeben.' : undefined}
+          />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Der Wert wird für jedes ausgewählte Dokument als „manuell" gesetzt und ersetzt dort den
+            bisherigen Wert des Feldes.
+          </Typography>
+        </>
+      )}
+      {step === 'confirm' && (
+        <Typography>
+          {fieldLabel} = „{describeMetadataValue(fieldKey, value, vocabulary, libraryField)}" für{' '}
+          {documentCountLabel(documentIds.length)} setzen?
+        </Typography>
+      )}
+      {step === 'result' && result && (
+        <Stack spacing={1}>
+          <Alert severity="success">
+            {result.updatedCount} {result.updatedCount === 1 ? 'Dokument' : 'Dokumente'}{' '}
+            aktualisiert, {result.unchangedCount} unverändert.
+          </Alert>
+          {result.rejectedDocumentIds.length > 0 && (
+            <Alert severity="warning">
+              {result.rejectedDocumentIds.length}{' '}
+              {result.rejectedDocumentIds.length === 1 ? 'Dokument wurde' : 'Dokumente wurden'}{' '}
+              abgewiesen, weil sie nicht (mehr) zu dieser Bibliothek gehören.
+            </Alert>
           )}
         </Stack>
-      </DialogContent>
-      <DialogActions>
-        {step === 'form' && (
-          <>
-            <Button onClick={handleClose}>Abbrechen</Button>
-            <Button variant="contained" onClick={() => setStep('confirm')} disabled={!complete}>
-              Weiter
-            </Button>
-          </>
-        )}
-        {step === 'confirm' && (
-          <>
-            <Button onClick={() => setStep('form')} disabled={submitting}>
+      )}
+    </Stack>
+  )
+
+  return (
+    <>
+      <ViewDialog open={open && step === 'result'} title={title} onClose={onClose}>
+        {content}
+      </ViewDialog>
+      <FormDialog
+        open={open && step !== 'result'}
+        title={title}
+        submitLabel={step === 'confirm' ? 'Zuweisen' : 'Weiter'}
+        onSubmit={() => {
+          if (step === 'confirm') void handleAssign()
+          else if (complete) setStep('confirm')
+          else setValueMissing(true)
+        }}
+        onClose={handleClose}
+        busy={submitting}
+        busyAnnouncement="Der Wert wird zugewiesen"
+        secondaryAction={
+          step === 'confirm' && (
+            <Button variant="outlined" onClick={() => setStep('form')} disabled={submitting}>
               Zurück
             </Button>
-            <Button variant="contained" onClick={() => void handleAssign()} disabled={submitting}>
-              Zuweisen
-            </Button>
-          </>
-        )}
-        {step === 'result' && <Button onClick={onClose}>Schließen</Button>}
-      </DialogActions>
-    </Dialog>
+          )
+        }
+      >
+        {content}
+      </FormDialog>
+    </>
   )
 }

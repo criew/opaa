@@ -73,13 +73,15 @@ class TransportStatusCodeSpecificationTest {
   /**
    * The only operations that decide a {@code 401} themselves rather than inheriting the resource
    * server's: the sign-in (wrong credentials), the refresh (unknown, expired or replayed cookie),
-   * the handover (an unusable provider token), the push intake (a wrong signature on a call that
-   * carries no session at all) and the installation API (a missing or wrong installation token).
+   * the password change (every session ended while it ran), the handover (an unusable provider
+   * token), the push intake (a wrong signature on a call that carries no session at all) and the
+   * installation API (a missing or wrong installation token).
    */
   private static final Set<String> OWN_401 =
       Set.of(
           "localLogin",
           "localRefresh",
+          "localChangePassword",
           "localHandoverRedeem",
           "receivePush",
           "getInstallation",

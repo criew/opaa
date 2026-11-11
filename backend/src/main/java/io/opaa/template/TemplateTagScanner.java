@@ -18,8 +18,12 @@ import java.util.regex.Pattern;
  * {@code tr}, {@code tc}, {@code r}). It only reads the tags as text: nothing is evaluated, and no
  * template engine runs in the backend - filling happens in the sandbox alone.
  *
- * <p>Checks that every {@code for} and {@code if} is closed in order; anything else in a tag that
- * it does not understand is left to the filling script, which reports it there.
+ * <p>Checks that every {@code for} and {@code if} is closed in order, and that a tag uses only what
+ * fields, lists and conditions need: the statements of {@link #STATEMENTS}, the filters of {@link
+ * #FILTERS} and the tests of {@link #TESTS} with constant arguments, no call of a function or
+ * method, no assignment, no recursive loop, no multiplication, division or modulo, no slice, no
+ * dict and no name, attribute or key that starts with an underscore. The filling script checks the
+ * same on Jinja's syntax tree; refusing here tells the author at upload.
  */
 final class TemplateTagScanner {
 
@@ -41,6 +45,87 @@ final class TemplateTagScanner {
           "for\\s+\\(?\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*,\\s*([A-Za-z_][A-Za-z0-9_]*))?\\s*\\)?"
               + "\\s+in\\s+(.+)",
           Pattern.DOTALL);
+
+  /** The statements a template may use; docxtpl's vm, hm, colspan and cellbg among them. */
+  static final Set<String> STATEMENTS =
+      Set.of(
+          "for", "endfor", "if", "elif", "else", "endif", "raw", "endraw", "vm", "hm", "colspan",
+          "cellbg");
+
+  /** Filters that give text, a number or a list of values and never mark anything as markup. */
+  static final List<String> FILTERS =
+      List.of(
+          "default",
+          "d",
+          "upper",
+          "lower",
+          "title",
+          "capitalize",
+          "trim",
+          "round",
+          "int",
+          "float",
+          "abs",
+          "join",
+          "length",
+          "count",
+          "first",
+          "last");
+
+  static final List<String> TESTS =
+      List.of(
+          "defined",
+          "undefined",
+          "none",
+          "number",
+          "string",
+          "boolean",
+          "true",
+          "false",
+          "odd",
+          "even",
+          "divisibleby",
+          "eq",
+          "ne",
+          "lt",
+          "le",
+          "gt",
+          "ge",
+          "in");
+
+  /** Words of the expression syntax; a parenthesis after one of them is no call. */
+  private static final Set<String> WORDS =
+      Set.of(
+          "and", "or", "not", "in", "is", "if", "else", "for", "true", "false", "none", "True",
+          "False", "None");
+
+  private static final Set<String> CONSTANT_WORDS =
+      Set.of("true", "false", "none", "True", "False", "None");
+
+  /**
+   * Operators a template may not use: dicts, slices, assignment, and multiplying, dividing and
+   * modulo, which no field, list or condition needs.
+   */
+  private static final Set<String> FORBIDDEN_OPERATORS =
+      Set.of("{", "}", ":", "=", "*", "**", "/", "//", "%");
+
+  /** Words after which a test takes no argument without parentheses, as Jinja reads it. */
+  private static final Set<String> NO_TEST_ARGUMENT = Set.of("else", "or", "and");
+
+  private static final Pattern RECURSIVE = Pattern.compile("\\brecursive\\s*$");
+
+  private static final Set<String> FORBIDDEN_NAMES = Set.of("self", "caller", "varargs", "kwargs");
+
+  private static final Pattern BLANK = Pattern.compile("\\s*", Pattern.UNICODE_CHARACTER_CLASS);
+
+  private static final Pattern TOKEN =
+      Pattern.compile(
+          "\\s*(?:(?<string>'(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\")"
+              + "|(?<number>\\d[\\d_]*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)"
+              + "|(?<name>[\\p{L}_][\\p{L}\\p{N}_]*)"
+              + "|(?<op>\\*\\*|//|==|!=|<=|>=|[-+*/%~<>()\\[\\],.|=:{}]))",
+          Pattern.UNICODE_CHARACTER_CLASS);
+
   private static final Set<String> RESERVED =
       Set.of(
           "and", "or", "not", "in", "is", "if", "else", "true", "false", "none", "True", "False",
@@ -85,7 +170,15 @@ final class TemplateTagScanner {
       from = close + 2;
       if (raw) {
         raw = !(kind == '%' && body.equals("endraw"));
-      } else if (kind == '{') {
+        continue;
+      }
+      if (kind == '%') {
+        requireStatement(body);
+      }
+      if (kind != '#') {
+        requireAllowed(body);
+      }
+      if (kind == '{') {
         collector.references(body, PlaceholderKind.FIELD, blocks);
       } else if (kind == '%') {
         raw = body.equals("raw");
@@ -103,6 +196,183 @@ final class TemplateTagScanner {
     return collector.result();
   }
 
+  private static void requireStatement(String body) {
+    String keyword = body.split("\\s+", 2)[0];
+    if (!STATEMENTS.contains(keyword)) {
+      throw notAllowed("{% " + keyword + " %}");
+    }
+  }
+
+  /** Refuses a tag body that uses anything beyond fields, lists, conditions and the allowlists. */
+  private static void requireAllowed(String body) {
+    List<Token> tokens = tokens(body);
+    for (int i = 0; i < tokens.size(); i++) {
+      Token token = tokens.get(i);
+      Token before = i > 0 ? tokens.get(i - 1) : null;
+      if (token.name()) {
+        if (is(before, "|")) {
+          if (!FILTERS.contains(token.text())) {
+            throw notAllowed("den Filter " + token.text());
+          }
+          i = constantArguments(tokens, i);
+        } else if (token.text().equals("not") && isName(before, "is")) {
+          continue;
+        } else if (isName(before, "is")
+            || (isName(before, "not") && isName(at(tokens, i - 2), "is"))) {
+          if (!TESTS.contains(token.text())) {
+            throw notAllowed("den Test " + token.text());
+          }
+          i = testArgument(tokens, i);
+        } else if (token.text().startsWith("_")
+            || (!is(before, ".") && FORBIDDEN_NAMES.contains(token.text()))) {
+          throw notAllowed(token.text());
+        }
+      } else if (is(token, "(") && callable(before)) {
+        throw notAllowed("einen Funktionsaufruf");
+      } else if (is(token, "[") && callable(before)) {
+        Token key = at(tokens, i + 1);
+        if (is(key, "-")) {
+          throw new ValidationException(
+              "Die Vorlage zählt in eckigen Klammern vom Ende her, etwa „"
+                  + before.text()
+                  + "[-1]“. Das ist nicht möglich: Zählen Sie von vorn ab 0, etwa „"
+                  + before.text()
+                  + "[0]“ für den ersten Eintrag.");
+        }
+        if (key == null
+            || !(key.kind().equals("number") || key.kind().equals("string"))
+            || key.text().substring(key.kind().equals("string") ? 1 : 0).startsWith("_")
+            || !is(at(tokens, i + 2), "]")) {
+          throw notAllowed("einen Schlüssel, der kein fester Wert ist");
+        }
+        i += 2;
+      } else if (FORBIDDEN_OPERATORS.contains(token.text()) && token.kind().equals("op")) {
+        throw notAllowed(token.text());
+      }
+    }
+  }
+
+  /**
+   * The index of the last token of a test's argument: in parentheses, or as Jinja reads one without
+   * them ({@code x is divisibleby 3}); a constant either way.
+   */
+  private static int testArgument(List<Token> tokens, int name) {
+    Token next = at(tokens, name + 1);
+    if (next == null || is(next, "(")) {
+      return constantArguments(tokens, name);
+    }
+    boolean argument =
+        (next.name() && !NO_TEST_ARGUMENT.contains(next.text()))
+            || next.kind().equals("string")
+            || next.kind().equals("number")
+            || is(next, "[")
+            || is(next, "{");
+    if (!argument) {
+      return name;
+    }
+    boolean constant =
+        next.kind().equals("number")
+            || (next.kind().equals("string") && !next.text().substring(1).startsWith("_"))
+            || (next.name() && CONSTANT_WORDS.contains(next.text()));
+    if (!constant) {
+      throw notAllowed(
+          "ein Argument von " + tokens.get(name).text() + ", das kein fester Wert ist");
+    }
+    return name + 1;
+  }
+
+  /** The index of the closing parenthesis of a filter's or test's arguments, all constants. */
+  private static int constantArguments(List<Token> tokens, int name) {
+    if (!is(at(tokens, name + 1), "(")) {
+      return name;
+    }
+    for (int i = name + 2; i < tokens.size(); i++) {
+      Token token = tokens.get(i);
+      if (is(token, ")")) {
+        return i;
+      }
+      boolean constant =
+          token.kind().equals("number")
+              || (token.kind().equals("string") && !token.text().substring(1).startsWith("_"))
+              || (token.name() && CONSTANT_WORDS.contains(token.text()))
+              || is(token, ",")
+              || is(token, "-");
+      if (!constant) {
+        throw notAllowed(
+            "ein Argument von " + tokens.get(name).text() + ", das kein fester Wert ist");
+      }
+    }
+    return tokens.size();
+  }
+
+  /** Whether a parenthesis or bracket after {@code token} calls or indexes it. */
+  private static boolean callable(Token token) {
+    return token != null
+        && ((token.name() && !WORDS.contains(token.text()))
+            || token.kind().equals("string")
+            || is(token, ")")
+            || is(token, "]"));
+  }
+
+  private static List<Token> tokens(String body) {
+    List<Token> tokens = new ArrayList<>();
+    Matcher matcher = TOKEN.matcher(body);
+    int position = 0;
+    while (position < body.length()) {
+      if (BLANK.matcher(body).region(position, body.length()).matches()) {
+        break;
+      }
+      if (!matcher.find(position) || matcher.start() != position) {
+        throw notAllowed("das Zeichen " + body.charAt(firstNonBlank(body, position)));
+      }
+      for (String kind : List.of("string", "number", "name", "op")) {
+        if (matcher.group(kind) != null) {
+          tokens.add(new Token(kind, matcher.group(kind)));
+        }
+      }
+      position = matcher.end();
+    }
+    return tokens;
+  }
+
+  private static int firstNonBlank(String text, int from) {
+    int i = from;
+    while (i < text.length() - 1 && Character.isWhitespace(text.charAt(i))) {
+      i++;
+    }
+    return i;
+  }
+
+  private static Token at(List<Token> tokens, int index) {
+    return index >= 0 && index < tokens.size() ? tokens.get(index) : null;
+  }
+
+  private static boolean is(Token token, String operator) {
+    return token != null && token.kind().equals("op") && token.text().equals(operator);
+  }
+
+  private static boolean isName(Token token, String name) {
+    return token != null && token.name() && token.text().equals(name);
+  }
+
+  private static ValidationException notAllowed(String what) {
+    return new ValidationException(
+        "Die Vorlage nutzt „"
+            + what
+            + "“. Vorlagen setzen Werte nur als Text ein und kennen nur Felder, Listen und"
+            + " Bedingungen mit den Filtern "
+            + String.join(", ", FILTERS)
+            + "; Funktionsaufrufe, set, macro, autoescape und Ähnliches sind nicht erlaubt.");
+  }
+
+  /** One token of a tag body: a string, a number, a name or an operator. */
+  private record Token(String kind, String text) {
+
+    boolean name() {
+      return kind.equals("name");
+    }
+  }
+
   private static void statement(String body, Collector collector, Deque<Block> blocks) {
     String keyword = body.split("\\s+", 2)[0];
     String rest = body.substring(keyword.length()).strip();
@@ -113,14 +383,11 @@ final class TemplateTagScanner {
           throw new ValidationException(
               "Die Vorlage enthält eine ungültige Schleife: „{% " + body + " %}“.");
         }
-        String[] source = loop.group(3).split("\\s+if\\s+", 2);
-        String listName =
-            source[0].strip().startsWith("range")
-                ? null
-                : collector.references(source[0], PlaceholderKind.LIST, blocks);
-        if (listName == null) {
-          collector.references(source[0], PlaceholderKind.FIELD, blocks);
+        if (RECURSIVE.matcher(loop.group(3)).find()) {
+          throw notAllowed("recursive");
         }
+        String[] source = loop.group(3).split("\\s+if\\s+", 2);
+        String listName = collector.references(source[0], PlaceholderKind.LIST, blocks);
         Set<String> variables = new LinkedHashSet<>();
         variables.add(loop.group(1));
         if (loop.group(2) != null) {

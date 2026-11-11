@@ -5,6 +5,7 @@ import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../types/chat'
 import type { ChatAttachmentRef } from '@/shared/api/types'
@@ -17,6 +18,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import AgentRunSteps from './AgentRunSteps'
+import AgentRunStampLine from './AgentRunStampLine'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
@@ -132,6 +134,25 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             >
               <TextSnippetOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
               Prompt: {message.usedPromptTitle}
+            </Typography>
+          )}
+          {/* The agent the question was sent to - icon and name, set apart from a prompt line. */}
+          {isUser && message.agentName && (
+            <Typography
+              component="div"
+              data-testid="question-agent"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 0.5,
+                mb: 0.5,
+                fontSize: fontSize.meta,
+                color: 'text.secondary',
+              }}
+            >
+              <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
+              Agent: {message.agentName}
             </Typography>
           )}
           {isUser && message.attachments && (
@@ -250,6 +271,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           )}
 
           {!isUser && message.agentRun && <AgentRunSteps run={message.agentRun} />}
+          {!isUser && message.agentRun && <AgentRunStampLine run={message.agentRun} />}
           {!isUser && (
             <EvidenceFooter
               citations={citations}
@@ -262,6 +284,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                     content={message.content}
                     citations={citations}
                     answeredAt={message.timestamp}
+                    agentRun={message.agentRun}
                   />
                 </Box>
               }

@@ -5,7 +5,6 @@ import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -24,6 +23,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { SuccessionStateNote } from '@/features/succession'
 import SpaceKnowledgeNotice from '../components/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../components/spaceKnowledge'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 // The owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
 // never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,
@@ -112,8 +112,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
 
   if (isLoadingDetails && !space) {
     return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <LoadingState shape="detail" count={4} />
       </Box>
     )
   }
@@ -288,9 +288,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
               </Alert>
             )}
             {isLoadingAssetAssociations ? (
-              <Typography sx={{ color: 'text.secondary' }}>
-                Datenquellen werden geladen …
-              </Typography>
+              <LoadingState shape="lines" count={3} />
             ) : !hasAssetAssociations ? (
               <Typography sx={{ color: 'text.secondary' }}>
                 Diesem Space ist noch nichts zugeordnet.

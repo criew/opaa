@@ -39,17 +39,17 @@ async function chooseTarget(user: ReturnType<typeof userEvent.setup>) {
 
 describe('PermissionTransferDialog', () => {
   // ADR-0036, Entscheidung 10: the preview is mandatory, the confirmation explicit.
-  it('confirms only after a preview was shown', async () => {
+  it('transfers only after a preview was shown', async () => {
     renderDialog()
     const user = userEvent.setup()
 
-    expect(screen.getByRole('button', { name: /übertragung bestätigen/i })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Übertragen' }))
+    expect(screen.getByText('Bitte zuerst die Vorschau erstellen und prüfen.')).toBeVisible()
 
     await chooseTarget(user)
     await user.click(screen.getByRole('button', { name: /vorschau erstellen/i }))
 
     expect(await screen.findByText(/12 Berechtigungen an 7 Objekten/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /übertragung bestätigen/i })).toBeEnabled()
   })
 
   it('carries the preview id into the transfer and reports the result', async () => {
@@ -59,7 +59,7 @@ describe('PermissionTransferDialog', () => {
     await chooseTarget(user)
     await user.click(screen.getByRole('button', { name: /vorschau erstellen/i }))
     await screen.findByText(/12 Berechtigungen an 7 Objekten/)
-    await user.click(screen.getByRole('button', { name: /übertragung bestätigen/i }))
+    await user.click(screen.getByRole('button', { name: 'Übertragen' }))
 
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
@@ -106,9 +106,8 @@ describe('PermissionTransferDialog', () => {
     await chooseTarget(user)
     await user.click(screen.getByRole('button', { name: /vorschau erstellen/i }))
     await screen.findByText(/12 Berechtigungen an 7 Objekten/)
-    await user.click(screen.getByRole('button', { name: /übertragung bestätigen/i }))
+    await user.click(screen.getByRole('button', { name: 'Übertragen' }))
 
     expect(await screen.findByText(/Stand hat sich seit der Vorschau geändert/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /übertragung bestätigen/i })).toBeDisabled()
   })
 })

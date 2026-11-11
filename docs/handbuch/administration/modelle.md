@@ -62,9 +62,10 @@ Die Spalte „Werkzeuge“ zeigt neben dem Wert die **Grundlage** der Angabe und
 gesetzt“ oder „gemessen“ mit dem Verweis auf den Messlauf. So ist erkennbar, ob „Fähig“ ein
 Messergebnis oder eine Behauptung ist. Eine gemessene Angabe entsteht mit
 [Werkzeuge prüfen](#werkzeuge-prüfen) oder mit der Messung unter
-[Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen),
-deren Ergebnis und Kennung des Messlaufs Sie im Dialog mit der Grundlage „Gemessen“ eintragen. Ersetzt eine Änderung eine gemessene Angabe, warnt der Dialog vorher;
-„Speichern“ bleibt gesperrt, solange sich nichts ändert. Eine Person oder Gruppe steht nicht am
+[Modell auf Werkzeugaufrufe messen](../betrieb/modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen):
+Ergebnis und Kennung des Messlaufs tragen Sie im Dialog mit der Grundlage „Gemessen“ ein. Ersetzt
+eine Änderung eine gemessene Angabe, warnt der Dialog vorher, und die Schaltfläche heißt „Ersetzen“.
+Eine Person oder Gruppe steht nicht am
 Modell. Wer die Angabe geändert hat, steht im
 [Nachweisprotokoll](nachweisprotokoll-lesen.md) als Änderung des Chat-Modells, mit dem Wert vorher
 und nachher.

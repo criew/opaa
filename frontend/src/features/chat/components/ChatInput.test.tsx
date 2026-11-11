@@ -768,7 +768,7 @@ describe('ChatInput', () => {
       })
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(screen.getByLabelText('Bibliotheksreferenz wird geladen')).toBeInTheDocument()
+      expect(screen.getByText('Wird geladen')).toBeInTheDocument()
       expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
     })
 

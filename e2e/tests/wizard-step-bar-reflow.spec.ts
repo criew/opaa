@@ -54,28 +54,27 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
   })
 
   test('Wissens-Assistent mit Konnektor und mit Upload', async ({ authenticatedPage: page }) => {
-    const connectorSteps = ['Quellart', 'Quelle', 'Name', 'Freigaben', 'Prüfen']
+    const connectorSteps = ['Quellart', 'Stammdaten', 'Quelle', 'Freigaben', 'Prüfen']
 
     await page.goto('/libraries/new')
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Woher kommt das Wissen?' }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'Quellart' })).toBeVisible()
     await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
     await expectStepBarFits(page, connectorSteps, 'Quellart')
 
+    // Five steps, each active once; the longest names, „Stammdaten“ and „Freigaben“, are the
+    // widest states of the compact bar. Nothing is created - the library only comes into being
+    // on „Anlegen“ in the last step.
     await nextStep(page)
-    await expect(page.getByRole('heading', { level: 2, name: 'Quelle einrichten' })).toBeVisible()
-    await expectStepBarFits(page, connectorSteps, 'Quelle')
-
-    // Five steps, each active once; the longest name, „Freigaben“, is the widest state of the
-    // compact bar. Nothing is created - the library only comes into being on "Bibliothek
-    // anlegen" in the last step.
-    await page.getByLabel('Adresse', { exact: true }).fill(DIRECTORY_URL)
+    await expect(page.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeVisible()
+    await expectStepBarFits(page, connectorSteps, 'Stammdaten')
+    await page.getByLabel('Name', { exact: true }).fill('E2E Schrittleiste')
     await nextStep(page)
     await expect(
-      page.getByRole('heading', { level: 2, name: 'Name & Beschreibung' }),
+      page.getByRole('heading', { level: 2, name: 'Quelle', exact: true }),
     ).toBeVisible()
-    await expectStepBarFits(page, connectorSteps, 'Name')
+    await expectStepBarFits(page, connectorSteps, 'Quelle')
+
+    await page.getByLabel('Adresse', { exact: true }).fill(DIRECTORY_URL)
     await nextStep(page)
     await expect(page.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeVisible()
     await expectStepBarFits(page, connectorSteps, 'Freigaben')
@@ -85,20 +84,16 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
 
     await page.goto('/libraries/new')
     await page.getByRole('radio', { name: /^Upload/ }).click()
-    await expectStepBarFits(page, ['Quellart', 'Name', 'Freigaben', 'Prüfen'], 'Quellart')
+    await expectStepBarFits(page, ['Quellart', 'Stammdaten', 'Freigaben', 'Prüfen'], 'Quellart')
   })
 
   test('Space-Assistent', async ({ authenticatedPage: page }) => {
     await page.goto('/spaces/new')
-    await expectStepBarFits(
-      page,
-      ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'],
-      'Grunddaten',
-    )
+    await expectStepBarFits(page, ['Stammdaten', 'Mitglieder', 'Inhalte', 'Prüfen'], 'Stammdaten')
   })
 
   test('Prompt-Bibliothek-Assistent', async ({ authenticatedPage: page }) => {
     await page.goto('/prompts/new')
-    await expectStepBarFits(page, ['Stammdaten', 'Eigentümer', 'Rechte'], 'Stammdaten')
+    await expectStepBarFits(page, ['Stammdaten', 'Freigaben', 'Prüfen'], 'Stammdaten')
   })
 })

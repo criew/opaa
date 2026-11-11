@@ -7,7 +7,10 @@
 {: .kopf }
 
 Die Karte legt fest, was für alle lokalen Konten gilt. Jede Änderung wirkt ab der nächsten Anwendung,
-nicht rückwirkend auf bestehende Passwörter, und steht im Nachweisprotokoll. Identitätsanbieter und
+nicht rückwirkend auf bestehende Passwörter, und steht im Nachweisprotokoll. Vor dem Speichern
+fragt OPAA nach einer
+[erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen),
+wenn die letzte nicht gerade eben war. Identitätsanbieter und
 Verzeichnisabgleich richtet die Systemverwaltung unter „Administration → Identitätsanbieter“ und
 „Administration → Verzeichnisabgleich“ ein ([Authentifizierung](../betrieb/authentifizierung.md#anbieterverwaltung)).
 

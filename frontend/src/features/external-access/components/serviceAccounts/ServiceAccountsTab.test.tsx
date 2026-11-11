@@ -89,8 +89,8 @@ describe('ServiceAccountsTab', () => {
 
     await user.clear(search)
     await user.type(search, 'Grundsteuer')
-    expect(screen.getByText('Keine Treffer für „Grundsteuer“.')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Suche zurücksetzen' }))
+    expect(screen.getByText('Keine Treffer.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
     expect(accountRows()).toHaveLength(8)
   })
 
@@ -138,7 +138,7 @@ describe('ServiceAccountsTab', () => {
       /^opaa_pat_/,
     )
     expect(within(valueDialog).getByText(/Der Wert wird nur jetzt angezeigt/)).toBeInTheDocument()
-    await user.click(within(valueDialog).getByRole('button', { name: 'Kopiert, schließen' }))
+    await user.click(within(valueDialog).getByRole('button', { name: 'Schließen' }))
     await waitForDialogClosed()
 
     expect(await screen.findByRole('heading', { name: 'Kita-Platzvergabe' })).toBeInTheDocument()
@@ -147,7 +147,7 @@ describe('ServiceAccountsTab', () => {
     expect(screen.queryByTestId('service-account-token-value')).toBeNull()
   })
 
-  it('lässt das erste Token über „Ohne Token beenden“ aus', async () => {
+  it('lässt das erste Token über „Abbrechen“ aus', async () => {
     const user = userEvent.setup()
     render()
 
@@ -159,7 +159,7 @@ describe('ServiceAccountsTab', () => {
     await user.click(within(form).getByRole('button', { name: 'Weiter' }))
 
     const tokenForm = await screen.findByRole('dialog', { name: 'Erstes Token ausstellen' })
-    await user.click(within(tokenForm).getByRole('button', { name: 'Ohne Token beenden' }))
+    await user.click(within(tokenForm).getByRole('button', { name: 'Abbrechen' }))
     await waitForDialogClosed()
 
     expect(await screen.findByRole('heading', { name: 'Kita-Platzvergabe' })).toBeInTheDocument()
@@ -313,7 +313,7 @@ describe('ServiceAccountsTab', () => {
     render('/admin/connections/service-accounts?account=sa-bauantrag')
 
     await user.click(await screen.findByRole('button', { name: /^Ändern/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'Dienstkonto ändern' })
+    const dialog = await screen.findByRole('dialog', { name: '„Bauantrag-Portal“ bearbeiten' })
     const name = within(dialog).getByRole('textbox', { name: 'Name' })
     expect(name).toHaveValue('Bauantrag-Portal')
     await user.clear(name)
@@ -346,7 +346,7 @@ describe('ServiceAccountsTab', () => {
     render('/admin/connections/service-accounts?account=sa-bauantrag')
 
     await user.click(await screen.findByRole('button', { name: /^Ändern/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'Dienstkonto ändern' })
+    const dialog = await screen.findByRole('dialog', { name: '„Bauantrag-Portal“ bearbeiten' })
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(

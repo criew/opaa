@@ -220,6 +220,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "agents",
                   "agent_libraries",
                   "agent_tools",
+                  "agent_templates",
                   "agent_settings",
                   "agent_settings_tools",
                   "agent_seeds")),

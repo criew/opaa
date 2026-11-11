@@ -2,6 +2,7 @@ package io.opaa.query.toolloop;
 
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.DocumentBlock;
 import io.opaa.query.runlog.AgentStepLogEntry;
@@ -31,6 +32,7 @@ public final class AgentRun {
   private final UUID chatId;
   private final UUID spaceId;
   private final Set<UUID> searchScope;
+  private final Set<UUID> templateIds;
   private final MetadataFilter metadataFilter;
   private final AgentLimits limits;
   private final Instant deadline;
@@ -45,6 +47,9 @@ public final class AgentRun {
   private long collectedChars;
   private EndState limitReached;
   private String question;
+  private AgentRunStamp stamp;
+  private String agentName;
+  private volatile AgentRunEvents events = AgentRunEvents.NONE;
 
   AgentRun(
       UUID organizationId,
@@ -52,6 +57,7 @@ public final class AgentRun {
       UUID chatId,
       UUID spaceId,
       Set<UUID> searchScope,
+      Set<UUID> templateIds,
       MetadataFilter metadataFilter,
       AgentLimits limits,
       Instant startedAt) {
@@ -60,6 +66,7 @@ public final class AgentRun {
     this.chatId = chatId;
     this.spaceId = spaceId;
     this.searchScope = Set.copyOf(searchScope);
+    this.templateIds = Set.copyOf(templateIds);
     this.metadataFilter = metadataFilter == null ? MetadataFilter.NONE : metadataFilter;
     this.limits = limits;
     this.deadline = startedAt.plus(limits.maxDuration());
@@ -93,6 +100,11 @@ public final class AgentRun {
     return searchScope;
   }
 
+  /** The document templates assigned to the agent of this run, fixed at its start. */
+  public Set<UUID> templateIds() {
+    return templateIds;
+  }
+
   /** The chat's metadata filter; a tool argument may only add conditions to it. */
   public MetadataFilter metadataFilter() {
     return metadataFilter;
@@ -101,6 +113,39 @@ public final class AgentRun {
   /** The id that fences every tool result of this run and that the system text names. */
   public String blockId() {
     return blockId;
+  }
+
+  /** Tells {@code listener} the run's steps and its limit from now on. */
+  void listen(AgentRunEvents listener) {
+    this.events = listener == null ? AgentRunEvents.NONE : listener;
+  }
+
+  /** Ends the run here when it must end, before a model call or a tool call. */
+  void checkpoint() {
+    events.checkpoint();
+  }
+
+  /** The {@link #checkpoint} before the run is kept; see {@link AgentRunEvents#lastCheckpoint}. */
+  void lastCheckpoint() {
+    events.lastCheckpoint();
+  }
+
+  /** Runs the model call {@code call} as the listener allows it. */
+  <T> T modelCall(Supplier<T> call) {
+    return events.modelCall(call);
+  }
+
+  /**
+   * Announces the tool call about to run as the next step, after the {@link #checkpoint}; a
+   * listener that throws keeps the call from running.
+   */
+  void startStep(String toolName, String detail) {
+    events.checkpoint();
+    int index;
+    synchronized (this) {
+      index = steps.size();
+    }
+    events.stepStarted(index, toolName, detail);
   }
 
   AgentLimits limits() {
@@ -134,14 +179,20 @@ public final class AgentRun {
   }
 
   /** Counts a call that ran, with the characters it handed to the model and its passages. */
-  synchronized void recordCall(String toolName, ToolCallOutcome outcome) {
-    toolCalls++;
-    callsPerTool.merge(toolName, 1, Integer::sum);
-    collectedChars += outcome.modelText() == null ? 0 : outcome.modelText().length();
-    passages.addAll(outcome.passages());
-    steps.add(
+  void recordCall(String toolName, ToolCallOutcome outcome) {
+    AgentRunRecord.Step step =
         new AgentRunRecord.Step(
-            toolName, outcome.detail(), outcome.hits(), outcome.result().stepStatus()));
+            toolName, outcome.detail(), outcome.hits(), outcome.result().stepStatus());
+    int index;
+    synchronized (this) {
+      toolCalls++;
+      callsPerTool.merge(toolName, 1, Integer::sum);
+      collectedChars += outcome.modelText() == null ? 0 : outcome.modelText().length();
+      passages.addAll(outcome.passages());
+      index = steps.size();
+      steps.add(step);
+    }
+    events.stepFinished(index, step);
   }
 
   /**
@@ -160,15 +211,27 @@ public final class AgentRun {
   }
 
   /** Notes a step that did not run, e.g. a call of an unknown tool. */
-  synchronized void recordStep(AgentRunRecord.Step step) {
-    steps.add(step);
+  void recordStep(AgentRunRecord.Step step) {
+    int index;
+    synchronized (this) {
+      index = steps.size();
+      steps.add(step);
+    }
+    events.stepFinished(index, step);
   }
 
-  /** Marks the run as ended at {@code limit}; the first limit reached is the one that stays. */
-  synchronized void reachLimit(EndState limit) {
-    if (limitReached == null) {
+  /**
+   * Marks the run as ended at {@code limit}; the first limit reached is the one that stays and the
+   * only one announced.
+   */
+  void reachLimit(EndState limit) {
+    synchronized (this) {
+      if (limitReached != null) {
+        return;
+      }
       limitReached = limit;
     }
+    events.limitReached(limit);
   }
 
   /**
@@ -238,5 +301,36 @@ public final class AgentRun {
 
   synchronized int toolCalls() {
     return toolCalls;
+  }
+
+  /**
+   * Sets the stamp the loop builds at the start - revision, scope by name and model - and the
+   * agent's name it goes with.
+   */
+  synchronized void stampWith(String agentName, AgentRunStamp base) {
+    this.agentName = agentName;
+    this.stamp = base;
+  }
+
+  /** The agent's name the run's stamp goes with, {@code null} when none is known. */
+  synchronized String agentName() {
+    return agentName;
+  }
+
+  /**
+   * Notes a template a tool filled, with the revision it filled, and returns the run's stamp with
+   * it; the stamp's {@link AgentRunStamp#documentText} goes into the file. {@code null} while the
+   * run has no stamp.
+   */
+  synchronized AgentRunStamp recordTemplate(AgentRunStamp.TemplateRef template) {
+    if (stamp != null) {
+      stamp = stamp.withTemplate(template);
+    }
+    return stamp;
+  }
+
+  /** The run's stamp as it stands, {@code null} when the loop set none. */
+  synchronized AgentRunStamp stamp() {
+    return stamp;
   }
 }

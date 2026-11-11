@@ -674,7 +674,9 @@ paths:
         selfRegistrationEnabled needs a non-empty domain list (400). Switching
         passwordResetEnabled or selfRegistrationEnabled on is refused with 409 and code
         PUBLIC_BASE_URL_REQUIRED while OPAA_PUBLIC_BASE_URL is not set - a link nobody can see
-        is no flow.
+        is no flow. Requires a recent sign-in: without one the call is refused with 403 and code
+        RECENT_LOGIN_REQUIRED (see the response RecentLoginRequired) before anything is checked or
+        written.
       requestBody:
         required: true
         content:

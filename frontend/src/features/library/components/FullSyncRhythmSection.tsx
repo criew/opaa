@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
@@ -16,7 +15,8 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const MIN_DAYS = 1
 const MAX_DAYS = 365
@@ -214,20 +214,13 @@ export default function FullSyncRhythmSection() {
       description="Nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus ihre Quelle wieder vollständig abgleicht; erst dann entfällt, was die Quelle nicht einzeln als gelöscht meldet."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Der Vollabgleich-Rhythmus konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : rhythms === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Vollabgleich-Rhythmus wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <Table size="small" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
           <TableHead>

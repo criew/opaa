@@ -20,6 +20,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ class DocumentTemplateServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private RunTemplates runTemplates;
 
   private UUID organization;
   private UUID author;
@@ -176,6 +178,10 @@ class DocumentTemplateServiceIntegrationTest {
         .extracting(TemplatePlaceholder::name)
         .containsExactly("aktenzeichen");
     assertThat(auditCount("DOCUMENT_TEMPLATE_CHANGED", templateId)).isEqualTo(2);
+    // a new revision only with a new file, never with a new name
+    assertThat(replaced.template().getRevision()).isEqualTo(2);
+    jdbcTemplate.update("UPDATE document_templates SET revision = NULL WHERE id = ?", templateId);
+    assertThat(templateService.get(templateId, admin()).template().getRevision()).isEqualTo(1);
 
     templateService.delete(templateId, admin());
     assertThat(auditCount("DOCUMENT_TEMPLATE_DELETED", templateId)).isEqualTo(1);
@@ -200,6 +206,41 @@ class DocumentTemplateServiceIntegrationTest {
             jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM document_templates WHERE id = ?", Long.class, templateId))
         .isEqualTo(1);
+  }
+
+  @Test
+  void anAgentRunMayFillOnlyAssignedTemplatesTheAskerMayReadAndOnlyWhileTheSwitchIsOn() {
+    settingsService.update(true, admin());
+    grantCreateTemplate(author);
+    DocumentTemplate template =
+        templateService.create(creation("Bericht"), caller(author)).template();
+    DocumentTemplate unassigned =
+        templateService.create(creation("Vermerk"), caller(author)).template();
+    Set<UUID> assigned = Set.of(template.getId());
+
+    assertThat(runTemplates.available(organization, author, assigned))
+        .extracting(RunTemplates.RunTemplate::id, RunTemplates.RunTemplate::placeholders)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(
+                template.getId(),
+                List.of(new TemplatePlaceholder("titel", PlaceholderKind.FIELD, List.of()))));
+    assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned))
+        .get()
+        .extracting(RunTemplates.TemplateToFill::fileName)
+        .isEqualTo("vorlage.docx");
+    assertThat(runTemplates.forFilling(unassigned.getId(), organization, author, assigned))
+        .isEmpty();
+    assertThat(runTemplates.available(organization, author, Set.of())).isEmpty();
+    assertThat(runTemplates.available(organization, colleague, assigned)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, colleague, assigned))
+        .isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), UUID.randomUUID(), author, assigned))
+        .isEmpty();
+
+    settingsService.update(false, admin());
+
+    assertThat(runTemplates.available(organization, author, assigned)).isEmpty();
+    assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned)).isEmpty();
   }
 
   private DocumentTemplateCreation creation(String name) {

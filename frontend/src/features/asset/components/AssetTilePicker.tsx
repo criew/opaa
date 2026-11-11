@@ -14,6 +14,9 @@ import { assetPickKey, type AssetPick, type AssetPickToggle } from './assetPick'
 import { type AssetFilters } from './AssetFilterChips'
 import AssetFilterBar from './AssetFilterBar'
 import { fontSize } from '@/shared/theme/tokens'
+import EmptyState, { type Sentence } from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The loaded tiles for one filter; a different key means the shown result is outdated. */
 interface Loaded {
@@ -63,7 +66,9 @@ interface AssetTilePickerProps {
   /** Tiles whose change is underway. */
   busyKeys?: ReadonlySet<string>
   /** Shown instead of tiles while only the chosen are shown and nothing is chosen; null: nothing. */
-  noneChosenText?: string | null
+  noneChosenText?: Sentence | null
+  /** The caller still loads what decides the choice; the tiles show the loading state meanwhile. */
+  loading?: boolean
   /** The line naming everything chosen; off where each choice is confirmed on its own. */
   showSummary?: boolean
   'aria-label': string
@@ -83,6 +88,7 @@ export default function AssetTilePicker({
   readOnly = false,
   busyKeys,
   noneChosenText,
+  loading = false,
   showSummary = true,
   'aria-label': ariaLabel,
 }: AssetTilePickerProps) {
@@ -98,6 +104,8 @@ export default function AssetTilePicker({
   const [chosenOnly, setChosenOnly] = useState(true)
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
+  // Raised by a retry after a failed load; both loads below run again for the same filter.
+  const [attempt, setAttempt] = useState(0)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   // The filter a further page is loading for; a changed filter is not blocked by it.
   const [loadingMoreFor, setLoadingMoreFor] = useState<string | null>(null)
@@ -178,7 +186,7 @@ export default function AssetTilePicker({
     })
     // fetchPage reads exactly what catalogKey names.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogKey])
+  }, [catalogKey, attempt])
 
   // Narrowed to the chosen, their catalog entries make the same full tiles as the list. What the
   // catalog does not return, the person may not read, and it stays out.
@@ -208,7 +216,7 @@ export default function AssetTilePicker({
     return () => {
       current = false
     }
-  }, [detailsKey])
+  }, [detailsKey, attempt])
 
   async function loadMore() {
     if (!loaded || catalogKey === null) return
@@ -354,16 +362,11 @@ export default function AssetTilePicker({
     setFilters((current) => ({ ...current, [key]: !current[key] }))
   }
 
-  const emptyText =
-    isLoading || refreshing
-      ? 'Wird geladen …'
-      : narrowed
-        ? 'Keine Treffer.'
-        : showsChosenOnly
-          ? noneChosenText === undefined
-            ? 'Nichts ausgewählt.'
-            : noneChosenText
-          : 'Es gibt derzeit nichts, was Sie lesen dürfen und zuordnen könnten.'
+  const emptyText: Sentence | null = showsChosenOnly
+    ? noneChosenText === undefined
+      ? 'Nichts ausgewählt.'
+      : noneChosenText
+    : 'Noch keine Einträge, die Sie lesen dürfen und zuordnen könnten.'
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -382,12 +385,25 @@ export default function AssetTilePicker({
       )}
 
       {error ? (
-        <Alert severity="error">{error}</Alert>
+        <LoadError
+          message="Die Auswahl konnte nicht geladen werden."
+          detail={error}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
       ) : tiles.length === 0 ? (
-        emptyText && (
-          <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
-            {emptyText}
-          </Typography>
+        isLoading || refreshing || loading ? (
+          <LoadingState shape="cards" count={3} />
+        ) : narrowed ? (
+          <EmptyState
+            kind="noMatch"
+            onReset={() => {
+              setQuery('')
+              setTypeFilter(undefined)
+              setFilters({ favorites: false })
+            }}
+          />
+        ) : (
+          emptyText !== null && <EmptyState message={emptyText} />
         )
       ) : (
         <Box
@@ -425,21 +441,11 @@ export default function AssetTilePicker({
       )}
 
       {catalogKey !== null && moreError?.key === catalogKey && (
-        <Alert
-          severity="error"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              disabled={loadingMore}
-              onClick={() => void loadMore()}
-            >
-              Erneut versuchen
-            </Button>
-          }
-        >
-          Weitere Einträge konnten nicht geladen werden: {moreError.message}
-        </Alert>
+        <LoadError
+          message="Weitere Einträge konnten nicht geladen werden."
+          detail={moreError.message}
+          onRetry={() => void loadMore()}
+        />
       )}
 
       {page + 1 < totalPages && !error && moreError?.key !== catalogKey && (
@@ -450,7 +456,7 @@ export default function AssetTilePicker({
           <Button
             variant="outlined"
             size="small"
-            disabled={loadingMore}
+            loading={loadingMore}
             onClick={() => void loadMore()}
           >
             Weitere laden

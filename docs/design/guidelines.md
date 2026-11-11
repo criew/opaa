@@ -391,8 +391,8 @@ zuordnen"), bleibt die Aktion dieses Hinweises.
 „Hinzufügen" — in den Space-Mitgliedern, in „Meine Gruppen" und im Mitgliederdialog der
 Gruppenverwaltung. Fachlich begründet sind drei andere Verben:
 
-- „Vormerken" im Assistenten (Space, Wissens- und Prompt-Bibliothek): Gespeichert wird erst mit dem
-  Anlegen.
+- „Vormerken" im Assistenten (Space, Wissensbibliothek, Prompt-Bibliothek, Vorlage, Agent; 5.15):
+  Gespeichert wird erst mit dem Anlegen.
 - „Freigeben" an einem bestehenden Arbeitsmittel: Die Handlung erteilt eine Berechtigung mit Rolle
   und Befristung, keine Mitgliedschaft.
 - „Als verantwortlich benennen" bei internen Gruppen: Verantwortliche werden nicht Mitglied.
@@ -411,7 +411,7 @@ eine Schaltfläche, auch wenn sie wie ein Link aussieht (`component="button"`). 
 Schaltfläche steht für die Hinzufügen-Aktion im Abschnittskopf, für „Ändern" in einer Wertzeile
 (5.12), zum Auf- und Zuklappen („alle anzeigen", „Mitglieder ausblenden") und für kleine Schritte
 in einer Liste oder einem Auswahldialog, die nichts speichern („Auswahl ansehen", „Suche
-zurücksetzen", „Erneut laden"). Sie kommt aus `TextAction`
+zurücksetzen", „Filter zurücksetzen"). Sie kommt aus `TextAction`
 (`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema. Was einen Lauf
 startet oder Daten ändert, ist eine sichtbare Schaltfläche, auch im Abschnittskopf: „Vollabgleich
 starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche. Ein Umschalter in einer
@@ -623,21 +623,128 @@ Auslöser oder Menü nach. Der Baustein legt fest:
 
 Geprüft in `frontend/src/shared/ui/RowMenu.test.tsx` und `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
-**Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
-Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
-`aria-label` „Schließen" und Tooltip (5.1). Formulardialoge mit „Abbrechen" bekommen kein
-zusätzliches ✕: eine Abbruchstelle genügt. Bestätigungen folgen 5.10. Escape und ein Klick daneben
-schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
-`frontend/src/shared/ui/`, nie ein Nachbau je Dialog.
+**Dialoge.** Jeder Dialog ist einer der Bausteine unter `frontend/src/shared/ui/dialog/`; kein
+Thema baut `Dialog` oder `Drawer` selbst zusammen (ESLint, `no-restricted-imports`).
+
+| Baustein | Wofür | Schließen | Fußzeile |
+| --- | --- | --- | --- |
+| `FormDialog` | anlegen, bearbeiten, eine Wahl treffen | „Abbrechen", kein ✕ | links höchstens eine Nebenhandlung, rechts „Abbrechen" und die Handlung |
+| `ViewDialog` | Ansicht, Vorschau, Ereignisliste | ✕ im Titel, kein „Schließen" | keine |
+| `SecretDialog` | ein Geheimnis, das nur einmal erscheint | nur „Schließen" | „Kopieren" und „Schließen" |
+| `SidePanel` | Seitenpanel (siehe unten) | wie der Dialog gleicher Art | – |
+
+Die Bestätigung bleibt das Overlay aus 5.10.
+
+1. **Titel.** Der Titel ist wörtlich die Beschriftung des Knopfs, der den Dialog öffnet („Gruppe
+   anlegen" öffnet „Gruppe anlegen", „Neuer Anbieter" öffnet „Neuer Anbieter"). Beim Bearbeiten
+   heißt er „„<Name>" bearbeiten", bei einem Menüeintrag ohne Objekt („Umbenennen") entsprechend
+   „„<Name>" umbenennen". Der Dialog zu einer Wertzeile (5.12) trägt den Titel der Zeile. Größe
+   und Gewicht kommen aus dem Baustein: Stufe Titel (16 px), 600.
+2. **Handlung.** Die Handlung in der Fußzeile ist das Verb allein: „Anlegen" oder „Speichern",
+   bei anderen Handlungen deren Verb („Zuordnen", „Übertragen", „Umbenennen"). Kein Objekt („Prompt
+   speichern"), kein Fortschrittstext als Beschriftung („Wird gespeichert …").
+3. **Fußzeile.** Links steht höchstens eine Nebenhandlung als Sekundär-Schaltfläche („Verbindung
+   testen", „Vorschau erstellen", eine zerstörende mit Gefahr-Text), rechts „Abbrechen" (still) und
+   die Handlung (primär). Die Handlung ist nur gesperrt, solange sie läuft – nie wegen fehlender
+   oder unveränderter Eingaben (Prüfliste P28). Fehlt etwas, steht es nach dem Absenden am Feld,
+   und der Fokus geht in das erste solche Feld; in Formularen mit vielen bedingten Feldern nennt
+   ein Hinweis über dem Formular die fehlenden Felder. Ist nichts geändert, schließt „Speichern"
+   den Dialog. Die Handlung ist das Absenden des Formulars: Enter in einem Zeilenfeld löst sie
+   aus, außer das Feld filtert oder ergänzt eine Liste (Auswahldialog).
+4. **Schließen.** Formulardialoge schließen über „Abbrechen" und tragen kein ✕; Ansichten tragen
+   rechts im Titel ein ✕ mit `aria-label` „Schließen" und Tooltip (5.1) und keinen Knopf
+   „Schließen". Einzige Ausnahme ist der Dialog, der ein Geheimnis nur einmal zeigt (Token,
+   erzeugtes Passwort, Einrichtungslink): Er trägt „Kopieren" (sekundär) und „Schließen" (primär)
+   und schließt weder über Escape noch über einen Klick daneben. Alle anderen Dialoge schließen
+   Escape und ein Klick daneben weiterhin (bei Änderungen nach Rückfrage, 5.10), außer während die
+   Handlung läuft.
+5. **Breite.** 600 px für Formulare und einfache Ansichten, 900 px nur für einen Editor mit
+   Vorschau, eine Dokumentvorschau oder eine Liste (`width="editor"`). 444 px bleibt der
+   Bestätigung vorbehalten – dem Overlay aus 5.10 und der Bestätigung, die erst ihre Folgen lädt
+   (`width="confirm"` mit `tone`). Unter 600 px Bildschirmbreite füllt jeder Dialog den Bildschirm.
+6. **Keine Trennlinien** an Titel und Fußzeile, auch nicht über `dividers`.
+7. **Dialog oder Seitenpanel.** Anlegen und Bearbeiten geschehen im Dialog. Ein Seitenpanel
+   (`SidePanel`) steht nur, wenn die Liste dahinter beim Arbeiten gebraucht wird – zum Vergleichen
+   oder um mehrere Einträge nacheinander zu ändern: Anlegerechte, Zugang und Quellart in
+   „Verbindungen". Es folgt denselben Regeln: Der Titel nennt das Objekt, eine Ansicht schließt
+   über das ✕ ohne „Schließen", ein Formular über „Abbrechen" ohne ✕, keine Trennlinie am Titel,
+   unter 600 px bildschirmfüllend. Das Muster für eine Ansicht im Seitenpanel ist das Belegfenster
+   des Chats (5.8): ✕ im Titel, Suche ohne Beschriftung, Stand unten.
+
+Geprüft in `frontend/src/shared/ui/dialog/*.test.tsx`; das Zählbudget `disabledSubmits` = 0 der
+[Prüfliste](./ui-pruefliste.md) misst gesperrtes Absenden im UI-Lab.
+
+**Ansichten im Seitenpanel folgen dem Belegfenster des Chats** (5.8). Das Panel öffnet rechts
+neben dem Inhalt, der dahinter lesbar bleibt, und ist unter 600 px Bildschirmbreite
+bildschirmfüllend. Sein Kopf trägt nur den Titel der Ansicht und rechts das ✕ mit einem Namen,
+der das Panel nennt („Belegfenster schließen“); eine Trennlinie setzt den Kopf vom Inhalt ab.
+Darunter folgen, wo die Ansicht sie braucht, ein Suchfeld über der Liste und die Liste selbst; keine
+Fußzeile mit „Schließen“. Das Panel ist ein benannter Dialog (`role="dialog"` mit `aria-label`);
+öffnet es an einer bestimmten Stelle, liegt der Fokus dort, beim Schließen kehrt er auf den
+Auslöser zurück. Escape und ein Klick daneben schließen es.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
-- **Leer:** ein Satz, was hier stünde, plus die eine Handlung, die ihn füllt. Keine
-  Illustrationsfriedhöfe.
-- **Laden:** Skeleton in `bg-3` ohne Layoutsprung; laufende Hintergrundvorgänge bleiben über
-  Seitenwechsel sichtbar (Muster Indizierung).
-- **Fehler:** deutsch, ruhig, mit nächstem Schritt. Signalfarbe nur am betroffenen Element,
-  nicht flächig.
+Jeder Bereich, der Daten lädt, kennt fünf Zustände: lädt, erstmals leer, kein Treffer, kein
+Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteinen unter
+`frontend/src/shared/ui/states/`, nicht aus einem Nachbau je Thema:
+
+| Baustein | Zustand |
+|---|---|
+| `LoadingState` | lädt: Skeleton in der Form des Inhalts (`rows`, `lines`, `cards`, `detail`, `block`, `inline`) |
+| `EmptyState` | erstmals leer (`initial`), kein Treffer (`noMatch`), kein Zugriff (`noAccess`) |
+| `LoadError` | Ladefehler mit „Erneut laden“ |
+
+1. **Laden:** ein Skeleton in der Form des Inhalts, das erst nach 300 ms erscheint; was schneller
+   da ist, flackert nicht. Ein Spinner steht nur im Knopf, der den Vorgang ausgelöst hat
+   (`Button`/`IconButton` mit `loading`), nie frei auf der Fläche. „Wird geladen“ ist nie als
+   Text sichtbar; Screenreader hören es aus der Statusregion des Skeletons. Ein Fortschrittsbalken
+   steht nur, wo er Fortschritt misst (`variant="determinate"`).
+2. **Erstmals leer:** „Noch keine <Objekte>.“ plus die Anlege-Handlung mit derselben Beschriftung
+   wie im Kopf, als Sekundär-Schaltfläche (die Primäre bleibt die im Kopf). Wer nichts anlegen darf,
+   liest stattdessen, wer es kann: „Noch keine Dokumente. Hochladen kann, wer die Bibliothek
+   verwaltet.“
+3. **Kein Treffer:** „Keine Treffer.“ plus „Filter zurücksetzen“, das Suche und Filter auf den
+   Ausgangsstand stellt. Suche und Filter bleiben dabei stehen; der Fokus geht danach ins
+   Suchfeld.
+4. **Kein Zugriff:** was fehlt und wer zuständig ist, etwa „Zugänge kann nur abrufen, wer
+   Konnektorbibliotheken anlegen darf. Dieses Anlegerecht erteilt die Systemverwaltung.“ Ein 403
+   ist kein Ladefehler und bekommt kein „Erneut laden“.
+5. **Leertexte sind ganze Sätze mit Punkt** — auch in Auswahllisten, Menüs und Feldern. Keine
+   Illustrationen.
+6. **Ladefehler:** „<Objekte> konnten nicht geladen werden.“ (für ein Objekt „… konnte …“) als
+   Hinweis mit „Erneut laden“ an der Stelle des Inhalts. Die Ursache des Servers darf folgen, wo
+   sie mehr sagt. Nie roter Fließtext, nie zusammen mit einem Leertext: „fehlgeschlagen“ und „leer“
+   sind nicht zu verwechseln. Nach „Erneut laden“ steht der Fokus auf dem Inhaltsbereich. Ist
+   schon Inhalt geladen, bleibt er stehen; ein Fehler beim Nachladen erscheint unter ihm.
+7. **„Erneut laden“ nach einem Ladefehler, „Erneut versuchen“ nach einer fehlgeschlagenen
+   Aktion** (Speichern, Senden, Hochladen). „Neu laden“ gibt es nicht; die Fehlerseite der
+   Anwendung bietet „Seite neu laden“.
+8. **Hintergrundvorgänge** (Indizierung, Export, Abgleich) melden Ende und Fehler über `notify`
+   (5.9), nie über eine eigene Snackbar; ihr laufender Zustand bleibt am Ort sichtbar und über
+   Seitenwechsel erhalten.
+
+**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (`ChatStatusLine` in
+`frontend/src/features/chat/components/`) ist die einzige Stelle mit Spinner und sichtbarem Text.
+Sie ist eine Auskunft, kein Ladezustand: Spinner und ein kurzer Satz, was gerade geschieht („Denkt
+nach …“, „Antwort wird geschrieben …“, bei Agenten der laufende Schritt). Sie bleibt von der Frage
+bis zur fertigen Antwort stehen und wechselt nur ihren Text, den ein Screenreader höflich ansagt;
+Spinnergröße und Abstände ändern sich dabei nicht. Anmeldung und Installation stehen vor der
+Anwendung und folgen eigenen Mustern. Der Quelltext-Test nimmt die Statuszeile nur von der
+Spinner-Regel aus, Anmeldung und Installation von allen Regeln.
+
+Das Satzformat prüft schon der Compiler: `EmptyState` nimmt nur Texte mit Punkt, `LoadError` nur
+Sätze auf „… nicht geladen werden.“. Den Rest prüft der Quelltext-Test
+`frontend/src/shared/ui/states/stateRules.test.ts` über alle Dateien unter `frontend/src/`: kein
+Skeleton und kein freier Spinner außerhalb der Bausteine, kein unbestimmter Fortschrittsbalken,
+kein sichtbares „wird geladen“, „Erneut laden“ nur über `LoadError`, Leertexte mit Punkt, keine
+eigene Snackbar.
+
+**Ansehen im Mock-Modus:** Die Szenarien `?mockScenario=empty`, `slow` und `failed` wirken auf
+alle Themen (`frontend/src/app/mocks/scenarioHandler.ts`): `empty` leert jede Liste, `failed`
+beantwortet jede Liste mit 502, `slow` verzögert jede lesende Anfrage um drei Sekunden (länger mit
+`opaa.mockSlowMs` im sessionStorage). Anmeldung, Health, Branding, Installation, die eigenen Rechte
+(`me/capabilities`) und die erlaubten Linkziele bleiben unberührt.
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 
@@ -669,6 +776,20 @@ Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Ak
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
 Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259).
+
+**Während die Antwort entsteht** steht sie vorläufig unter der Statuszeile (5.7), ohne Fußnoten,
+Belegknopf und Aktionen. Der Hinweis, dass die Belege noch nicht geprüft sind, steht genau einmal,
+in der Statuszeile; die fertige Antwort ersetzt die vorläufige an derselben Stelle. Das gilt auch
+für Agentenläufe: Ihre Schritte stehen unter derselben Statuszeile, die den laufenden Schritt nennt.
+
+**Kopf des Chats.** Der Kopf steht von Anfang an, auch im leeren Chat, mit „Neuer Chat“ als
+Titel, bis der Chat einen eigenen hat. Nichts rutscht, wenn die erste Antwort fertig ist oder der
+Titel eintrifft: Die erste Nachricht steht während der laufenden und nach der fertigen Antwort an
+derselben Stelle (geprüft in `e2e/tests/chat-streaming.spec.ts`).
+
+**KI-Hinweis einmal je Fläche.** Der Hinweis auf die KI-Nutzung steht im leeren Chat einmal in
+der Mitte, sobald eine Frage gestellt ist, einmal als ruhige Zeile unter dem Eingabefeld – nie an
+beiden Stellen zugleich.
 
 ### 5.9 Popup-Benachrichtigungen
 
@@ -839,9 +960,10 @@ folgt „Nur ausgewählte" — es zeigt die Auswahl zum Zeitpunkt des Einschalte
 ausgewählt". Die Umschalter verbinden sich mit UND; keiner gedrückt heißt „alle". Auf schmalen
 Bildschirmen bricht die Zeile als Einheit um: Die Suche steht oben, Typgruppe und Umschalter darunter;
 ein Umschalter steht nie allein in einer Zeile. Unter etwa 600 px Breite entfallen die Icons der
-Typknöpfe, und Knöpfe und
-Chips rücken enger zusammen, damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite nach
-WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
+Typknöpfe, Knöpfe und Chips rücken enger zusammen, der Trennstrich entfällt und der
+Favoriten-Chip zeigt nur noch den Stern, mit „Favoriten" als zugänglichem Namen und Tooltip
+(5.1, Nur-Icon-Schaltflächen), damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite
+nach WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
 Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name — auch
 unter „Nur ausgewählte" bzw. „Nur zugeordnete". Angeboten
 wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".
@@ -930,6 +1052,46 @@ aktiv und führt auf `/chat`, nicht auf die Space-Übersicht: Das öffnet einen 
 genutzten nicht archivierten Space, ohne einen solchen im privaten Bereich. Die Übersicht erreicht
 man in der Spalte über die Lupe im Kopf „Spaces", in der Schublade über „Alle Spaces anzeigen" im
 Space-Menü.
+
+### 5.15 Assistenten
+
+Ein Assistent legt ein Objekt in mehreren Schritten an: Space, Wissensbibliothek,
+Prompt-Bibliothek, Vorlage, Agent. Alle rendern denselben Rahmen `WizardLayout`
+(`frontend/src/shared/ui/wizard/WizardLayout.tsx`); kein Thema baut Kopf, Schrittleiste oder
+Fußzeile selbst nach.
+
+- **Kopf.** Über dem Titel steht als Dachzeile das Objekt („Neuer Space", „Neue Vorlage"), sie ist
+  die Seitenüberschrift. Der Titel ist der Name des aktuellen Schritts, darunter die Schrittleiste.
+  Der Inhalt ist 720 px breit, die Felder nutzen die volle Breite.
+- **Schrittnamen** bestehen aus einem Wort. Der erste Schritt heißt „Stammdaten" (Name und
+  Beschreibung), der letzte „Prüfen". Davor darf eine Typwahl stehen („Quellart"). „Grunddaten",
+  „Name" und „Zusammenfassung" gibt es nicht. Wo Eigentum und Freigaben abgefragt werden, heißt
+  der Schritt „Freigaben", die Quelle einer Bibliothek „Quelle". Der Typ `WizardSteps`
+  (`wizardSteps.ts`) lässt nur Schrittlisten zu, die so beginnen und enden.
+- **Fußzeile.** Links „Abbrechen" (still), rechts „Zurück" (sekundär, ab dem zweiten Schritt) und
+  „Weiter" (primär); im letzten Schritt heißt die Handlung „Anlegen". Beschriftungen wie „Weiter zu
+  Rechten", „Zur Prüfung" oder „Space anlegen" entfallen. Eine Zählung wie „2 Freigaben
+  vorgemerkt" steht still links neben den Knöpfen.
+- **„Weiter" und „Anlegen" sind immer aktiv.** Fehlt eine Eingabe, steht der Fehler am Feld, und
+  der Fokus geht hinein (`useFieldError`); der Seitentitel beginnt dann mit „Fehler: ". Der
+  Fehlertext ist ein kurzer Satz in einer Form: „<Feld> fehlt" („Name fehlt", „Gruppe fehlt",
+  „Word-Datei fehlt"). Lehnt der Server ein Feld ab, führt der Assistent zu dessen Schritt, setzt
+  die Meldung des Servers an das Feld und den Fokus hinein, auch wenn ein Schritt mehrere Felder
+  zugleich meldet. Einzige Ausnahme ist der Schritt „Quelle" einer Wissensbibliothek: Seine Zeilen
+  und der Verbindungstest melden über eine Fehlerzusammenfassung über dem Schritt (P29).
+  Fehlt das Anlegerecht, steht der Grund als Hinweis über dem Schritt, und „Anlegen" führt den
+  Fokus dorthin, statt gesperrt zu sein. Während das Anlegen läuft, schluckt der Knopf weitere Klicks.
+- **Prüfen.** Ein Assistent hat mindestens drei Schritte und endet mit „Prüfen": jede Antwort in
+  einer Zeile Titel | Inhalt | „Ändern" (`WizardReview`). „Ändern" führt zum Schritt der Antwort,
+  „Weiter" von dort zurück zu „Prüfen". Was mit weniger Schritten auskommt, ist ein Dialog (5.6).
+- **Navigation.** Der Assistent erscheint in der Navigation des Bereichs, in dem das Objekt danach
+  liegt: der Space-Assistent neben der Seitenleiste des Space (5.13), die Assistenten der
+  Arbeitsmittel im Rahmen des Katalogs, nie neben einer fremden Seitenleiste.
+- **Nach dem Anlegen** öffnet sich die Detailseite des neuen Objekts, und ein Popup (5.9) nennt
+  es beim Namen, etwa: „Bauamt" wurde angelegt.
+
+Der Messlauf des UI-Labs prüft, dass kein Assistent „Weiter" oder „Anlegen" sperrt (Prüfliste,
+Zählbudget `disabledSubmits`).
 
 ---
 

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
+import { scenarioErrorBody } from '@/shared/mocks/mockScenario'
 import { renderWithProviders, setMockAuthState } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useAgentAvailability } from '@/shared/session/agentAvailability'
@@ -11,6 +12,8 @@ import { mockMyCapabilities } from '@/features/capability/mocks/capabilityFixtur
 import type { AgentUpdateRequest } from '@/shared/api/types'
 import { useAgentStore } from '../stores/agentStore'
 import { mockAgentSettings } from '../mocks/agentFixtures'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
+import { mockDocumentTemplateState } from '@/features/document-template/mocks/documentTemplateFixtures'
 import AgentCreatePage from './AgentCreatePage'
 import AgentDetailPage from './AgentDetailPage'
 import AgentSettingsPage from './AgentSettingsPage'
@@ -45,13 +48,19 @@ describe('Agenten', () => {
     server.events.removeAllListeners()
   })
 
-  it('legt einen Agenten nur mit Name und Zweck an und öffnet seine Seite', async () => {
+  it('legt einen Agenten im Assistenten an, prüft und öffnet seine Seite', async () => {
     const user = userEvent.setup()
     renderAt('/agents/new')
 
-    await user.type(await screen.findByLabelText(/^Name/), 'Vergabeprüfung')
+    expect(await screen.findByRole('heading', { level: 2, name: 'Stammdaten' })).toBeVisible()
+    await user.type(screen.getByLabelText(/^Name/), 'Vergabeprüfung')
     await user.type(screen.getByLabelText(/^Zweck/), 'Prüft Vergabeunterlagen.')
-    await user.click(screen.getByRole('button', { name: 'Agent anlegen' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeVisible()
+    expect(screen.getByText('Prüft Vergabeunterlagen.')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Vergabeprüfung' }),
@@ -63,29 +72,59 @@ describe('Agenten', () => {
     ).toBeInTheDocument()
   })
 
-  it('zeigt ohne Anlegerecht weder Formular noch Anlegen-Knopf', async () => {
+  it('nennt ohne Anlegerecht den Grund und setzt beim Anlegen den Fokus darauf', async () => {
     const original = [...mockMyCapabilities.capabilities]
     mockMyCapabilities.capabilities = original.filter((c) => c !== 'CREATE_AGENT')
     try {
+      const user = userEvent.setup()
       renderAt('/agents/new')
-      expect(
-        await screen.findByText(/Ihnen fehlt das Anlegerecht „Agenten anlegen“/),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Agent anlegen' })).not.toBeInTheDocument()
+      const hint = await screen.findByText(/Ihnen fehlt das Anlegerecht „Agenten anlegen“/)
+      await user.type(screen.getByLabelText(/^Name/), 'Vergabeprüfung')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Anlegen' }))
+      expect(hint.closest('#wizard-create-blocked')).toHaveFocus()
     } finally {
       mockMyCapabilities.capabilities = original
     }
   })
 
-  it('fasst einen fehlenden Namen als Fehler zusammen und setzt den Fokus darauf', async () => {
+  it('führt einen vom Server abgelehnten Namen mit dessen Meldung an das Feld', async () => {
+    server.use(
+      http.post('/api/v1/agents', () =>
+        HttpResponse.json(
+          {
+            ...scenarioErrorBody(400, 'Die Angaben sind unvollständig.'),
+            fieldErrors: [{ field: 'name', message: 'Den Namen gibt es schon.' }],
+          },
+          { status: 400 },
+        ),
+      ),
+    )
     const user = userEvent.setup()
     renderAt('/agents/new')
 
-    await user.click(await screen.findByRole('button', { name: 'Agent anlegen' }))
+    await user.type(await screen.findByLabelText(/^Name/), 'Vergabeprüfung')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }))
 
-    const summary = await screen.findByRole('alert')
-    expect(within(summary).getByText('Fehler: 1 Angabe prüfen')).toBeInTheDocument()
-    await waitFor(() => expect(summary).toHaveFocus())
+    const field = await screen.findByLabelText(/^Name/)
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(field).toHaveAccessibleDescription('Den Namen gibt es schon.')
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeVisible()
+  })
+
+  it('nennt einen fehlenden Namen am Feld und setzt den Fokus hinein', async () => {
+    const user = userEvent.setup()
+    renderAt('/agents/new')
+
+    await user.click(await screen.findByRole('button', { name: 'Weiter' }))
+
+    const field = screen.getByLabelText(/^Name/)
+    expect(field).toHaveFocus()
+    expect(field).toHaveAccessibleDescription('Name fehlt')
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeVisible()
   })
 
   it('ändert den Auftrag im Lese-Raster und schickt die übrigen Angaben unverändert mit', async () => {
@@ -104,7 +143,7 @@ describe('Agenten', () => {
       expect.objectContaining({
         instruction: 'Prüfe streng.',
         libraryIds: ['lib-1'],
-        toolNames: ['search_knowledge', 'read_document'],
+        toolNames: ['search_knowledge', 'read_document', 'fill_template'],
         planStep: 'CONFIRM',
       }),
     ])
@@ -115,6 +154,37 @@ describe('Agenten', () => {
 
     expect(await screen.findByText('Vergaberecht')).toBeInTheDocument()
     expect(screen.getByText(/Dazu 1 Bibliothek, die Sie nicht lesen dürfen/)).toBeInTheDocument()
+  })
+
+  it('zeigt Vorlagen nur bei eingeschaltetem Schalter „Vorlagen“', async () => {
+    useRuntimeSwitchStore.setState({ documentTemplates: false })
+    renderAt('/agents/agent-vergabe/wissen')
+
+    expect(await screen.findByText('Vergaberecht')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vorlagen ändern' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Vermerk Referat 50')).not.toBeInTheDocument()
+  })
+
+  it('ordnet Vorlagen per Auswahlkästchen zu und nennt nicht lesbare nur als Zahl', async () => {
+    mockDocumentTemplateState.settings.enabled = true
+    useRuntimeSwitchStore.setState({ documentTemplates: true })
+    const updates = captureUpdates()
+    const user = userEvent.setup()
+    renderAt('/agents/agent-vergabe/wissen')
+
+    expect(await screen.findByText('Vermerk Referat 50')).toBeInTheDocument()
+    expect(screen.getByText(/Dazu 1 Vorlage, die Sie nicht lesen dürfen/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Vorlagen ändern' }))
+    const group = screen.getByRole('group', { name: 'Vorlagen (optional)' })
+    const box = await within(group).findByRole('checkbox', { name: 'Vermerk Referat 50' })
+    expect(box).toBeChecked()
+    await user.click(box)
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(screen.queryByText('Vermerk Referat 50')).not.toBeInTheDocument())
+    expect(screen.getByText(/Dazu 1 Vorlage, die Sie nicht lesen dürfen/)).toBeInTheDocument()
+    expect(updates).toEqual([expect.objectContaining({ templateIds: [], libraryIds: ['lib-1'] })])
   })
 
   it('zeigt Lesenden die Einrichtung ohne „Ändern“', async () => {

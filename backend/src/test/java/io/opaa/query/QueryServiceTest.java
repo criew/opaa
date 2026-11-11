@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -189,27 +188,12 @@ class QueryServiceTest {
    * tests can never run a different stage order than the application does.
    */
   private QueryService newQueryService(QueryProperties queryProperties, ChatMemory memory) {
-    return newQueryService(queryProperties, memory, Optional.empty());
-  }
-
-  /**
-   * {@code toolLoopHandler} stands in for the {@code opaa.spike.tool-loop.enabled}-gated bean -
-   * empty is the switched-off state every other test in this class runs under, matching production
-   * without the property set.
-   */
-  private QueryService newQueryService(
-      QueryProperties queryProperties,
-      ChatMemory memory,
-      Optional<ToolLoopQueryHandler> toolLoopHandler) {
-    return newQueryService(queryProperties, memory, toolLoopHandler, disabledRerankRole());
+    return newQueryService(queryProperties, memory, disabledRerankRole());
   }
 
   /** The same service with {@code rerankRole} as the rerank model role. */
   private QueryService newQueryService(
-      QueryProperties queryProperties,
-      ChatMemory memory,
-      Optional<ToolLoopQueryHandler> toolLoopHandler,
-      RerankModelRole rerankRole) {
+      QueryProperties queryProperties, ChatMemory memory, RerankModelRole rerankRole) {
     RetrievalPipeline pipeline =
         new RetrievalConfiguration()
             .retrievalPipeline(
@@ -253,7 +237,6 @@ class QueryServiceTest {
         new QueryMetrics(meterRegistry),
         mock(MetadataFilterValidator.class),
         promptService,
-        toolLoopHandler,
         neighborChunkExpansion,
         agentTurnHandler);
   }
@@ -301,12 +284,11 @@ class QueryServiceTest {
   }
 
   /**
-   * #1789 acceptance criterion: without the switch, a {@code "@test "} question is not
-   * special-cased at all - it reaches the ordinary retrieval/answer path with the prefix still
-   * attached, byte for byte like any other question.
+   * The prefix {@code "@test "} chooses nothing: such a question reaches the ordinary
+   * retrieval/answer path with the prefix still attached, byte for byte like any other question.
    */
   @Test
-  void queryRunsAnOrdinaryTestPrefixedQuestionUnchangedWhenTheSpikeSwitchIsOff() {
+  void queryRunsATestPrefixedQuestionUnchangedOnTheOrdinaryPath() {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -321,21 +303,9 @@ class QueryServiceTest {
         .generateAnswer(eq("@test Frage"), any(), any(), any(), anyBoolean(), anyBoolean(), any());
   }
 
-  /**
-   * Once the switch is on (the handler bean present), a question the handler declines (no {@code
-   * "@test "} prefix) still reaches the ordinary path unmodified - the weiche in {@code
-   * QueryService#query} only short-circuits on a present {@link Optional}.
-   */
+  /** Tag, zero-width and direction characters hidden in a question never reach the model. */
   @Test
-  void queryFallsThroughToTheOrdinaryPathWhenTheSpikeHandlerDeclines() {
-    ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-    when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
-        .thenReturn(Optional.empty());
-    QueryService serviceWithSpikeEnabled =
-        newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-            chatMemory,
-            Optional.of(spikeHandler));
+  void queryHandsTheQuestionOnWithoutInvisibleCharacters() {
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -343,52 +313,16 @@ class QueryServiceTest {
             any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
         .thenReturn(chatResponse);
 
-    QueryResult response = serviceWithSpikeEnabled.query("Question", null, caller, true, List.of());
+    queryService.query("Frist?󠁉󠁇​‮", null, caller, true, List.of());
 
-    assertThat(response.answer()).isEqualTo("Answer");
     verify(answerGenerationService)
-        .generateAnswer(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any());
+        .generateAnswer(eq("Frist?"), any(), any(), any(), anyBoolean(), anyBoolean(), any());
   }
 
-  /**
-   * Once the handler accepts (returns a present {@link Optional}), {@code QueryService} hands its
-   * result straight back and never touches the ordinary retrieval/answer path - the handler ran the
-   * whole turn itself.
-   */
   @Test
-  void queryReturnsTheSpikeHandlersResultUnmodifiedWhenItAccepts() {
-    ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-    QueryResult spikeResult =
-        new QueryResult(
-            "Spike-Antwort",
-            List.of(),
-            new QueryOutcome(
-                "gpt-4o",
-                10,
-                5L,
-                false,
-                false,
-                false,
-                false,
-                List.of(),
-                AnswerCompleteness.COMPLETE),
-            UUID.randomUUID(),
-            null,
-            null);
-    when(spikeHandler.handle(
-            eq("@test Frage"), any(), any(), any(), any(), any(), any(), anyLong(), any()))
-        .thenReturn(Optional.of(spikeResult));
-    QueryService serviceWithSpikeEnabled =
-        newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-            chatMemory,
-            Optional.of(spikeHandler));
-
-    QueryResult response =
-        serviceWithSpikeEnabled.query("@test Frage", null, caller, true, List.of());
-
-    assertThat(response).isSameAs(spikeResult);
-    verifyNoInteractions(vectorChunkSearch, answerGenerationService);
+  void aQuestionOfInvisibleCharactersAloneIsRefused() {
+    assertThatThrownBy(() -> queryService.query("󠁉​", null, caller, true, List.of()))
+        .isInstanceOf(ValidationException.class);
   }
 
   /**
@@ -915,73 +849,6 @@ class QueryServiceTest {
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(300);
     assertThat(response.chatId()).isNotNull();
-  }
-
-  /**
-   * An earlier attachment of the chat - a file the agent loop generated among them - does not keep
-   * a turn from the tool loop; only a question naming new attachments stays on the ordinary path.
-   */
-  @Test
-  void anEarlierAttachmentOfTheChatDoesNotKeepATurnFromTheToolLoop() {
-    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
-    UUID chatId = chat.getId();
-    UUID earlierAttachmentId = UUID.randomUUID();
-    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatService.historyAsSpringAiMessages(chatId, 21)).thenReturn(List.of());
-    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
-        .thenReturn(Set.of(readableLibraryId));
-    when(chatService.attachmentContext(eq(chat), any(), any()))
-        .thenReturn(
-            new ChatAttachmentContext(List.of(), Set.of(earlierAttachmentId), List.of(), false));
-    ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-    QueryResult spikeResult =
-        new QueryResult(
-            "Spike-Antwort",
-            List.of(),
-            new QueryOutcome(
-                "gpt-4o",
-                10,
-                5L,
-                false,
-                false,
-                false,
-                false,
-                List.of(),
-                AnswerCompleteness.COMPLETE),
-            chatId,
-            null,
-            null);
-    when(spikeHandler.handle(
-            eq("@test Korrigiere das PDF"),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            anyLong(),
-            any()))
-        .thenReturn(Optional.of(spikeResult));
-    QueryService serviceWithSpikeEnabled =
-        newQueryService(
-            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-            chatMemory,
-            Optional.of(spikeHandler));
-
-    QueryResult response =
-        serviceWithSpikeEnabled.query(
-            "@test Korrigiere das PDF",
-            chatId,
-            caller,
-            true,
-            List.of(),
-            MetadataFilter.NONE,
-            null,
-            null,
-            List.of());
-
-    assertThat(response).isSameAs(spikeResult);
-    verifyNoInteractions(answerGenerationService);
   }
 
   /** Regression guard for ADR-0070: only a chosen agent leaves the ordinary path. */
@@ -1693,6 +1560,52 @@ class QueryServiceTest {
   }
 
   /**
+   * A deleted chat's conversation window never comes back: once the chat no longer resolves, its id
+   * runs as an ephemeral conversation, which must start empty instead of reading the window the
+   * stored chat left in this process.
+   */
+  @Test
+  void theIdOfADeletedChatStartsAnEmptyConversation() {
+    ChatMemory realChatMemory =
+        MessageWindowChatMemory.builder()
+            .chatMemoryRepository(new CaffeineChatMemoryRepository())
+            .maxMessages(20)
+            .build();
+    QueryService serviceWithRealMemory =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), realChatMemory);
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
+    UUID chatId = chat.getId();
+    when(chatService.findOwnedChat(chatId, currentUserId))
+        .thenReturn(Optional.of(chat), Optional.empty());
+    when(chatService.historyAsSpringAiMessages(chatId, 21))
+        .thenReturn(
+            List.of(
+                new UserMessage("Frage aus dem geloeschten Chat"),
+                new AssistantMessage("Antwort aus dem geloeschten Chat")));
+    lenient().when(chatService.effectiveLibraryScope(any(), any())).thenReturn(Set.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    List<List<Message>> windowsSeen = new ArrayList<>();
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenAnswer(
+            invocation -> {
+              windowsSeen.add(realChatMemory.get(invocation.getArgument(2)));
+              return chatResponse;
+            });
+
+    serviceWithRealMemory.query("Erste Frage", chatId, caller, false, List.of());
+    serviceWithRealMemory.query("Frage nach dem Loeschen", chatId, caller, false, List.of());
+
+    assertThat(windowsSeen).hasSize(2);
+    assertThat(windowsSeen.get(0)).hasSize(2);
+    assertThat(windowsSeen.get(1))
+        .as("the window of the deleted chat")
+        .extracting(Message::getText)
+        .noneMatch(text -> text.contains("geloeschten Chat"));
+  }
+
+  /**
    * #525 acceptance criterion: "Folgefragen im selben Chat nutzen den persistierten Verlauf als
    * Kontext". The window of a persisted chat is replaced from the persisted store on every turn,
    * whatever the in-memory cache held - the search query is enriched from that persisted history,
@@ -2261,7 +2174,7 @@ class QueryServiceTest {
   @Test
   void queryEnrichesSearchWithConversationHistory() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(currentUserId + ":" + chatId))
+    when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -2290,7 +2203,7 @@ class QueryServiceTest {
   @Test
   void queryEnrichesThirdMessageWithTheLastUserQuestionOfTheSearchWindow() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(currentUserId + ":" + chatId))
+    when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -2320,7 +2233,7 @@ class QueryServiceTest {
   @Test
   void queryLeavesAQuestionOlderThanTheSearchWindowOutOfTheFallbackQuery() {
     UUID chatId = UUID.randomUUID();
-    when(chatMemory.get(currentUserId + ":" + chatId))
+    when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
         .thenReturn(
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
@@ -2625,7 +2538,7 @@ class QueryServiceTest {
     @Test
     void aMessageWithoutSearchNeedIsSearchedWithTheFallbackQueryAndTheAnswerIsTold() {
       UUID chatId = UUID.randomUUID();
-      when(chatMemory.get(currentUserId + ":" + chatId))
+      when(chatMemory.get(currentUserId + QueryService.EPHEMERAL_KEY_INFIX + chatId))
           .thenReturn(
               List.of(
                   new UserMessage("Was kostet ein Personalausweis?"),
@@ -3094,104 +3007,81 @@ class QueryServiceTest {
     }
 
     @Test
-    void aTurnTheToolLoopTookOverCountsAsAgent() {
-      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-      QueryResult spikeResult =
-          new QueryResult(
-              "Spike-Antwort",
-              List.of(),
-              new QueryOutcome(
-                  "m", 1, 1L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
-              UUID.randomUUID(),
-              null,
-              null);
-      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
-          .thenReturn(Optional.of(spikeResult));
-      QueryService service =
-          newQueryService(
-              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-              chatMemory,
-              Optional.of(spikeHandler));
+    void aTurnWithAChosenAgentCountsAsAgent() {
+      Chat chat = agentChat(List.of());
+      when(agentTurnHandler.handle(any())).thenReturn(agentResult(chat));
 
-      service.query("@test Frage", null, caller, true, List.of());
+      queryService.query(
+          "Frage", chat.getId(), caller, true, List.of(), null, null, null, List.of(), agentId());
 
       assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isEqualTo(1);
       assertThat(count("opaa.query.count", "status", "success", "mode", "rag")).isZero();
     }
 
     @Test
-    void aHistoryLongerThanTheWindowCountsAsTruncatedInTheToolLoopToo() {
-      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    void aHistoryLongerThanTheWindowCountsAsTruncatedForAnAgentToo() {
       List<Message> history = new ArrayList<>();
       for (int i = 0; i < 21; i++) {
         history.add(new UserMessage("Nachricht " + i));
       }
-      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
-      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(history);
-      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
-          .thenReturn(Set.of(readableLibraryId));
-      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-      QueryResult spikeResult =
-          new QueryResult(
-              "Spike-Antwort",
-              List.of(),
-              new QueryOutcome(
-                  "m", 1, 1L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
-              chat.getId(),
-              null,
-              null);
-      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
-          .thenReturn(Optional.of(spikeResult));
-      QueryService service =
-          newQueryService(
-              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-              chatMemory,
-              Optional.of(spikeHandler));
+      Chat chat = agentChat(history);
+      when(agentTurnHandler.handle(any())).thenReturn(agentResult(chat));
 
-      service.query("@test Frage", chat.getId(), caller, true, List.of());
+      queryService.query(
+          "Frage", chat.getId(), caller, true, List.of(), null, null, null, List.of(), agentId());
 
       assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isEqualTo(1);
       assertThat(meterRegistry.get("opaa.query.context.truncated").counter().count()).isEqualTo(1);
     }
 
     @Test
-    void aFailureInTheToolLoopCountsAsAnAgentError() {
-      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
-          .thenThrow(new IllegalStateException("tool failed"));
-      QueryService service =
-          newQueryService(
-              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-              chatMemory,
-              Optional.of(spikeHandler));
+    void aFailureOfTheAgentRunCountsAsAnAgentError() {
+      Chat chat = agentChat(List.of());
+      when(agentTurnHandler.handle(any())).thenThrow(new IllegalStateException("tool failed"));
 
-      assertThatThrownBy(() -> service.query("@test Frage", null, caller, true, List.of()))
+      assertThatThrownBy(
+              () ->
+                  queryService.query(
+                      "Frage",
+                      chat.getId(),
+                      caller,
+                      true,
+                      List.of(),
+                      null,
+                      null,
+                      null,
+                      List.of(),
+                      agentId()))
           .isInstanceOf(IllegalStateException.class);
 
       assertThat(count("opaa.query.count", "status", "error", "mode", "agent")).isEqualTo(1);
       assertThat(count("opaa.query.count", "status", "error", "mode", "rag")).isZero();
     }
 
-    @Test
-    void aTurnTheToolLoopDeclinesKeepsItsOrdinaryMode() {
-      ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
-      when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
-          .thenReturn(Optional.empty());
-      QueryService service =
-          newQueryService(
-              new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
-              chatMemory,
-              Optional.of(spikeHandler));
-      when(chatMemory.get(any())).thenReturn(List.of());
-      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
-      when(answerGenerationService.generateAnswer(
-              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
-          .thenReturn(answer);
+    private Chat agentChat(List<Message> history) {
+      Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+      when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));
+      when(chatService.historyAsSpringAiMessages(chat.getId(), 21)).thenReturn(history);
+      when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+          .thenReturn(Set.of(readableLibraryId));
+      when(chatService.attachmentContext(eq(chat), any(), any()))
+          .thenReturn(ChatAttachmentContext.NONE);
+      return chat;
+    }
 
-      service.query("Frage", null, caller, true, List.of());
+    private static UUID agentId() {
+      return UUID.randomUUID();
+    }
 
-      assertThat(count("opaa.query.count", "status", "success", "mode", "rag")).isEqualTo(1);
-      assertThat(count("opaa.query.count", "status", "success", "mode", "agent")).isZero();
+    private static QueryResult agentResult(Chat chat) {
+      return new QueryResult(
+          "Agenten-Antwort",
+          List.of(),
+          new QueryOutcome(
+              "m", 1, 1L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
+          chat.getId(),
+          null,
+          null);
     }
 
     /**
@@ -3253,7 +3143,6 @@ class QueryServiceTest {
           newQueryService(
               new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
               chatMemory,
-              Optional.empty(),
               rerankRole);
       Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
       when(chatService.findOwnedChat(chat.getId(), currentUserId)).thenReturn(Optional.of(chat));

@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -24,6 +19,7 @@ import {
   isMetadataValueComplete,
   metadataValueRequestFor,
 } from './metadataValues'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface EditMetadataValueDialogProps {
   open: boolean
@@ -70,6 +66,7 @@ export default function EditMetadataValueDialog({
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
   const [libraryField, setLibraryField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [valueMissing, setValueMissing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -121,7 +118,7 @@ export default function EditMetadataValueDialog({
   async function handleSave() {
     setError(null)
     if (!isMetadataValueComplete(field.fieldKey, value, libraryField)) {
-      setError('Bitte einen Wert angeben.')
+      setValueMissing(true)
       return
     }
     setSubmitting(true)
@@ -142,42 +139,37 @@ export default function EditMetadataValueDialog({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {field.state !== 'EMPTY' ? `${field.label} ändern` : `${field.label} setzen`}
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Dokument: {fileName}
-          </Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-          <MetadataValueForm
-            fieldKey={field.fieldKey}
-            value={value}
-            onChange={setValue}
-            vocabulary={vocabulary}
-            libraryField={libraryField}
-            disabled={submitting}
-          />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Ein von Hand gesetzter Wert wird als „manuell" gekennzeichnet und von keiner
-            automatischen Extraktion überschrieben.
-          </Typography>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleSave()}
-          disabled={submitting || !isMetadataValueComplete(field.fieldKey, value, libraryField)}
-        >
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open={open}
+      title={field.state !== 'EMPTY' ? `${field.label} ändern` : `${field.label} setzen`}
+      submitLabel="Speichern"
+      onSubmit={() => void handleSave()}
+      onClose={handleClose}
+      busy={submitting}
+      busyAnnouncement="Der Wert wird gespeichert"
+    >
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Dokument: {fileName}
+        </Typography>
+        {error && <Alert severity="error">{error}</Alert>}
+        <MetadataValueForm
+          fieldKey={field.fieldKey}
+          value={value}
+          onChange={(next) => {
+            setValue(next)
+            setValueMissing(false)
+          }}
+          vocabulary={vocabulary}
+          libraryField={libraryField}
+          disabled={submitting}
+          error={valueMissing ? 'Bitte einen Wert angeben.' : undefined}
+        />
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          Ein von Hand gesetzter Wert wird als „manuell" gekennzeichnet und von keiner automatischen
+          Extraktion überschrieben.
+        </Typography>
+      </Stack>
+    </FormDialog>
   )
 }

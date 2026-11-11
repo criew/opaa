@@ -23,7 +23,11 @@ data:
             Aus sources gehen nur Dokumenttitel, Bibliothek und Seite der Fundstellen heraus, nie
             ihre Textausschnitte, Überschriften oder Blattnamen (Dokumentinhalt), auch nicht die
             Zitate und der Abschnittspfad des gespeicherten Fundstellen-Ankers; agent_run nennt je
-            Werkzeugschritt die Unterfrage und bei run_code die Namen der erzeugten Dateien
+            Werkzeugschritt die Unterfrage, bei run_code die Namen der erzeugten Dateien und bei
+            fill_template den Namen der Vorlage mit den Namen der erzeugten Dateien, dazu Kennung und
+            Namen des Agenten, den die Person für die Frage gewählt hat, und den Fassungsstempel der
+            Antwort: Fassung des Agenten, die durchsuchbaren Bibliotheken mit Namen zum Zeitpunkt,
+            ausgefüllte Vorlagen mit Fassung und das Modell
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
@@ -64,7 +68,12 @@ data:
       verhindert die Löschung des Kontos
     evaluations: >-
       Chatsuche der Person über eigene Chats; Export eines eigenen Chats als Markdown- oder
-      PDF-Datei durch die Person; keine Auswertung durch andere, Fragen werden nicht protokolliert
+      PDF-Datei durch die Person; keine Auswertung durch andere, Fragen werden nicht protokolliert;
+      welcher Agent eine Antwort gab, steht nur an der Antwort im Chat der Person und wird nicht
+      ausgewertet. Über die Datenbank ließe sich aus Agent und Fassungsstempel ablesen, welche
+      Person wann mit welchem Agenten in welcher Fassung, welchen Bibliotheken, Vorlagen und welchem
+      Modell gearbeitet hat; die Anwendung bietet dafür keine Abfrage, die Person sieht den Stempel
+      nur an der eigenen Antwort und in ihrer Selbstauskunft
     notes:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
       - >-
@@ -76,9 +85,10 @@ data:
     purpose: >-
       Dokumente, die die Person einer Chatfrage anhängt, damit die Antwort ihren Inhalt nutzt; Text
       und Original, ohne Einbettung und ohne Aufnahme in eine Bibliothek. Das Agentenwerkzeug
-      run_code (nur mit eingeschalteter Sandbox) legt die Dateien, die ein Skript im Lauf erzeugt,
-      ohne eigene Handlung der Person als ihre Anhänge an, durch dieselben Prüfungen wie ein
-      Hochladen, und bindet sie an die Antwortnachricht
+      run_code und fill_template (nur mit eingeschalteter Sandbox) legen die Dateien, die ein Skript
+      im Lauf erzeugt oder die eine befüllte Dokumentvorlage ergibt, ohne eigene Handlung der Person
+      als ihre Anhänge an, durch dieselben Prüfungen wie ein Hochladen, und binden sie an die
+      Antwortnachricht
     personalReference: EMPLOYEE
     tables:
       - name: chat_attachments
@@ -271,13 +281,34 @@ data:
       - Jeder Abruf, auch ein verweigerter oder gescheiterter, steht als AUDIT_LOG_ACCESSED im
         Revisionsprotokoll
       - Ein fremder Lauf antwortet wie ein unbekannter
+  - id: agent-run-reservations
+    title: Platz eines laufenden Agentenlaufs
+    purpose: >-
+      Begrenzung gleichzeitiger Agentenläufe der Installation und der Stopp eines Laufs: nur wer
+      den Lauf gestartet hat, kann ihn mit dessen Stopp-Token beenden, gleich auf welcher Instanz
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: agent_run_reservations
+        personalColumns: [user_id, expires_at, cancel_requested_at]
+        nonPersonalColumns: [run_id, cancel_token_hash]
+        person:
+          excluded: >-
+            Lebt nur, solange der Lauf läuft, höchstens bis zum Ablauf der Reservierung; danach
+            entfernt
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis zum Ende des Laufs, spätestens bis zum Ablauf der Reservierung
+      settings: []
+    visibility: [niemand über die Oberfläche]
+    accessPaths: [DATABASE]
+    deletion: Mit dem Ende des Laufs; abgelaufene Reservierungen bei der nächsten Reservierung
+    evaluations: Keine; nur die Zahl der belegten Plätze wird gezählt
 nonPersonalTables:
   chat_locked_account_cleanup_state: [id, counting_since]
   chat_auto_cleanup_settings: [id, archive_after_days, delete_after_days, updated_at]
   locked_account_chat_cleanup_settings: [id, enabled, delete_after_days, updated_at]
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
   agent_workspace: [id]
-  agent_run_reservations: [run_id, expires_at]
   agent_run_log_retention_settings:
     [id, step_log_retention_days, sandbox_log_retention_days, last_run_day, updated_at]
   chat_library_references: [chat_id, library_id, organization_id]
@@ -296,9 +327,18 @@ nonPersonalTables:
     - seed_key
   agent_libraries: [agent_id, library_id]
   agent_tools: [agent_id, tool_name]
+  agent_templates: [agent_id, template_id]
   agent_settings_tools: [settings_id, tool_name]
   agent_seeds: [organization_id, seed_key, created_at]
-  document_templates: [id, asset_type, organization_id, file_name, size_bytes, sha256, placeholders]
+  document_templates:
+    - id
+    - asset_type
+    - organization_id
+    - file_name
+    - size_bytes
+    - sha256
+    - placeholders
+    - revision
   document_template_files: [template_id, content]
   prompts:
     - id

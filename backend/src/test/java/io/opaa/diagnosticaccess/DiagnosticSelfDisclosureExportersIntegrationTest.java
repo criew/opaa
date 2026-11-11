@@ -1,6 +1,7 @@
 package io.opaa.diagnosticaccess;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.compliance.SelfDisclosureLabels;
@@ -82,6 +83,26 @@ class DiagnosticSelfDisclosureExportersIntegrationTest {
         .containsEntry("revokedBy", SelfDisclosureLabels.YOU);
     assertThat(sink.records("grants").get(1).get("revokedAt")).isNotNull();
     assertForeignFree(sink);
+  }
+
+  /**
+   * An authority the person only granted, scoped to a group she may not name, keeps its record but
+   * not the group's name today; her own authority in force keeps it.
+   */
+  @Test
+  void theScopeGroupOfAnAuthorityThePersonDoesNotHoldAppearsWithoutItsName() throws Exception {
+    grant(person, other, null);
+    grant(other, person, null);
+
+    CapturingSelfDisclosureSink sink =
+        new CapturingSelfDisclosureSink(DiagnosticImpersonationSelfDisclosureExporter.CATEGORY);
+    impersonation.export(subject(), sink);
+
+    assertThat(sink.records("grants"))
+        .extracting(r -> r.get("holder"), r -> r.get("scope"))
+        .containsExactlyInAnyOrder(
+            tuple(SelfDisclosureLabels.YOU, "Amt für Bauwesen"),
+            tuple(SelfDisclosureLabels.OTHER_PERSON, "(kein Leserecht)"));
   }
 
   @Test

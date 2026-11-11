@@ -1,6 +1,7 @@
 package io.opaa.chat.web;
 
 import io.opaa.api.dto.AgentRunEndState;
+import io.opaa.api.dto.AgentRunStampTemplate;
 import io.opaa.api.dto.AgentRunStep;
 import io.opaa.api.dto.AgentRunStepStatus;
 import io.opaa.api.dto.ChatDetail;
@@ -9,6 +10,7 @@ import io.opaa.api.dto.ChatNoteItem;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChatSummaryPage;
 import io.opaa.api.dto.ChunkLocation;
+import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.api.dto.SourceBlock;
 import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.dto.SourceFreeze;
@@ -17,6 +19,7 @@ import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.chat.AgentRunRecord;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
@@ -121,7 +124,7 @@ public final class ChatResponseMapper {
     if (turn.getRole() == ChatRole.ASSISTANT) {
       response.privateSourcesInContext(ChatSource.anyPrivate(turn.getSources()));
       response.evidence(toEvidence(turn.getEvidence()));
-      response.agentRun(toAgentRun(turn.getAgentRun()));
+      response.agentRun(toAgentRun(turn.getAgentRun(), turn.getCurrentAgentRevision()));
     }
     response.attachments(ChatAttachmentResponseMapper.toRefs(turn.getAttachments()));
     UsedPrompt usedPrompt = turn.getUsedPrompt();
@@ -153,19 +156,51 @@ public final class ChatResponseMapper {
    * The agent run of an answer, {@code null} for none. Also used by {@code QueryResponseMapper}.
    */
   public static io.opaa.api.dto.AgentRun toAgentRun(AgentRunRecord run) {
+    return toAgentRun(run, null);
+  }
+
+  /**
+   * The agent run of an answer with the stamped agent's current revision ({@code null}: unknown or
+   * not readable any more).
+   */
+  static io.opaa.api.dto.AgentRun toAgentRun(AgentRunRecord run, Integer currentAgentRevision) {
     if (run == null) {
       return null;
     }
     return new io.opaa.api.dto.AgentRun(
-        run.runId(),
-        AgentRunEndState.valueOf(run.endState().name()),
-        run.steps().stream()
-            .map(
-                step ->
-                    new AgentRunStep(step.tool(), AgentRunStepStatus.valueOf(step.status().name()))
-                        .detail(step.detail())
-                        .hits(step.hits()))
-            .toList());
+            run.runId(),
+            AgentRunEndState.valueOf(run.endState().name()),
+            run.steps().stream()
+                .map(
+                    step ->
+                        new AgentRunStep(
+                                step.tool(), AgentRunStepStatus.valueOf(step.status().name()))
+                            .detail(step.detail())
+                            .hits(step.hits()))
+                .toList())
+        .agentId(run.agentId())
+        .agentName(run.agentName())
+        .stamp(toStamp(run.stamp(), currentAgentRevision));
+  }
+
+  private static io.opaa.api.dto.AgentRunStamp toStamp(
+      AgentRunStamp stamp, Integer currentAgentRevision) {
+    if (stamp == null) {
+      return null;
+    }
+    return new io.opaa.api.dto.AgentRunStamp(
+            stamp.agentRevision(),
+            stamp.libraries().stream()
+                .map(library -> new SearchedLibrary(library.id(), library.name()))
+                .toList(),
+            stamp.templates().stream()
+                .map(
+                    template ->
+                        new AgentRunStampTemplate(
+                            template.id(), template.name(), template.revision()))
+                .toList())
+        .currentAgentRevision(currentAgentRevision)
+        .model(stamp.model());
   }
 
   /** Also used by {@code QueryResponseMapper}. */

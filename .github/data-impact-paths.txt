@@ -115,7 +115,6 @@ backend/src/main/java/io/opaa/chat/ChatTitleGenerationService.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtraction.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtractionService.java
 backend/src/main/java/io/opaa/query/sandbox/**/*.java
-backend/src/main/java/io/opaa/query/spike/**/*.java
 backend/src/main/java/io/opaa/query/toolloop/**/*.java
 # Tool check of a chat model: fictional cases and their system prompt sent to the model endpoint
 backend/src/main/java/io/opaa/query/toolcheck/**/*.java

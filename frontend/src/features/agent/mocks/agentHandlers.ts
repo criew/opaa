@@ -7,6 +7,7 @@ import type {
 } from '@/shared/api/types'
 import { mockGroups } from '../../group/mocks/groupFixtures'
 import { mockMyCapabilities } from '../../capability/mocks/capabilityFixtures'
+import { mockDocumentTemplateState } from '../../document-template/mocks/documentTemplateFixtures'
 import { mockAgentSettings, mockAgents } from './agentFixtures'
 
 function notFound() {
@@ -29,6 +30,17 @@ const offline = () => !mockAgentSettings.enabled
 export const agentHandlers = [
   http.get('/api/v1/agents/availability', () =>
     HttpResponse.json({ enabled: mockAgentSettings.enabled }),
+  ),
+
+  // Every readable agent stands in every space of the mock; switched off, nothing is offered.
+  http.get('/api/v1/agents/available', () =>
+    HttpResponse.json(
+      offline()
+        ? []
+        : Object.values(mockAgents)
+            .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+            .map((agent) => ({ id: agent.id, name: agent.name, description: agent.description })),
+    ),
   ),
 
   http.get('/api/v1/agents', () =>
@@ -62,6 +74,8 @@ export const agentHandlers = [
       instruction: '',
       libraries: [],
       hiddenLibraryCount: 0,
+      templates: [],
+      hiddenTemplateCount: 0,
       toolNames: ['search_knowledge', 'read_document'],
       planStep: 'OFF',
       limits: {},
@@ -100,10 +114,37 @@ export const agentHandlers = [
         (id) =>
           agent.libraries.find((library) => library.id === id) ?? { id, name: `Bibliothek ${id}` },
       ),
+      templates:
+        body.templateIds == null
+          ? agent.templates
+          : body.templateIds.map((id) => ({
+              id,
+              name:
+                agent.templates.find((template) => template.id === id)?.name ??
+                mockDocumentTemplateState.templates[id]?.name ??
+                `Vorlage ${id}`,
+            })),
       toolNames: body.toolNames,
       planStep: body.planStep,
       limits: body.limits,
-      revision: agent.revision + 1,
+      // Like the backend: only a change of what a run uses is a new revision, never a new name.
+      revision:
+        JSON.stringify([
+          agent.instruction,
+          agent.libraries.map((library) => library.id),
+          agent.toolNames,
+          agent.planStep,
+          agent.limits,
+        ]) ===
+        JSON.stringify([
+          body.instruction,
+          body.libraryIds,
+          body.toolNames,
+          body.planStep,
+          body.limits,
+        ])
+          ? agent.revision
+          : agent.revision + 1,
       updatedAt: new Date().toISOString(),
     }
     mockAgents[agent.id] = updated

@@ -8,6 +8,8 @@ import { mockMailSettings, mockMailTemplates, setMockMailSettings } from '../moc
 import { MAIL_FAILING_HOST } from '../mocks/mailHandlers'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
+import { mockLocalAccount } from '@/shared/mocks/authFixtures'
+import { RECENT_LOGIN_REQUIRED_MESSAGE } from '@/shared/session/recentLogin'
 import { useMailStore } from '../stores/mailStore'
 import type { MailSettingsUpdateRequest, MailTemplateUpdateRequest } from '@/shared/api/types'
 import MailSettingsPage from './MailSettingsPage'
@@ -32,6 +34,23 @@ function renderPage(route = '/admin/mail/server') {
       <Route path="/admin/mail/:tab" element={<MailSettingsPage />} />
     </Routes>,
     { withRouter: true, initialRoute: route },
+  )
+}
+
+function recentLoginRefusal() {
+  return HttpResponse.json(
+    {
+      code: 'RECENT_LOGIN_REQUIRED',
+      reason: 'AUTH_TIME_TOO_OLD',
+      message: 'Bitte bestätigen Sie Ihre Identität durch erneute Anmeldung.',
+    },
+    { status: 403 },
+  )
+}
+
+function reauthenticated() {
+  return http.post('*/api/v1/auth/local/reauthenticate', () =>
+    HttpResponse.json({ accessToken: 'recent-token', expiresInSeconds: 900, tokenType: 'Bearer' }),
   )
 }
 
@@ -93,6 +112,70 @@ describe('MailSettingsPage', () => {
     expect(sent!.password).toBe('***')
     expect(sent!.host).toBe('smtp.neu.example')
     expect(sent!.username).toBe('opaa')
+  })
+
+  it('bestätigt vor dem Speichern des Zugangs die Anmeldung und speichert danach ohne neue Eingabe', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    const sent: MailSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/system/mail-settings', async ({ request }) => {
+        sent.push((await request.json()) as MailSettingsUpdateRequest)
+        if (sent.length === 1) return recentLoginRefusal()
+        return HttpResponse.json({ ...mockMailSettings, fromName: sent[1].fromName })
+      }),
+      reauthenticated(),
+    )
+    renderPage()
+
+    const fromName = await screen.findByRole('textbox', { name: /Absendername/ })
+    await user.clear(fromName)
+    await user.type(fromName, 'Stadtverwaltung')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    expect(within(confirm).getByText(/Einladungen und Links zum Zurücksetzen/)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+    await waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent[1].fromName).toBe('Stadtverwaltung')
+    expect(
+      await screen.findByText('Die E-Mail-Einstellungen wurden gespeichert.'),
+    ).toBeInTheDocument()
+  })
+
+  it('bestätigt vor dem Speichern einer Vorlage die Anmeldung und erklärt eine erneute Ablehnung', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    let saves = 0
+    server.use(
+      http.put('/api/v1/system/mail-templates/:templateKey', () => {
+        saves += 1
+        return recentLoginRefusal()
+      }),
+      reauthenticated(),
+    )
+    renderPage('/admin/mail/templates')
+
+    const list = await screen.findByRole('navigation', { name: 'Vorlagen' })
+    await user.click(within(list).getByText('Testnachricht'))
+    const subject = await screen.findByLabelText('Betreff')
+    await user.type(subject, ' neu')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+    await waitFor(() => expect(saves).toBe(2))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Anmeldung bestätigen' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(await screen.findByText(RECENT_LOGIN_REQUIRED_MESSAGE)).toBeInTheDocument()
   })
 
   it('verlangt das Passwort neu, wenn sich die Verbindung ändert, und zeigt die Ablehnung am Feld', async () => {

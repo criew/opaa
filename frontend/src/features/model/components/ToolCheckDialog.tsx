@@ -2,13 +2,10 @@ import { useEffect, useId, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
+import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
@@ -17,15 +14,16 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
+import DownloadIcon from '@mui/icons-material/Download'
 import type {
   LlmModelResponse,
   LlmModelToolCheckResponse,
   ToolCapability,
 } from '@/shared/api/types'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 import {
   getLatestLlmModelToolCheck,
   getLlmModelToolCheckReport,
@@ -61,8 +59,6 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
   const [repetitions, setRepetitions] = useState(1)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const titleId = useId()
-  const narrow = useMediaQuery(useTheme().breakpoints.down('sm'))
   const repetitionsId = useId()
 
   // a tick re-reads the check: once on opening, then every TOOL_CHECK_POLL_MS while it runs
@@ -132,101 +128,101 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
   const canStart = loaded && !running
 
   return (
-    <Dialog
+    <ViewDialog
       open={open}
+      title="Werkzeuge prüfen"
       onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      fullScreen={narrow}
-      aria-labelledby={titleId}
+      titleActions={
+        check?.status === 'COMPLETED' && (
+          <Tooltip title="Bericht herunterladen">
+            <IconButton aria-label="Bericht herunterladen" onClick={() => void download(check)}>
+              <DownloadIcon />
+            </IconButton>
+          </Tooltip>
+        )
+      }
     >
-      <DialogTitle id={titleId}>Werkzeuge prüfen</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
-          Die Prüfung stellt dem Modell „{model.displayName}“ (
-          <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
-            {model.modelIdentifier}
-          </Box>
-          ) erfundene Fragen mit dem Suchwerkzeug der Agenten und bewertet, ob es das Werkzeug
-          richtig aufruft. Sie misst nur und ändert die Werkzeugfähigkeit nicht. Sie dauert je nach
-          Modell einige Minuten und läuft weiter, wenn Sie den Dialog schließen.
-        </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
+        Die Prüfung stellt dem Modell „{model.displayName}“ (
+        <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
+          {model.modelIdentifier}
+        </Box>
+        ) erfundene Fragen mit dem Suchwerkzeug der Agenten und bewertet, ob es das Werkzeug richtig
+        aufruft. Sie misst nur und ändert die Werkzeugfähigkeit nicht. Sie dauert je nach Modell
+        einige Minuten und läuft weiter, wenn Sie den Dialog schließen.
+      </Typography>
 
-        {running && check && <Progress check={check} />}
-        {check && check.status === 'COMPLETED' && <Result check={check} />}
-        {check && check.status === 'FAILED' && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Die letzte Prüfung ist gescheitert: {check.failure}
-          </Alert>
-        )}
-        {check && check.status === 'ABORTED' && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Die letzte Prüfung wurde abgebrochen, weil sie lange kein Lebenszeichen gab, etwa nach
-            einem Neustart des Servers. Starten Sie sie erneut.
-          </Alert>
-        )}
-        {check && check.status === 'COMPLETED' && !check.currentCombination && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Das Ergebnis gilt für eine frühere Adresse oder Modell-Kennung und lässt sich nicht
-            übernehmen. Prüfen Sie erneut.
-          </Alert>
-        )}
+      {running && check && <Progress check={check} />}
+      {check && check.status === 'COMPLETED' && <Result check={check} />}
+      {check && check.status === 'FAILED' && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Die letzte Prüfung ist gescheitert: {check.failure}
+        </Alert>
+      )}
+      {check && check.status === 'ABORTED' && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Die letzte Prüfung wurde abgebrochen, weil sie lange kein Lebenszeichen gab, etwa nach
+          einem Neustart des Servers. Starten Sie sie erneut.
+        </Alert>
+      )}
+      {check && check.status === 'COMPLETED' && !check.currentCombination && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Das Ergebnis gilt für eine frühere Adresse oder Modell-Kennung und lässt sich nicht
+          übernehmen. Prüfen Sie erneut.
+        </Alert>
+      )}
 
-        {canStart && (
-          <FormControl sx={{ display: 'block', mt: 1 }}>
-            <FormLabel id={repetitionsId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
-              {check ? 'Erneut prüfen' : 'Umfang der Prüfung'}
-            </FormLabel>
-            <RadioGroup
-              aria-labelledby={repetitionsId}
-              value={String(repetitions)}
-              onChange={(e) => setRepetitions(Number(e.target.value))}
-            >
-              {TOOL_CHECK_REPETITIONS.map((option) => (
-                <FormControlLabel
-                  key={option.value}
-                  value={String(option.value)}
-                  control={<Radio size="small" />}
-                  sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
-                  label={
-                    <Box>
-                      <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
-                        {option.label}
-                      </Typography>
-                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                        {option.hint}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
-        )}
-      </DialogContent>
-      <DialogActions>
-        {check?.status === 'COMPLETED' && (
-          <Button onClick={() => void download(check)}>Bericht herunterladen</Button>
-        )}
-        <Box sx={{ flex: 1 }} />
-        <Button onClick={onClose}>Schließen</Button>
-        {proposal && (
-          <Button variant="outlined" onClick={() => onAdopt(proposal)}>
-            Ergebnis übernehmen
-          </Button>
-        )}
-        {canStart && (
-          <Button variant="contained" onClick={() => void start()} disabled={starting}>
-            {starting ? 'Wird gestartet …' : 'Prüfung starten'}
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+      {canStart && (
+        <FormControl sx={{ display: 'block', mt: 1 }}>
+          <FormLabel id={repetitionsId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
+            {check ? 'Erneut prüfen' : 'Umfang der Prüfung'}
+          </FormLabel>
+          <RadioGroup
+            aria-labelledby={repetitionsId}
+            value={String(repetitions)}
+            onChange={(e) => setRepetitions(Number(e.target.value))}
+          >
+            {TOOL_CHECK_REPETITIONS.map((option) => (
+              <FormControlLabel
+                key={option.value}
+                value={String(option.value)}
+                control={<Radio size="small" />}
+                sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
+                label={
+                  <Box>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                      {option.label}
+                    </Typography>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+                      {option.hint}
+                    </Typography>
+                  </Box>
+                }
+              />
+            ))}
+          </RadioGroup>
+        </FormControl>
+      )}
+      {(proposal || canStart) && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+          {proposal && (
+            <Button variant="outlined" onClick={() => onAdopt(proposal)}>
+              Ergebnis übernehmen
+            </Button>
+          )}
+          {canStart && (
+            <Button variant="contained" onClick={() => void start()} disabled={starting}>
+              {starting ? 'Wird gestartet …' : 'Prüfung starten'}
+            </Button>
+          )}
+        </Box>
+      )}
+    </ViewDialog>
   )
 }
 

@@ -12,6 +12,7 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureLabels;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.permission.ReadableAssetNames;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 /**
  * The category {@code groups} of the self-disclosure: the person's group memberships, the groups
  * she is responsible for and the responsibilities she appointed. Another person is "andere Person",
- * an appointment without appointing person "System".
+ * an appointment without appointing person "System". Her own memberships and responsibilities are
+ * current and keep the group's name; a group in which she only appointed somebody else appears
+ * without its name once she may no longer see it ({@link ReadableAssetNames}).
  */
 @Component
 public class GroupSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -53,9 +56,12 @@ public class GroupSelfDisclosureExporter implements SelfDisclosureExporter {
   private final JdbcTemplate jdbc;
   private final SelfDisclosureSectionReader reader;
 
+  private final ReadableAssetNames names;
+
   public GroupSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc, PlatformTransactionManager transactionManager, ReadableAssetNames names) {
     this.jdbc = jdbc;
+    this.names = names;
     this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
@@ -92,29 +98,38 @@ public class GroupSelfDisclosureExporter implements SelfDisclosureExporter {
         sink,
         "stewardships",
         (afterTime, afterId, limit) ->
-            jdbc.query(
-                "SELECT s.id, g.name, s.user_id, s.appointed_by_user_id, s.created_at"
-                    + " FROM group_stewards s JOIN groups g ON g.id = s.group_id"
-                    + " WHERE s.organization_id = ? AND (s.user_id = ? OR s.appointed_by_user_id = ?)"
-                    + " AND (s.created_at, s.id) > (?, ?) ORDER BY s.created_at, s.id LIMIT ?",
-                (rs, i) -> {
-                  Map<String, Object> record = keyed(rs, "created_at", "id");
-                  record.put("group", rs.getString("name"));
-                  record.put("steward", who(rs.getObject("user_id", UUID.class), me, null));
-                  record.put(
-                      "appointedBy",
-                      who(
-                          rs.getObject("appointed_by_user_id", UUID.class),
-                          me,
-                          SelfDisclosureLabels.SYSTEM));
-                  record.put("createdAt", instant(rs.getTimestamp("created_at")));
-                  return record;
-                },
-                subject.organizationId(),
+            names.apply(
                 me,
-                me,
-                afterTime,
-                afterId,
-                limit));
+                jdbc.query(
+                    "SELECT s.id, s.group_id, g.name, s.user_id, s.appointed_by_user_id, s.created_at"
+                        + " FROM group_stewards s JOIN groups g ON g.id = s.group_id"
+                        + " WHERE s.organization_id = ? AND (s.user_id = ? OR s.appointed_by_user_id = ?)"
+                        + " AND (s.created_at, s.id) > (?, ?) ORDER BY s.created_at, s.id LIMIT ?",
+                    (rs, i) -> {
+                      Map<String, Object> record = keyed(rs, "created_at", "id");
+                      record.put("group", rs.getString("name"));
+                      record.put("steward", who(rs.getObject("user_id", UUID.class), me, null));
+                      record.put(
+                          "appointedBy",
+                          who(
+                              rs.getObject("appointed_by_user_id", UUID.class),
+                              me,
+                              SelfDisclosureLabels.SYSTEM));
+                      record.put("createdAt", instant(rs.getTimestamp("created_at")));
+                      if (!me.equals(rs.getObject("user_id", UUID.class))) {
+                        ReadableAssetNames.mark(
+                            record,
+                            "group",
+                            rs.getObject("group_id", UUID.class),
+                            ReadableAssetNames.GROUP);
+                      }
+                      return record;
+                    },
+                    subject.organizationId(),
+                    me,
+                    me,
+                    afterTime,
+                    afterId,
+                    limit)));
   }
 }

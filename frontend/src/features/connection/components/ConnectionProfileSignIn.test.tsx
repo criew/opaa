@@ -83,7 +83,7 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    const dialog = await screen.findByRole('dialog', { name: 'Neuer Zugang' })
     await chooseSourceType(user, dialog, /Google Drive/)
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Drive')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))

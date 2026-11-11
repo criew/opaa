@@ -1,8 +1,8 @@
 import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MessageList, { ANSWER_ARRIVED_ANNOUNCEMENT } from './MessageList'
-import { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
-import type { ChatMessage } from '../types/chat'
+import { AGENT_PROVISIONAL_ANSWER_LABEL, PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
+import type { ChatMessage, LiveAgentRun } from '../types/chat'
 
 describe('MessageList', () => {
   it('renders empty state when no messages', () => {
@@ -216,6 +216,139 @@ describe('MessageList', () => {
 
       expect(screen.getByText('Denkt nach …')).toBeInTheDocument()
       expect(screen.queryByTestId('provisional-answer')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('while an agent works', () => {
+    const question: ChatMessage = {
+      id: '1',
+      role: 'user',
+      content: 'Was regelt die Dienstvereinbarung?',
+      timestamp: new Date(),
+    }
+    const running: LiveAgentRun = {
+      steps: [
+        { index: 0, tool: 'search_knowledge', detail: 'Rufbereitschaft', hits: 4, status: 'DONE' },
+        { index: 1, tool: 'search_knowledge', detail: 'Dienstvereinbarung' },
+      ],
+      limitReached: false,
+      ended: false,
+    }
+
+    it('names the running step in the one status and lists the steps outside any live region', () => {
+      render(<MessageList messages={[question]} isLoading streamingRun={running} />)
+
+      const status = screen
+        .getByText('Sucht nach „Dienstvereinbarung“ …')
+        .closest('[role="status"]')
+      expect(status).not.toBeNull()
+      expect(screen.getAllByRole('progressbar', { hidden: true })).toHaveLength(1)
+      const list = screen.getByRole('list', { name: 'Schritte' })
+      expect(
+        within(list)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+      ).toEqual(['Suche: Rufbereitschaft · 4 Treffer', 'Suche: Dienstvereinbarung · Läuft'])
+      expect(list.closest('[aria-live], [role="status"]')).toBeNull()
+      expect(screen.queryByText(/search_knowledge/)).not.toBeInTheDocument()
+    })
+
+    it('keeps the last step in the status between two steps, so each is announced once', () => {
+      const between: LiveAgentRun = {
+        steps: [{ ...running.steps[0] }],
+        limitReached: false,
+        ended: false,
+      }
+      render(<MessageList messages={[question]} isLoading streamingRun={between} />)
+
+      expect(screen.getByText('Sucht nach „Rufbereitschaft“ …')).toBeInTheDocument()
+      expect(screen.queryByText('Denkt nach …')).not.toBeInTheDocument()
+    })
+
+    it('names a long sub-question shortened on one line', () => {
+      const long = 'Wie regelt die Dienstvereinbarung '.repeat(5).trim()
+      render(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingRun={{
+            steps: [{ index: 0, tool: 'search_knowledge', detail: long }],
+            limitReached: false,
+            ended: false,
+          }}
+        />,
+      )
+
+      const status = screen.getByText(/^Sucht nach/)
+      expect(status.textContent!.length).toBeLessThanOrEqual('Sucht nach „“ …'.length + 60)
+      expect(status.textContent).toContain('…“')
+      expect(status.className).toMatch(/noWrap/)
+    })
+
+    it('names a reached limit, then shows the steps where the kept answer will show them', () => {
+      const atLimit: LiveAgentRun = {
+        runId: '00000000-0000-4000-8000-000000000001',
+        steps: [{ ...running.steps[0] }],
+        limitReached: true,
+        ended: false,
+      }
+      const { rerender } = render(
+        <MessageList messages={[question]} isLoading streamingRun={atLimit} />,
+      )
+      const status = screen.getByText(/Grenze erreicht/).closest('[role="status"]')
+
+      rerender(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingRun={{ ...atLimit, ended: true, endState: 'LIMIT_CALLS' }}
+          streamingAnswer="Die Dienstvereinbarung regelt die Rufbereitschaft."
+        />,
+      )
+
+      expect(screen.getByText(AGENT_PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).toBe(
+        status,
+      )
+      expect(AGENT_PROVISIONAL_ANSWER_LABEL).toBe('Belege werden geprüft … Vorläufig.')
+      expect(screen.queryByRole('list', { name: 'Schritte' })).not.toBeInTheDocument()
+      const provisional = screen.getByTestId('provisional-answer')
+      const text = within(provisional).getByText(
+        'Die Dienstvereinbarung regelt die Rufbereitschaft.',
+      )
+      const steps = within(provisional).getByRole('button', { name: /1 Schritt/ })
+      expect(steps).toHaveAttribute('aria-expanded', 'false')
+      expect(text.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(within(provisional).getByText('nicht geprüft')).toBeInTheDocument()
+      expect(within(provisional).queryByRole('button', { name: /Kopieren/ })).toBeNull()
+    })
+
+    it('shows the agent step in the chat status line, the same as an ordinary answer', () => {
+      render(<MessageList messages={[question]} isLoading streamingRun={running} />)
+
+      expect(screen.getByTestId('chat-status-line')).toHaveTextContent(
+        'Sucht nach „Dienstvereinbarung“ …',
+      )
+    })
+
+    it('names the provisional evidence once, in the status line only (#3743)', () => {
+      render(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingRun={{ ...running, ended: true }}
+          streamingAnswer="Die Dienstvereinbarung regelt die Rufbereitschaft."
+        />,
+      )
+
+      const hints = screen.getAllByText(/Vorläufig|Belege noch nicht geprüft/)
+      expect(hints).toHaveLength(1)
+      expect(within(screen.getByTestId('chat-status-line')).getByText(/Vorläufig/)).toBe(hints[0])
+    })
+
+    it('shows no steps once the answer is complete', () => {
+      render(<MessageList messages={[question]} isLoading={false} streamingRun={running} />)
+
+      expect(screen.queryByRole('list', { name: 'Schritte' })).not.toBeInTheDocument()
     })
   })
 })

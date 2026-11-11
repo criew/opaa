@@ -20,6 +20,10 @@
 OPAA prüft jeden Beleg selbst: Hat die Antwort das Dokument wirklich gesehen, und passen Beträge,
 Daten und Paragrafen? Was durchfällt, heißt **„Beleg nicht bestätigt“** und trägt ein Warnsymbol.
 
+Die Antwort eines Agenten trägt zusätzlich die Kennzeichnung „Entwurf“ und einen Stempel mit
+Agent, Fassung, Bibliotheken, Vorlagen und Modell; wie Sie ihn lesen, steht unter
+[Agentenergebnis prüfen](agentenergebnis-pruefen.md). Der Belegstand gilt für sie genauso.
+
 PDFs öffnen auf der Seite der Fundstelle, Office-Dateien und Mails als Textfassung an der Passage,
 Confluence-Seiten an der Quelle. Bei einem gescannten PDF stammt der Text aus der Texterkennung;
 Beleg und Ansicht tragen dann den Hinweis „Maschinell erkannt, maßgeblich ist das Original“.

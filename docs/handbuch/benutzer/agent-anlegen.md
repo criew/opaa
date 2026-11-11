@@ -10,13 +10,15 @@ Agenten gibt es nur, wenn die Systemverwaltung sie eingeschaltet hat. Das Anlege
 niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“.
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Agenten“ und „Weiter“.
-2. Name, Zweck und Eigentümer angeben, „Agent anlegen“. Der Zweck steht später in der Auswahl im
-   Chat unter dem Namen.
+2. **Stammdaten:** Name und Zweck. Der Zweck steht später in der Auswahl im Chat unter dem Namen.
+   **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“, auf Wunsch Rollen vormerken.
+   **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 3. Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen darf,
    und mit den Werkzeugen „Im Wissen suchen“ und „Dokument lesen“.
 4. Auf seiner Seite jede Zeile mit „Ändern“ einrichten:
     - **Auftrag:** was der Agent tun soll. Er ergänzt die festen Regeln von OPAA, ersetzt sie nicht.
-    - **Wissen und Werkzeuge:** Bibliotheken zur Eingrenzung und die Werkzeuge, die er nutzen darf.
+    - **Wissen und Werkzeuge:** Bibliotheken zur Eingrenzung, die Werkzeuge, die er nutzen darf,
+      und die Vorlagen, nach denen er sein Ergebnis als Datei ablegt (siehe unten).
     - **Ablauf:** gleich loslegen oder erst den Plan bestätigen lassen; unter „Erweitert“ eigene
       Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge.
 5. Im Reiter „Freigaben“ Personen oder Gruppen berechtigen, im Reiter „Zuordnungen“ Spaces wählen.
@@ -28,12 +30,26 @@ erweitern nichts: Wer eine Bibliothek nicht lesen darf, erhält auch über den A
 Eine Bibliothek, die ein anderer Verwalter zugeordnet hat und die Sie nicht lesen dürfen, zählt die
 Seite nur, statt sie zu nennen; beim Speichern bleibt sie erhalten.
 
+## Ergebnis als Datei nach Vorlage
+
+Unter „Vorlagen“ wählen Sie eine oder mehrere [Vorlagen](vorlage-anlegen.md), die Sie lesen
+dürfen; dieselbe Vorlage kann mehreren Agenten dienen. Die Zeile erscheint nur, wenn die
+Systemverwaltung Vorlagen eingeschaltet hat. Der Agent füllt eine Vorlage aus, wenn er zusätzlich
+das Werkzeug „Vorlage ausfüllen“ hat, und hängt das Ergebnis als Word-Datei und PDF an die
+Antwort. Ohne zugeordnete Vorlage bietet ein Lauf das Werkzeug nicht an; ist keine zugeordnete
+Vorlage nutzbar, etwa weil Vorlagen ausgeschaltet sind, antwortet der Agent im Chat und sagt das
+dazu.
+
+Ein Lauf nutzt nur die zugeordneten Vorlagen, die die aufrufende Person lesen darf. Wie bei den
+Bibliotheken zählt die Seite eine Vorlage, die Sie nicht lesen dürfen, nur; beim Speichern bleibt
+sie erhalten. Eine gelöschte Vorlage fällt aus der Zuordnung.
+
 **Rollen am Agenten:**
 
 | Rolle | Darf |
 |---|---|
 | Leser | den Agenten im Chat aufrufen und seine Einrichtung sehen |
-| Verwalter | zusätzlich Name, Zweck, Auftrag, Wissen, Werkzeuge, Ablauf und Rechte ändern |
+| Verwalter | zusätzlich Name, Zweck, Auftrag, Wissen, Werkzeuge, Vorlagen, Ablauf und Rechte ändern |
 | Eigentümer | zusätzlich den Agenten löschen und übergeben |
 
 **Gut zu wissen:**

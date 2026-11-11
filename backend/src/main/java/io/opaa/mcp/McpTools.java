@@ -130,7 +130,7 @@ class McpTools {
                   library -> {
                     Map<String, Object> entry = new LinkedHashMap<>();
                     entry.put("id", library.id().toString());
-                    entry.put("name", library.name());
+                    entry.put("name", McpForeignContent.strip(library.name()));
                     return entry;
                   })
               .toList());
@@ -176,7 +176,11 @@ class McpTools {
     CurrentUser caller = McpRequestContext.callerOf(context);
     try {
       List<SearchableLibrary> libraries = searchService.libraries(caller);
-      return result(Map.of("libraries", libraries.stream().map(McpTools::asMap).toList()));
+      McpForeignContent foreign = McpForeignContent.forResult();
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put(McpForeignContent.NOTICE_FIELD, McpForeignContent.LIBRARIES_NOTICE);
+      result.put("libraries", libraries.stream().map(library -> asMap(library, foreign)).toList());
+      return result(result);
     } catch (TooManyRequestsException e) {
       return error(e.getMessage());
     }
@@ -197,7 +201,7 @@ class McpTools {
     entry.put("title", McpForeignContent.strip(hit.title()));
     entry.put("text", foreign.wrap(condensed.excerpt()));
     entry.put("libraryId", hit.libraryId() == null ? null : hit.libraryId().toString());
-    entry.put("library", hit.libraryName());
+    entry.put("library", McpForeignContent.strip(hit.libraryName()));
     entry.put("documentId", hit.documentId() == null ? null : hit.documentId().toString());
     entry.put("document", McpForeignContent.strip(hit.fileName()));
     entry.put("location", McpForeignContent.strip(hit.location()));
@@ -224,7 +228,7 @@ class McpTools {
     entry.put("title", McpForeignContent.strip(passage.title()));
     entry.put("text", foreign.wrap(passage.text()));
     entry.put("libraryId", passage.libraryId() == null ? null : passage.libraryId().toString());
-    entry.put("library", passage.libraryName());
+    entry.put("library", McpForeignContent.strip(passage.libraryName()));
     entry.put("documentId", passage.documentId() == null ? null : passage.documentId().toString());
     entry.put("document", McpForeignContent.strip(passage.fileName()));
     entry.put("location", McpForeignContent.strip(passage.location()));
@@ -239,11 +243,13 @@ class McpTools {
     return entry;
   }
 
-  private static Map<String, Object> asMap(SearchableLibrary library) {
+  /** A library as foreign content: its name freed of the fence keyword, its description fenced. */
+  private static Map<String, Object> asMap(SearchableLibrary library, McpForeignContent foreign) {
     Map<String, Object> entry = new LinkedHashMap<>();
     entry.put("id", library.id().toString());
-    entry.put("name", library.name());
-    entry.put("description", library.description());
+    entry.put(McpForeignContent.FLAG, true);
+    entry.put("name", McpForeignContent.strip(library.name()));
+    entry.put("description", foreign.wrap(library.description()));
     return entry;
   }
 

@@ -391,7 +391,10 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     await new Promise((resolve) => setTimeout(resolve, 600))
 
     expect(dialog.queryByText('Modell B wurde abgelehnt.')).not.toBeInTheDocument()
-    expect(dialog.getByRole('button', { name: 'Verbindung wird getestet …' })).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Verbindung testen' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
     expect(
       await dialog.findByText('Modell A hat geantwortet.', {}, { timeout: 2000 }),
     ).toBeInTheDocument()

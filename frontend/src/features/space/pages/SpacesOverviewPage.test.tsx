@@ -204,8 +204,8 @@ describe('SpacesOverviewPage (#593)', () => {
     })
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
-    expect(screen.getByText(/Noch kein Space/)).toBeInTheDocument()
+    expect(screen.getByText('Noch keine Spaces.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Neuen Space anlegen' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Neuer Space' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Neuer Space' })).toHaveLength(2)
   })
 })
