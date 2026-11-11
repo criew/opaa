@@ -2,6 +2,7 @@ package io.opaa.query.sandbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -520,11 +521,32 @@ class OpenSandboxClientTest {
         .hasMessageContaining("api-key");
   }
 
+  @Test
+  void aKeyNoHeaderCanCarryIsRefusedWithoutNamingIt() {
+    String key = "SENTINELsandboxSchluessel6Hn";
+    OpenSandboxClient client =
+        new OpenSandboxClient(
+            properties("http://127.0.0.1:9", key + "\n"), objectMapper, new SimpleMeterRegistry());
+
+    Throwable thrown =
+        catchThrowable(() -> client.open(Duration.ofMinutes(5), Duration.ofSeconds(1)));
+
+    assertThat(thrown).isNotNull();
+    for (Throwable t = thrown; t != null; t = t.getCause()) {
+      assertThat(String.valueOf(t.getMessage())).doesNotContain(key);
+    }
+    client.close();
+  }
+
   private static SandboxProperties properties(String baseUrl) {
+    return properties(baseUrl, "key");
+  }
+
+  private static SandboxProperties properties(String baseUrl, String apiKey) {
     return new SandboxProperties(
         true,
         baseUrl,
-        "key",
+        apiKey,
         "opaa/sandbox-python:1",
         Duration.ofSeconds(10),
         Duration.ofMinutes(15),

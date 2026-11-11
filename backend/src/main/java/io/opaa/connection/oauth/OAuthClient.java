@@ -1,5 +1,6 @@
 package io.opaa.connection.oauth;
 
+import io.opaa.common.HeaderValues;
 import io.opaa.compliance.DataFlow;
 import io.opaa.connection.profile.ClientRegistration;
 import io.opaa.connection.profile.ProfileEndpoints;
@@ -192,7 +193,8 @@ public final class OAuthClient {
           if (accessToken == null) {
             return false;
           }
-          headers.put("Authorization", "Bearer " + accessToken);
+          headers.put(
+              "Authorization", "Bearer " + HeaderValues.requireSafe(accessToken, "access token"));
         }
         case Revocation.None ignored -> {
           return false;

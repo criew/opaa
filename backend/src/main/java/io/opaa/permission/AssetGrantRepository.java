@@ -1,6 +1,7 @@
 package io.opaa.permission;
 
 import io.opaa.api.types.AssetGrantSubjectType;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -102,6 +104,20 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
 
   Optional<AssetGrant> findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
       AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType, UUID subjectGroupId);
+
+  /**
+   * The grant of {@code groupId} on the asset, locked until the caller's transaction ends: a role
+   * or expiry computed from it cannot be written back over a change committed meanwhile.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      "SELECT g FROM AssetGrant g WHERE g.assetType = :assetType AND g.assetId = :assetId"
+          + " AND g.subjectType = io.opaa.api.types.AssetGrantSubjectType.GROUP"
+          + " AND g.subjectGroupId = :groupId")
+  Optional<AssetGrant> findGroupGrantForUpdate(
+      @Param("assetType") AssetType assetType,
+      @Param("assetId") UUID assetId,
+      @Param("groupId") UUID groupId);
 
   /**
    * Every asset id of {@code assetType} the given user can reach via a direct grant, not expired as
