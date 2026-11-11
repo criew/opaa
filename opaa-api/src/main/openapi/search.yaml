@@ -69,8 +69,9 @@ paths:
         "429":
           description: >
             The rate limit was reached. Or, with agentId, every place of the installation's agent
-            workspace is taken, with code AGENT_WORKSPACE_FULL: the request is refused before a
-            run begins, nothing is queued and nothing is persisted.
+            workspace is taken, with code AGENT_WORKSPACE_FULL, or the caller already holds as
+            many places as one person may, with code AGENT_PERSON_LIMIT: the request is refused
+            before a run begins, nothing is queued and nothing is persisted.
           content:
             application/json:
               schema:
@@ -148,7 +149,8 @@ paths:
         "429":
           description: >
             As POST /api/v1/query: the rate limit was reached, or with agentId every place of the
-            agent workspace is taken, with code AGENT_WORKSPACE_FULL.
+            agent workspace is taken, with code AGENT_WORKSPACE_FULL, or the caller holds their
+            share of it, with code AGENT_PERSON_LIMIT.
           content:
             application/json:
               schema:
