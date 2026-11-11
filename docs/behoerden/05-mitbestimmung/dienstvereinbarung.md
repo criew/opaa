@@ -246,8 +246,9 @@ Ausgeschlossen sind insbesondere:
     Fehlersuche an genau dem Lauf, den die Person selbst meldet,
 14. jede Verwendung des Merkers, ob eine Person den Hinweis auf den Rundgang für neue Nutzer
     beantwortet hat ({{faktenblatt:datenkatalog#accounts}}), um Nutzung oder Anwesenheit einzelner
-    Beschäftigter festzustellen, auch über die Datenbank und auch im Abgleich mit anderen Angaben
-    wie der letzten Anmeldung. Der Merker dient nur dazu, den Hinweis nicht erneut zu zeigen.
+    Beschäftigter festzustellen, auf jedem Zugriffsweg nach Nummer 7 Absatz 1, auch über die
+    Datenbank und auch im Abgleich mit anderen Angaben wie der letzten Anmeldung. Der Merker dient
+    nur dazu, den Hinweis nicht erneut zu zeigen.
 
 #### 11. Selbstauskunft
 
