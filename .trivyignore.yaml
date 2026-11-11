@@ -10,4 +10,18 @@
 # Existiert eine Fix-Version, wird gebaut statt unterdrückt (Mittelreihenfolge in
 # docs/cve-scanning.md).
 
-vulnerabilities: []
+vulnerabilities:
+  - id: CVE-2026-6653
+    purls:
+      - pkg:deb/debian/libxml2
+    statement: >-
+      Debian-Paket libxml2 nur im Sandbox-Image (sandbox/Dockerfile), dort Abhängigkeit von
+      LibreOffice, das in fill_template eine Vorlage in PDF wandelt; erreicht wird es zudem von jedem
+      Skript, das run_code ausführt. Folge des Befunds ist ein Denial of Service beim Parsen einer
+      präparierten internen DTD. Die Vertrauensgrenze ist die Sandbox selbst: Wer dort XML einspeisen
+      kann, führt per run_code ohnehin beliebigen Code als uid 1000 aus, in einer kurzlebigen,
+      isolierten Sandbox mit Laufzeit- und Lebensdauergrenze; ein Absturz oder Hänger trifft nur
+      diesen Lauf. Debian trixie hat keinen Fix (Stand 11.11.2026). Neu zu bewerten, sobald Debian
+      einen Fix liefert (dann neu bauen, Eintrag entfällt), sobald libxml2 in einem Image außerhalb
+      der Sandbox auftaucht oder die Sandbox ihre Isolation verliert.
+    expired_at: 2027-02-10
