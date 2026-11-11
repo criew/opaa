@@ -8,14 +8,18 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 
 /**
- * Written column by column ({@code @DynamicUpdate}): a write of a loaded account keeps a role, a
- * directory lock or an erasure another transaction committed after the read.
+ * Optimistically locked ({@link #version}): a write from a stale read, a saved detached instance
+ * included, fails instead of writing back a role, a directory lock or an erasure. The sign-in's
+ * targeted updates of {@code lastLoginAt} and the provider's claims leave the version alone, so a
+ * sign-in never makes an administrator's edit fail; {@code @DynamicUpdate} keeps those columns when
+ * a versioned write follows them.
  */
 @DynamicUpdate
 @Entity
@@ -65,6 +69,8 @@ public class User {
   /** When the personal reference was removed, {@code null} for every other account. */
   @Column(name = "erased_at")
   private Instant erasedAt;
+
+  @Version private long version;
 
   protected User() {}
 

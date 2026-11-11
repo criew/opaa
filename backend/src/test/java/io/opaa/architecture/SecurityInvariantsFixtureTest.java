@@ -109,6 +109,22 @@ class SecurityInvariantsFixtureTest {
   }
 
   @Test
+  void aVersionedSaveIsFoundThroughAnInterfaceAndALambdaButOnlyWhenReachable() {
+    JavaClasses rows = new ClassFileImporter().importPackages(ROWS);
+
+    assertThat(
+            SecurityInvariants.versionedSavesReachableFrom(
+                rows,
+                Set.of(ROWS + ".SignIn#signIn"),
+                Set.of(ROWS + ".Account", ROWS + ".VersionedToken", ROWS + ".DynamicGroup")))
+        .containsOnlyKeys(ROWS + ".RevokingStep#apply")
+        .hasEntrySatisfying(
+            ROWS + ".RevokingStep#apply",
+            call ->
+                assertThat(call).startsWith("calls " + ROWS + ".VersionedTokenRepository#save"));
+  }
+
+  @Test
   void aPersistentTypeIsFoundByAFieldNamedLikeSecurityState() {
     assertThat(
             SecurityInvariants.typesWithSecurityStateFields(

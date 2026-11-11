@@ -330,6 +330,7 @@ nonPersonalTables:
     - protected
     - deactivated
     - deactivated_at
+    - version
   directory_sync_status:
     - id
     - organization_id

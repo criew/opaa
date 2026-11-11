@@ -1,6 +1,7 @@
 package io.opaa.connection.profile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.OwnAddressStock;
 import io.opaa.knowledge.SourceType;
@@ -14,6 +15,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -21,7 +23,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Switching the profile requirement of a source type keeps a lock of the type another session
  * committed after the read. The interleaving is fixed: the lock commits between the read and the
- * write.
+ * write. A lock that raises the version, as every versioned write does, makes a saved detached
+ * instance fail instead of unlocking the type again.
  */
 @OpaaIntegrationTest
 class ConnectorTypePolicyRowWriteIntegrationTest {
@@ -63,5 +66,29 @@ class ConnectorTypePolicyRowWriteIntegrationTest {
             key);
     assertThat(row.get("locked_at")).isNotNull();
     assertThat(row.get("own_address_stock")).isEqualTo("RUNS");
+  }
+
+  @Test
+  void aDetachedPolicySavedAfterATypeLockFailsInsteadOfUnlockingTheType() {
+    Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+    policies.saveAndFlush(new ConnectorTypePolicy(SourceType.of(key), now));
+    ConnectorTypePolicy detached = policies.findById(key).orElseThrow();
+    ForeignCommit.commit(
+        dataSource,
+        "UPDATE connector_type_policies SET locked_at = now(), version = version + 1"
+            + " WHERE source_type = ?",
+        key);
+
+    detached.requireProfiles(OwnAddressStock.RUNS, now);
+    assertThatThrownBy(() -> policies.save(detached))
+        .isInstanceOf(OptimisticLockingFailureException.class);
+
+    Map<String, Object> row =
+        jdbc.queryForMap(
+            "SELECT locked_at, own_address_stock FROM connector_type_policies"
+                + " WHERE source_type = ?",
+            key);
+    assertThat(row.get("locked_at")).isNotNull();
+    assertThat(row.get("own_address_stock")).isNull();
   }
 }

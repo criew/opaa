@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Objects;
 import org.hibernate.annotations.DynamicUpdate;
@@ -17,8 +18,10 @@ import org.hibernate.annotations.DynamicUpdate;
  * lock and its profile requirement. A type without a row is neither locked nor switched to profiles
  * only.
  *
- * <p>Written column by column ({@code @DynamicUpdate}): changing the requirement keeps a lock
- * another transaction committed after the read, and the other way round.
+ * <p>Optimistically locked ({@link #version}): a write from a stale read, a saved detached instance
+ * included, fails instead of writing back a lock or requirement another transaction changed.
+ * Writing only the changed columns ({@code @DynamicUpdate}) keeps what a writer without the version
+ * changed meanwhile, such as the predecessor version during a rolling update.
  */
 @DynamicUpdate
 @Entity
@@ -42,6 +45,8 @@ public class ConnectorTypePolicy {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  @Version private long version;
 
   protected ConnectorTypePolicy() {}
 

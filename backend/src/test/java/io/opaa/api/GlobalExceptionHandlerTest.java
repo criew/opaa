@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.util.List;
+import java.util.UUID;
 import org.apache.catalina.connector.ClientAbortException;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -33,13 +34,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.method.annotation.ExceptionHandlerMethodResolver;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -120,6 +124,23 @@ class GlobalExceptionHandlerTest {
     var plain = handler.handleConflictException(new io.opaa.common.ConflictException("doppelt"));
     assertNotNull(plain.getBody());
     assertEquals(null, plain.getBody().getCode());
+  }
+
+  /** A write the optimistic lock refused is a conflict with a newer state, not a server error. */
+  @Test
+  void aStaleWriteRefusedByTheOptimisticLockIsAConflictWithAGermanMessage() throws Exception {
+    var stale = new ObjectOptimisticLockingFailureException("io.opaa.auth.User", UUID.randomUUID());
+    var method =
+        new ExceptionHandlerMethodResolver(GlobalExceptionHandler.class)
+            .resolveMethodByThrowable(stale);
+    assertNotNull(method);
+
+    var response = (ResponseEntity<?>) method.invoke(handler, stale);
+
+    assertEquals(409, response.getStatusCode().value());
+    ErrorResponse body = (ErrorResponse) response.getBody();
+    assertNotNull(body);
+    assertEquals(GlobalExceptionHandler.STALE_WRITE_MESSAGE, body.getError());
   }
 
   @Test

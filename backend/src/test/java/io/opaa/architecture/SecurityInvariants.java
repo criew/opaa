@@ -335,6 +335,95 @@ final class SecurityInvariants {
   }
 
   /**
+   * Code units reachable from {@code entries} that save a versioned one of {@code entities} through
+   * its Spring Data repository ({@link #SAVING_MEMBERS}): on a concurrent change such a save fails,
+   * and on a path that runs before any controller, as the sign-in does, it fails without the {@code
+   * 409} of the controller advice. Reachable means through calls and method references of OPAA's
+   * own code, a lambda counted to the method it is written in and a call of an interface method to
+   * every implementation in {@code classes}; an event a unit publishes is not followed, so its
+   * listeners belong to {@code entries}.
+   */
+  static Map<String, String> versionedSavesReachableFrom(
+      JavaClasses classes, Collection<String> entries, Collection<String> entities) {
+    Set<String> versioned = new TreeSet<>();
+    for (String entity : entities) {
+      if (hasVersion(classes.get(entity))) {
+        versioned.add(entity);
+      }
+    }
+    Map<String, String> found = new TreeMap<>();
+    Set<String> visited = new TreeSet<>();
+    List<JavaCodeUnit> pending = new ArrayList<>();
+    for (String entry : entries) {
+      pending.addAll(codeUnitsNamed(classes, entry));
+    }
+    while (!pending.isEmpty()) {
+      JavaCodeUnit unit = pending.removeLast();
+      if (!visited.add(unit.getFullName())) {
+        continue;
+      }
+      pending.addAll(lambdasOf(unit));
+      accessesOf(unit)
+          .forEach(
+              access -> {
+                if (SAVING_MEMBERS.contains(access.getTarget().getName())
+                    && domainTypeOf(access.getTargetOwner())
+                        .filter(versioned::contains)
+                        .isPresent()) {
+                  found.putIfAbsent(keyOf(unit), describe(access));
+                }
+                pending.addAll(implementationsOf(classes, access));
+              });
+    }
+    return found;
+  }
+
+  /** The methods of {@code <class>#<method>} in {@code classes}, every overload. */
+  private static List<JavaCodeUnit> codeUnitsNamed(JavaClasses classes, String key) {
+    String[] parts = key.split("#", 2);
+    return classes.get(parts[0]).getCodeUnits().stream()
+        .filter(unit -> unit.getName().equals(parts[1]))
+        .toList();
+  }
+
+  /** The synthetic methods of the lambdas written in {@code unit}. */
+  private static List<JavaCodeUnit> lambdasOf(JavaCodeUnit unit) {
+    return unit.getOwner().getCodeUnits().stream()
+        .filter(
+            candidate -> {
+              Matcher lambda = LAMBDA.matcher(candidate.getName());
+              return lambda.matches() && lambda.group(1).equals(unit.getName());
+            })
+        .toList();
+  }
+
+  /**
+   * The code units of OPAA's own classes in {@code classes} that {@code access} may run: its target
+   * and, for a method, every method of a subtype with the same name and parameters.
+   */
+  private static List<JavaCodeUnit> implementationsOf(
+      JavaClasses classes, JavaCodeUnitAccess<?> access) {
+    JavaClass owner = access.getTargetOwner();
+    if (!owner.getPackageName().startsWith("io.opaa")) {
+      return List.of();
+    }
+    List<JavaCodeUnit> found = new ArrayList<>();
+    access.getTarget().resolveMember().ifPresent(found::add);
+    if (access.getTarget().getName().equals("<init>")) {
+      return found;
+    }
+    String[] parameters =
+        ((CodeUnitAccessTarget) access.getTarget())
+            .getRawParameterTypes().stream().map(JavaClass::getName).toArray(String[]::new);
+    for (JavaClass type : classes) {
+      if (!type.equals(owner) && type.isAssignableTo(owner.getName())) {
+        type.tryGetMethod(access.getTarget().getName(), parameters).ifPresent(found::add);
+      }
+    }
+    return found;
+  }
+
+  /**
    * The full names of the instance methods of {@code entity} that assign one of its fields,
    * directly or through another such method of it.
    */
