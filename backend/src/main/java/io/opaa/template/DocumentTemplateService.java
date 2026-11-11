@@ -63,8 +63,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * switch and rights again. The file is stored as received and never rendered here.
  *
  * <p>Every template names a responsible unit ({@link AssetResponsibilityService}); the system
- * administration may lock a single template, which then reaches no agent run ({@link #lockedAmong})
- * and stays manageable.
+ * administration may lock a single template, which then reaches no agent run ({@link
+ * AssetResponsibilityService#lockedAmong}) and stays manageable.
  */
 @Service
 @Transactional(readOnly = true)
