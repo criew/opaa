@@ -3,7 +3,7 @@ import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import ProviderMonogram from '@/shared/ui/ProviderMonogram'
-import type { StatusTone } from '@/shared/ui/StatusLine'
+import StateDot from '@/shared/ui/StateDot'
 import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import {
   agoLabel,
@@ -16,53 +16,12 @@ import {
 import { formatDateTime, outcomeLabel, outcomeTone } from './directorySyncLabels'
 import { fontSize } from '@/shared/theme/tokens'
 
-const TONE_COLOR: Record<StatusTone, string> = {
-  neutral: 'text.disabled',
-  success: 'success.main',
-  warning: 'warning.main',
-  error: 'error.main',
-}
-
 const secondarySx = {
   fontSize: fontSize.meta,
   color: 'text.secondary',
   mt: 0.25,
   pl: 1.75,
 } as const
-
-/**
- * A state as a dot before its word, the dot on the first line when the word wraps - the column
- * widths are fixed, the outcome words are not. Colour carries no meaning on its own.
- */
-function StateText({
-  tone,
-  label,
-  strong = false,
-}: {
-  tone: StatusTone
-  label: string
-  strong?: boolean
-}) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
-      <Box
-        component="span"
-        aria-hidden="true"
-        sx={{
-          width: 8,
-          height: 8,
-          mt: '6px',
-          borderRadius: '50%',
-          flex: 'none',
-          bgcolor: TONE_COLOR[tone],
-        }}
-      />
-      <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: strong ? 600 : 500 }}>
-        {label}
-      </Typography>
-    </Box>
-  )
-}
 
 /** An empty cell: a dash for the eye, the statement for the screen reader. */
 function Nothing({ label }: { label: string }) {
@@ -80,23 +39,11 @@ interface OverviewProps {
   now: Date
 }
 
-function ProviderCell({ entry }: { entry: OverviewEntry }) {
-  const { provider } = entry
+function DisabledBadge({ entry }: { entry: OverviewEntry }) {
+  if (entry.provider.enabled) return null
   return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, minWidth: 0 }}>
-      <ProviderMonogram
-        name={provider.displayName}
-        size={28}
-        tone={provider.enabled ? 'accent' : 'muted'}
-      />
-      <Box sx={{ minWidth: 0 }}>
-        <ListText strong>{provider.displayName}</ListText>
-        {!provider.enabled && (
-          <Box sx={{ mt: 0.5 }}>
-            <MetaBadge>Anbieter deaktiviert</MetaBadge>
-          </Box>
-        )}
-      </Box>
+    <Box sx={{ mt: 0.5 }}>
+      <MetaBadge>Anbieter deaktiviert</MetaBadge>
     </Box>
   )
 }
@@ -106,7 +53,7 @@ function MechanismCell({ entry }: { entry: OverviewEntry }) {
   const interval = entry.provider.directorySyncIntervalMinutes
   return (
     <>
-      <StateText tone={state.tone} label={state.label} />
+      <StateDot tone={state.tone} label={state.label} />
       {(state.kind === 'ON' || state.kind === 'PAUSED') && interval && (
         <Typography sx={secondarySx}>{intervalLabel(interval)}</Typography>
       )}
@@ -121,7 +68,7 @@ function LastRunCell({ entry, now }: { entry: OverviewEntry; now: Date }) {
   if (!outcome && !entry.provider.directorySyncEnabled) return <Nothing label="kein Lauf" />
   return (
     <>
-      <StateText tone={outcomeTone(outcome)} label={outcomeLabel(outcome)} />
+      <StateDot tone={outcomeTone(outcome)} label={outcomeLabel(outcome)} />
       {lastRunAt && (
         <Typography sx={secondarySx}>
           <time dateTime={lastRunAt} title={formatDateTime(lastRunAt)}>
@@ -150,7 +97,7 @@ function AttentionCell({ entry }: { entry: OverviewEntry }) {
   if (!attention) return <Nothing label="nichts zu tun" />
   return (
     <>
-      <StateText tone={attention.tone} label={attention.label} strong />
+      <StateDot tone={attention.tone} label={attention.label} strong />
       <ListText secondary>{attention.detail}</ListText>
     </>
   )
@@ -158,7 +105,8 @@ function AttentionCell({ entry }: { entry: OverviewEntry }) {
 
 /**
  * The directory sync of every provider on one screen: mechanism, last and next run and
- * what needs doing, one row each. The row itself leads into the side panel with details and
+ * what needs doing, one row each. The state words are results and wrap below their dot instead of
+ * being cut off; names and times stay on one line. The row itself leads into the side panel with details and
  * changes; a waiting plan shows as „Handlungsbedarf" and is decided there.
  */
 export default function DirectorySyncOverview({ entries, onOpen, now }: OverviewProps) {
@@ -171,34 +119,50 @@ export default function DirectorySyncOverview({ entries, onOpen, now }: Overview
       minWidth={880}
       rowTarget={(entry) => ({ onOpen: () => onOpen(entry.provider.id) })}
       rowTone={(entry) => entry.attention?.tone ?? null}
+      // The monogram stands outside the row's button: its letters are not part of the name.
+      leading={{
+        head: 'Kürzel',
+        width: 40,
+        cell: (entry) => (
+          <ProviderMonogram
+            name={entry.provider.displayName}
+            size={28}
+            tone={entry.provider.enabled ? 'accent' : 'muted'}
+          />
+        ),
+      }}
       columns={[
         {
           id: 'provider',
           head: 'Anbieter',
-          width: '24%',
-          cell: (entry) => <ProviderCell entry={entry} />,
+          width: '20%',
+          cell: (entry) => <ListText strong>{entry.provider.displayName}</ListText>,
+          below: (entry) => <DisabledBadge entry={entry} />,
         },
         {
           id: 'mechanism',
           head: 'Abgleich',
-          width: '15%',
+          width: '17%',
+          wrap: true,
           cell: (entry) => <MechanismCell entry={entry} />,
         },
         {
           id: 'lastRun',
           head: 'Letzter Lauf',
-          width: '18%',
+          width: '20%',
+          wrap: true,
           cell: (entry) => <LastRunCell entry={entry} now={now} />,
         },
         {
           id: 'nextRun',
           head: 'Nächster Lauf',
-          width: '13%',
+          width: 136,
           cell: (entry) => <NextRunCell entry={entry} now={now} />,
         },
         {
           id: 'attention',
           head: 'Handlungsbedarf',
+          wrap: true,
           cell: (entry) => <AttentionCell entry={entry} />,
         },
       ]}

@@ -290,24 +290,24 @@ export default function BrandingSettingsPage() {
                   {/* The section head names the image; the visible label stays short enough
                      for one line on a phone (guidelines 4.7), the accessible name stays unique. */}
                   <Button
-                    component="label"
                     variant="outlined"
                     aria-label={`Bild auswählen: ${BRANDING_IMAGES[slot.kind].label}`}
+                    onClick={() => fileInputRefs.current[slot.kind]?.click()}
                   >
                     Bild auswählen
-                    <Box
-                      component="input"
-                      type="file"
-                      ref={(element: HTMLInputElement | null) => {
-                        fileInputRefs.current[slot.kind] = element
-                      }}
-                      accept={ACCEPTED_IMAGE_TYPES.join(',')}
-                      hidden
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        selectImage(slot.kind, e.target.files?.[0] ?? null)
-                      }
-                    />
                   </Button>
+                  <Box
+                    component="input"
+                    type="file"
+                    ref={(element: HTMLInputElement | null) => {
+                      fileInputRefs.current[slot.kind] = element
+                    }}
+                    accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                    hidden
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      selectImage(slot.kind, e.target.files?.[0] ?? null)
+                    }
+                  />
                   {slot.configuredUrl && (
                     <Button
                       color="error"

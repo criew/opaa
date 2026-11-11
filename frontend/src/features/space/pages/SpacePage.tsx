@@ -181,9 +181,13 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
           <SpaceKnowledgeNotice spaceId={space.id} gap={knowledgeGap} role={space.userRole} />
         )}
 
-        <Accordion expanded={chatsExpanded} onChange={(_, expanded) => setChatsExpanded(expanded)}>
+        <Accordion
+          expanded={chatsExpanded}
+          onChange={(_, expanded) => setChatsExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
+        >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Chats
             </Typography>
           </AccordionSummary>
@@ -196,9 +200,10 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         <Accordion
           expanded={membersExpanded}
           onChange={(_, expanded) => setMembersExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Mitglieder
             </Typography>
           </AccordionSummary>
@@ -253,9 +258,10 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         <Accordion
           expanded={derivationExpanded}
           onChange={(_, expanded) => setDerivationExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Warum sehe ich diesen Space?
             </Typography>
           </AccordionSummary>
@@ -273,9 +279,10 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         <Accordion
           expanded={librariesExpanded}
           onChange={(_, expanded) => setLibrariesExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Datenquellen
             </Typography>
           </AccordionSummary>

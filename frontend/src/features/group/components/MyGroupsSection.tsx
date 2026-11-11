@@ -81,7 +81,12 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   }
 
   return (
-    <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
+    // The summary is the group's heading below the page title (MUI's heading slot, h3 by default).
+    <Accordion
+      expanded={expanded}
+      onChange={(_event, isExpanded) => setExpanded(isExpanded)}
+      slotProps={{ heading: { component: 'h2' } }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         {/* Name, badges and count wrap onto further lines on a phone instead of overflowing. */}
         <Stack
@@ -90,13 +95,17 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
           useFlexGap
           sx={{ alignItems: 'center', flexGrow: 1, flexWrap: 'wrap', rowGap: 0.5, minWidth: 0 }}
         >
-          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
+          <Typography
+            component="span"
+            sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}
+          >
             {group.name}
           </Typography>
           {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
           <MetaBadge>{group.releasedForUse ? 'freigegeben' : 'nicht freigegeben'}</MetaBadge>
           {group.deactivated && <MetaBadge>deaktiviert</MetaBadge>}
           <Typography
+            component="span"
             sx={{
               fontSize: fontSize.text,
               color: 'text.secondary',

@@ -72,6 +72,20 @@ describe('DirectorySyncPage', () => {
     useOidcProviderStore.getState().reset()
   })
 
+  // WCAG 2.5.3: the visible text of a row's button is part of its name - the monogram stands
+  // outside the button, so its letters do not stand before the provider's name.
+  it('names each row button by exactly the text it shows', async () => {
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+
+    const table = await overview()
+    const buttons = await within(table).findAllByRole('button', { name: /./ })
+    const rowButtons = buttons.filter((button) => button.hasAttribute('data-row-link'))
+    expect(rowButtons.length).toBeGreaterThan(0)
+    for (const button of rowButtons) {
+      expect(button).toHaveAccessibleName(button.textContent?.trim())
+    }
+  })
+
   it('shows every provider with its mechanism, last run and next run at a glance', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
 
