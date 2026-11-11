@@ -210,7 +210,7 @@ export default function TranscriptionModelStep({
         batchPrefilled={prefill !== null}
         externalNoticeGiven={batchExternal && sharesOrigin(realtime.url, baseUrl)}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Eine Live-Sitzung zur Zeit; mehr legen Sie später unter „Modelle → Spracheingabe“ fest.
         </Typography>
       </RealtimeTranscriptionFields>
