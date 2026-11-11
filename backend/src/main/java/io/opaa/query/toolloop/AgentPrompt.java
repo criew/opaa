@@ -99,7 +99,8 @@ final class AgentPrompt {
       bisherigen Werkzeugaufrufe geliefert haben, und nenne, was dabei offen bleibt.
       - Die ZITIERREGELN gelten unverändert: Belege jede Sachaussage mit der Zitiermarke ihrer \
       Textstelle, Zeichen für Zeichen aus der Zeile „Zitiermarke:“ übernommen, mit den Klammern \
-      【 und 】. Eine Antwort ohne Zitiermarken ist unzulässig.""";
+      【 und 】. Liegen Fundstellen vor, ist eine Antwort ohne Zitiermarken unzulässig; erfinde nie \
+      eine Zitiermarke.""";
 
   /** What a run does with a plan step. */
   enum PlanPhase {
