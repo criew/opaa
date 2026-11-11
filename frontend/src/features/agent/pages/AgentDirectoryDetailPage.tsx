@@ -39,7 +39,10 @@ function listOrMissing(values: string[], whenEmpty: string = MISSING_VALUE): str
 /** No assignment searches what the asker may read; an assignment whose libraries are gone, nothing. */
 function libraryText(agent: AgentDirectoryEntry): string {
   if (agent.allReadableLibraries) return 'Alle Bibliotheken, die die fragende Person lesen darf'
-  return listOrMissing(agent.libraryNames, 'keine (zugeordnete Bibliothek gelöscht)')
+  return listOrMissing(
+    agent.libraryNames,
+    'keine einsehbare Bibliothek (gelöscht oder nicht einsehbar)',
+  )
 }
 
 function lockText(locked: boolean, since?: string | null): string {

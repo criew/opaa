@@ -7,8 +7,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.agent.AgentCreation;
+import io.opaa.agent.AgentDirectoryService;
+import io.opaa.agent.AgentService;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.OidcProviderRepository;
@@ -318,13 +322,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listPrompts",
             "getPrompt",
             "listAvailablePrompts",
-            "listAgents",
-            "getAgent",
             "listAvailableAgents",
             "getAgentAvailability",
             "getAgentSettings",
-            "getAgentDirectory",
-            "exportAgentDirectory",
             "getDocumentTemplateAvailability",
             "getDocumentTemplateSettings",
             "listDocumentTemplates",
@@ -495,12 +495,18 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("deletePrompt", same());
     probes.put("updatePromptLibrary", same("{\"name\": \"Vorlagen\"}"));
     probes.put("deletePromptLibrary", same());
-    // an agent is another asset type; switched off, every agent path answers alike
+    // an agent is another asset type; switched off, every agent write path answers alike
     probes.put(
         "updateAgent",
         same(
             "{\"name\": \"Prüfhilfe\", \"instruction\": \"\", \"libraryIds\": [\"{library}\"],"
                 + " \"toolNames\": [], \"planStep\": \"OFF\", \"limits\": {}}"));
+    // the agent reads run with the switch on and an agent assigned to {library} (see
+    // AGENT_PROBES); the audit of the directory is counted alike in both phases
+    probes.put("listAgents", same());
+    probes.put("getAgent", same().withQuery("agentId", "{agent}"));
+    probes.put("getAgentDirectory", same());
+    probes.put("exportAgentDirectory", same());
     // the counting operations; disconnecting and deleting run in both phases alike
     probes.put("reportOrphanedLibraries", same("{}"));
     probes.put(
@@ -532,6 +538,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
   }
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private AgentService agentService;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private PrivateLibraryCreation privateCreation;
@@ -550,6 +557,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
   @Autowired private SearchStatusService searchStatus;
 
   private final List<UUID> libraries = new ArrayList<>();
+  private final Map<String, List<Long>> directoryAudits = new LinkedHashMap<>();
   private final List<UUID> spaces = new ArrayList<>();
   private final List<UUID> extraUsers = new ArrayList<>();
   private UUID owner;
@@ -607,6 +615,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
   @AfterEach
   void removeOwnRows() throws Exception {
     restoreChatModel();
+    jdbc.update("UPDATE agent_settings SET enabled = false, updated_by = NULL WHERE id = 1");
+    jdbc.update(
+        "DELETE FROM audit_log WHERE object_id = ?", AgentDirectoryService.OBJECT_ID.toString());
     jdbc.update("UPDATE users SET system_role = 'USER' WHERE id = ?", devUser);
     jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", devUser);
     jdbc.update("DELETE FROM diagnostic_impersonation_grants WHERE holder_user_id = ?", admin);
@@ -730,6 +741,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 + around(wasNormalized, afterNormalized));
       }
     }
+    directoryAudits.forEach(
+        (way, counted) -> {
+          if (counted.size() != 2 || !counted.get(0).equals(counted.get(1))) {
+            findings.add(way + " audits the directory differently before and after: " + counted);
+          }
+        });
     assertThat(findings).as("what %s learns of the private library", observer).isEmpty();
     theProbesReachedWhatTheyAsk(observer, answers, own);
     herLibrariesAreUntouched(own);
@@ -924,6 +941,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
         assertThat(JsonPath.<Object>read(preview, "$.connectedAccountsEnded")).isNotNull();
         assertThat(JsonPath.<String>read(preview, "$.confirmation")).contains("Personen");
         assertThat(answers.get("deleteSpace").status()).isEqualTo(204);
+        // the agent probes are asked with the switch on, not answered as an unknown address
+        for (String agentRead :
+            List.of("listAgents", "getAgent", "getAgentDirectory", "exportAgentDirectory")) {
+          assertThat(answers.get(agentRead).status()).as(agentRead).isEqualTo(200);
+          assertThat(answers.get(agentRead).raw()).as(agentRead).contains("Prüfhilfe");
+        }
       }
       case PERSON_CONTEXT ->
           assertThat(answers.get("runSearchDiagnosis").status())
@@ -1534,7 +1557,60 @@ class PrivateLibraryInvisibilityIntegrationTest {
     }
   }
 
+  /**
+   * Operations that are asked with the switch "Agenten" on and an agent whose only library is the
+   * one of the phase: unknown before, the private library of the other person after.
+   */
+  private static final Set<String> AGENT_PROBES =
+      Set.of("listAgents", "getAgent", "getAgentDirectory", "exportAgentDirectory");
+
   private Answer call(Operation operation, Probe probe, Ids ids, Observer observer, Spare spare)
+      throws Exception {
+    if (!AGENT_PROBES.contains(operation.id())) {
+      return perform(operation, probe, ids, observer, spare, null);
+    }
+    jdbc.update("UPDATE agent_settings SET enabled = true WHERE id = 1");
+    UUID agent = null;
+    try {
+      agent =
+          agentService
+              .create(
+                  new AgentCreation(
+                      "Prüfhilfe " + UUID.randomUUID(),
+                      null,
+                      null,
+                      null,
+                      ResponsibleUnit.ofFunction("Referat Z3")),
+                  adminCaller)
+              .agent()
+              .getId();
+      // past the service, which would refuse an id its editor may not read
+      jdbc.update(
+          "INSERT INTO agent_libraries (agent_id, library_id) VALUES (?, ?)", agent, ids.library());
+      long audited = directoryAudits();
+      Answer answer = perform(operation, probe, ids, observer, spare, agent);
+      directoryAudits
+          .computeIfAbsent(operation.id() + " as " + observer, key -> new ArrayList<>())
+          .add(directoryAudits() - audited);
+      return answer;
+    } finally {
+      if (agent != null) {
+        agentService.delete(agent, adminCaller);
+        jdbc.update("DELETE FROM audit_log WHERE object_id = ?", agent.toString());
+        jdbc.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", agent);
+        jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", agent);
+      }
+      jdbc.update("UPDATE agent_settings SET enabled = false, updated_by = NULL WHERE id = 1");
+    }
+  }
+
+  private long directoryAudits() {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE event_type = 'AGENT_DIRECTORY_ACCESSED'", Long.class);
+  }
+
+  private Answer perform(
+      Operation operation, Probe probe, Ids ids, Observer observer, Spare spare, UUID agent)
       throws Exception {
     Map<String, UUID> fixture = new LinkedHashMap<>();
     fixture.put("space", space);
@@ -1542,6 +1618,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
     fixture.put("profile", profile);
     fixture.put("owner", owner);
     fixture.put("admin", admin);
+    if (agent != null) {
+      fixture.put("agent", agent);
+    }
     String path = operation.path();
     for (Parameter parameter : operation.parameters()) {
       if (parameter.in().equals("path")) {
@@ -1591,9 +1670,10 @@ class PrivateLibraryInvisibilityIntegrationTest {
       request.header(DevAuthFilter.DEV_USER_HEADER, observer.devUser);
     }
     MvcResult result = mockMvc.perform(request).andReturn();
+    String raw = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
     return new Answer(
         result.getResponse().getStatus(),
-        result.getResponse().getContentAsString(StandardCharsets.UTF_8));
+        agent == null ? raw : raw.replace(agent.toString(), "<agent>"));
   }
 
   /** A parameter's value: the fixture's ids by name, else what its schema admits. */

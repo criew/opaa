@@ -13,7 +13,7 @@ Agenten wie oft nutzt, steht nicht darin.
 | Je Agent | Je Vorlage |
 |---|---|
 | Name, Zweck und Anweisung | Name und Zweck |
-| Namen der zugeordneten Bibliotheken, nicht ihr Inhalt; „Alle Bibliotheken, die die fragende Person lesen darf“ ohne Zuordnung, „keine (zugeordnete Bibliothek gelöscht)“, wenn alle zugeordneten gelöscht sind | Dateiname und Platzhalter |
+| Namen der zugeordneten Bibliotheken, nicht ihr Inhalt; „Alle Bibliotheken, die die fragende Person lesen darf“ ohne Zuordnung, „keine einsehbare Bibliothek (gelöscht oder nicht einsehbar)“, wenn keine der zugeordneten Bibliotheken einsehbar ist (gelöscht oder privat), ohne Anzahl und Namen | Dateiname und Platzhalter |
 | Werkzeuge, Beginn (sofort oder mit Plan) und Grenzen | |
 | Namen der zugeordneten Vorlagen | |
 | verantwortliche Stelle, Fassung, gesperrt seit | verantwortliche Stelle, Fassung, gesperrt seit |

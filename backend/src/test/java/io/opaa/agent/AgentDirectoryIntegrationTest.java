@@ -186,7 +186,7 @@ class AgentDirectoryIntegrationTest {
         .containsExactly(
             Tuple.tuple("Offen", List.of(), true), Tuple.tuple("Verwaist", List.of(), false));
     assertThat(csv)
-        .contains("\"Verwaist\";\"\";\"\";\"" + AgentDirectoryCsv.ASSIGNED_LIBRARIES_DELETED)
+        .contains("\"Verwaist\";\"\";\"\";\"" + AgentDirectoryCsv.NO_VISIBLE_LIBRARY)
         .contains("\"Offen\";\"\";\"\";\"" + AgentDirectoryCsv.ALL_READABLE_LIBRARIES);
   }
 
