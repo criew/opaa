@@ -1,20 +1,19 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import SectionHead from '@/shared/ui/SectionHead'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import LoadError from '@/shared/ui/states/LoadError'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import { notify } from '@/shared/stores/notificationStore'
-import { contentWidth, fontSize } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
 import { exportAgentDirectory } from '../api/agentApi'
 import { useAgentDirectoryStore } from '../stores/agentDirectoryStore'
-import { countLabel } from '../components/agentTexts'
 import AgentDirectoryTable from '../components/AgentDirectoryTable'
 import {
   agentDirectoryAgentRoute,
@@ -69,7 +68,7 @@ export default function AgentDirectoryPage() {
 
   if (problem === 'FORBIDDEN' || problem === 'UNAVAILABLE') {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Agentenverzeichnis" gutterBottom />
         <Alert severity="info">
           {problem === 'FORBIDDEN' ? FORBIDDEN_NOTICE : UNAVAILABLE_NOTICE}
@@ -78,24 +77,15 @@ export default function AgentDirectoryPage() {
     )
   }
 
-  const meta = directory
-    ? [
-        countLabel(directory.agents.length, 'Agent', 'Agenten'),
-        directory.templatesIncluded
-          ? countLabel(directory.templates.length, 'Vorlage', 'Vorlagen')
-          : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : undefined
-
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={MenuBookOutlinedIcon}
           title="Agentenverzeichnis"
-          meta={meta}
+          count={
+            directory ? { total: directory.agents.length, unit: ['Agent', 'Agenten'] } : undefined
+          }
           description="Alle Agenten und Vorlagen Ihrer Organisation mit Zweck, Anweisung und verantwortlicher Stelle. Inhalte der Bibliotheken und Angaben zur Nutzung enthält das Verzeichnis nicht. Jedes Ansehen und jeder Export wird protokolliert."
           action={
             directory ? (
@@ -121,14 +111,8 @@ export default function AgentDirectoryPage() {
           <LoadingState shape="rows" count={4} />
         ) : (
           <>
-            <Box component="section" aria-labelledby="agent-directory-agents" sx={{ mb: 4 }}>
-              <Typography
-                id="agent-directory-agents"
-                component="h2"
-                sx={{ fontSize: fontSize.title, fontWeight: 600, mb: 1.5 }}
-              >
-                Agenten
-              </Typography>
+            <Box component="section" aria-labelledby="agent-directory-agents">
+              <SectionHead id="agent-directory-agents">Agenten</SectionHead>
               {directory.agents.length === 0 ? (
                 <EmptyState framed message="Noch keine Agenten." />
               ) : (
@@ -142,13 +126,7 @@ export default function AgentDirectoryPage() {
 
             {directory.templatesIncluded && (
               <Box component="section" aria-labelledby="agent-directory-templates">
-                <Typography
-                  id="agent-directory-templates"
-                  component="h2"
-                  sx={{ fontSize: fontSize.title, fontWeight: 600, mb: 1.5 }}
-                >
-                  Vorlagen
-                </Typography>
+                <SectionHead id="agent-directory-templates">Vorlagen</SectionHead>
                 {directory.templates.length === 0 ? (
                   <EmptyState framed message="Noch keine Vorlagen." />
                 ) : (

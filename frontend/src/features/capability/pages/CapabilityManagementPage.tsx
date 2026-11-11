@@ -83,7 +83,7 @@ export default function CapabilityManagementPage() {
         <AreaPageHeader
           icon={KeyOutlinedIcon}
           title="Anlegerechte"
-          description="Hier legen Sie fest, wer in OPAA neue Spaces, Bibliotheken und Gruppen anlegen darf. Auf Inhalte, die es schon gibt, hat das keinen Einfluss. Jede Änderung wirkt sofort und wird protokolliert."
+          description="Hier legen Sie fest, wer in OPAA neue Spaces, Bibliotheken und Gruppen anlegen darf, dazu das Leserecht auf das Agentenverzeichnis. Auf Inhalte, die es schon gibt, hat das keinen Einfluss. Jede Änderung wirkt sofort und wird protokolliert."
         />
 
         <Box component="section" aria-labelledby="capability-overview-heading">
