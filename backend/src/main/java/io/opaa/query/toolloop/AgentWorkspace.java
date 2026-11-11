@@ -13,12 +13,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The workspace in front of the agent loop (ADR-0070, Entscheidung 6): one reservation per running
- * run in the database, valid until a deadline taken from the database clock, so the capacity holds
- * across every instance (ADR-0053) and a crashed instance's places free themselves. A reservation
- * is taken under the lock of the fixed row of {@code agent_workspace}: without it two requests
- * under {@code READ COMMITTED} could both count a free place and overbook. Unlike the caps of
- * ADR-0053, Entscheidung 12, the workspace fails closed - without the database there is no run
- * anyway.
+ * run in the database, carrying the person who started it, valid until a deadline taken from the
+ * database clock, so the capacity holds across every instance (ADR-0053) and a crashed instance's
+ * places free themselves. A reservation is taken under the lock of the fixed row of {@code
+ * agent_workspace}: without it two requests under {@code READ COMMITTED} could both count a free
+ * place and overbook. Unlike the caps of ADR-0053, Entscheidung 12, the workspace fails closed -
+ * without the database there is no run anyway.
  *
  * <p>The reservation also carries the stop mark of a streamed run: the hash of its cancel token and
  * when the person asked to stop. Any instance sets it; the running one reads it before each tool
@@ -48,11 +48,12 @@ class AgentWorkspace implements AgentRunCancellation {
   }
 
   /**
-   * Takes a place for {@code runId} of {@code userId}, or tells why there is none. Expired
-   * reservations are removed on the way.
+   * Takes a place for {@code runId} of {@code userId}, or tells why there is none: the person
+   * already holds {@code workspaceCapacityPerPerson} places, or every place is taken. Both counts
+   * run under the same row lock; expired reservations are removed on the way.
    */
   Reservation tryReserve(UUID runId, UUID userId) {
-    Boolean reserved =
+    Reservation reservation =
         transaction.execute(
             status -> {
               jdbc.sql("SELECT id FROM agent_workspace WHERE id = 1 FOR UPDATE")
@@ -60,12 +61,20 @@ class AgentWorkspace implements AgentRunCancellation {
                   .single();
               jdbc.sql("DELETE FROM agent_run_reservations WHERE expires_at <= clock_timestamp()")
                   .update();
+              int held =
+                  jdbc.sql("SELECT count(*) FROM agent_run_reservations WHERE user_id = :userId")
+                      .param("userId", userId)
+                      .query(Integer.class)
+                      .single();
+              if (held >= properties.workspaceCapacityPerPerson()) {
+                return Reservation.PERSON_LIMIT_REACHED;
+              }
               int occupied =
                   jdbc.sql("SELECT count(*) FROM agent_run_reservations")
                       .query(Integer.class)
                       .single();
               if (occupied >= properties.workspaceCapacity()) {
-                return false;
+                return Reservation.WORKSPACE_FULL;
               }
               jdbc.sql(
                       "INSERT INTO agent_run_reservations (run_id, user_id, expires_at) VALUES"
@@ -74,9 +83,9 @@ class AgentWorkspace implements AgentRunCancellation {
                   .param("userId", userId)
                   .param("seconds", properties.reservationLifetime().toMillis() / 1000.0)
                   .update();
-              return true;
+              return Reservation.RESERVED;
             });
-    return Boolean.TRUE.equals(reserved) ? Reservation.RESERVED : Reservation.WORKSPACE_FULL;
+    return reservation == null ? Reservation.WORKSPACE_FULL : reservation;
   }
 
   /** Gives the place of {@code runId} back; a reservation already expired is no error. */
