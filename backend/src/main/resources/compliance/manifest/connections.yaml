@@ -172,7 +172,7 @@ nonPersonalTables:
     - issuer
     - issuer_parameter_supported
   connector_type_policies:
-    [source_type, locked_at, updated_at, profile_required_at, own_address_stock]
+    [source_type, locked_at, updated_at, profile_required_at, own_address_stock, version]
   connection_log_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
   connection_lifecycle_settings: [setting, setting_value, updated_at]
 settings:

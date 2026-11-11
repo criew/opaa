@@ -24,6 +24,7 @@ import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -57,6 +58,11 @@ import org.springframework.stereotype.Service;
  * synchronisation runs, not concurrent admin activity. A change made through the admin UI while a
  * run is in flight - e.g. an operator adding someone to an {@code AD_HOC} group - is not part of
  * the snapshot this run diffs against and can be reverted by it.
+ *
+ * <p><b>A row changed during the apply transaction</b> (a group or account another transaction
+ * wrote after the run read it) fails the version check, never the change of the other side: the run
+ * rolls back whole and is planned again from the same snapshot against the rows as they are now, at
+ * most {@value #STALE_ROW_ATTEMPTS} times in all.
  */
 @Service
 public class DirectorySyncService {
@@ -82,6 +88,9 @@ public class DirectorySyncService {
   static final String FAILED_MESSAGE =
       "Der Abgleich ist mit einem Fehler abgebrochen und hat nichts geändert. Der letzte bekannte"
           + " Stand bleibt in Kraft; die Ursache steht im Anwendungsprotokoll.";
+
+  /** How often one run applies its snapshot before a row changed meanwhile fails it. */
+  static final int STALE_ROW_ATTEMPTS = 3;
 
   private final DirectoryClient directoryClient;
   private final DirectorySyncPlanExecutor planExecutor;
@@ -330,7 +339,7 @@ public class DirectorySyncService {
     }
     SyncReport report;
     try {
-      report = plan.apply(snapshot, now);
+      report = applyAgainstCurrentRows(target, snapshot, now, plan);
     } catch (RuntimeException e) {
       recordFailed(target, runAt, e);
       recordMetrics(target, DirectorySyncOutcome.FAILED, started);
@@ -339,6 +348,31 @@ public class DirectorySyncService {
     recordStatusSafely(target, runAt, report.outcome(), report.message(), report.changedFraction());
     recordMetrics(target, report.outcome(), started);
     return report;
+  }
+
+  /**
+   * Hands the snapshot to {@code plan} again when its transaction met a row another transaction
+   * changed after the read; the rolled-back attempt left nothing behind, the next one reads afresh.
+   */
+  private static SyncReport applyAgainstCurrentRows(
+      SyncTarget target,
+      DirectorySnapshot snapshot,
+      Instant now,
+      BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        return plan.apply(snapshot, now);
+      } catch (OptimisticLockingFailureException stale) {
+        if (attempt >= STALE_ROW_ATTEMPTS) {
+          throw stale;
+        }
+        log.info(
+            "Directory sync: a row of provider {} changed during the run, applying again ({} of {})",
+            target.providerId(),
+            attempt + 1,
+            STALE_ROW_ATTEMPTS);
+      }
+    }
   }
 
   /** Counts the ended run; a failure of the metrics never changes the run's own result. */

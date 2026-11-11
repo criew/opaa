@@ -539,13 +539,35 @@ zusätzlich jeden Aufruf einer Methode der Entity, die ein eigenes Feld setzt. D
 selbst ist ausgenommen. Jede gemeldete Methode steht in `WHOLE_ROW_WRITERS` mit einem Satz
 Begründung: neue Zeile, nur geänderte Spalten in einer Transaktion (`@DynamicUpdate`), Zustand
 bewegt sich nur Richtung widerrufen, die Rolle ist der einzige änderbare Zustand, oder eine
-Zeilensperre (`FOR UPDATE`). `User`, `OidcProvider`, `Group` und `ConnectorTypePolicy` schreiben
-deshalb nur geänderte Spalten; die Übertragung von Berechtigungen liest die Berechtigung der
+Zeilensperre (`FOR UPDATE`). Die Übertragung von Berechtigungen liest die Berechtigung der
 Zielgruppe unter Zeilensperre; Änderung und Widerruf einer Dienstkonto-Zustimmung sperren zuerst
 die Zeile des Dienstkontos, dann die offene Zustimmung.
+
+`User`, `OidcProvider`, `Group` und `ConnectorTypePolicy` tragen `@Version` und fallen damit aus der
+Regel: Ein Schreiben aus einem veralteten Stand, auch das `save` einer abgelösten Instanz, scheitert
+mit `OptimisticLockingFailureException`, statt zurückzuschreiben, was es gelesen hat; die
+Schreibwege der Verwaltung antworten dann mit `409` und der Bitte, neu zu laden
+(`GlobalExceptionHandler`). Die Schreibwege des Systems scheitern daran nicht:
+
+- Die Anmeldung schreibt `lastLoginAt` und die Angaben des Anbieters gezielt
+  (`UserRepository#recordLastLogin`, `#recordProviderClaims`) und erhöht die Version dabei nicht;
+  eine Anmeldung lässt keine Bearbeitung der Verwaltung scheitern.
+- Die Rolle aus dem Token schreibt ein bedingtes `UPDATE` ohne Versionsprüfung
+  (`#changeRoleIfStill`), das die Version erhöht; zwei gleichzeitige Anmeldungen derselben Person
+  scheitern nicht aneinander, eine Bearbeitung, die die Rolle vorher gelesen hat, dagegen schon.
+- Gruppenmitgliedschaften sind eigene Zeilen und erhöhen die Version der Gruppe nicht
+  (`@OptimisticLock(excluded = true)`); die Gruppen aus dem Token schreiben nur sie.
+- Der Verzeichnisabgleich wendet seinen Stand bis zu dreimal an, wenn seine Transaktion auf eine
+  zwischenzeitlich geänderte Gruppe oder ein Konto trifft (`DirectorySyncService#STALE_ROW_ATTEMPTS`),
+  und liest dabei jedes Mal neu.
+
+`@DynamicUpdate` bleibt an den vier Entities: Es hält, was ein Schreiber ohne Versionserhöhung
+festgeschrieben hat – die gezielten Updates der Anmeldung und die Vorgängerversion während eines
+Rolling Updates, die die Spalte nicht kennt.
 Wettlauftests mit einer fremden Transaktion zwischen Lesen und Schreiben (`ForeignCommit`) stehen in
 `AccountRowWriteIntegrationTest`, `GroupRowWriteIntegrationTest`,
-`ConnectorTypePolicyRowWriteIntegrationTest`, `GroupGrantTransferRowWriteIntegrationTest` und
+`ConnectorTypePolicyRowWriteIntegrationTest`, `UserServiceStaleRowIntegrationTest`,
+`DirectorySyncStaleRowIntegrationTest`, `GroupGrantTransferRowWriteIntegrationTest` und
 `ServiceAccountConsentRowWriteIntegrationTest`.
 
 Damit die Liste nicht still veraltet, verlangt `everyPersistentTypeWithASecurityStateFieldIsClassified`
@@ -557,7 +579,11 @@ für jede Entity und jeden Repository-Typ mit einem Feld, dessen Name nach Siche
 **Grenzen:** Die Regel sieht Aufrufe, keinen Datenfluss; eine Ausnahme gilt für die ganze Methode.
 `@DynamicUpdate` schützt nur eine verwaltete Instanz: `save` einer abgelösten Instanz schreibt jede
 abweichende Spalte. Ohne `@DynamicUpdate` schreibt auch das Dirty Checking eine geänderte verwaltete
-Entity ohne `save` als ganze Zeile; die Regel meldet dann jeden Aufruf einer ändernden Methode. Vollen Schutz gäbe nur `@Version`, das eine Migration braucht. Typen, die nur eingefügt und
+Entity ohne `save` als ganze Zeile; die Regel meldet dann jeden Aufruf einer ändernden Methode.
+Vollen Schutz gibt nur `@Version`. Auch dort prüft die Version nur, wer sie mitschreibt: Ein gezieltes
+`UPDATE` ohne Versionserhöhung und die Vorgängerversion während eines Rolling Updates lassen ein
+späteres Schreiben aus altem Stand durch; dann hält nur `@DynamicUpdate` die übrigen Spalten. Typen,
+die nur eingefügt und
 gelöscht werden (`GroupMembership`, `CapabilityGrant`), fragt die Regel nicht ab; ein Feld, dessen
 Name nicht nach Sicherheitszustand klingt, erfasst die Abdriftprüfung nicht.
 

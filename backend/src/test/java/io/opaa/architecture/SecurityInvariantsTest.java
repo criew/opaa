@@ -366,38 +366,19 @@ class SecurityInvariantsTest {
   static final Map<String, String> WHOLE_ROW_WRITERS =
       Map.ofEntries(
           Map.entry(
-              "io.opaa.account.AccountErasureService#erase",
-              "locks the users and local_credentials rows FOR UPDATE first and reads the row afresh"
-                  + " under that lock"),
-          Map.entry("io.opaa.account.InitialAdministrator#createBootstrapUser", NEW_ROW),
-          Map.entry("io.opaa.account.InitialAdministrator#ensureLocalProviderRow", NEW_ROW),
-          Map.entry(
               "io.opaa.account.LocalActionTokenService#issue",
               NEW_ROW + "; consumption is a conditional update"),
           Map.entry(
               "io.opaa.account.LocalActionTokenService#issueHandover",
               NEW_ROW + "; consumption is a conditional update"),
-          Map.entry("io.opaa.account.LocalAdminReset#reset", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.account.LocalHandoverAccountService#redeem", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.account.LocalPasswordService#confirmRegistration",
-              CHANGED_COLUMNS_IN_TRANSACTION),
           Map.entry(
               "io.opaa.account.LocalRefreshTokenService#insert",
               NEW_ROW + "; revocation and rotation are targeted updates"),
-          Map.entry("io.opaa.account.LocalSelfServiceAccountService#register", NEW_ROW),
           Map.entry("io.opaa.account.LocalTokenRevocationService#revokeAccessToken", NEW_ROW),
-          Map.entry("io.opaa.account.LocalUserService#create", NEW_ROW),
-          Map.entry("io.opaa.account.LocalUserService#update", CHANGED_COLUMNS_IN_TRANSACTION),
           Map.entry("io.opaa.asset.AssetGrantService#grantAtCreation", NEW_ROW),
           Map.entry("io.opaa.asset.AssetGrantService#upsertGrant", ROLE_ONLY),
           Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#giveOwnerGrant", ROLE_ONLY),
           Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#moveOwnerGrant", ROLE_ONLY),
-          Map.entry(
-              "io.opaa.auth.UserService#applyRole",
-              CHANGED_COLUMNS_IN_TRANSACTION + " (updateRole, confirmAuditorRequest)"),
-          Map.entry("io.opaa.auth.UserService#insertUser", NEW_ROW),
           Map.entry(
               "io.opaa.connection.LibraryConnectionService#connect",
               CHANGED_COLUMNS_IN_TRANSACTION),
@@ -407,12 +388,6 @@ class SecurityInvariantsTest {
           Map.entry("io.opaa.connection.oauth.ConnectionAuthorizationService#start", NEW_ROW),
           Map.entry(
               "io.opaa.connection.profile.ConnectionProfileService#update",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.connection.profile.ConnectorLockService#lockType",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.connection.profile.ProfileRequirementService#require",
               CHANGED_COLUMNS_IN_TRANSACTION),
           Map.entry("io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#grant", NEW_ROW),
           Map.entry(
@@ -424,43 +399,6 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.diagnosticaccess.LibraryDiagnosticsLockService#setLocked",
               CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry("io.opaa.directory.OidcProviderService#createInitialProvider", NEW_ROW),
-          Map.entry("io.opaa.directory.OidcProviderService#createProvider", NEW_ROW),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#enableLocalAccountsForInstallation",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#makeDefault", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#renameLocalRow",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#reorder", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#setDirectorySync",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#setEnabled", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#setExternal", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#setLocalAccountsEnabled",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#switchLocalAccounts",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.OidcProviderService#updateProvider",
-              CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.directory.sync.DirectorySyncPlanExecutor#applyAccountStates",
-              CHANGED_COLUMNS_IN_TRANSACTION + " of the sync run"),
-          Map.entry(
-              "io.opaa.directory.sync.DirectorySyncPlanExecutor#applyPlan",
-              CHANGED_COLUMNS_IN_TRANSACTION + " of the sync run; new groups are inserted"),
-          Map.entry(
-              "io.opaa.directory.sync.DirectorySyncPlanExecutor#resolveAndApplyParentLinks",
-              CHANGED_COLUMNS_IN_TRANSACTION + " of the sync run"),
           Map.entry(
               "io.opaa.externalaccess.token.ExternalAccessTokenAdminService#block", TOWARD_REVOKED),
           Map.entry(
@@ -499,19 +437,6 @@ class SecurityInvariantsTest {
           Map.entry("io.opaa.externalaccess.token.ServiceAccountService#issueToken", NEW_ROW),
           Map.entry(
               "io.opaa.externalaccess.token.ServiceAccountService#revokeToken", TOWARD_REVOKED),
-          Map.entry("io.opaa.group.GroupDeactivation#deactivate", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry("io.opaa.group.GroupDeactivation#reactivate", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry(
-              "io.opaa.group.GroupService#addMember",
-              CHANGED_COLUMNS_IN_TRANSACTION + "; only the membership collection changes"),
-          Map.entry("io.opaa.group.GroupService#createGroup", NEW_ROW),
-          Map.entry(
-              "io.opaa.group.GroupService#removeMember",
-              CHANGED_COLUMNS_IN_TRANSACTION + "; only the membership collection changes"),
-          Map.entry("io.opaa.group.GroupService#setProtection", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry("io.opaa.group.GroupService#setRelease", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry("io.opaa.group.GroupService#updateGroup", CHANGED_COLUMNS_IN_TRANSACTION),
-          Map.entry("io.opaa.group.TokenGroupSynchronizer#findOrCreate", NEW_ROW),
           Map.entry("io.opaa.library.KnowledgeLibraryService#createLibrary", NEW_ROW),
           Map.entry(
               "io.opaa.library.KnowledgeLibraryService#generatePushSecret",

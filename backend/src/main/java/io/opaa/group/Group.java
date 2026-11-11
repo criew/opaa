@@ -13,20 +13,26 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.OptimisticLock;
 
 /**
  * A permission subject that groups users together, scoped to exactly one organization. A grant can
  * reference a group instead of a single user (see {@link PermissionSubject}); resolving which users
  * a group grant reaches goes through {@link GroupMembershipResolver}.
  *
- * <p>Written column by column ({@code @DynamicUpdate}): a write of a loaded instance keeps a
- * deactivation, dissolution, release or protection another transaction committed after the read.
+ * <p>Optimistically locked ({@link #version}): a write from a stale read, a saved detached instance
+ * included, fails instead of writing back a deactivation, dissolution, release or protection.
+ * Memberships are rows of their own and do not count as a change of the group, so two members added
+ * at once never make each other fail. Writing only the changed columns ({@code @DynamicUpdate})
+ * keeps what a writer without the version changed meanwhile, such as the predecessor version during
+ * a rolling update.
  */
 @DynamicUpdate
 @Entity
@@ -140,7 +146,10 @@ public class Group {
   private Instant deactivatedAt;
 
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OptimisticLock(excluded = true)
   private List<GroupMembership> memberships = new ArrayList<>();
+
+  @Version private long version;
 
   protected Group() {}
 
