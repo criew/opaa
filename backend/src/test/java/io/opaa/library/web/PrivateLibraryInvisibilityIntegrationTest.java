@@ -1576,11 +1576,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
           agentService
               .create(
                   new AgentCreation(
-                      "Prüfhilfe " + UUID.randomUUID(),
-                      null,
-                      null,
-                      null,
-                      ResponsibleUnit.ofFunction("Referat Z3")),
+                      "Prüfhilfe", null, null, null, ResponsibleUnit.ofFunction("Referat Z3")),
                   adminCaller)
               .agent()
               .getId();
@@ -1599,6 +1595,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
         jdbc.update("DELETE FROM audit_log WHERE object_id = ?", agent.toString());
         jdbc.update("DELETE FROM asset_ownership_history WHERE asset_id = ?", agent);
         jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", agent);
+        jdbc.update("DELETE FROM asset_responsibilities WHERE asset_id = ?", agent);
       }
       jdbc.update("UPDATE agent_settings SET enabled = false, updated_by = NULL WHERE id = 1");
     }
