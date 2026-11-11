@@ -655,7 +655,10 @@ diese Regeln um:
 5. **Sortierbar** sind Namens- und Datumsspalten, sobald die Liste blättert und die Schnittstelle
    sortiert.
 6. **Höchstens sieben Spalten** bei 1280 px, Spaltenkopf einzeilig; eine Erläuterung zum Kopf
-   steht im Info-Symbol daneben. Was nicht passt, wandert in die Einzelheiten der Zeile oder auf
+   steht im Info-Symbol daneben. Jede Spalte ist mindestens so breit wie ihr Kopf samt
+   Sortierpfeil; reicht der Platz unterhalb von 1280 px nicht, scrollt die Tabelle in ihrem
+   Bereich seitlich (`minWidth`), statt Köpfe zu stauchen. Ein Kopf läuft nie in die Nachbarspalte,
+   im Notfall endet er mit „…“. Was nicht passt, wandert in die Einzelheiten der Zeile oder auf
    die Detailseite (Beispiel: Indexstatus zeigt fünf Spalten, die Indexstände stehen in den
    Einzelheiten).
 7. **Zellen brechen nicht um, und nichts wird stumm abgeschnitten.** Namen werden gekürzt und
@@ -875,8 +878,9 @@ Die Bestätigung bleibt das Overlay aus 5.10.
    Handlung läuft.
 5. **Startfokus.** Ein Formulardialog öffnet mit dem Fokus im ersten Feld (auch einem Suchfeld
    über dem Inhalt, bei Optionsfeldern auf dem gewählten), nicht auf dem Dialog selbst; ein Feld,
-   das der Inhalt mit `autoFocus` wählt, behält ihn. Eine Bestätigung (`tone`) und ein Dialog ohne
-   Feld behalten ihn auf „Abbrechen" bzw. dem Dialog.
+   das der Inhalt mit `autoFocus` wählt, behält ihn. Eine Bestätigung mit `tone="danger"` öffnet
+   mit dem Fokus auf „Abbrechen“ (5.10), eine mit `tone="caution"` und ein Dialog ohne Feld auf dem
+   Dialog selbst.
 6. **Breite.** 600 px für Formulare und einfache Ansichten, 900 px nur für einen Editor mit
    Vorschau, eine Dokumentvorschau oder eine Liste (`width="editor"`). 444 px bleibt der
    Bestätigung vorbehalten – dem Overlay aus 5.10 und der Bestätigung, die erst ihre Folgen lädt

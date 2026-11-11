@@ -95,6 +95,28 @@ describe('AdminList', () => {
     expect(getComputedStyle(result).whiteSpace).toBe('normal')
   })
 
+  it('lets the open details of a row wrap below it', () => {
+    stubViewport(true)
+    renderList({
+      rowDetail: (row) =>
+        row.id === 'a' ? <p>Abschnitte: 3 im Index, 3 laut Dokumenten</p> : null,
+    })
+
+    const cell = screen.getByText(/Abschnitte: 3 im Index/).closest('td') as HTMLElement
+    // jsdom resolves white-space through the table rule, but not the padding shorthand of MUI
+    expect(getComputedStyle(cell).whiteSpace).toBe('normal')
+    expect(getComputedStyle(cell).overflowWrap).toBe('anywhere')
+  })
+
+  it('cuts a head too wide for its column with „…“ instead of running into the next', () => {
+    stubViewport(true)
+    renderList()
+
+    const head = getComputedStyle(screen.getByRole('columnheader', { name: 'Anzahl' }))
+    expect(head.overflow).toBe('hidden')
+    expect(head.textOverflow).toBe('ellipsis')
+  })
+
   it('renders the same rows as a card list on a narrow viewport', () => {
     stubViewport(false)
     renderList()

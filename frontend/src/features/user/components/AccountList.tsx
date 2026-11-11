@@ -323,14 +323,14 @@ export default function AccountList({
       id: 'expiresAt',
       head: 'Ablauf',
       sortFields: ['expiresAt'],
-      width: '11%',
+      width: '12%',
       cell: (account) => expiryText(account),
     },
     {
       id: 'createdAt',
       head: 'Angelegt',
       sortFields: ['createdAt'],
-      width: '11%',
+      width: '13%',
       card: 'hidden',
       cell: (account) => formatExpiry(account.createdAt),
     },
@@ -340,6 +340,7 @@ export default function AccountList({
     <AdminList
       label="Konten"
       rows={accounts}
+      minWidth={880}
       rowKey={(account) => account.id}
       rowLabel={(account) => account.displayName ?? account.email ?? account.id}
       columns={columns}

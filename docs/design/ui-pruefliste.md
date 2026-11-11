@@ -185,7 +185,8 @@ zwei Einträgen.
 52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
     öffnende Knopf, beim Bearbeiten „„<Name>“ bearbeiten“; die Handlung als Verb allein; links
     höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Startfokus im ersten Feld,
-    bei einer Bestätigung auf „Abbrechen“; Breite 600 oder 900 px,
+    bei einer Bestätigung im Ton `danger` auf „Abbrechen“, im Ton `caution` auf dem Dialog;
+    Breite 600 oder 900 px,
     444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
     Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
     wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`

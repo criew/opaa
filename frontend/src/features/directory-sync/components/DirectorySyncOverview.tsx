@@ -105,9 +105,9 @@ function AttentionCell({ entry }: { entry: OverviewEntry }) {
 
 /**
  * The directory sync of every provider on one screen: mechanism, last and next run and
- * what needs doing, one row each. The state words are results and wrap below their dot instead of
- * being cut off; names and times stay on one line. The row itself leads into the side panel with details and
- * changes; a waiting plan shows as „Handlungsbedarf" and is decided there.
+ * what needs doing, one row each. The state words are results and wrap below their dot instead
+ * of being cut off; names and times stay on one line. The row itself leads into the side panel
+ * with details and changes; a waiting plan shows as „Handlungsbedarf" and is decided there.
  */
 export default function DirectorySyncOverview({ entries, onOpen, now }: OverviewProps) {
   return (

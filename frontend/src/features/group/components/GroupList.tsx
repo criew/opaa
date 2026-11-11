@@ -225,7 +225,7 @@ export default function GroupList({
       id: 'origin',
       head: 'Herkunft',
       sortFields: ['origin'],
-      width: '19%',
+      width: '17%',
       card: 'line',
       cell: (group) => <GroupOriginTag group={group} />,
     },
@@ -233,7 +233,7 @@ export default function GroupList({
       id: 'memberCount',
       head: 'Mitglieder',
       sortFields: ['memberCount'],
-      width: '10%',
+      width: '15%',
       align: 'right',
       cell: (group) => group.memberCount,
     },
@@ -241,7 +241,7 @@ export default function GroupList({
       id: 'state',
       head: 'Zustand',
       sortFields: ['state'],
-      width: '19%',
+      width: '17%',
       cell: (group) => <GroupStateCell group={group} />,
     },
     {
@@ -256,6 +256,7 @@ export default function GroupList({
     <AdminList
       label="Gruppen"
       rows={groups}
+      minWidth={880}
       rowKey={(group) => group.id}
       rowLabel={(group) => group.name}
       columns={columns}

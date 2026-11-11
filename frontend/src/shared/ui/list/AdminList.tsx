@@ -756,7 +756,7 @@ export default function AdminList<Row, F extends string = never>({
               </TableRow>
               {hasDetail && (
                 <TableRow>
-                  <TableCell colSpan={columnCount} sx={{ whiteSpace: 'normal', pt: 0 }}>
+                  <TableCell colSpan={columnCount} data-row-detail-cell="">
                     {detail}
                   </TableCell>
                 </TableRow>

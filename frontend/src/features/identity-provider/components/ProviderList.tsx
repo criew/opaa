@@ -179,7 +179,7 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
           id: 'position',
           head: 'Nr.',
           headNote: 'auf der Anmeldeseite',
-          width: 52,
+          width: 56,
           card: 'hidden',
           cell: (_provider, index) => (
             <Box component="span" sx={{ color: 'text.secondary', fontFamily: fontFamily.mono }}>

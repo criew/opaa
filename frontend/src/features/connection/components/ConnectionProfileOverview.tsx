@@ -73,8 +73,9 @@ function AttentionCell({ attention }: { attention: ProfileAttention | null }) {
 /**
  * The profiles of the installation on one screen: source type and state, host, who may use it,
  * its connections and what needs doing - one row each. The host gives way first: it is cut off
- * with its tooltip, while the state of the row wraps below its dot rather than lose words. The row itself leads into the side panel
- * with details and every change; a row with something to do carries a bar in the tone of it.
+ * with its tooltip, while the state of the row wraps below its dot rather than lose words. The
+ * row itself leads into the side panel with details and every change; a row with something to do
+ * carries a bar in the tone of it.
  */
 export default function ConnectionProfileOverview({ entries, onOpen }: OverviewProps) {
   return (
