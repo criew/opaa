@@ -83,12 +83,28 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   return (
     <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>{group.name}</Typography>
+        {/* Name, badges and count wrap onto further lines on a phone instead of overflowing. */}
+        <Stack
+          direction="row"
+          spacing={1.5}
+          useFlexGap
+          sx={{ alignItems: 'center', flexGrow: 1, flexWrap: 'wrap', rowGap: 0.5, minWidth: 0 }}
+        >
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
+            {group.name}
+          </Typography>
           {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
           <MetaBadge>{group.releasedForUse ? 'freigegeben' : 'nicht freigegeben'}</MetaBadge>
           {group.deactivated && <MetaBadge>deaktiviert</MetaBadge>}
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', ml: 'auto', mr: 1 }}>
+          <Typography
+            sx={{
+              fontSize: fontSize.text,
+              color: 'text.secondary',
+              ml: 'auto',
+              mr: 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
             {group.memberCount} {group.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
           </Typography>
         </Stack>

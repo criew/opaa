@@ -253,17 +253,13 @@ export default function BrandingSettingsPage() {
           description="Produktname, Claim, Logo und Akzentfarbe Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
         />
 
-        {storeError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {storeError}
-          </Alert>
-        )}
         <SettingsForm
           aria-label="Branding"
           onSave={handleSave}
           busy={isSaving}
           dirty={dirty}
           onDiscard={discard}
+          result={storeError && <Alert severity="error">{storeError}</Alert>}
           secondaryAction={
             <Button variant="outlined" onClick={resetToStandard} disabled={isSaving}>
               Auf OPAA-Standard zurücksetzen
@@ -291,8 +287,14 @@ export default function BrandingSettingsPage() {
                   </Alert>
                 )}
                 <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Button component="label" variant="outlined">
-                    {BRANDING_IMAGES[slot.kind].label} auswählen
+                  {/* The section head names the image; the visible label stays short enough
+                     for one line on a phone (guidelines 4.7), the accessible name stays unique. */}
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    aria-label={`Bild auswählen: ${BRANDING_IMAGES[slot.kind].label}`}
+                  >
+                    Bild auswählen
                     <Box
                       component="input"
                       type="file"
@@ -311,8 +313,9 @@ export default function BrandingSettingsPage() {
                       color="error"
                       onClick={() => void handleRemoveImage(slot.kind)}
                       disabled={isSaving}
+                      aria-label={`Bild entfernen: ${BRANDING_IMAGES[slot.kind].label}`}
                     >
-                      {BRANDING_IMAGES[slot.kind].label} entfernen
+                      Bild entfernen
                     </Button>
                   )}
                   {pendingImages[slot.kind] && (

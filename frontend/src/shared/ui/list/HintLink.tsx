@@ -40,7 +40,13 @@ export default function HintLink({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? popoverId : undefined}
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: fontSize.text }}
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.75,
+          fontSize: fontSize.text,
+          textAlign: 'left',
+        }}
       >
         <Icon fontSize="small" sx={{ color: 'warning.main' }} aria-hidden />
         {text}

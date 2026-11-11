@@ -40,6 +40,17 @@ interface AreaPageHeaderProps {
 const EMPTY_SLOT_SX = { '&:empty': { display: 'none' } } as const
 
 /**
+ * The action sits at the trailing edge of the title row; below 600 px it takes a row of its own
+ * under the title, in full width (guidelines 4.7).
+ */
+const ACTION_SX = {
+  ml: { xs: 0, sm: 'auto' },
+  flex: { xs: '1 0 100%', sm: 'none' },
+  alignSelf: 'center',
+  '& > *, & .MuiButton-root': { width: { xs: '100%', sm: 'auto' } },
+} as const
+
+/**
  * The header every area page begins with (guidelines 4.6): title, next to it the count of the
  * page's list, at the right edge the one primary action, below it the sentence that names the
  * scope. Count and action are also slots: `AreaPageCount` and `CreateButton` rendered anywhere
@@ -116,11 +127,8 @@ export default function AreaPageHeader({
         )}
         {/* Of the two, whichever is present takes the auto margin that pushes it to the trailing
            edge; a page writes its action in one of the two ways. */}
-        {action && <Box sx={{ ml: 'auto', flex: 'none', alignSelf: 'center' }}>{action}</Box>}
-        <Box
-          ref={attachActionSlot}
-          sx={{ ml: 'auto', flex: 'none', alignSelf: 'center', ...EMPTY_SLOT_SX }}
-        />
+        {action && <Box sx={ACTION_SX}>{action}</Box>}
+        <Box ref={attachActionSlot} sx={{ ...ACTION_SX, ...EMPTY_SLOT_SX }} />
       </Box>
       <Typography
         sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5, maxWidth: readingWidth }}
