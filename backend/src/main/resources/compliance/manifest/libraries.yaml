@@ -342,6 +342,22 @@ nonPersonalTables:
     - tool_capability_assessed_at
     - tool_capability_measurement_run
   llm_model_seed_marker: [id, seeded_at]
+  llm_tool_checks:
+    - id
+    - model_id
+    - base_url
+    - model_identifier
+    - status
+    - repetitions
+    - completed_runs
+    - total_runs
+    - started_at
+    - heartbeat_at
+    - finished_at
+    - run_id
+    - failure
+    - report
+    - report_markdown
   embedding_model:
     - id
     - base_url

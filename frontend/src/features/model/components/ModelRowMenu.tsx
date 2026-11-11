@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import type { LlmModelResponse } from '@/shared/api/types'
+import type { LlmModelResponse, ToolCapability } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { testLlmModel } from '../api/modelApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import ToolCapabilityDialog from './ToolCapabilityDialog'
+import ToolCheckDialog from './ToolCheckDialog'
 
 export const ACTIVE_DELETE_HINT =
   'Das aktive Modell kann nicht gelöscht werden – zuerst ein anderes Modell aktivieren.'
@@ -23,10 +25,16 @@ interface ModelRowMenuProps {
  * focus trap could be left neither with the keyboard nor with a screen reader.
  */
 export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
+  // „Werkzeuge prüfen“ only while agents are switched on; the server answers 404 otherwise
+  const toolCheckOffered = useRuntimeSwitchStore((s) => s.agents)
   const activateExistingModel = useLlmModelStore((s) => s.activateExistingModel)
   const deleteExistingModel = useLlmModelStore((s) => s.deleteExistingModel)
   const [busy, setBusy] = useState(false)
   const [toolCapabilityOpen, setToolCapabilityOpen] = useState(false)
+  const [toolCheckOpen, setToolCheckOpen] = useState(false)
+  const [preset, setPreset] = useState<
+    { value: ToolCapability; measurementRun: string } | undefined
+  >(undefined)
 
   async function run(action: () => Promise<string>, fallback: string) {
     setBusy(true)
@@ -83,7 +91,14 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
         items={[
           { label: 'Bearbeiten', onClick: () => onEdit(model) },
           { label: 'Verbindung testen', onClick: () => void test() },
-          { label: 'Werkzeugfähigkeit festlegen', onClick: () => setToolCapabilityOpen(true) },
+          toolCheckOffered && { label: 'Werkzeuge prüfen', onClick: () => setToolCheckOpen(true) },
+          {
+            label: 'Werkzeugfähigkeit festlegen',
+            onClick: () => {
+              setPreset(undefined)
+              setToolCapabilityOpen(true)
+            },
+          },
           !model.active && {
             label: 'Aktiv setzen',
             onClick: () =>
@@ -101,10 +116,23 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
           },
         ]}
       />
+      {toolCheckOpen && (
+        <ToolCheckDialog
+          model={model}
+          open
+          onClose={() => setToolCheckOpen(false)}
+          onAdopt={(proposal) => {
+            setToolCheckOpen(false)
+            setPreset(proposal)
+            setToolCapabilityOpen(true)
+          }}
+        />
+      )}
       {toolCapabilityOpen && (
         <ToolCapabilityDialog
           model={model}
           open
+          preset={preset}
           onClose={() => setToolCapabilityOpen(false)}
           onSaved={(message) => notify(message, 'success')}
         />
