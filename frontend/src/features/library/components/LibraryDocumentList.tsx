@@ -8,7 +8,6 @@ import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
 import Pagination from '@mui/material/Pagination'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
@@ -31,6 +30,8 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import { sourceRegistration } from './sources/registry'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
 import { formatDateTime, formatNumber } from '@/shared/utils/formatDate'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
   return formatDateTime(indexedAt)
@@ -48,7 +49,9 @@ export interface LibraryDocumentListProps {
   /** The library's selected spaces (CONFLUENCE) - resolves a row's space key to its name. */
   confluenceSpaces?: ConfluenceSpaceRef[] | null
   /** What to say when neither a document nor a folder is left to show. */
-  emptyMessage: string
+  /** A search or filter narrows the list; an empty result then offers „Filter zurücksetzen". */
+  narrowed: boolean
+  onResetFilters: () => void
   /** Rendered directly above the search field - the Ordnerpfad of the open folder. */
   breadcrumb?: ReactNode
   searchInput: string
@@ -149,7 +152,8 @@ export default function LibraryDocumentList({
   pageState,
   isLoading,
   confluenceSpaces,
-  emptyMessage,
+  narrowed,
+  onResetFilters,
   breadcrumb,
   searchInput,
   onSearchChange,
@@ -343,7 +347,7 @@ export default function LibraryDocumentList({
   }
 
   return (
-    <Box>
+    <Box data-list-scope="">
       {breadcrumb}
 
       {(showSearch || filters) && (
@@ -379,7 +383,7 @@ export default function LibraryDocumentList({
                     </InputAdornment>
                   ) : undefined,
                 },
-                htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
+                htmlInput: { 'aria-label': 'Dokumente durchsuchen', 'data-list-search': '' },
               }}
             />
           )}
@@ -451,15 +455,13 @@ export default function LibraryDocumentList({
       )}
 
       {isLoading ? (
-        <Stack spacing={1} aria-label="Dokumente werden geladen">
-          <Skeleton variant="rounded" height={64} />
-          <Skeleton variant="rounded" height={64} />
-          <Skeleton variant="rounded" height={64} />
-        </Stack>
+        <LoadingState />
       ) : documents.length === 0 && folders.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          {searchInput ? 'Kein Dokument entspricht dieser Suche.' : emptyMessage}
-        </Typography>
+        narrowed ? (
+          <EmptyState kind="noMatch" onReset={onResetFilters} />
+        ) : (
+          <EmptyState message="Dieser Ordner ist noch leer." />
+        )
       ) : (
         <Stack spacing={1}>
           {/* Folders are rows ahead of the documents, mirroring a plain file browser - a

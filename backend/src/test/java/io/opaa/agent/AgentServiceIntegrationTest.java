@@ -47,6 +47,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class AgentServiceIntegrationTest {
 
   @Autowired private AgentService agentService;
+  @Autowired private AgentCurrentRevisions currentRevisions;
   @Autowired private AgentSettingsService settingsService;
   @Autowired private AssetGrantService grantService;
   @Autowired private CapabilityService capabilityService;
@@ -298,6 +299,37 @@ class AgentServiceIntegrationTest {
                 Long.class,
                 organization))
         .isEqualTo(3);
+  }
+
+  @Test
+  void theCurrentRevisionReachesOnlyWhoMayReadTheAgent() {
+    grantCreateAgent(creator);
+    UUID agent = agentOf(callerOf(creator), "Fassungshilfe");
+    agentService.update(agent, withLibraries(Set.of()), creator());
+    assertThat(agentService.get(agent, creator()).agent().getRevision())
+        .as("a new name alone is no new revision")
+        .isEqualTo(1);
+    agentService.update(
+        agent,
+        new AgentUpdate(
+            "Recherchehilfe",
+            null,
+            new AgentConfiguration(
+                "Antworte knapp.",
+                Set.of(),
+                AgentTools.DEFAULT,
+                AgentPlanStep.OFF,
+                AgentLimits.INSTALLATION)),
+        creator());
+    int revision = agentService.get(agent, creator()).agent().getRevision();
+
+    assertThat(revision).isEqualTo(2);
+    assertThat(currentRevisions.current(Set.of(agent), organization, creator))
+        .containsExactly(java.util.Map.entry(agent, 2));
+    assertThat(currentRevisions.current(Set.of(agent), organization, outsider)).isEmpty();
+    assertThat(currentRevisions.current(Set.of(agent), foreignOrganization, foreigner)).isEmpty();
+    jdbc.update("UPDATE agent_settings SET enabled = false WHERE id = 1");
+    assertThat(currentRevisions.current(Set.of(agent), organization, creator)).isEmpty();
   }
 
   private UUID agentOf(CurrentUser caller, String name) {

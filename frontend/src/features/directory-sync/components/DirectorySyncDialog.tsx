@@ -46,6 +46,8 @@ import {
 } from './directorySyncLabels'
 import { fontSize } from '@/shared/theme/tokens'
 import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import LoadError from '@/shared/ui/states/LoadError'
 
 type ResultKind = 'DRY_RUN' | 'RUN' | 'CONFIRM'
 
@@ -214,22 +216,12 @@ export default function DirectorySyncDialog({
             />
           </PanelSection>
         )}
-        {pendingSummary && !planState && (
-          <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
-            Der ausstehende Plan wird geladen …
-          </Typography>
-        )}
+        {pendingSummary && !planState && <LoadingState shape="lines" count={2} />}
         {pendingSummary && planState?.kind === 'FAILED' && (
-          <Alert
-            severity="error"
-            action={
-              <Button color="inherit" size="small" onClick={onPlanRetry}>
-                Erneut laden
-              </Button>
-            }
-          >
-            Der ausstehende Plan konnte nicht geladen werden.
-          </Alert>
+          <LoadError
+            message="Der ausstehende Plan konnte nicht geladen werden."
+            onRetry={onPlanRetry}
+          />
         )}
         {pendingSummary && planState?.kind === 'NONE' && (
           <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>

@@ -21,10 +21,9 @@ export const promptActionSource: ChatActionSource = {
   texts: {
     heading: 'Prompt einsetzen',
     listLabel: 'Prompts',
-    loading: 'Prompts werden geladen …',
-    none: 'Diesem Space sind keine Prompts zugeordnet',
-    noMatch: 'Kein passender Prompt gefunden',
-    loadFailed: 'Prompts konnten nicht geladen werden',
+    none: 'Diesem Space sind keine Prompts zugeordnet.',
+    noMatch: 'Keine Treffer.',
+    loadFailed: 'Prompts konnten nicht geladen werden.',
     chooseFailed: 'Der Prompt konnte nicht geladen werden',
   },
   load: async ({ spaceId }) => {

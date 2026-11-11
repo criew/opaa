@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
 import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** How many names a page brings — the same default as in the service. */
 const PAGE_SIZE = 50
@@ -92,12 +93,14 @@ export default function GroupMembersDisclosure({
 
   return (
     <Stack spacing={0.25} sx={{ mt: 0.5 }}>
-      {error && <Alert severity="error">{error}</Alert>}
-      {isLoading && !disclosure && (
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Mitglieder werden geladen …
-        </Typography>
+      {error && (
+        <LoadError
+          message="Die Mitglieder konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadPage(shown)}
+        />
       )}
+      {isLoading && !disclosure && <LoadingState shape="lines" count={3} />}
       {disclosure?.protectedGroup ? (
         <Typography sx={{ fontSize: fontSize.meta }}>
           {disclosure.responsible.length > 0
@@ -122,10 +125,11 @@ export default function GroupMembersDisclosure({
             {hasMore && (
               <TextAction
                 sx={{ alignSelf: 'flex-start' }}
-                aria-label={`${isLoading ? 'Wird geladen …' : 'Weitere anzeigen'} (Gruppe „${groupLabel}“)`}
+                aria-label={`Weitere anzeigen (Gruppe „${groupLabel}“)`}
+                disabled={isLoading}
                 onClick={() => void loadPage(shown)}
               >
-                {isLoading ? 'Wird geladen …' : 'Weitere anzeigen'}
+                Weitere anzeigen
               </TextAction>
             )}
           </>

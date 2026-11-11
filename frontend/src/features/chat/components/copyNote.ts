@@ -12,12 +12,12 @@ export function copyNote(notice: string, productName: string, answeredAt: Date):
 }
 
 /**
- * Notice and product name come from the branding. Direction controls (U+202A–202E, U+2066–2069,
+ * Notice and product name come from the branding, an agent name from the run. Direction controls (U+202A–202E, U+2066–2069,
  * U+200E/F, U+061C) would reorder the rest of the line when the note is pasted, tag characters
  * (U+E0000–E007F) could hide text in it, and breaks or control characters would split it, so they
  * are dropped or turned into blanks. The PDF export of a chat applies the same rule.
  */
-function plainNoteText(text: string): string {
+export function plainNoteText(text: string): string {
   return Array.from(text.replace(/[\r\n\u2028\u2029]+/g, ' '))
     .filter((char) => !isDroppedFromNote(char.codePointAt(0) ?? 0))
     .join('')

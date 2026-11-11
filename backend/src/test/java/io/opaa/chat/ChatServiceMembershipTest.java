@@ -64,6 +64,7 @@ class ChatServiceMembershipTest {
             mock(ChatMetrics.class),
             mock(ChatAutoCleanupSettings.class),
             mock(ChatAttachmentService.class),
+            mock(AgentRevisions.class),
             Clock.systemUTC());
   }
 

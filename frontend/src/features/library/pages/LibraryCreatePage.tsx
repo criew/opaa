@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import WizardLayout from '@/shared/ui/wizard/WizardLayout'
@@ -79,7 +79,9 @@ import {
 import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
 import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
-import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { iconSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -570,24 +572,17 @@ export default function LibraryCreatePage() {
       onNext={() => void handleNext()}
       onCreate={() => void handleCreate()}
     >
-      {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-          Quellarten werden geladen …
-        </Typography>
+      {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && !sourceTypesError && (
+        <LoadingState shape="cards" count={4} />
       )}
 
       {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={reloadSourceTypes}>
-              Erneut versuchen
-            </Button>
-          }
-        >
-          Die Quellarten konnten nicht geladen werden. Versuchen Sie es in einem Moment erneut.
-        </Alert>
+        <Box sx={{ mb: 2 }}>
+          <LoadError
+            message="Die Quellarten konnten nicht geladen werden."
+            onRetry={reloadSourceTypes}
+          />
+        </Box>
       )}
 
       {currentStep === STEP_SOURCE_TYPE &&

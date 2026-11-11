@@ -182,7 +182,11 @@ def render(template_path, data, target):
 
 
 def add_stamp(path, stamp):
-    """Appends stamp to every footer definition and writes it to the document properties."""
+    """Appends stamp to every footer definition and writes it to the document properties.
+
+    Comments keep it in the DOCX; the subject is what the PDF export carries into its own
+    document information, so a PDF shows the stamp in its footer and its properties alike.
+    """
     import docx
 
     document = docx.Document(path)
@@ -198,6 +202,7 @@ def add_stamp(path, stamp):
             if index == 0 or not footer.is_linked_to_previous:
                 footer.add_paragraph(stamp)
     document.core_properties.comments = stamp
+    document.core_properties.subject = stamp
     document.save(path)
 
 
@@ -316,7 +321,13 @@ def fill(job):
                 "errors": [f"Die Vorlage ließ sich nicht befüllen: {type(error).__name__} {reason}"],
             }
         if isinstance(stamp, str) and stamp.strip():
-            add_stamp(rendered, stamp.strip())
+            try:
+                add_stamp(rendered, stamp.strip())
+            except ValueError:  # a character XML cannot hold; the file is never left unstamped
+                return 2, {
+                    "files": [],
+                    "errors": ["Der Fassungsstempel ließ sich nicht in die Datei schreiben."],
+                }
         pdf = None
         if "pdf" in formats:
             pdf = convert_to_pdf(rendered, work_dir, pdf_timeout(job))

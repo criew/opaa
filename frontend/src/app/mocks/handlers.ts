@@ -79,6 +79,7 @@ import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
 import { installationHandlers } from '@/features/installation/mocks/installationHandlers'
 // app
 import { healthHandlers } from '@/shared/mocks/healthHandlers'
+import { scenarioHandler } from './scenarioHandler'
 
 /**
  * All MSW handlers, one module per topic of the OpenAPI spec, for the browser worker and the test
@@ -87,7 +88,7 @@ import { healthHandlers } from '@/shared/mocks/healthHandlers'
  * of a parameter at the same position (`GET /groups/selectable` before `GET /groups/:groupId`). A
  * handler whose path could match another topic's belongs into that topic's module.
  */
-export const handlers = [
+const topicHandlers = [
   // chat
   ...chatHandlers,
   ...chatAttachmentHandlers,
@@ -170,3 +171,6 @@ export const handlers = [
   // app
   ...healthHandlers,
 ]
+
+/** The topic handlers behind the scenario handler, which answers first for every topic. */
+export const handlers = [scenarioHandler(topicHandlers), ...topicHandlers]

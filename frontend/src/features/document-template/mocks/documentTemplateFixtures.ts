@@ -14,6 +14,7 @@ function initialTemplates(): Record<string, DocumentTemplateResponse> {
       responsibility: { function: 'Referat 50 – Organisation', missing: false },
       fileName: 'vermerk-referat-50.docx',
       sizeBytes: 48_213,
+      revision: 2,
       placeholders: [
         { name: 'aktenzeichen', kind: 'FIELD', fields: [] },
         { name: 'betreff', kind: 'FIELD', fields: [] },

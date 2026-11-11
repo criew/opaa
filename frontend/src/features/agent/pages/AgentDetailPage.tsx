@@ -3,7 +3,6 @@ import { Navigate, useNavigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import type { AgentUpdateRequest } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel } from '@/shared/utils/labels'
@@ -32,6 +31,8 @@ import {
 } from '../components/AgentConfigAreas'
 import { updateRequest } from '../components/updateRequest'
 import { countLabel } from '../components/agentTexts'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const tabs: Array<{ value: AgentTab; label: string }> = [
   { value: 'auftrag', label: 'Auftrag' },
@@ -88,9 +89,13 @@ export default function AgentDetailPage() {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         {storeError ? (
-          <Alert severity="error">{storeError}</Alert>
+          <LoadError
+            message="Der Agent konnte nicht geladen werden."
+            detail={storeError}
+            onRetry={() => void loadAgent(agentId)}
+          />
         ) : (
-          <Typography sx={{ color: 'text.secondary' }}>Agent wird geladen …</Typography>
+          <LoadingState shape="detail" count={4} />
         )}
       </Box>
     )
@@ -155,6 +160,7 @@ export default function AgentDetailPage() {
             <>
               <MetaBadge>{assetRoleLabel(agent.myRole)}</MetaBadge>
               {agent.delivered && <MetaBadge>Mitgeliefert</MetaBadge>}
+              <MetaBadge>{`Fassung ${agent.revision}`}</MetaBadge>
               {agent.responsibility.lock && <MetaBadge>Gesperrt</MetaBadge>}
             </>
           }

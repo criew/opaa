@@ -97,6 +97,7 @@ export const documentTemplateHandlers = [
       fileName: (file as File).name,
       sizeBytes: (file as File).size,
       placeholders: [{ name: 'betreff', kind: 'FIELD', fields: [] }],
+      revision: 1,
       succession: null,
       createdAt: now,
       updatedAt: now,
@@ -177,6 +178,7 @@ export const documentTemplateHandlers = [
       ...template,
       fileName: (file as File).name,
       sizeBytes: (file as File).size,
+      revision: template.revision + 1,
       updatedAt: new Date().toISOString(),
     }
     state.templates[template.id] = updated

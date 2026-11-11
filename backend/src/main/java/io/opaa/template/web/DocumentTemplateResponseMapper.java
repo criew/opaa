@@ -33,6 +33,7 @@ final class DocumentTemplateResponseMapper {
             template.getPlaceholders().stream()
                 .map(DocumentTemplateResponseMapper::toPlaceholder)
                 .toList(),
+            template.getRevision(),
             template.getCreatedAt(),
             template.getUpdatedAt())
         .description(template.getDescription())

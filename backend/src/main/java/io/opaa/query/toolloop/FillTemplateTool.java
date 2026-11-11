@@ -1,5 +1,6 @@
 package io.opaa.query.toolloop;
 
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.ChatAttachmentService;
 import io.opaa.query.answer.DocumentBlock;
 import io.opaa.query.runlog.AgentRunLogWriter;
@@ -372,7 +373,19 @@ class FillTemplateTool implements AgentTool {
       SandboxSession session = sandbox.session();
       String outputDir = OUTPUT_PARENT + "/" + UUID.randomUUID();
       session.upload(TEMPLATE_PATH, template.content());
-      session.upload(JOB_PATH, job(data, template, formats, outputDir, pdfDeadline(timeout)));
+      AgentRunStamp.TemplateRef filled =
+          new AgentRunStamp.TemplateRef(
+              template.template().id(), template.template().name(), template.template().revision());
+      AgentRunStamp stamp = run.stamp();
+      session.upload(
+          JOB_PATH,
+          job(
+              data,
+              template,
+              formats,
+              outputDir,
+              pdfDeadline(timeout),
+              stamp == null ? null : stamp.documentText(run.agentName(), filled)));
       result = session.runInstalled(SCRIPT, List.of(JOB_PATH), timeout);
       sandbox.scriptRan(result);
       reported = ScriptResult.read(result.stdout(), objectMapper);
@@ -380,6 +393,9 @@ class FillTemplateTool implements AgentTool {
           result.timedOut() || reported.files().isEmpty()
               ? List.of()
               : keep(sandbox, outputDir, reported.files());
+      if (!attached.isEmpty()) {
+        run.recordTemplate(filled);
+      }
     } catch (SandboxException e) {
       return refused(
           ToolCallResult.ERROR,
@@ -486,7 +502,8 @@ class FillTemplateTool implements AgentTool {
       TemplateToFill template,
       List<String> formats,
       String outputDir,
-      long pdfDeadlineSeconds) {
+      long pdfDeadlineSeconds,
+      String stamp) {
     ObjectNode job = objectMapper.createObjectNode();
     job.put("template", TEMPLATE_PATH);
     job.set("data", data);
@@ -495,8 +512,13 @@ class FillTemplateTool implements AgentTool {
     job.put("pdf_deadline_seconds", pdfDeadlineSeconds);
     ArrayNode formatList = job.putArray("formats");
     formats.forEach(formatList::add);
-    // Version stamp and draft notice come from the backend, never from the model; none is set yet.
-    job.putNull("stamp");
+    // Version stamp and draft notice come from the run, never from the model; the script writes
+    // them as plain text into every footer and the document properties, never as a template.
+    if (stamp == null) {
+      job.putNull("stamp");
+    } else {
+      job.put("stamp", stamp);
+    }
     return objectMapper.writeValueAsString(job).getBytes(StandardCharsets.UTF_8);
   }
 

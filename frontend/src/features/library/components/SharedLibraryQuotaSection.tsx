@@ -13,8 +13,9 @@ import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
-import { fontSize } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The limit in force in words; 0 is none. */
 function currentText(quota: SharedLibraryQuotaResponse): string {
@@ -209,20 +210,13 @@ export default function SharedLibraryQuotaSection() {
       description="Die hausweite Grenze je geteilter Bibliothek. Der Betrieb legt eine Obergrenze fest, darunter entscheidet die Systemverwaltung."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Das Speicherkontingent konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : quota === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Speicherkontingent wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <>
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="shared-library-quota-current">

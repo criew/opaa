@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -14,6 +13,8 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const MIN_RETENTION_MONTHS = 6
 const MAX_RETENTION_MONTHS = 24
@@ -102,20 +103,13 @@ export default function ConnectionLogRetentionSection() {
       description="Das Verbindungsprotokoll hält fest, wann Verbindungen zu einem Zugang entstanden, getrennt wurden oder abgelaufen sind. Lesen darf es nur die Revision; hier legen Sie fest, wie lange seine Einträge aufbewahrt werden."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die Aufbewahrungsfrist konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-          Aufbewahrungsfrist wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <Stack

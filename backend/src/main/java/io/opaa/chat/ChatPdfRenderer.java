@@ -179,6 +179,10 @@ final class ChatPdfRenderer {
       } else {
         markdown(entry.text());
       }
+      if (entry.draftNote() != null) {
+        space(4);
+        paragraph(entry.draftNote(), italic, SMALL_SIZE, 0, true);
+      }
       if (!entry.sources().isEmpty()) {
         space(6);
         keepTogether(2 * SMALL_SIZE * LINE_FACTOR);

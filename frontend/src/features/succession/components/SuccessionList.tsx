@@ -1,33 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Pagination from '@mui/material/Pagination'
 import Typography from '@mui/material/Typography'
-import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
 import type { SuccessionListResponse } from '@/shared/api/types'
 import { getSuccessionEntries } from '../api/successionApi'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
 import { fontSize } from '@/shared/theme/tokens'
 
-const PAGE_SIZE = 50
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
-/** Nothing open: say so, and say when something would show up here. */
-function EmptyState({ text }: { text: SuccessionTabText }) {
-  return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', py: 1 }}>
-      <TaskAltOutlinedIcon aria-hidden="true" sx={{ color: 'text.secondary', mt: 0.25 }} />
-      <Box>
-        <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
-          Zurzeit ist hier nichts offen.
-        </Typography>
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.25 }}>
-          {text.emptyExample}
-        </Typography>
-      </Box>
-    </Box>
-  )
-}
+const PAGE_SIZE = 50
 
 /**
  * One tab of the list (ADR-0036, Entscheidung 6): complete from the first day, oldest entry
@@ -67,13 +52,18 @@ export default function SuccessionList({
   }, [load])
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>
+    return (
+      <LoadError
+        message="Die Liste konnte nicht geladen werden."
+        detail={error}
+        onRetry={() => void load()}
+      />
+    )
   }
-  if (isLoading && !data) {
-    return <Typography sx={{ color: 'text.secondary' }}>Die Liste wird geladen …</Typography>
-  }
+  if (isLoading && !data) return <LoadingState />
   if (!data || data.totalElements === 0) {
-    return <EmptyState text={text} />
+    // Nothing open: say so, and say when something would show up here.
+    return <EmptyState message={`Zurzeit ist hier nichts offen. ${text.emptyExample}`} />
   }
 
   return (

@@ -186,6 +186,10 @@ class DocumentTemplateServiceIntegrationTest {
         .extracting(TemplatePlaceholder::name)
         .containsExactly("aktenzeichen");
     assertThat(auditCount("DOCUMENT_TEMPLATE_CHANGED", templateId)).isEqualTo(2);
+    // a new revision only with a new file, never with a new name
+    assertThat(replaced.template().getRevision()).isEqualTo(2);
+    jdbcTemplate.update("UPDATE document_templates SET revision = NULL WHERE id = ?", templateId);
+    assertThat(templateService.get(templateId, admin()).template().getRevision()).isEqualTo(1);
 
     templateService.delete(templateId, admin());
     assertThat(auditCount("DOCUMENT_TEMPLATE_DELETED", templateId)).isEqualTo(1);

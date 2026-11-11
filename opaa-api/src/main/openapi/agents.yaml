@@ -140,8 +140,9 @@ paths:
       summary: >
         Replace name, purpose and configuration (MANAGER or above). A library is accepted only if
         the caller may read it; an assigned library the caller may not read stays assigned even
-        when the request leaves it out, because the caller cannot see it. Every change counts the
-        revision up. A caller reaching the agent only through the system administration cannot
+        when the request leaves it out, because the caller cannot see it. A change of instruction,
+        libraries, tools, plan step or limits counts the revision up; a new name or purpose alone
+        does not. A caller reaching the agent only through the system administration cannot
         change the instruction; it is kept. A run takes the lower of an agent's limit and the installation's.
       requestBody:
         required: true
@@ -450,7 +451,9 @@ components:
           $ref: "#/components/schemas/AgentLimits"
         revision:
           type: integer
-          description: Counts up with every saved change (the "Fassung").
+          description: >
+            Counts up with every saved change of what a run uses - instruction, libraries, tools,
+            plan step, limits - (the "Fassung"); a new name or purpose alone does not.
         delivered:
           type: boolean
           description: The installation delivered this agent ("Recherche"); it is changeable all the same.

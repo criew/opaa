@@ -84,6 +84,7 @@ class ReadableRunTemplates implements RunTemplates {
         template.getId(),
         template.getName(),
         template.getDescription(),
-        template.getPlaceholders());
+        template.getPlaceholders(),
+        template.getRevision());
   }
 }

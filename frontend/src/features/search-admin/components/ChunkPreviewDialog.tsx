@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -20,6 +19,7 @@ import { formatMetadataValue } from '../utils/searchAdminLabels'
 import ChunkContent from './ChunkContent'
 import { fontSize } from '@/shared/theme/tokens'
 import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const CHUNK_DIALOG_TITLE_ID = 'chunk-preview-title'
 
@@ -78,14 +78,7 @@ export default function ChunkPreviewDialog({
       title="Chunk-Vorschau"
     >
       {error && <Alert severity="error">{error}</Alert>}
-      {!error && !chunk && (
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <CircularProgress size={20} />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Chunk wird geladen …
-          </Typography>
-        </Stack>
-      )}
+      {!error && !chunk && <LoadingState shape="lines" count={6} />}
       {chunk && (
         <Stack spacing={2}>
           <Box>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
+import type { LoadErrorMessage } from '@/shared/ui/states/LoadError'
 
 interface RetentionSettingState<T> {
   current: T | null
-  loadError: string | null
+  loadError: LoadErrorMessage | null
   reload: () => void
   /** Sends `update`; resolves to whether the server took it, and tells the outcome. */
   save: (update: Promise<T>, success: (saved: T) => string) => Promise<boolean>
@@ -12,7 +13,7 @@ interface RetentionSettingState<T> {
 
 /** What a section says when its setting cannot be loaded or saved. */
 interface RetentionMessages {
-  loadFailed: string
+  loadFailed: LoadErrorMessage
   saveFailed: string
 }
 
@@ -23,7 +24,7 @@ export function useRetentionSetting<T>(
 ): RetentionSettingState<T> {
   const { loadFailed, saveFailed } = messages
   const [current, setCurrent] = useState<T | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<LoadErrorMessage | null>(null)
 
   const reload = useCallback(() => {
     load()

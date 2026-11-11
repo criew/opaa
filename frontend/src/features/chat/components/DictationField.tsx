@@ -1,5 +1,4 @@
 import Box from '@mui/material/Box'
-import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
 import { LEVEL_HISTORY } from '../hooks/useDictation'
 import type { ChatDictation } from './useChatDictation'
@@ -114,7 +113,6 @@ export default function DictationField({ dictation, draft }: DictationFieldProps
           <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Text wird erkannt …
           </Typography>
-          <LinearProgress aria-hidden="true" sx={{ flex: 1 }} />
         </Box>
       )}
     </Box>
