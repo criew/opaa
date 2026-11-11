@@ -41,6 +41,10 @@ e2e/
     tests/*.spec.ts
   local-auth.env             Environment für den local-auth-Stack (Betriebsmodus oidc ohne Keycloak)
   docker-compose.local-auth.yml  Compose-Overlay: Mail-Fänger, öffentliche Basis-URL, weitere Grenzen
+  quick-tour/                    Rundgang für neue Nutzer (siehe unten) - eigene Konfiguration,
+    playwright.config.ts         weil alle anderen Stacks den Rundgang abschalten
+    tests/rundgang.spec.ts
+  docker-compose.quick-tour.yml  Overlay auf den local-auth-Stack: schaltet den Rundgang ein
   installation/              Antwortdateien der Ziele samt Passwortdateien (ADR-0060), schreibgeschützt
                              unter /run/opaa/installation eingehängt (OPAA_INSTALLATION_DIR_HOST)
   installation-assistant/        Konfiguration des Ziels "installation": das Szenario des
@@ -1039,6 +1043,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `12-revision.spec.ts` | Revision und Nachweis: erste Person der Revision über `OPAA_AUTH_FIRST_AUDITOR_EMAIL` mit dem Link aus dem Server-Log; Rollenantrag im Vier-Augen-Weg (ohne die Rolle Revision bestätigt niemand, weder die beantragte Person noch die Systemverwaltung; Bestätigung mit erneuter Anmeldung und einmaligem Link, Ablehnung); Stichtagsauskunft vor und nach dem Entzug einer Freigabe; Verbindungsprotokoll einer über einen Dropbox-Zugang verbundenen und gelöschten Bibliothek; Prüfsummenkette des laufenden Monats abrufbar und ohne Abweichung (ob schon ein Prüfpunkt besteht, hängt vom Zehn-Minuten-Takt des Kettenlaufs ab, daher gilt auch `UNCHAINED`) |
 | `13-nachfolge.spec.ts` | Nachfolge (#3465): Das Konto der Eigentümerin eines Space wird gesperrt, der Space steht sofort unter „Ohne Zuständigkeit“, „Nachfolge bestimmen“ mit Vorschau und Bestätigung überträgt ihn, danach ist die Nachfolge Eigentümerin |
 | `14-anhalten-chatloeschung.spec.ts` | Anhalten der Chat-Löschung eines gesperrten Kontos (#3488): Antrag mit Zweck aus fester Liste und Begründung, der Antrag allein hält nichts an, die beantragende Person kann nicht freigeben, eine zweite Person der Systemverwaltung gibt frei, danach Ende, Restlaufzeit, Zweck und Begründung sichtbar, Fortsetzen durch eine Person; den Ablauf nach der Höchstdauer prüft der Integrationstest |
+| `15-rundgang-abgeschaltet.spec.ts` | Abgeschalteter Rundgang (`OPAA_FEATURES_QUICK_TOUR_ENABLED=false`, wie in allen Stacks außer dem Ziel `quick-tour`): `GET /api/v1/auth/config` meldet ihn aus, das Notanker-Konto sieht im leeren Chat keinen Hinweis „Neu hier?“ und im Profilmenü keinen Eintrag „Rundgang starten“ |
 
 Für `12-revision.spec.ts` bringt der Lauf zwei Dinge mit, die die übrigen Szenarien nicht
 brauchen: `local-auth.env` setzt `OPAA_AUTH_FIRST_AUDITOR_EMAIL`, und `run-e2e.mjs` reicht den
@@ -1055,7 +1060,8 @@ sie abschaltet. Der Abschluss der Installation schaltet sie ein (ADR-0060, Entsc
 
 `.github/workflows/local-auth-e2e.yml` fährt den Lauf nächtlich und auf Zuruf
 (`workflow_dispatch`), dazu an einem Pull Request über das Label `local-auth-suite` — kein Required
-Check, Muster der Confluence-Suite (#1171). Im selben Job folgt das Ziel `installation`.
+Check, Muster der Confluence-Suite (#1171). Im selben Job folgen die Ziele `installation` und
+`quick-tour`.
 
 ## Einrichtungs-Assistent (ADR-0060)
 
@@ -1093,6 +1099,37 @@ sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lau
 `local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.
 Jeder Schritt des Assistenten muss in dem Szenario vorkommen: `.github/scripts/check_installation_e2e_coverage.sh`
 lässt die CI scheitern, sobald ein Wert von `InstallationStep` dort fehlt.
+
+## Rundgang für neue Nutzer (#2312)
+
+```bash
+cd e2e
+pnpm run test:quick-tour
+```
+
+Alle Env-Dateien der Suite schalten den Rundgang ab (`OPAA_FEATURES_QUICK_TOUR_ENABLED=false`):
+Sein Hinweis „Neu hier?“ ist ein modaler Dialog über dem leeren Chat und läge sonst vor jedem
+Szenario, das dort landet. Der Schalter wirkt nur beim Start des Backends und gehört zum
+Konfigurationsabdruck, ein Szenario kann ihn also nicht mitten im Lauf umlegen.
+`scripts/run-e2e.mjs --target quick-tour` startet deshalb den Stapel des Ziels `local-auth`
+(`local-auth.env`, `docker-compose.local-auth.yml`, ohne `dropbox-stub`) mit dem Overlay
+`docker-compose.quick-tour.yml`, das nur den Rundgang einschaltet, und fährt die Szenarien unter
+`quick-tour/tests/` über die eigene Konfiguration `quick-tour/playwright.config.ts` (ein Worker, ohne
+Wiederholung, weil der Merker „Hinweis erledigt“ nicht zurückzusetzen ist). Der Stapel mit echter
+lokaler Anmeldung macht „dasselbe Konto in einem zweiten Browser“ zu einer zweiten Anmeldung, nicht
+zu einem zweiten Tab derselben Sitzung.
+
+| Szenario | Prüft |
+| --- | --- |
+| Erster Besuch, „Nicht jetzt“ | Das Notanker-Konto sieht nach der ersten Anmeldung den Hinweis mit Fokus auf „Rundgang starten“; ein Klick daneben schließt ihn nicht; „Nicht jetzt“ sendet `PUT /api/v1/me/quick-tour-hint` (204), schließt ihn und setzt den Fokus ins Eingabefeld; ein zweiter Browser-Kontext mit neuer Anmeldung desselben Kontos sieht ihn nicht, auch nicht nach Neuladen |
+| Start über das Profil | „Rundgang starten“ im Profilmenü öffnet die erste Station mit Fokus auf „Weiter“, → und ← blättern, Escape beendet mit Fokus im Eingabefeld; aus dem Katalog öffnet der Eintrag zuerst einen neuen Chat; der volle Durchgang bis „Fertig“ enthält „Systemverwaltung“ und endet bei „Rundgang wiederholen“ |
+| „Rundgang starten“ im Hinweis | Ein neu angelegtes Konto ohne Systemverwaltung startet den Rundgang aus dem Hinweis; die Zahl der Stationen entspricht der angekündigten, „Systemverwaltung“ fehlt; nach Neuladen ist der Hinweis erledigt |
+
+Den abgeschalteten Rundgang prüft `local-auth/tests/15-rundgang-abgeschaltet.spec.ts`. Eigene Ports
+(`13009`, `18096`, `15439`, Mailpit `18027`/`11027`) und ein eigenes Subnetz (`172.16.0.0/16`); das
+Overlay vertraut als Proxy nur dem Frontend dieses Subnetzes. In `local-auth-e2e.yml` teilt das Ziel
+Compose-Projekt und Images mit `local-auth`; Traces liegen unter `test-results/quick-tour`, der
+HTML-Bericht unter `playwright-report-quick-tour`.
 
 ## Zwei Instanzen (#2952)
 

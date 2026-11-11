@@ -22,6 +22,7 @@
 //   node scripts/run-e2e.mjs --target installation # set-up assistant (pnpm run test:installation)
 //   node scripts/run-e2e.mjs --target sandbox      # agent with run_code (pnpm run test:sandbox)
 //   node scripts/run-e2e.mjs --target ocr          # text recognition with the real opaa-ocr (pnpm run test:ocr)
+//   node scripts/run-e2e.mjs --target quick-tour   # quick tour switched on (pnpm run test:quick-tour)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, demo/README.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -45,6 +46,10 @@
 // e2e/tests/installation-assistant.spec.ts against it with E2E_INSTALLATION_TOKEN.
 // Completing ends the installation mode for good, so each variant of the spec
 // (INSTALLATION_VARIANTS, one tag each) runs against a stack of its own.
+//
+// The "quick-tour" target is the "local-auth" stack with the quick tour switched on
+// (e2e/docker-compose.quick-tour.yml) and runs the specs under e2e/quick-tour/tests/. Every other
+// stack switches the tour off, because its hint is a modal dialog over the empty chat.
 
 import { spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
@@ -85,10 +90,11 @@ if (
     'installation',
     'sandbox',
     'ocr',
+    'quick-tour',
   ].includes(target)
 ) {
   console.error(
-    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance", "offline", "installation", "sandbox" oder "ocr")`,
+    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance", "offline", "installation", "sandbox", "ocr" oder "quick-tour")`,
   )
   process.exit(1)
 }
@@ -108,6 +114,9 @@ if (target === 'offline') {
 }
 const isDemo = target === 'demo'
 const isLocalAuth = target === 'local-auth'
+// The "quick-tour" target runs the "local-auth" stack with the quick tour switched on.
+const isQuickTour = target === 'quick-tour'
+const onLocalAuthStack = isLocalAuth || isQuickTour
 const isInstallation = target === 'installation'
 // The "sandbox" target is the "e2e" stack plus docker-compose.sandbox.yml (OpenSandbox, agent
 // switch on) and runs only the specs under e2e/sandbox/tests/ - never part of the regular suite.
@@ -137,6 +146,7 @@ const projectNames = {
   installation: 'opaa-installation',
   sandbox: 'opaa-sandbox',
   ocr: 'opaa-ocr-e2e',
+  'quick-tour': 'opaa-quick-tour',
 }
 const composeProjectName = process.env.COMPOSE_PROJECT_NAME ?? projectNames[target]
 // Each target gets its own host ports so two of them - or one of them and a developer's own stack -
@@ -152,7 +162,9 @@ const backendPort =
         ? '18087'
         : isOcr
           ? '18088'
-          : '18081')
+          : isQuickTour
+            ? '18096'
+            : '18081')
 // The management port (probes, metrics) sits 100 above the backend port of the same target.
 const backendManagementPort =
   process.env.OPAA_BACKEND_MANAGEMENT_PORT ?? String(Number(backendPort) + 100)
@@ -168,7 +180,9 @@ const frontendPort =
           ? '13007'
           : isOcr
             ? '13008'
-            : '13000')
+            : isQuickTour
+              ? '13009'
+              : '13000')
 const dbPort =
   process.env.OPAA_DB_PORT ??
   (isLocalAuth
@@ -179,15 +193,19 @@ const dbPort =
         ? '15437'
         : isOcr
           ? '15438'
-          : '15432')
+          : isQuickTour
+            ? '15439'
+            : '15432')
 // The mail catcher's own host ports (e2e/docker-compose.local-auth.yml): the scenarios read the
 // links out of its HTTP API from this Node/Playwright process, the same way the "e2e" target
 // reaches ai-stub's /last-chat-model directly. The "installation" target has ports of its own.
 const mailpitWebPort =
-  process.env.OPAA_MAILPIT_WEB_PORT ?? (isInstallation ? '18026' : '18025')
+  process.env.OPAA_MAILPIT_WEB_PORT ??
+  (isInstallation ? '18026' : isQuickTour ? '18027' : '18025')
 const mailpitSmtpPort =
-  process.env.OPAA_MAILPIT_SMTP_PORT ?? (isInstallation ? '11026' : '11025')
-const usesMailpit = isLocalAuth || isInstallation
+  process.env.OPAA_MAILPIT_SMTP_PORT ??
+  (isInstallation ? '11026' : isQuickTour ? '11027' : '11025')
+const usesMailpit = onLocalAuthStack || isInstallation
 
 // The variants of the installation spec, each selected by its tag and run against a fresh stack.
 const INSTALLATION_VARIANTS = ['@mail-skipped', '@mail-filled']
@@ -219,6 +237,7 @@ const overlayFiles = {
   installation: 'e2e/docker-compose.installation.yml',
   sandbox: 'e2e/docker-compose.e2e.yml',
   ocr: 'e2e/docker-compose.e2e.yml',
+  'quick-tour': 'e2e/docker-compose.local-auth.yml',
 }
 const envFiles = {
   e2e: 'e2e/e2e.env',
@@ -227,6 +246,7 @@ const envFiles = {
   installation: 'e2e/installation.env',
   sandbox: 'e2e/e2e.env',
   ocr: 'e2e/e2e.env',
+  'quick-tour': 'e2e/local-auth.env',
 }
 const overlayFile = overlayFiles[target]
 const envFile = envFiles[target]
@@ -260,8 +280,9 @@ function answerFileAdmin() {
 
 // ADR-0033, Entscheidung 5: the one account that exists after the installation, with the fixed
 // password of the answer file, so the scenarios sign in without reading anything out of a log.
-const bootstrapAdmin = isLocalAuth || isDemo ? answerFileAdmin() : { email: '', password: '' }
-if (isLocalAuth && (!bootstrapAdmin.email || !bootstrapAdmin.password)) {
+const bootstrapAdmin =
+  onLocalAuthStack || isDemo ? answerFileAdmin() : { email: '', password: '' }
+if (onLocalAuthStack && (!bootstrapAdmin.email || !bootstrapAdmin.password)) {
   console.error(
     `${envFile} muss OPAA_INSTALLATION_ANSWER_FILE auf eine Antwortdatei unter e2e/installation/ ` +
       'setzen - ohne sie gibt es in diesem Ziel keinen Anmeldeweg.',
@@ -273,13 +294,14 @@ const composeArgs = [
   ...(isDemo ? ['--profile', 'demo'] : []),
   // The mail catcher is profile-gated in docker-compose.yml so a plain `docker compose up`
   // never starts it; naming the service in the `up` call below would not start it without this.
-  ...(isLocalAuth || isInstallation ? ['--profile', 'mail'] : []),
+  ...(onLocalAuthStack || isInstallation ? ['--profile', 'mail'] : []),
   '-f',
   'docker-compose.yml',
   '-f',
   overlayFile,
   ...(isSandbox ? ['-f', 'docker-compose.sandbox.yml'] : []),
   ...(isOcr ? ['-f', 'e2e/docker-compose.ocr.yml'] : []),
+  ...(isQuickTour ? ['-f', 'e2e/docker-compose.quick-tour.yml'] : []),
 ]
 
 // No auth secrets are needed for the "e2e" target: the stack runs in the "dev" auth profile,
@@ -310,14 +332,18 @@ const composeEnv = {
       ? '172.31.0.0/16'
       : isInstallation
         ? '172.27.0.0/16'
-        : '172.29.0.0/16',
+        : isQuickTour
+          ? '172.16.0.0/16'
+          : '172.29.0.0/16',
   OPAA_COMPOSE_FRONTEND_ADDRESS: isDemo
     ? '172.30.0.10'
     : isLocalAuth
       ? '172.31.0.10'
       : isInstallation
         ? '172.27.0.10'
-        : '172.29.0.10',
+        : isQuickTour
+          ? '172.16.0.10'
+          : '172.29.0.10',
   ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
   // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run;
   // its API key is random per run, since sandbox code can reach the server. The specs switch
@@ -328,7 +354,7 @@ const composeEnv = {
         OPAA_SANDBOX_API_KEY: process.env.OPAA_SANDBOX_API_KEY ?? randomBytes(24).toString('hex'),
       }
     : {}),
-  ...(isDemo || isLocalAuth || isInstallation
+  ...(isDemo || onLocalAuthStack || isInstallation
     ? {}
     : {
         OPAA_AI_STUB_PORT: aiStubPort,
@@ -368,7 +394,9 @@ function dumpLogs() {
         ? 'docker-compose.local-auth.log'
         : isInstallation
           ? 'docker-compose.installation.log'
-          : process.env.E2E_BROWSER === 'firefox'
+          : isQuickTour
+            ? 'docker-compose.quick-tour.log'
+            : process.env.E2E_BROWSER === 'firefox'
             ? 'docker-compose.firefox.log'
             : 'docker-compose.log',
   )
@@ -549,11 +577,18 @@ async function runStack(variantArgs = [], variantEnv = {}) {
         'objectstore-seed',
         'ai-stub',
       ]
-    : isLocalAuth
+    : onLocalAuthStack
       ? // No keycloak and no rss-feed: this target's whole point is an installation without an
         // OIDC provider, and no scenario indexes anything. dropbox-stub is the source the revision
-        // scenario connects, for an entry in the connection log.
-        ['ai-stub', 'mailpit', 'dropbox-stub', 'postgres', 'backend', 'frontend']
+        // scenario connects, for an entry in the connection log; the quick tour connects none.
+        [
+          'ai-stub',
+          'mailpit',
+          ...(isLocalAuth ? ['dropbox-stub'] : []),
+          'postgres',
+          'backend',
+          'frontend',
+        ]
       : isInstallation
         ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server,
           // oidc-stub, ocr-stub and clamd-stub the provider, OCR service and scanner of its steps.
@@ -610,7 +645,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
   // and the only account that exists at this point is the first account of the answer file
   // (ADR-0033, Entscheidung 5). The "installation" target is not even installed yet. Seeding with
   // the dev-auth header would not work in either - both stacks run "oidc".
-  if (!isLocalAuth && !isInstallation) {
+  if (!onLocalAuthStack && !isInstallation) {
     console.log(`> Seeding ${target} data profile (demo/seed/seed.py --profile ${target})`)
     const seedStatus = runSeed()
     if (seedStatus !== 0) {
@@ -645,6 +680,11 @@ async function runStack(variantArgs = [], variantEnv = {}) {
     // Its own config with its own testDir (e2e/ocr/tests): video, calm pace, the real opaa-ocr.
     playwrightArgs.push('--config', 'ocr/playwright.config.ts')
   }
+  if (isQuickTour) {
+    // Its own config with its own testDir (e2e/quick-tour/tests): the tour is switched off in every
+    // other stack.
+    playwrightArgs.push('--config', 'quick-tour/playwright.config.ts')
+  }
   if (isInstallation) {
     // Its own config, without retries: completing the installation ends the installation mode.
     playwrightArgs.push('--config', 'installation-assistant/playwright.config.ts')
@@ -656,7 +696,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
       ...process.env,
       E2E_BASE_URL: baseUrl,
       ...variantEnv,
-      ...(isDemo || isLocalAuth || isInstallation
+      ...(isDemo || onLocalAuthStack || isInstallation
         ? {}
         : {
             E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}`,
@@ -671,7 +711,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
             E2E_OCR_API_KEY: ocrApiKey,
           }),
       ...(isOcr ? { E2E_OCR_BASE_URL: 'http://opaa-ocr:5001' } : {}),
-      ...(isLocalAuth
+      ...(onLocalAuthStack
         ? {
             E2E_MAILPIT_BASE_URL: `http://localhost:${mailpitWebPort}`,
             // What a scenario enters as the SMTP host/port in the administration: the Compose

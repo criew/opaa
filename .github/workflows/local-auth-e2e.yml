@@ -4,7 +4,8 @@ name: E2E Lokale Anmeldung
 # einen eigenen Compose-Stack im Betriebsmodus "oidc" ohne Keycloak samt Mail-Fänger, legt Konten an,
 # verschickt echte Mails an diesen Fänger und fährt neun Szenarien mit echten Anmeldevorgängen durch -
 # mehrere Minuten je Lauf. Danach ein zweiter Stack im Installationsmodus für den
-# Einrichtungs-Assistenten. Die Fachszenarien der regulären Suite (.github/workflows/e2e.yml) laufen
+# Einrichtungs-Assistenten und ein dritter mit eingeschaltetem Rundgang für neue Nutzer, den alle
+# übrigen E2E-Stacks abschalten. Die Fachszenarien der regulären Suite (.github/workflows/e2e.yml) laufen
 # weiterhin im dev-Modus ohne Anmeldevorgang (ADR-0009); diese Suite ist die zusätzliche Abnahme des
 # lokalen Anmeldewegs.
 #
@@ -130,6 +131,15 @@ jobs:
         env:
           E2E_SKIP_BUILD: 'true'
 
+      # Derselbe Stapel wie oben, nur mit eingeschaltetem Rundgang (e2e/docker-compose.quick-tour.yml):
+      # Hinweis „Neu hier?“, Antwort je Konto, Start über das Profil.
+      - name: Rundgang für neue Nutzer ausführen
+        if: ${{ !cancelled() }}
+        working-directory: e2e
+        run: pnpm run test:quick-tour
+        env:
+          E2E_SKIP_BUILD: 'true'
+
       # if: !cancelled() (nicht failure()): läuft der Job in timeout-minutes, markiert GitHub ihn als
       # cancelled, nicht als failed - if: failure() überspränge den Upload genau dann, wenn er am
       # meisten gebraucht wird (wie in e2e.yml und demo-smoke.yml).
@@ -141,6 +151,7 @@ jobs:
           path: |
             e2e/playwright-report/
             e2e/playwright-report-installation*/
+            e2e/playwright-report-quick-tour/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -158,6 +169,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: local-auth-docker-compose-logs
-          path: e2e/docker-compose.local-auth.log
+          path: |
+            e2e/docker-compose.local-auth.log
+            e2e/docker-compose.installation.log
+            e2e/docker-compose.quick-tour.log
           if-no-files-found: ignore
           retention-days: 14
