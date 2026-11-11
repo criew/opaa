@@ -32,7 +32,7 @@ describe('ErrorBoundary', () => {
     expect(
       screen.getByText('Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Neu laden' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Seite neu laden' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Details anzeigen' })).toBeInTheDocument()
   })
 

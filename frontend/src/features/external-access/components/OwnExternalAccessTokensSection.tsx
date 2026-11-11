@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -39,6 +38,9 @@ import {
   expiryWarning,
   formatDate,
 } from './tokenLabels'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * A suspended selection is shown, not omitted: the person should see what a new
@@ -105,7 +107,6 @@ export default function OwnExternalAccessTokensSection() {
           setError(null)
         })
         .catch((err: unknown) => {
-          setTokens([])
           setError(
             err instanceof Error ? err.message : 'Die Zugangstokens konnten nicht geladen werden.',
           )
@@ -170,24 +171,22 @@ export default function OwnExternalAccessTokensSection() {
           </Tooltip>
         }
       >
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
         {channelEnabled === false && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             {CHANNEL_OFF_HINT}
           </Alert>
         )}
 
-        {tokens === null ? (
-          <Skeleton variant="rounded" height={160} />
+        {error ? (
+          <LoadError
+            message="Die Zugangstokens konnten nicht geladen werden."
+            detail={error}
+            onRetry={() => void load()}
+          />
+        ) : tokens === null ? (
+          <LoadingState />
         ) : tokens.length === 0 ? (
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-            Sie haben noch kein Zugangstoken. „Token erzeugen“ legt eines an; die Auswahl der
-            Bibliotheken treffen Sie dabei.
-          </Typography>
+          <EmptyState message="Noch keine Zugangstokens. „Token erzeugen“ legt eines an; die Auswahl der Bibliotheken treffen Sie dabei." />
         ) : (
           <Table size="small">
             <TableHead>

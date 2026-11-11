@@ -3,7 +3,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import IconButton from '@mui/material/IconButton'
-import Skeleton from '@mui/material/Skeleton'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -27,6 +26,9 @@ import {
   type SelectionSource,
 } from './selection'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** A level shows its search field from this many entries on (Prüfliste #35). */
 const SEARCH_FROM = 7
@@ -323,26 +325,23 @@ function SelectionDialogBody({
           {incompleteNote(current.result)}
         </Typography>
       )}
-      {loading && showLoading && (
-        <Box role="status" aria-busy="true" aria-label={`${levelName} wird geladen`}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} variant="rounded" height={32} sx={{ my: 0.5 }} />
-          ))}
-        </Box>
-      )}
+      {loading && showLoading && <LoadingState shape="lines" count={5} />}
       {current?.error && (
         <Box sx={{ py: 1 }}>
-          <Typography sx={{ fontSize: fontSize.text, fontWeight: 500, color: 'text.primary' }}>
-            {/^.*(403|verweiger|Berechtigung|AccessDenied)/i.test(current.error)
-              ? `Kein Zugriff auf „${levelName}“.`
-              : `„${levelName}“ ließ sich nicht laden.`}
-          </Typography>
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
-            {plainMessage(current.error)}
-          </Typography>
-          <TextAction onClick={() => setAttempt((n) => n + 1)} sx={{ mt: 0.5 }}>
-            Erneut laden
-          </TextAction>
+          {/^.*(403|verweiger|Berechtigung|AccessDenied)/i.test(current.error) ? (
+            <>
+              <EmptyState kind="noAccess" message={`Kein Zugriff auf „${levelName}“.`} />
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                {plainMessage(current.error)}
+              </Typography>
+            </>
+          ) : (
+            <LoadError
+              message={`„${levelName}“ konnte nicht geladen werden.`}
+              detail={plainMessage(current.error)}
+              onRetry={() => setAttempt((n) => n + 1)}
+            />
+          )}
         </Box>
       )}
       {current?.result && levelSize === 0 && !filtered && (
@@ -356,12 +355,7 @@ function SelectionDialogBody({
       )}
       {current?.result && entries.length === 0 && filtered && (
         <Box sx={{ py: 1 }}>
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-            Keine Treffer für „{search.trim()}“.
-          </Typography>
-          <TextAction onClick={() => setSearch('')} sx={{ mt: 0.5 }}>
-            Suche zurücksetzen
-          </TextAction>
+          <EmptyState kind="noMatch" onReset={() => setSearch('')} />
         </Box>
       )}
       {someBlocked && !coveringParent && (

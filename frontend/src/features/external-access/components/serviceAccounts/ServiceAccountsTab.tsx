@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -9,9 +8,11 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import type { ServiceAccountResponse } from '@/shared/api/types'
-import DetailSection, { TextAction, TextLink } from '@/shared/ui/DetailSection'
+import DetailSection, { TextLink } from '@/shared/ui/DetailSection'
 import ListSearch from '@/shared/ui/ListSearch'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import StateDot from '@/shared/ui/StateDot'
 import IssueServiceAccountTokenDialog from './IssueServiceAccountTokenDialog'
 import ServiceAccountDetailBody from './ServiceAccountDetailBody'
@@ -222,22 +223,22 @@ export default function ServiceAccountsTab() {
       </Box>
 
       {error ? (
-        <Alert
-          severity="error"
+        <LoadError
+          message="Die Dienstkonten konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void reload()}
+        />
+      ) : accounts === null ? (
+        <LoadingState />
+      ) : accounts.length === 0 ? (
+        <EmptyState
+          framed
+          message="Noch keine Dienstkonten."
           action={
-            <Button color="inherit" size="small" onClick={() => void reload()}>
-              Erneut laden
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setCreating(true)}>
+              Dienstkonto anlegen
             </Button>
           }
-        >
-          {error}
-        </Alert>
-      ) : accounts === null ? (
-        <ListLoading label="Dienstkonten werden geladen" />
-      ) : accounts.length === 0 ? (
-        <ListEmptyState
-          title="Noch kein Dienstkonto."
-          hint="Ein Dienstkonto gibt einem Verfahren einen eigenen, lesenden Zugang."
         />
       ) : (
         <>
@@ -265,10 +266,13 @@ export default function ServiceAccountsTab() {
           )}
           {shown.length === 0 ? (
             <Box sx={{ py: 1.5 }}>
-              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 0.5 }}>
-                {needle ? `Keine Treffer für „${query.trim()}“.` : 'Kein aktives Dienstkonto.'}
-              </Typography>
-              {needle && <TextAction onClick={() => setQuery('')}>Suche zurücksetzen</TextAction>}
+              <EmptyState
+                kind="noMatch"
+                onReset={() => {
+                  setQuery('')
+                  setShowInactive(true)
+                }}
+              />
             </Box>
           ) : (
             <Box

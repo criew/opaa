@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import type { AssetRole, DocumentTemplateResponse } from '@/shared/api/types'
+import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
 import {
@@ -38,6 +39,9 @@ import {
 import PlaceholderList from '../components/PlaceholderList'
 import TemplateFilePicker from '../components/TemplateFilePicker'
 import { fontSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -182,6 +186,7 @@ export default function DocumentTemplateDetailPage() {
   const catalog = useAssetCatalogEntry('DOCUMENT_TEMPLATE', documentTemplateId ?? '')
   const [template, setTemplate] = useState<DocumentTemplateResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [denied, setDenied] = useState(false)
   const [associationsVersion, setAssociationsVersion] = useState(0)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -191,12 +196,14 @@ export default function DocumentTemplateDetailPage() {
         .then((loaded) => {
           setTemplate(loaded)
           setLoadError(null)
+          setDenied(false)
         })
-        .catch((err: unknown) =>
+        .catch((err: unknown) => {
+          setDenied(apiErrorStatus(err) === 403)
           setLoadError(
-            err instanceof Error ? err.message : 'Die Vorlage konnte nicht geladen werden',
-          ),
-        ),
+            err instanceof Error ? err.message : 'Die Vorlage konnte nicht geladen werden.',
+          )
+        }),
     [],
   )
 
@@ -212,10 +219,19 @@ export default function DocumentTemplateDetailPage() {
   if (!template || template.id !== documentTemplateId) {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
-        {loadError ? (
-          <Alert severity="error">{loadError}</Alert>
+        {denied ? (
+          <EmptyState
+            kind="noAccess"
+            message="Diese Vorlage dürfen Sie nicht sehen. Zugriff gibt, wer die Vorlage verwaltet."
+          />
+        ) : loadError ? (
+          <LoadError
+            message="Die Vorlage konnte nicht geladen werden."
+            detail={loadError}
+            onRetry={() => void load(documentTemplateId)}
+          />
         ) : (
-          <Typography sx={{ color: 'text.secondary' }}>Vorlage wird geladen …</Typography>
+          <LoadingState shape="detail" count={4} />
         )}
       </Box>
     )

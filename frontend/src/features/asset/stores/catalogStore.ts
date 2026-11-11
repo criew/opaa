@@ -5,6 +5,7 @@ import { appendNewEntries, pagesForMore } from '../api/catalogPaging'
 import { markAssetFavorite, unmarkAssetFavorite } from '../api/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
+import { notify } from '@/shared/stores/notificationStore'
 
 export const CATALOG_PAGE_SIZE = 50
 /** The bound the server sets on the search text. */
@@ -34,7 +35,7 @@ interface CatalogState {
   loadMore: () => Promise<void>
   /**
    * Marks or unmarks one entry as the caller's favorite. The entry keeps its place until the next
-   * load, so a tile does not jump away under the pointer; a failure is reported in `error`.
+   * load, so a tile does not jump away under the pointer; a failure is reported through `notify`.
    */
   setFavorite: (entry: CatalogEntryResponse, favorite: boolean) => Promise<void>
 }
@@ -141,9 +142,10 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
         })
       } catch (err) {
         if (isStaleSessionEpoch(sessionEpoch)) return
-        set({
-          error: err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden',
-        })
+        notify(
+          err instanceof Error ? err.message : 'Der Favorit konnte nicht gespeichert werden.',
+          'error',
+        )
       }
     },
   }

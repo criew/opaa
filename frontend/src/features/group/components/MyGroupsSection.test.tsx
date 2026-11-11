@@ -313,7 +313,7 @@ describe('MyGroupsSection', () => {
     await user.click(await screen.findByRole('button', { name: /verantwortung abgeben/i }))
     await answerConfirm(user, 'Verantwortung für „Projektbeteiligte Phoenix“ abgeben?', 'Abgeben')
 
-    expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Noch keine Gruppen in Ihrer Verantwortung/)).toBeInTheDocument()
     expect(screen.queryByText('Gruppe nicht gefunden')).not.toBeInTheDocument()
     expect(useGroupStore.getState().error).toBeNull()
   })
@@ -341,6 +341,6 @@ describe('MyGroupsSection', () => {
 
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
 
-    expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Noch keine Gruppen in Ihrer Verantwortung/)).toBeInTheDocument()
   })
 })

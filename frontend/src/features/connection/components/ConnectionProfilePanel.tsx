@@ -25,6 +25,8 @@ import { admitsPersons, personCountLabel } from './profileChange'
 import { formatDay, signsInItself, type ProfileAttention } from './profileState'
 import { fontSize } from '@/shared/theme/tokens'
 import SidePanel from '@/shared/ui/dialog/SidePanel'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -234,20 +236,13 @@ function PanelContent({
         <Box ref={accessSectionRef}>
           <PanelSection title="Wer darf diesen Zugang nutzen?">
             {accessError ? (
-              <Alert
-                severity="error"
-                action={
-                  <Button color="inherit" size="small" onClick={onRetryAccess}>
-                    Erneut laden
-                  </Button>
-                }
-              >
-                {accessError}
-              </Alert>
+              <LoadError
+                message="Die Freigabe konnte nicht geladen werden."
+                detail={accessError}
+                onRetry={onRetryAccess}
+              />
             ) : !accessEntry || !access ? (
-              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-                Die Freigabe wird geladen …
-              </Typography>
+              <LoadingState shape="lines" count={2} />
             ) : editingAccess ? (
               <AccessEditor
                 key={accessEntry.scope ?? profile.id}

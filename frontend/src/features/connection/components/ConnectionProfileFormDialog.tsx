@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -32,6 +33,7 @@ import ServiceAccountKeyField from './ServiceAccountKeyField'
 import SourceTypeSelect from './SourceTypeSelect'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
   'OAUTH',
@@ -424,9 +426,9 @@ export default function ConnectionProfileFormDialog({
         </Alert>
       )}
       {descriptorMissing && !sourceTypesLoaded && (
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-          Die Angaben der Quellart werden geladen …
-        </Typography>
+        <Box sx={{ mb: 2 }}>
+          <LoadingState shape="lines" count={2} />
+        </Box>
       )}
       {descriptorMissing && sourceTypesLoaded && (
         <Alert severity="warning" sx={{ mb: 2 }}>
