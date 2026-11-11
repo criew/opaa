@@ -138,6 +138,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/);
     // While the answer is pending the scope chips are disabled; the scan is of the settled page.
     await expectAnswerSettled(page);
+    await expect(
+      page.getByRole("button", { name: "@Space-Wissen nutzen" }),
+    ).toBeEnabled();
 
     const menuTrigger = chatSidebarEntries(page).first();
     const deleteEntry = page.getByRole("menuitem", {
