@@ -131,6 +131,7 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
     <ViewDialog
       open={open}
       title="Werkzeuge prüfen"
+      busy={starting}
       onClose={onClose}
       titleActions={
         check?.status === 'COMPLETED' && (
@@ -217,7 +218,7 @@ export default function ToolCheckDialog({ model, open, onClose, onAdopt }: ToolC
           )}
           {canStart && (
             <Button variant="contained" onClick={() => void start()} disabled={starting}>
-              {starting ? 'Wird gestartet …' : 'Prüfung starten'}
+              Prüfung starten
             </Button>
           )}
         </Box>
