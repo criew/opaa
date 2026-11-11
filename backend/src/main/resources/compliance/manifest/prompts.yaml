@@ -60,17 +60,18 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "636dcc301cb1c2792a67d1ce5a1228b8e6f398e5dd4899461072b13de3c4dbe7"
+    sha256: "52fc14f1c09d959f179094d9e9351369def0fb2e80e8388e2fa7d149a0b452a7"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten
-      angelegt wird: Teilfragen bilden und gezielt suchen, Eingrenzungen der Person im Plan
-      beachten, gegliederter Bericht mit Fundstelle je Aussage, Widersprüche zwischen Fundstellen
+      angelegt wird: Teilfragen zu allen genannten Aspekten bilden und je Teilfrage gezielt
+      suchen, vor der Antwort prüfen, ob jede Teilfrage Fundstellen hat, Eingrenzungen der Person
+      im Plan beachten, gegliederter Bericht mit Zitiermarke je Aussage, Widersprüche zwischen Fundstellen
       und Lücken ausdrücklich benennen, auf Wunsch eine Vorlage ausfüllen. Eigentümerin oder
       Eigentümer des Agenten kann sie ändern wie bei jedem Agenten; jede Änderung erhöht die
       Fassung und steht im Revisionsprotokoll
     classes: [io.opaa.agent.AgentResearchProvisioner]
-    sha256: "5b341bfb66faf826b305a2c418c794656bf38d31deca8b1c3826f03116df4b70"
+    sha256: "b5c3e36834c79b998259fb974da388338afeba75620331ee6435dcc1c498bd96"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]

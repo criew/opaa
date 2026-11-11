@@ -35,6 +35,18 @@ class AgentResearchConfigurationTest {
   }
 
   @Test
+  void itsInstructionCoversEverySubAspectAndSetsACitationMarkerOnEveryStatement() {
+    assertThat(research.instruction())
+        .contains("Teilfrage")
+        .contains("eigenen, gezielten Suche")
+        .contains("Prüfe vor der Antwort")
+        .contains("hinter jede Aussage")
+        .contains("Zitiermarke");
+    assertThat(research.instruction().length())
+        .isLessThanOrEqualTo(AgentService.MAX_INSTRUCTION_LENGTH);
+  }
+
+  @Test
   void nothingPromisesDeepResearch() {
     String delivered =
         String.join(
