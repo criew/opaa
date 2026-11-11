@@ -1,9 +1,20 @@
+import { useId, useState } from 'react'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { StatusTone } from '@/shared/ui/StatusLine'
-import { darkRoles, fontFamily, fontSize, lightRoles, radius } from '@/shared/theme/tokens'
+import {
+  controlHeight,
+  darkRoles,
+  fontFamily,
+  fontSize,
+  lightRoles,
+  radius,
+} from '@/shared/theme/tokens'
 import type { InstallationStatusResponse } from '../api/types'
 import {
   STEP_INFO,
@@ -11,6 +22,7 @@ import {
   STEP_STATUS_TONE,
   SUMMARY_LABEL,
   TOKEN_LABEL,
+  stepPosition,
   stepStatus,
   type WizardView,
 } from '../utils/steps'
@@ -133,13 +145,26 @@ function GroupTitle({ id, children }: { id: string; children: string }) {
 
 /**
  * The steps of the assistant, mandatory and optional ones in two labelled groups. Every step
- * can be opened from here once the token is accepted; its state comes from the API only.
+ * can be opened from here once the token is accepted; its state comes from the API only. From
+ * 900 px on the list stands open beside the step. Below that it shows one line with the position
+ * and the current step's name and opens on a tap, so the step itself starts near the top; choosing
+ * a step closes it again.
  */
 export default function StepList({ installation, view, onSelect }: StepListProps) {
+  const theme = useTheme()
+  const narrow = useMediaQuery(theme.breakpoints.down('md'))
+  const [open, setOpen] = useState(false)
+  const listId = useId()
   const steps = installation?.steps ?? []
   const mandatory = steps.filter((s) => s.mandatory)
   const optional = steps.filter((s) => !s.mandatory)
-  const select = (target: WizardView) => (onSelect ? () => onSelect(target) : undefined)
+  const select = (target: WizardView) =>
+    onSelect
+      ? () => {
+          setOpen(false)
+          onSelect(target)
+        }
+      : undefined
 
   const renderSteps = (list: typeof steps) =>
     list.map((s) => {
@@ -158,37 +183,64 @@ export default function StepList({ installation, view, onSelect }: StepListProps
 
   return (
     <Box component="nav" aria-label="Schritte der Einrichtung">
-      <GroupTitle id="installation-steps-required">Pflichtschritte</GroupTitle>
-      <Box component="ol" aria-labelledby="installation-steps-required" sx={{ m: 0, p: 0 }}>
-        <Entry
-          label={TOKEN_LABEL}
-          status={installation ? 'Geprüft' : 'Offen'}
-          tone={installation ? 'success' : 'neutral'}
-          current={view === 'TOKEN'}
-        />
-        {renderSteps(mandatory)}
-      </Box>
-      {optional.length > 0 && (
-        <>
-          <GroupTitle id="installation-steps-optional">Optionale Schritte</GroupTitle>
-          <Box component="ol" aria-labelledby="installation-steps-optional" sx={{ m: 0, p: 0 }}>
-            {renderSteps(optional)}
-          </Box>
-        </>
+      {narrow && (
+        <ButtonBase
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={() => setOpen((current) => !current)}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 1,
+            width: '100%',
+            minHeight: controlHeight.regular,
+            mt: 1,
+            px: 1.5,
+            borderRadius: `${radius.sm}px`,
+            fontSize: fontSize.text,
+            fontWeight: 500,
+            textAlign: 'left',
+          }}
+        >
+          {stepPosition(installation, view)}
+          {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </ButtonBase>
       )}
-      {installation && (
-        <Box component="ul" sx={{ m: 0, mt: 2.5, p: 0 }}>
+      <Box id={listId} hidden={narrow && !open}>
+        <GroupTitle id="installation-steps-required">Pflichtschritte</GroupTitle>
+        <Box component="ol" aria-labelledby="installation-steps-required" sx={{ m: 0, p: 0 }}>
           <Entry
-            label={SUMMARY_LABEL}
-            status={
-              installation.completable ? 'Bereit zum Abschluss' : 'Erst nach allen Pflichtschritten'
-            }
-            tone={installation.completable ? 'success' : 'neutral'}
-            current={view === 'SUMMARY'}
-            onSelect={select('SUMMARY')}
+            label={TOKEN_LABEL}
+            status={installation ? 'Geprüft' : 'Offen'}
+            tone={installation ? 'success' : 'neutral'}
+            current={view === 'TOKEN'}
           />
+          {renderSteps(mandatory)}
         </Box>
-      )}
+        {optional.length > 0 && (
+          <>
+            <GroupTitle id="installation-steps-optional">Optionale Schritte</GroupTitle>
+            <Box component="ol" aria-labelledby="installation-steps-optional" sx={{ m: 0, p: 0 }}>
+              {renderSteps(optional)}
+            </Box>
+          </>
+        )}
+        {installation && (
+          <Box component="ul" sx={{ m: 0, mt: 2.5, p: 0 }}>
+            <Entry
+              label={SUMMARY_LABEL}
+              status={
+                installation.completable
+                  ? 'Bereit zum Abschluss'
+                  : 'Erst nach allen Pflichtschritten'
+              }
+              tone={installation.completable ? 'success' : 'neutral'}
+              current={view === 'SUMMARY'}
+              onSelect={select('SUMMARY')}
+            />
+          </Box>
+        )}
+      </Box>
     </Box>
   )
 }

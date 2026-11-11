@@ -32,7 +32,7 @@ describe('ModelRoleSection', () => {
 
     expect(await screen.findByText('Zustand: Ausgeschaltet.')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Reranking einschalten' })).not.toBeChecked()
-    expect(screen.queryByLabelText('Sprache')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Sprache (optional)')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Begriffsliste')).not.toBeInTheDocument()
   })
 
@@ -65,7 +65,7 @@ describe('ModelRoleSection', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'Reranking einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://reranker:80')
     await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-reranker')
-    await user.type(screen.getByLabelText(/^Zugangsschlüssel(?! anzeigen)/), 'sk-1')
+    await user.type(screen.getByLabelText(/^API-Schlüssel/, { selector: 'input' }), 'sk-1')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(sent).toHaveLength(1))
@@ -125,9 +125,12 @@ describe('ModelRoleSection', () => {
     const sent = captureRerankSave()
     renderWithProviders(<ModelRoleSection kind="rerank" />)
 
-    const key = await screen.findByLabelText(/^Zugangsschlüssel(?! anzeigen)/)
+    await user.click(await screen.findByRole('button', { name: 'API-Schlüssel ersetzen' }))
+    const key = screen.getByLabelText(/^API-Schlüssel/, { selector: 'input' })
     await user.type(key, 'sk-1')
     await user.clear(key)
+    // another change, so „Speichern“ sends at all
+    await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-reranker')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(sent).toHaveLength(1))
@@ -159,7 +162,7 @@ describe('ModelRoleSection', () => {
     expect(
       await screen.findByText(/OPAA_TRANSCRIPTION_BASE_URL, OPAA_TRANSCRIPTION_ENABLED gesetzt/),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Sprache')).toHaveValue('de')
+    expect(screen.getByLabelText('Sprache (optional)')).toHaveValue('de')
   })
 
   it('keeps the switch off while the operation has switched off speech input', async () => {
@@ -204,7 +207,6 @@ describe('ModelRoleSection', () => {
     expect(
       await screen.findByRole('checkbox', { name: 'Live-Transkript einschalten' }),
     ).not.toBeChecked()
-    expect(screen.getByText(/Das Diktat bleibt immer verfügbar/)).toBeInTheDocument()
     expect(screen.queryByLabelText(/Live-Adresse/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
 
@@ -263,7 +265,7 @@ describe('ModelRoleSection', () => {
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(
-      await screen.findByText(/OpenAI und Mistral verlangen einen Zugangsschlüssel/),
+      await screen.findByText(/OpenAI und Mistral verlangen einen API-Schlüssel/),
     ).toBeInTheDocument()
     expect(sent).toHaveLength(0)
 

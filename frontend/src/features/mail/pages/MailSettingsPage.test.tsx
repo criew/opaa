@@ -98,9 +98,10 @@ describe('MailSettingsPage', () => {
 
     const host = await screen.findByRole('textbox', { name: 'Server' })
     await waitFor(() => expect(host).toHaveValue('smtp.intern.example'))
-    const password = screen.getByLabelText('Passwort')
-    expect(password).toHaveValue('')
-    expect(password).toHaveAttribute('type', 'password')
+    // a stored password is named, never offered as a field
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Passwort ersetzen' })).toBeInTheDocument()
+    expect(document.querySelector('input[type="password"]')).toBeNull()
     // neither the ciphertext nor the mask is rendered into a field anywhere on the page
     expect(screen.queryByDisplayValue('***')).not.toBeInTheDocument()
 
@@ -185,9 +186,7 @@ describe('MailSettingsPage', () => {
 
     const host = await screen.findByRole('textbox', { name: 'Server' })
     await waitFor(() => expect(host).toHaveValue('smtp.intern.example'))
-    expect(
-      screen.getByText(/solange Server, Port, Benutzername und Verschlüsselung gleich bleiben/),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
 
     await user.clear(host)
     await user.type(host, 'smtp.fremd.example')
@@ -199,7 +198,11 @@ describe('MailSettingsPage', () => {
         selector: 'p',
       }),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Passwort')).toHaveAttribute('aria-invalid', 'true')
+    const replace = screen.getByRole('button', { name: 'Passwort ersetzen' })
+    expect(replace).toHaveAttribute('data-invalid', 'true')
+    expect(replace).toHaveAccessibleDescription(
+      /Das gespeicherte Passwort geht nicht an ein neues Ziel/,
+    )
     expect(mockMailSettings.host).toBe('smtp.intern.example')
   })
 
@@ -209,7 +212,7 @@ describe('MailSettingsPage', () => {
     renderPage()
 
     await screen.findByRole('textbox', { name: 'Server' })
-    await user.click(screen.getByRole('button', { name: 'Testmail an mich senden' }))
+    await user.click(screen.getByRole('button', { name: 'Testnachricht an mich senden' }))
 
     expect(
       await screen.findByText('Die Testnachricht wurde an admin@opaa.local versendet.'),
@@ -223,7 +226,7 @@ describe('MailSettingsPage', () => {
     renderPage()
 
     await screen.findByRole('textbox', { name: 'Server' })
-    await user.click(screen.getByRole('button', { name: 'Testmail an mich senden' }))
+    await user.click(screen.getByRole('button', { name: 'Testnachricht an mich senden' }))
 
     expect(
       await screen.findByText(/Es wurde nichts versendet: SMTP ist nicht eingerichtet/),
@@ -237,7 +240,7 @@ describe('MailSettingsPage', () => {
     renderPage()
 
     await screen.findByRole('textbox', { name: 'Server' })
-    await user.click(screen.getByRole('button', { name: 'Testmail an mich senden' }))
+    await user.click(screen.getByRole('button', { name: 'Testnachricht an mich senden' }))
 
     expect(
       await screen.findByText(
@@ -304,11 +307,11 @@ describe('MailSettingsPage', () => {
     const list = await screen.findByRole('navigation', { name: 'Vorlagen' })
     await user.click(within(list).getByText('Testnachricht'))
     const subject = await screen.findByLabelText('Betreff')
-    expect(screen.getByRole('button', { name: 'Testmail senden' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Testnachricht senden' })).toBeEnabled()
 
     await user.type(subject, ' (Entwurf)')
 
-    expect(screen.getByRole('button', { name: 'Testmail senden' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Testnachricht senden' })).toBeDisabled()
     expect(screen.getByText(/Zum Testen zuerst speichern/)).toBeInTheDocument()
   })
 

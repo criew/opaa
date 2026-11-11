@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material/styles'
 import { useState, type ComponentProps } from 'react'
@@ -14,6 +14,22 @@ function Harness(props: HarnessProps) {
     <ThemeProvider theme={createAppTheme('light')}>
       <SecretField id="secret" label="Passwort" value={value} onChange={setValue} {...props} />
     </ThemeProvider>
+  )
+}
+
+function RemovalHarness() {
+  const [requested, setRequested] = useState(false)
+  return (
+    <Harness
+      stored
+      removal={{
+        requested,
+        onChange: setRequested,
+        removeLabel: 'Gespeichertes Passwort löschen',
+        keepLabel: 'Passwort behalten',
+        removedText: 'Das gespeicherte Passwort wird beim Speichern gelöscht.',
+      }}
+    />
   )
 }
 
@@ -82,11 +98,58 @@ describe('SecretField', () => {
 
   it('never mirrors a stored secret back', async () => {
     render(<Harness stored />)
-    expect(screen.getByText('gesetzt')).toBeInTheDocument()
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
     expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Passwort ersetzen' }))
 
     expect(screen.getByLabelText('Passwort')).toHaveValue('')
+    await waitFor(() => expect(screen.getByLabelText('Passwort')).toHaveFocus())
+    await userEvent.click(screen.getByRole('button', { name: 'Gespeicherten Wert behalten' }))
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
+  })
+
+  it('removes a stored secret through a text action that can be taken back', async () => {
+    render(<RemovalHarness />)
+
+    const remove = screen.getByRole('button', { name: 'Gespeichertes Passwort löschen' })
+    // A quiet text action at the field, not a red one.
+    expect(remove).toHaveClass('MuiButton-text')
+    expect(remove).not.toHaveClass('MuiButton-colorError')
+    await userEvent.click(remove)
+
+    expect(
+      screen.getByText('Das gespeicherte Passwort wird beim Speichern gelöscht.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Gesetzt')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Passwort behalten' }))
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
+  })
+
+  it('offers no removal where none is passed', () => {
+    render(<Harness stored />)
+
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+  })
+
+  it('carries id and error in every state, so a form finds the control to focus', async () => {
+    render(
+      <Harness stored error="Bitte das Passwort neu eingeben." hint="Mindestens 12 Zeichen." />,
+    )
+
+    const replace = screen.getByRole('button', { name: 'Passwort ersetzen' })
+    expect(replace).toHaveAttribute('id', 'secret')
+    expect(replace).toHaveAttribute('data-invalid', 'true')
+    expect(replace).toHaveAccessibleDescription('Bitte das Passwort neu eingeben.')
+
+    await userEvent.click(replace)
+    const field = screen.getByLabelText('Passwort')
+    expect(field).toHaveAttribute('id', 'secret')
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    // The hint stays below the error: it names what the error asks for.
+    expect(field).toHaveAccessibleDescription(
+      /^Bitte das Passwort neu eingeben\.\s*Mindestens 12 Zeichen\.$/,
+    )
   })
 })

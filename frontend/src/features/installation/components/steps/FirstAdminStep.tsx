@@ -1,11 +1,11 @@
 import { useId, useState } from 'react'
+import SecretField from '@/shared/ui/form/SecretField'
+import SetupField from '@/shared/ui/setup/SetupField'
 import type { InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, emailError, isBlank } from '../../utils/validation'
-import FormField from '../FormField'
-import SecretInput from '../SecretInput'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 const FIRST_ADMIN_FIELDS = ['email', 'displayName', 'password', 'passwordRepeat']
@@ -63,14 +63,14 @@ export default function FirstAdminStep({ step, submit, onBack, onSkip }: FirstAd
       title={STEP_INFO.FIRST_ADMIN.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.FIRST_ADMIN.laterUnder}
-      description="Das erste Konto ist ein lokales Konto der Systemverwaltung. Mit ihm melden Sie sich nach dem Abschluss an; es bleibt der Zugang, falls ein Identitätsanbieter später ausfällt."
+      description="Das erste Konto ist ein lokales Konto der Systemverwaltung, mit dem Sie sich nach dem Abschluss anmelden. Es bleibt der Zugang, falls ein Identitätsanbieter ausfällt."
       failure={form.failure}
       busy={form.busy}
       onSubmit={handleSubmit}
       onBack={onBack}
       onSkip={onSkip}
     >
-      <FormField
+      <SetupField
         id={`${id}-email`}
         label="E-Mail-Adresse"
         type="email"
@@ -81,7 +81,7 @@ export default function FirstAdminStep({ step, submit, onBack, onSkip }: FirstAd
         error={form.errors.email}
         hint="Eine zustellbare Adresse; über sie läuft auch das Zurücksetzen des Passworts."
       />
-      <FormField
+      <SetupField
         id={`${id}-display-name`}
         label="Anzeigename"
         autoComplete="name"
@@ -89,7 +89,7 @@ export default function FirstAdminStep({ step, submit, onBack, onSkip }: FirstAd
         onChange={setDisplayName}
         error={form.errors.displayName}
       />
-      <SecretInput
+      <SecretField
         id={`${id}-password`}
         label="Passwort"
         autoComplete="new-password"
@@ -100,7 +100,7 @@ export default function FirstAdminStep({ step, submit, onBack, onSkip }: FirstAd
         hint="Es gilt die Passwortregel der lokalen Konten."
       />
       {(!passwordStored || password !== '') && (
-        <SecretInput
+        <SecretField
           id={`${id}-password-repeat`}
           label="Passwort wiederholen"
           autoComplete="new-password"

@@ -32,7 +32,7 @@ Schnittstelle**. (Die optionale Rerank-Rolle hat eigene Angaben, siehe
 eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschichten.
 
 **Voreingestellt sind lokal betriebene Modelle.** Chat- und Embedding-Modell legt die
-[Installation](installation.md) fest, mit Adresse und Zugangsschlüssel; die Modellverwaltung ändert
+[Installation](installation.md) fest, mit Adresse und API-Schlüssel; die Modellverwaltung ändert
 sie. Eine Umgebungsvariable für die Modelle gibt es im Betrieb nicht, und es gibt kein
 automatisches Ausweichen auf ein Modell außerhalb des Hauses: Betrieb ohne Netzanbindung ist der
 vorgesehene Fall.
@@ -40,7 +40,7 @@ vorgesehene Fall.
 **Nur im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` als Chat- und `bge-m3`
 als Embedding-Modell unter `OPAA_OPENAI_BASE_URL`. Die Voreinstellung zeigt auf
 `http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Ollama braucht keinen
-Zugangsschlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
+API-Schlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
 überschrieben:
 
 ```env
@@ -104,7 +104,7 @@ Betrieb zählt:
   aktiv, und der Chat beantwortet keine Frage, bis die Systemverwaltung eines aktiviert. Im Modus
   `dev` ist es `phi3:mini` unter `OPAA_OPENAI_BASE_URL`, ohne Schlüssel.
 - **Den Schlüssel** verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
-  ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)). Er geht nur an
+  ([Verschlüsselung](#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle)). Er geht nur an
   denselben Endpunkt (Schema, Host, Port, Pfad); eine Adresse mit Anmeldedaten wird abgelehnt.
 - **Eine interne Adresse** braucht einen Eintrag in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
   ([Adressprüfung](#adressprüfung-der-modelle)); der Compose-Stapel setzt `ollama:11434`.
@@ -159,7 +159,7 @@ dafür zu kurz ist.
 
 ## Embedding
 
-Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, Zugangsschlüssel und
+Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, API-Schlüssel und
 Eingabegrenze ([Installation](installation.md)); überspringt sie den Schritt, legt es später die
 Systemverwaltung fest ([Erstes Modell festlegen](#erstes-modell-festlegen)). Die Prüfung ist eine
 Probeeinbettung: Sie zeigt, dass der Endpunkt das Modell bedient, und ergibt die Zahl der
@@ -167,13 +167,13 @@ Dimensionen, mit der das Modell einbettet. Mit dieser Zahl legt OPAA die Vektora
 muss sie niemand. Ohne Embedding-Modell gibt es keine Vektorablage, und Indexierung, Upload und
 Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist. Danach zeigt die
 Modellverwaltung im Reiter „Einbettung" Modell, Endpunkt, Dimensionen, Eingabegrenze und ob ein
-Zugangsschlüssel gespeichert ist; dort läuft auch jeder Wechsel.
+API-Schlüssel gespeichert ist; dort läuft auch jeder Wechsel.
 
 `OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
 übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
-auf ([Konfiguration](../referenz/konfiguration.md#entfallene-und-veraltete-variablen)). Den Zugangsschlüssel
+auf ([Konfiguration](../referenz/konfiguration.md#entfallene-und-veraltete-variablen)). Den API-Schlüssel
 verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
-mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne Zugangsschlüssel.
+mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne API-Schlüssel.
 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar.
 OPAA führt ihn deshalb mit Probeeinbettung, Vorschau und ausdrücklicher Bestätigung
@@ -280,12 +280,12 @@ nicht mit der eingestellten Grenze.
 ### Erstes Modell festlegen
 
 > **Beispiel.** Ein Haus installiert OPAA, bevor der Modellserver freigeschaltet ist, und
-> überspringt den Schritt „Embedding-Modell“. Zwei Wochen später trägt die Systemverwaltung
+> überspringt den Schritt „Einbettung“. Zwei Wochen später trägt die Systemverwaltung
 > `bge-m3` im Reiter „Einbettung“ ein; ab dann lassen sich Bibliotheken indexieren.
 
 Ohne Embedding-Modell zeigt der Reiter „Einbettung" den Hinweis „Es ist noch kein Embedding-Modell
 eingerichtet“ und das Formular „Embedding-Modell festlegen“: Basis-Adresse, Modell-Kennung,
-Zugangsschlüssel und Eingabegrenze, mit derselben [Adressprüfung](#adressprüfung-der-modelle) wie in
+API-Schlüssel und Eingabegrenze, mit derselben [Adressprüfung](#adressprüfung-der-modelle) wie in
 der Installation. „Probeeinbettung“ prüft den Endpunkt und nennt die Zahl der Dimensionen;
 „Embedding-Modell festlegen“ fragt nach und legt dann Modell und Vektorablage an. Weil vor dem
 ersten Modell keine Inhalte angenommen werden, wird nichts neu eingebettet, und die Vektorsuche läuft
@@ -320,7 +320,7 @@ flowchart LR
   E -.-> G[Verwerfen]
 ```
 
-1. **Eintragen.** Basis-Adresse, Modell-Kennung, Eingabegrenze und Zugangsschlüssel, mit derselben
+1. **Eintragen.** Basis-Adresse, Modell-Kennung, Eingabegrenze und API-Schlüssel, mit derselben
    [Adressprüfung](#adressprüfung-der-modelle) wie in der Installation. „beibehalten" gibt es für
    den Schlüssel nur, solange die Adresse denselben Endpunkt nennt (Schema, Host, Port, Pfad); bei
    einem anderen ist er neu einzugeben oder „ohne" zu wählen. So geht ein Schlüssel nie an einen
@@ -408,7 +408,7 @@ ein weiterer Start auch die fehlenden eingebettet hat.
 
 ### Endpunkt wechseln
 
-Ein anderer Server mit demselben Modell, ein neuer Zugangsschlüssel oder eine andere Eingabegrenze
+Ein anderer Server mit demselben Modell, ein neuer API-Schlüssel oder eine andere Eingabegrenze
 brauchen keine Neueinbettung. Typischer Anlass ist der Ausfall des bisherigen Servers.
 
 Dafür im Reiter „Einbettung" die neue Adresse und den Schlüssel eintragen und „Probeeinbettung"
@@ -525,7 +525,7 @@ der openai-kompatiblen Schnittstelle bedienen:
 
 Einzutragen sind unter **Modelle → Spracheingabe** das Auswahlkästchen „Spracheingabe einschalten", die
 Basis-Adresse ohne den Pfad `/audio/transcriptions` (etwa `https://stt.landesverwaltung.de/v1`),
-die Modell-Kennung und, falls der Dienst ihn verlangt, der Zugangsschlüssel. Der Schlüssel liegt
+die Modell-Kennung und, falls der Dienst ihn verlangt, der API-Schlüssel. Der Schlüssel liegt
 verschlüsselt in der Datenbank und geht nur in den `Authorization`-Header der Anfrage, nie in ein
 Log oder eine Zustandsanzeige. Der
 Aufruf geht über denselben [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und dieselben vertrauten
@@ -730,7 +730,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
 2. **Auswahlkästchen der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
    ([Texterkennung einrichten](../administration/modelle.md#texterkennung-einrichten)). Dazu
    gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
-   verlangt, der Zugangsschlüssel. Jede Änderung steht
+   verlangt, der API-Schlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 | Verbindungstyp | Was der Dienst bekommt | Schlüssel | Erreichbarkeitsprüfung |
@@ -801,21 +801,21 @@ OPAA_HTTP_FORCE_HTTP1=true
 Die Adresse des Servers, etwa `http://your-vllm-server:8000/v1`, trägt die Installation bzw. die
 Modellverwaltung ein.
 
-## Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle
+## Verschlüsselung der API-Schlüssel verwalteter Chat-Modelle
 
-Ein hinterlegter Zugangsschlüssel eines Chat-Modells liegt **verschlüsselt** in der Datenbank
+Ein hinterlegter API-Schlüssel eines Chat-Modells liegt **verschlüsselt** in der Datenbank
 (AES-256-GCM, zufälliger Initialisierungsvektor je Wert) und erscheint in keiner API-Antwort und keinem
 Log. Der Schlüssel dafür ist `OPAA_SETTINGS_ENCRYPTION_KEY`, getrennt von dem der Quellen
 ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)); er schützt auch das
 SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des Repositorys abgelegt.
 
 - **Ohne Schlüssel startet das Backend normal.** Eine Installation, die nur lokale Modelle ohne
-  Zugangsschlüssel führt, braucht ihn nie. Erst das Anlegen oder Ändern eines Modells **mit**
-  Zugangsschlüssel scheitert mit einer Meldung, die die Variable nennt; die Übernahme beim ersten
+  API-Schlüssel führt, braucht ihn nie. Erst das Anlegen oder Ändern eines Modells **mit**
+  API-Schlüssel scheitert mit einer Meldung, die die Variable nennt; die Übernahme beim ersten
   Start bricht den Start nicht ab, sondern schreibt einen Fehler ins Log und wird beim nächsten Start
   nachgeholt.
-- **Bei Schlüsselverlust** sind die gespeicherten Zugangsschlüssel nicht wiederherstellbar; der übrige
-  Modelleintrag bleibt. Abhilfe: den Zugangsschlüssel des Modells in der Oberfläche neu eintragen.
+- **Bei Schlüsselverlust** sind die gespeicherten API-Schlüssel nicht wiederherstellbar; der übrige
+  Modelleintrag bleibt. Abhilfe: den API-Schlüssel des Modells in der Oberfläche neu eintragen.
 - **Ein Schlüsselwechsel** braucht kein neues Eintragen: Der abgelöste Schlüssel entschlüsselt
   weiter, bis OPAA alle Werte umgestellt hat
   ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)).
@@ -1035,7 +1035,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 |---|---|
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ | Der Host liegt in einem internen Bereich und fehlt in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, oder sein Name lässt sich nicht auflösen. Beides ergibt bewusst denselben Satz, damit die Meldung nicht verrät, ob ein interner Name existiert; die genaue Ursache nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise des Hosts prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Verbindung abgelehnt, Zeitlimit, Zertifikat, Host nicht gefunden (bei freigegebenem Host) | Der Endpunkt ist von OPAA aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers |
-| Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht |
+| API-Schlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht |
 | keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an; die Kennung von Hand eintragen |
 | Der Endpunkt meldet keine Modelle | Die Liste ist leer; bei Ollama ist noch kein Modell geladen (`ollama pull …`) |
 | Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt OPAA nicht; die Zieladresse direkt eintragen |
@@ -1053,7 +1053,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell oder überspringt es ([Installation](installation.md)) |
 | Indexierung, Upload und Suche antworten „Es ist noch kein Embedding-Modell eingerichtet“, der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | Die Installation hat das Embedding-Modell übersprungen; ein regulärer Zustand, kein Fehler. Abhilfe: im Reiter „Einbettung" das erste Modell festlegen ([Erstes Modell festlegen](#erstes-modell-festlegen)). Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse, und OPAA versucht es erneut |
 | Der Start schreibt „The vector table holds chunks but no embedding model is installed“, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, „Probeeinbettung“ im Reiter „Einbettung" meldet, die Vektortabelle enthalte bereits Abschnitte | Die Vektorablage hat Abschnitte, aber es gibt kein Embedding-Modell, etwa nach einer Rücksicherung, die nur einen Teil der Datenbank zurückgespielt hat. Die Abschnitte gehören zu einem Modell, das OPAA nicht mehr kennt; ein erstes Modell darüber lehnt OPAA ab. Abhilfe: die Datenbank vollständig aus derselben Sicherung zurückspielen, die auch das Embedding-Modell enthält ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)), oder die Datenbank neu aufsetzen und installieren |
-| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modelle eines anlegen und aktivieren ([Chat-Modelle](#chat-modelle)) |
+| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modell eines anlegen und aktivieren ([Chat-Modelle](#chat-modelle)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Ein Wechsel des Embedding-Modells läuft, oder nach einer Rücksicherung passt das gespeicherte Modell nicht zum Index; den Fortschritt im Indexstatus verfolgen oder dort die Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | „Nicht alle laufenden Instanzen haben dieselbe Version" | Ein Rolling Update läuft noch; es abschließen und den Schritt wiederholen |
@@ -1073,7 +1073,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Zustand unter Modelle → Spracheingabe oder Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
 | „Die Spracherkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
-| Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
+| Ein Modell mit API-Schlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Entweder liegt der Host im eigenen Netz und fehlt in der Liste der Modelle (ein Eintrag in der Liste der Quellen genügt nicht), oder der Name lässt sich nicht auflösen, etwa wegen eines Tippfehlers. Welches von beidem, steht in der WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Chat oder Einbettung scheitern, Log: „answered HTTP 3xx with a redirect; redirects are not followed“ | Der Modellserver leitet weiter, etwa von `http` auf `https` oder auf einen anderen Pfad. Die Zieladresse direkt eintragen |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |

@@ -60,9 +60,9 @@ describe('BrandingSettingsPage', () => {
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
-    expect(screen.getByLabelText('Produktname')).toHaveValue(OPAA_BRANDING.productName)
-    expect(screen.getByLabelText('Claim')).toHaveValue(OPAA_BRANDING.claim)
-    expect(screen.getByLabelText('Primärfarbe')).toHaveValue(OPAA_BRANDING.primaryColor)
+    expect(screen.getByLabelText('Produktname (optional)')).toHaveValue(OPAA_BRANDING.productName)
+    expect(screen.getByLabelText('Claim (optional)')).toHaveValue(OPAA_BRANDING.claim)
+    expect(screen.getByLabelText('Primärfarbe (optional)')).toHaveValue(OPAA_BRANDING.primaryColor)
   })
 
   // regression guard for #958: the section headings follow the page's h1 directly, so they must
@@ -83,7 +83,7 @@ describe('BrandingSettingsPage', () => {
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
-    const nameField = screen.getByLabelText('Produktname')
+    const nameField = screen.getByLabelText('Produktname (optional)')
     await user.clear(nameField)
     await user.type(nameField, 'Landesamt-Assistent')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
@@ -102,7 +102,7 @@ describe('BrandingSettingsPage', () => {
     const field = screen.getByLabelText('Hinweis zur KI-Nutzung')
     expect(field).toHaveValue(OPAA_BRANDING.aiNotice)
     expect(field).toHaveAccessibleDescription(/nicht abschalten/i)
-    expect(screen.getByRole('button', { name: 'Hinweis auf Standard zurücksetzen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Hinweis auf Standard zurücksetzen' })).toBeEnabled()
   })
 
   it('saves a changed AI notice and restores the standard text on reset', async () => {
@@ -171,7 +171,7 @@ describe('BrandingSettingsPage', () => {
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
-    const colorField = screen.getByLabelText('Primärfarbe')
+    const colorField = screen.getByLabelText('Primärfarbe (optional)')
     await user.clear(colorField)
     await user.type(colorField, 'blau')
 
@@ -192,7 +192,7 @@ describe('BrandingSettingsPage', () => {
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
-    const colorField = screen.getByLabelText('Primärfarbe')
+    const colorField = screen.getByLabelText('Primärfarbe (optional)')
     await user.clear(colorField)
     await user.type(colorField, '#FFF176')
 
@@ -212,7 +212,7 @@ describe('BrandingSettingsPage', () => {
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
-    const colorField = screen.getByLabelText('Primärfarbe')
+    const colorField = screen.getByLabelText('Primärfarbe (optional)')
     await user.clear(colorField)
     await user.type(colorField, '#0B6FBC')
 

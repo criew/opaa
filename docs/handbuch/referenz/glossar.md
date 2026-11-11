@@ -59,3 +59,10 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Zugangstoken** | Ein persönliches Zugangsmerkmal für externe KI-Werkzeuge, mit Name, unveränderlicher Bibliotheksauswahl und Pflicht-Ablaufdatum; Ausschnitt der Rechte seiner Person, nie mehr |
 | **Freigabe für externe KI-Werkzeuge** | Das befristete Merkmal einer Wissensbibliothek „Für externe KI-Werkzeuge nutzbar"; wird wie die übrigen Reichweitenfelder historisiert |
 | **Effektive Sicht** | Was ein Zugangstoken bei einem Aufruf sieht: die Schnittmenge aus Rechten der Person, gültiger Freigabe, Tokenauswahl und Installationsschalter, je Aufruf neu ausgewertet |
+| **Identitätsanbieter** | Der Dienst, über den sich Konten anmelden (OIDC), etwa Keycloak oder Entra ID. So heißen der Schritt der Installation und der Eintrag der Administration; „Anmeldeverfahren“ meint nur noch die Wahl zwischen lokalen Konten und einem Identitätsanbieter ([Authentifizierung](../betrieb/authentifizierung.md)) |
+| **Einbettung** | Reiter unter „Administration → Modelle“ und Schritt der Installation für das Embedding-Modell, das Inhalte und Fragen für die Suche in Vektoren umsetzt ([Modelle](../administration/modelle.md)) |
+| **Reranking** | Reiter und Schritt für das Modell, das die Kandidaten einer Suche neu ordnet, bevor die Antwort entsteht; optional |
+| **Spracheingabe** | Reiter und Schritt für das Transkriptionsmodell, das eine diktierte Frage in Text umsetzt, wahlweise schon beim Sprechen (Live-Transkript); optional |
+| **Texterkennung** | Reiter und Schritt für den Dienst, der gescannte PDFs ohne Textebene liest (OCR); optional ([Texterkennung](../betrieb/texterkennung.md)) |
+| **API-Schlüssel** | Das Geheimnis, mit dem sich OPAA an einem Modell-Endpunkt ausweist. Die Oberfläche zeigt einen gespeicherten Schlüssel nie wieder an, nur „Gesetzt“ mit „Ersetzen“ |
+| **Testnachricht** | Die E-Mail, mit der die Verwaltung („Testnachricht an mich senden“) oder der Schritt „E-Mail“ der Installation („Testnachricht an“) den Versand prüft ([E-Mail-Versand](../administration/e-mail.md)) |

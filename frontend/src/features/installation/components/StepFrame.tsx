@@ -2,10 +2,14 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import { handbookPageUrl } from '@/shared/utils/handbook'
 import type { WizardResult } from '../hooks/useInstallationWizard'
 import { stepMeta } from '../utils/steps'
 import { STEP_RHYTHM, STEP_TITLE_SX } from './stepLayout'
@@ -33,20 +37,21 @@ interface StepFrameProps extends StepNavigationProps {
   /** Label of the primary action; the steps with a check say what happens. */
   submitLabel?: string
   busyAnnouncement?: string
-  /** The primary action refuses for now. */
-  unavailable?: boolean
-  /** The element that describes the primary action, e.g. why it refuses or what it will do. */
-  describedBy?: string
   /** Moves the focus to the heading when the step opens; off for the page's first view. */
   focusHeading?: boolean
   onSubmit: () => void
   children: ReactNode
 }
 
+/** Where the handbook explains the assistant and each of its steps. */
+const HANDBOOK_PAGE = 'betrieb/installation.html#einrichtungs-assistent-im-browser'
+
 /**
  * The frame of every step: the step's heading (an h2 under the page's h1, focused when the step
- * opens so a screen reader announces it), the sentence about the step, its fields and the one
- * primary action at the end. Enter in any field submits, like the action.
+ * opens so a screen reader announces it), at most two sentences about the step with the handbook
+ * behind „?“, its fields, and the actions on the right: „Zurück“, on optional steps
+ * „Überspringen“, and the primary action. The primary action is always active; it refuses only
+ * while a request of the step runs. Enter in any field submits, like the action.
  */
 export default function StepFrame({
   title,
@@ -57,8 +62,6 @@ export default function StepFrame({
   busy = false,
   submitLabel = 'Prüfen und weiter',
   busyAnnouncement = 'Angaben werden gespeichert und geprüft',
-  unavailable = false,
-  describedBy,
   focusHeading = true,
   onSubmit,
   onBack,
@@ -78,7 +81,7 @@ export default function StepFrame({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!working && !unavailable) {
+    if (!working) {
       setSkipFailure(null)
       onSubmit()
     }
@@ -95,20 +98,41 @@ export default function StepFrame({
 
   return (
     <Box component="form" aria-labelledby={headingId} onSubmit={handleSubmit} noValidate>
-      <Typography
+      <Box
         sx={{
-          fontFamily: fontFamily.mono,
-          fontSize: fontSize.label,
-          fontWeight: 500,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          // Eyebrow above a heading in grey (guidelines 3.3); the step's state stays in words.
-          color: 'text.secondary',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
           mb: STEP_RHYTHM.withinHeading,
         }}
       >
-        {stepMeta(mandatory, laterUnder)}
-      </Typography>
+        <Typography
+          sx={{
+            fontFamily: fontFamily.mono,
+            fontSize: fontSize.label,
+            fontWeight: 500,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            // Eyebrow above a heading in grey (guidelines 3.3); the step's state stays in words.
+            color: 'text.secondary',
+          }}
+        >
+          {stepMeta(mandatory, laterUnder)}
+        </Typography>
+        <Tooltip title="Handbuch">
+          <IconButton
+            component="a"
+            size="small"
+            href={handbookPageUrl(HANDBOOK_PAGE, __OPAA_VERSION__)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Handbuch zu diesem Schritt (öffnet in neuem Fenster)"
+          >
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <Typography id={headingId} ref={headingRef} tabIndex={-1} component="h2" sx={STEP_TITLE_SX}>
         {title}
       </Typography>
@@ -139,6 +163,7 @@ export default function StepFrame({
         sx={{
           display: 'flex',
           flexWrap: 'wrap',
+          justifyContent: 'flex-end',
           alignItems: 'center',
           gap: 1.5,
           mt: STEP_RHYTHM.toActions,
@@ -148,43 +173,30 @@ export default function StepFrame({
         }}
       >
         {onBack && (
-          <Button variant="outlined" onClick={onBack} disabled={working}>
+          <Button variant="outlined" onClick={() => !working && onBack()}>
             Zurück
           </Button>
         )}
-        {/* The forward actions keep to the right edge, also when they wrap below the back button. */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            gap: 1.5,
-            ml: 'auto',
-          }}
-        >
-          {onSkip && (
-            <BusyButton
-              variant="text"
-              onClick={() => void handleSkip()}
-              busy={skipping}
-              busyAnnouncement="Schritt wird übersprungen"
-              unavailable={busy}
-            >
-              Überspringen
-            </BusyButton>
-          )}
+        {onSkip && (
           <BusyButton
-            type="submit"
-            variant="contained"
-            busy={busy}
-            busyAnnouncement={busyAnnouncement}
-            unavailable={unavailable || skipping}
-            aria-describedby={describedBy}
+            variant="text"
+            onClick={() => void handleSkip()}
+            busy={skipping}
+            busyAnnouncement="Schritt wird übersprungen"
+            unavailable={busy}
           >
-            {busy ? 'Wird geprüft …' : submitLabel}
+            Überspringen
           </BusyButton>
-        </Box>
+        )}
+        <BusyButton
+          type="submit"
+          variant="contained"
+          busy={busy}
+          busyAnnouncement={busyAnnouncement}
+          unavailable={skipping}
+        >
+          {busy ? 'Wird geprüft …' : submitLabel}
+        </BusyButton>
       </Box>
     </Box>
   )

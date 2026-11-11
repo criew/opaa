@@ -3,6 +3,7 @@ import type {
   InstallationStepId,
   InstallationStepState,
 } from '../api/types'
+import { SETUP_NAMES } from '@/shared/ui/setup/setupNames'
 
 /** What the assistant shows: the token, one of the API's steps, or the summary. */
 export type WizardView = 'TOKEN' | InstallationStepId | 'SUMMARY'
@@ -15,23 +16,36 @@ interface StepInfo {
 
 export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   FIRST_ADMIN: { label: 'Erstes Konto', laterUnder: 'Benutzer' },
-  SIGN_IN: { label: 'Anmeldeverfahren', laterUnder: 'Identitätsanbieter' },
-  CHAT_MODEL: { label: 'Chat-Modell', laterUnder: 'Modelle' },
-  EMBEDDING_MODEL: { label: 'Embedding-Modell', laterUnder: 'Modelle' },
-  RERANK_MODEL: { label: 'Rerank-Modell', laterUnder: 'Modelle' },
-  TRANSCRIPTION_MODEL: { label: 'Transkriptionsmodell', laterUnder: 'Modelle' },
-  TEXT_RECOGNITION_MODEL: { label: 'Texterkennung', laterUnder: 'Modelle' },
-  MALWARE_SCAN: { label: 'Virenprüfung', laterUnder: 'Virenprüfung' },
-  MAIL: { label: 'E-Mail-Versand', laterUnder: 'E-Mail' },
-  BRANDING: { label: 'Branding', laterUnder: 'Branding' },
+  SIGN_IN: { label: SETUP_NAMES.signIn, laterUnder: 'Identitätsanbieter' },
+  CHAT_MODEL: { label: SETUP_NAMES.chatModel, laterUnder: 'Modelle' },
+  EMBEDDING_MODEL: { label: SETUP_NAMES.embeddingModel, laterUnder: 'Modelle' },
+  RERANK_MODEL: { label: SETUP_NAMES.rerankModel, laterUnder: 'Modelle' },
+  TRANSCRIPTION_MODEL: { label: SETUP_NAMES.transcriptionModel, laterUnder: 'Modelle' },
+  TEXT_RECOGNITION_MODEL: { label: SETUP_NAMES.textRecognitionModel, laterUnder: 'Modelle' },
+  MALWARE_SCAN: { label: SETUP_NAMES.malwareScan, laterUnder: 'Virenprüfung' },
+  MAIL: { label: SETUP_NAMES.mail, laterUnder: 'E-Mail' },
+  BRANDING: { label: SETUP_NAMES.branding, laterUnder: 'Allgemein & Branding' },
 }
 
 export const TOKEN_LABEL = 'Installations-Token'
 export const SUMMARY_LABEL = 'Abschluss'
 
+/** The name of a view, as the step list and the step's heading show it. */
+export function viewLabel(view: WizardView): string {
+  if (view === 'TOKEN') return TOKEN_LABEL
+  return view === 'SUMMARY' ? SUMMARY_LABEL : STEP_INFO[view].label
+}
+
 /** All views in the order of the assistant: token, the API's steps, summary. */
 export function viewOrder(state: InstallationStatusResponse): WizardView[] {
   return ['TOKEN', ...state.steps.map((s) => s.step), 'SUMMARY']
+}
+
+/** „Schritt 2 von 12 · Erstes Konto“; before the token is accepted only the token's name. */
+export function stepPosition(state: InstallationStatusResponse | null, view: WizardView): string {
+  if (!state) return viewLabel(view)
+  const order = viewOrder(state)
+  return `Schritt ${order.indexOf(view) + 1} von ${order.length} · ${viewLabel(view)}`
 }
 
 /**

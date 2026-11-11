@@ -19,17 +19,22 @@ function recordRequests(path: string) {
   return bodies
 }
 
-/** Chooses a template from the address suggestions. */
+/** Chooses a provider, which fills its address. */
 async function chooseTemplate(
   user: ReturnType<typeof userEvent.setup>,
   dialog: ReturnType<typeof within>,
   name: RegExp,
 ) {
-  await user.click(dialog.getByRole('combobox', { name: /Basis-Adresse/ }))
-  await user.click(await screen.findByRole('option', { name }))
+  const providers = dialog.getByRole('radiogroup', { name: 'Anbieter' })
+  await user.click(within(providers).getByRole('radio', { name }))
 }
 
-/** Chooses the Ollama template, keeps its host and fetches the list. */
+/** The field of the key itself, not its „anzeigen“ button. */
+function keyField(dialog: ReturnType<typeof within>) {
+  return dialog.getByLabelText(/^API-Schlüssel/, { selector: 'input' })
+}
+
+/** Chooses the Ollama provider, keeps its host and fetches the list. */
 async function fetchFromOllama(
   user: ReturnType<typeof userEvent.setup>,
   dialog: ReturnType<typeof within>,
@@ -50,20 +55,20 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const discoveries = recordRequests('/api/v1/admin/models/discover')
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    const address = dialog.getByRole('combobox', { name: /Basis-Adresse/ })
+    const address = dialog.getByRole('textbox', { name: /Basis-Adresse/ })
 
     await chooseTemplate(user, dialog, /^Ollama/)
 
     expect(address).toHaveValue('http://ollama:11434/v1')
+    expect(address).toHaveAccessibleDescription(/^Den Host anpassen/)
+    expect(discoveries).toHaveLength(0)
+    await user.click(address)
     await waitFor(() => {
-      expect(address).toHaveFocus()
       expect([
         (address as HTMLInputElement).selectionStart,
         (address as HTMLInputElement).selectionEnd,
       ]).toEqual([7, 13])
     })
-    expect(discoveries).toHaveLength(0)
-    expect(dialog.getByText(/Host anpassen, dann „Modelle abrufen“ oder Enter/)).toBeInTheDocument()
 
     await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
     expect(await dialog.findByText(/4 Modelle gefunden/)).toBeInTheDocument()
@@ -95,7 +100,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     expect(dialog.getByLabelText('Anzeigename', { exact: false })).toHaveValue('qwen3:8b')
     // The default of 8,000 fits into half of the 40,960-token context window and stays.
     expect(dialog.getByLabelText('Maximale Antwortlänge (Token)', { exact: false })).toHaveValue(
-      8000,
+      '8000',
     )
     expect(dialog.getByText(/Kontextfenster des Modells: 40\.960 Token/)).toBeInTheDocument()
 
@@ -130,13 +135,13 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     await dialog.findByText(/2 Modelle gefunden/)
     await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
     await user.click(await screen.findByRole('option', { name: /phi3:mini/ }))
-    expect(maxTokens).toHaveValue(2048)
+    expect(maxTokens).toHaveValue('2048')
 
     await user.clear(maxTokens)
     await user.type(maxTokens, '1500')
     await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
     await user.click(await screen.findByRole('option', { name: /tinyllama/ }))
-    expect(maxTokens).toHaveValue(1500)
+    expect(maxTokens).toHaveValue('1500')
   })
 
   it('keeps a display name the person typed when a model is selected', async () => {
@@ -172,16 +177,14 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     )
   })
 
-  it('fetches the list on Enter in the address field and sends the typed key along', async () => {
+  it('fetches the list on leaving the key field and sends the typed key along', async () => {
     const discoveries = recordRequests('/api/v1/admin/models/discover')
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.type(dialog.getByLabelText('API-Schlüssel (optional)'), 'sk-test')
-    await user.type(
-      dialog.getByLabelText('Basis-Adresse', { exact: false }),
-      'https://api.openai.com/v1{Enter}',
-    )
+    await chooseTemplate(user, dialog, /^OpenAI/)
+    await user.type(keyField(dialog), 'sk-test')
+    await user.tab()
 
     expect(await dialog.findByText(/4 Modelle gefunden/)).toBeInTheDocument()
     expect(discoveries.at(-1)).toMatchObject({
@@ -197,9 +200,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
 
     await chooseTemplate(user, dialog, /^OpenAI/)
 
-    expect(
-      dialog.getByText(/Zugangsschlüssel eintragen, dann „Modelle abrufen“/),
-    ).toBeInTheDocument()
+    expect(dialog.getByText(/^API-Schlüssel eintragen; dann ruft OPAA/)).toBeInTheDocument()
     expect(discoveries).toHaveLength(0)
   })
 
@@ -209,13 +210,23 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.type(dialog.getByLabelText('API-Schlüssel (optional)'), 'sk-fuer-openai')
+    await chooseTemplate(user, dialog, /^OpenAI/)
+    await user.type(keyField(dialog), 'sk-fuer-openai')
     await chooseTemplate(user, dialog, /^Anthropic/)
 
-    expect(dialog.getByRole('combobox', { name: /Basis-Adresse/ })).toHaveValue(
+    expect(dialog.getByRole('textbox', { name: /Basis-Adresse/ })).toHaveValue(
       'https://api.anthropic.com/v1',
     )
-    expect(discoveries).toHaveLength(0)
+    expect(keyField(dialog)).toHaveValue('')
+    expect(
+      discoveries.every(
+        (request) =>
+          request.apiKey !== 'sk-fuer-openai' || request.baseUrl === 'https://api.openai.com/v1',
+      ),
+    ).toBe(true)
+    expect(discoveries.some((request) => request.baseUrl === 'https://api.anthropic.com/v1')).toBe(
+      false,
+    )
   })
 
   it('names a missing key and still allows typing the identifier by hand', async () => {
@@ -236,6 +247,38 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(mockLlmModels.some((m) => m.modelIdentifier === 'gpt-4o')).toBe(true)
+  })
+
+  it('leads „Modelle abrufen“ to the address while none is entered', async () => {
+    const discoveries = recordRequests('/api/v1/admin/models/discover')
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+
+    // Always active: without an address nothing goes out, and the reason stands at the field.
+    await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
+
+    const address = dialog.getByRole('textbox', { name: /Basis-Adresse/ })
+    expect(address).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(address).toHaveFocus())
+    expect(discoveries).toHaveLength(0)
+  })
+
+  it('names what is missing at its field and puts the focus there', async () => {
+    const user = userEvent.setup()
+    const { dialog, onSaved } = renderCreate()
+
+    await user.click(dialog.getByRole('button', { name: 'Anlegen' }))
+
+    const address = dialog.getByRole('textbox', { name: /Basis-Adresse/ })
+    expect(address).toHaveAttribute('aria-invalid', 'true')
+    expect(dialog.getByRole('combobox', { name: /Modell-Kennung/ })).toHaveAccessibleDescription(
+      /Modell-Kennung fehlt/,
+    )
+    expect(dialog.getByLabelText('Anzeigename', { exact: false })).toHaveAccessibleDescription(
+      'Anzeigename fehlt',
+    )
+    await waitFor(() => expect(address).toHaveFocus())
+    expect(onSaved).not.toHaveBeenCalled()
   })
 
   it('names an unreachable address', async () => {
@@ -311,7 +354,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     )
     const dialog = within(screen.getByRole('dialog'))
 
-    expect(dialog.getByRole('combobox', { name: /Basis-Adresse/ })).toHaveValue(
+    expect(dialog.getByRole('textbox', { name: /Basis-Adresse/ })).toHaveValue(
       'http://ollama:11434/v1',
     )
     await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
@@ -446,51 +489,49 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     await chooseOption(user, dialog, /phi3:mini/)
 
     expect(dialog.getByLabelText('Maximale Antwortlänge (Token)', { exact: false })).toHaveValue(
-      3000,
+      '3000',
     )
   })
 
-  it('offers the templates by keyboard: arrows, Enter, Escape', async () => {
+  it('offers the providers as a group that the arrow keys walk without fetching', async () => {
     const discoveries = recordRequests('/api/v1/admin/models/discover')
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    const address = dialog.getByRole('combobox', { name: /Basis-Adresse/ })
+    const address = dialog.getByRole('textbox', { name: /Basis-Adresse/ })
+    const providers = dialog.getByRole('radiogroup', { name: 'Anbieter' })
 
-    await user.click(address)
-    const listbox = await screen.findByRole('listbox')
     expect(
-      within(listbox)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+      within(providers)
+        .getAllByRole('radio')
+        .map((radio) => radio.textContent),
     ).toEqual([
       expect.stringContaining('Ollama'),
       expect.stringContaining('OpenAI'),
       expect.stringContaining('Anthropic (Claude)'),
+      expect.stringContaining('Eigene Adresse'),
     ])
-    expect(within(listbox).getByRole('option', { name: /^Anthropic/ })).toHaveTextContent(
-      /https:\/\/api\.anthropic\.com\/v1.*Temperatur leer lassen/,
-    )
 
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-
-    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}')
+    await user.click(within(providers).getByRole('radio', { name: /^Ollama/ }))
+    await user.keyboard('{ArrowRight}')
+    expect(within(providers).getByRole('radio', { name: /^OpenAI/ })).toBeChecked()
     expect(address).toHaveValue('https://api.openai.com/v1')
     expect(discoveries).toHaveLength(0)
   })
 
-  it('narrows the templates while typing and keeps any other address as free text', async () => {
+  it('keeps any other address as an address of its own and fetches on leaving it', async () => {
     const discoveries = recordRequests('/api/v1/admin/models/discover')
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    const address = dialog.getByRole('combobox', { name: /Basis-Adresse/ })
+    const address = dialog.getByRole('textbox', { name: /Basis-Adresse/ })
 
-    await user.type(address, 'anthro')
-    expect(within(await screen.findByRole('listbox')).getAllByRole('option')).toHaveLength(1)
+    await user.type(address, 'http://vllm.intern:8000/v1')
+    expect(
+      within(dialog.getByRole('radiogroup', { name: 'Anbieter' })).getByRole('radio', {
+        name: /^Eigene Adresse/,
+      }),
+    ).toBeChecked()
+    await user.tab()
 
-    await user.clear(address)
-    await user.type(address, 'http://vllm.intern:8000/v1{Enter}')
-    expect(address).toHaveValue('http://vllm.intern:8000/v1')
     await waitFor(() => expect(discoveries).toHaveLength(1))
     expect(discoveries[0]).toMatchObject({ baseUrl: 'http://vllm.intern:8000/v1' })
   })
@@ -504,11 +545,7 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     )
     const dialog = within(screen.getByRole('dialog'))
 
-    await user.click(
-      dialog.getByRole('button', {
-        name: `Gespeicherten Schlüssel entfernen: ${withKey.displayName}`,
-      }),
-    )
+    await user.click(dialog.getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }))
     await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
 
     await waitFor(() => expect(tests).toHaveLength(1))
@@ -526,19 +563,17 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     )
     const dialog = within(screen.getByRole('dialog'))
 
-    await user.click(
-      dialog.getByRole('button', {
-        name: `Gespeicherten Schlüssel entfernen: ${withKey.displayName}`,
-      }),
-    )
+    await user.click(dialog.getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }))
     await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
     await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
 
     await waitFor(() => expect(tests).toHaveLength(1))
-    await waitFor(() => expect(discoveries).toHaveLength(1))
     expect(tests[0]).toMatchObject({ storedModelId: withKey.id })
     expect(tests[0]).not.toHaveProperty('modelId')
-    expect(discoveries[0]).toMatchObject({ storedModelId: withKey.id })
-    expect(discoveries[0]).not.toHaveProperty('modelId')
+    // The dialog fetched once on opening, with the stored key; every later call goes without it.
+    await waitFor(() => expect(discoveries.length).toBeGreaterThan(1))
+    expect(discoveries[0]).toMatchObject({ modelId: withKey.id, storedModelId: withKey.id })
+    expect(discoveries.at(-1)).toMatchObject({ storedModelId: withKey.id })
+    expect(discoveries.at(-1)).not.toHaveProperty('modelId')
   })
 })

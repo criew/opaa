@@ -163,8 +163,7 @@ function StepView({
           step={step}
           publicBaseUrlConfigured={publicBaseUrlConfigured}
           submit={(v, options) => submit('MAIL', v, options)}
-          skip={() => skip('MAIL')}
-          onBack={onBack}
+          {...nav}
         />
       )
     case 'BRANDING':
@@ -231,7 +230,12 @@ export default function InstallationPage() {
           onBack={onBack}
         />
       ) : (
-        <SummaryStep installation={installation} complete={wizard.complete} onBack={onBack} />
+        <SummaryStep
+          installation={installation}
+          complete={wizard.complete}
+          onBack={onBack}
+          onSelect={wizard.goTo}
+        />
       )}
     </InstallationLayout>
   )

@@ -30,7 +30,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Label | 1–3 | Sicht (P12) |
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
-| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled`, in Assistenten, Dialogen und auf Einstellungsseiten (P28, P54) |
+| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled`, in Assistenten, Dialogen und auf Einstellungsseiten (P28, P56) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
@@ -195,8 +195,16 @@ zwei Einträgen.
     der Seite ([guidelines.md](./guidelines.md), 5.1 und 5.12). – gemessen wie jede Seite
     (`capture.mjs --flow pages --profile signed-out`) und Sicht; im Code geprüft durch
     `preSignInRules.test.ts`
-
-54. **Speichern, Schalter, Verbindungstest einheitlich** ([guidelines.md](./guidelines.md), 5.16):
+55. **Einrichten und Verwalten aus einem Feldblock:** Was der Installationsassistent und die
+    Verwaltung beide abfragen, zeigt dieselben Felder in derselben Reihenfolge mit denselben
+    Beschriftungen, Hilfetexten und Bedienelementen; der Schritt heißt wie der Reiter; Geheimnisse
+    stehen im `SecretField` mit „Gesetzt“ und „Ersetzen“, Löschen ist eine stille Textaktion am
+    Feld; im Assistenten ist keine Schaltfläche gesperrt, die Fußzeile steht rechts, die
+    Schrittliste zeigt unter 900 px nur „Schritt 2 von 12 · Erstes Konto“, die Einleitung hat
+    höchstens zwei Sätze ([guidelines.md](./guidelines.md), 5.17). – Sicht (Schritt und
+    Einstellungsseite nebeneinander, `?mockInstallation=pending`); im Code geprüft durch
+    `setupRules.test.ts` und `fieldBlocks.test.tsx`
+56. **Speichern, Schalter, Verbindungstest einheitlich** ([guidelines.md](./guidelines.md), 5.16):
     ein Formular mit mehreren Feldern hat genau ein „Speichern", primär, unten links, immer aktiv,
     daneben „Verwerfen" nur bei Änderungen; ein einzelner Wert ist eine Wertzeile mit „Ändern",
     kein Speichern-Knopf neben einem Feld; ein Schalter wirkt sofort, was erst mit „Speichern"

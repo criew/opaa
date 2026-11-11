@@ -5,30 +5,29 @@ import Stack from '@mui/material/Stack'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
-import type { DiscoveredLlmModel, LlmModelDiscoveryResponse } from '@/shared/api/types'
-import SectionHead from '@/shared/ui/SectionHead'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
-import ChoiceTileGroup, { type ChoiceTile } from '@/shared/ui/choice/ChoiceTileGroup'
-import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
-import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierField'
-import type { DiscoveryPurpose } from '@/shared/ui/modelDiscovery/modelDiscovery'
-import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
-import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
-import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
-import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
-import type { InstallationModelDiscoveryRequest } from '../api/types'
+import type { DiscoveredLlmModel, LlmModelDiscoveryResponse } from '../../api/types'
+import SectionHead from '../SectionHead'
+import BusyButton from '../a11y/BusyButton'
+import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
+import FormFieldLabel from '../form/FormFieldLabel'
+import SecretField from '../form/SecretField'
+import DiscoveryStatus from '../modelDiscovery/DiscoveryStatus'
+import ModelIdentifierField from '../modelDiscovery/ModelIdentifierField'
+import type { DiscoveryPurpose } from '../modelDiscovery/modelDiscovery'
 import {
   discoveryPlan,
   originOf,
   providerOf,
   providerPresets,
   type DiscoveryPlan,
+  type EndpointDiscoveryRequest,
   type ProviderKey,
-} from '../utils/modelEndpoint'
-import type { FieldErrors } from '../utils/validation'
-import ApiKeyField from './ApiKeyField'
-import FormField from './FormField'
-import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
+} from '../modelDiscovery/modelEndpoint'
+import { MODEL_ROLE_TEXTS } from '../modelDiscovery/modelRoleTexts'
+import { useModelDiscovery } from '../modelDiscovery/useModelDiscovery'
+import { TRANSCRIPTION_TEXTS } from '../transcription/transcriptionSettings'
+import SetupField from './SetupField'
+import { API_KEY_LABEL, SETUP_RHYTHM, urlError, type SetupErrors } from './setupNames'
 
 const TILE_TEXT: Record<ProviderKey, { description: string; icon: ReactNode }> = {
   ollama: {
@@ -36,11 +35,11 @@ const TILE_TEXT: Record<ProviderKey, { description: string; icon: ReactNode }> =
     icon: <DnsOutlinedIcon fontSize="small" />,
   },
   openai: {
-    description: 'Cloud-Dienst, braucht einen Zugangsschlüssel.',
+    description: 'Cloud-Dienst, braucht einen API-Schlüssel.',
     icon: <CloudOutlinedIcon fontSize="small" />,
   },
   anthropic: {
-    description: 'Cloud-Dienst für Claude, braucht einen Zugangsschlüssel.',
+    description: 'Cloud-Dienst für Claude, braucht einen API-Schlüssel.',
     icon: <CloudOutlinedIcon fontSize="small" />,
   },
   custom: {
@@ -51,17 +50,17 @@ const TILE_TEXT: Record<ProviderKey, { description: string; icon: ReactNode }> =
 
 const ADDRESS_HINTS: Record<Exclude<ProviderKey, 'custom'>, string> = {
   ollama:
-    'Den Host anpassen: „ollama“ (Compose), „host.docker.internal“ (Ollama auf dem Docker-Host) oder der Dienstname im Kubernetes-Cluster.',
+    'Den Host anpassen: „ollama“ (Compose), „host.docker.internal“ (Docker-Host) oder der Dienstname im Cluster.',
   openai: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
   anthropic: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
 }
 
-/** An address of one's own, per role: rerank and transcription name their path, as their administration. */
+/** An address of one's own, per role: rerank and transcription name the path to leave out. */
 const OWN_ADDRESS_HINT: Record<DiscoveryPurpose, string> = {
   chat: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
   embedding: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
-  rerank: `So, wie das Backend den Dienst erreicht. ${MODEL_ROLE_TEXTS.rerank.addressHint}`,
-  transcription: `So, wie das Backend den Dienst erreicht. ${MODEL_ROLE_TEXTS.transcription.addressHint}`,
+  rerank: MODEL_ROLE_TEXTS.rerank.addressHint,
+  transcription: MODEL_ROLE_TEXTS.transcription.addressHint,
 }
 
 /**
@@ -70,14 +69,20 @@ const OWN_ADDRESS_HINT: Record<DiscoveryPurpose, string> = {
  */
 const TRANSCRIPTION_TILES = {
   custom: 'Jeder OpenAI-kompatible Transkriptionsdienst, etwa speaches oder vLLM.',
-  openai: 'Cloud-Dienst, braucht einen Zugangsschlüssel. Aufnahmen verlassen das Haus.',
+  openai: 'Cloud-Dienst, braucht einen API-Schlüssel. Aufnahmen verlassen das Haus.',
 }
 
 const KEY_HINT_NEEDED = 'Der Anbieter verlangt einen Schlüssel; OPAA speichert ihn verschlüsselt.'
 
+const KEY_REMOVAL_TEXTS = {
+  removeLabel: 'Gespeicherten Schlüssel entfernen',
+  keepLabel: 'Schlüssel behalten',
+  removedText: 'Der gespeicherte Schlüssel wird beim Speichern entfernt.',
+}
+
 interface ModelEndpointFieldsProps {
   purpose: DiscoveryPurpose
-  /** The step's stored endpoint, if saved before. */
+  /** The stored endpoint, if saved before. */
   stored: { baseUrl: string; apiKeySet: boolean } | null
   baseUrl: string
   onBaseUrlChange: (baseUrl: string) => void
@@ -89,19 +94,29 @@ interface ModelEndpointFieldsProps {
   onModelChange: (identifier: string) => void
   /** A model chosen from the list, with what the endpoint reported about it. */
   onModelSelect?: (model: DiscoveredLlmModel) => void
-  errors: FieldErrors
-  discover: (request: InstallationModelDiscoveryRequest) => Promise<LlmModelDiscoveryResponse>
+  /** The identifier is fixed, e.g. for a replacement endpoint of the same model. */
+  modelFixed?: boolean
+  /** Errors by `baseUrl`, `apiKey` and `model`. */
+  errors: SetupErrors
+  /**
+   * Fetches the endpoint's models. Absent where the backend offers no discovery for the role;
+   * the identifier is then typed and „Modelle abrufen“ is not shown.
+   */
+  discover?: (request: EndpointDiscoveryRequest) => Promise<LlmModelDiscoveryResponse>
   /** Further fields of the model, under its identifier. */
   children?: ReactNode
 }
 
+const NO_DISCOVERY = (): Promise<LlmModelDiscoveryResponse> =>
+  Promise.reject(new Error('Kein Modellabruf für diese Rolle.'))
+
 /**
- * Endpoint and model of a model step, in the order of the set-up: provider, address and key,
- * then the model from the endpoint's list. A role without presets (the rerank model) starts at the
- * address. The list is fetched once address and, where the
- * provider needs one, key are in - on choosing a provider, on leaving address or key, and when
- * the step opens with a stored endpoint; „Modelle abrufen“ fetches again. Without a list the
- * identifier stays free text.
+ * Endpoint and model of a model role, the same in the assistant's step and in the model
+ * administration: provider, address and key, then the model from the endpoint's list. A role
+ * without presets (reranking) starts at the address. The list is fetched once address and, where
+ * the provider needs one, key are in - on leaving address or key, and when the form opens with a
+ * stored endpoint. „Modelle abrufen“ fetches again and is always active: while nothing can be
+ * fetched it puts the reason at the field in the way and the focus into it.
  */
 export default function ModelEndpointFields({
   purpose,
@@ -115,6 +130,7 @@ export default function ModelEndpointFields({
   model,
   onModelChange,
   onModelSelect,
+  modelFixed = false,
   errors,
   discover,
   children,
@@ -127,7 +143,9 @@ export default function ModelEndpointFields({
     providerOf(baseUrl || stored?.baseUrl || '', purpose),
   )
   const [keyOrigin, setKeyOrigin] = useState<string | null>(null)
-  const discovery = useModelDiscovery(discover)
+  // „Modelle abrufen“ was asked for while a field kept the fetch from going out.
+  const [refused, setRefused] = useState(false)
+  const discovery = useModelDiscovery(discover ?? NO_DISCOVERY)
   const lastRequest = useRef<string | null>(null)
   const presets = providerPresets(purpose)
   const plan = discoveryPlan({
@@ -157,25 +175,40 @@ export default function ModelEndpointFields({
   ]
 
   function fetchModels(next: DiscoveryPlan, asked: boolean) {
-    if (!next.request || (!asked && !next.automatic)) return
+    if (!discover) return
+    if (!next.request) {
+      if (!asked) return
+      setRefused(true)
+      requestAnimationFrame(() =>
+        document.getElementById(next.blockedBy === 'key' ? keyId : addressId)?.focus(),
+      )
+      return
+    }
+    if (!asked && !next.automatic) return
     const fingerprint = JSON.stringify(next.request)
     if (!asked && fingerprint === lastRequest.current) return
     lastRequest.current = fingerprint
+    setRefused(false)
     void discovery.discover(next.request)
   }
 
-  // A step reopened with its stored endpoint shows the list at once.
+  // A form reopened with its stored endpoint shows the list at once.
   const [initialPlan] = useState(plan)
   const { discover: runDiscovery } = discovery
+  const offersDiscovery = Boolean(discover)
+  const openedWithList = useRef(false)
   useEffect(() => {
-    if (!initialPlan.request || !initialPlan.automatic || lastRequest.current !== null) return
+    if (!offersDiscovery || openedWithList.current) return
+    openedWithList.current = true
+    if (!initialPlan.request || !initialPlan.automatic) return
     lastRequest.current = JSON.stringify(initialPlan.request)
     void runDiscovery(initialPlan.request)
-  }, [initialPlan, runDiscovery])
+  }, [initialPlan, runDiscovery, offersDiscovery])
 
   /** A new address invalidates the list; it belonged to the old one. */
   function changeAddress(next: string) {
     onBaseUrlChange(next)
+    setRefused(false)
     discovery.reset()
     lastRequest.current = null
   }
@@ -189,6 +222,7 @@ export default function ModelEndpointFields({
 
   function typeKey(next: string) {
     onApiKeyChange(next)
+    setRefused(false)
     setKeyOrigin(originOf(baseUrl))
   }
 
@@ -224,6 +258,11 @@ export default function ModelEndpointFields({
 
   const needsKey = presets.some((preset) => preset.key === provider && preset.needsKey)
   const loading = discovery.state.status === 'loading'
+  const addressRefusal =
+    refused && plan.blockedBy === 'address'
+      ? (urlError(baseUrl, 'die Basis-Adresse') ?? plan.hint)
+      : undefined
+  const keyRefusal = refused && plan.blockedBy === 'key' ? plan.hint : undefined
 
   return (
     <>
@@ -236,7 +275,7 @@ export default function ModelEndpointFields({
         <SectionHead component="h3" id={`${id}-endpoint`}>
           Endpunkt
         </SectionHead>
-        <Stack spacing={STEP_RHYTHM.betweenGroups}>
+        <Stack spacing={SETUP_RHYTHM.betweenFields}>
           {presets.length > 0 && (
             <Box>
               <FormFieldLabel id={providerLabelId}>Anbieter</FormFieldLabel>
@@ -248,52 +287,61 @@ export default function ModelEndpointFields({
                 columns={2}
               />
               {purpose === 'transcription' && provider === 'openai' && (
-                <Alert severity="warning" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
+                <Alert severity="warning" sx={{ mt: SETUP_RHYTHM.fieldToOwn }}>
                   {TRANSCRIPTION_TEXTS.externalService}
                 </Alert>
               )}
             </Box>
           )}
-          <FormField
+          <SetupField
             id={addressId}
             label="Basis-Adresse"
             inputMode="url"
             value={baseUrl}
             onChange={typeAddress}
-            error={errors.baseUrl}
+            error={errors.baseUrl ?? addressRefusal}
             hint={
               provider && provider !== 'custom'
                 ? ADDRESS_HINTS[provider]
                 : OWN_ADDRESS_HINT[purpose]
             }
           />
-          <ApiKeyField
+          <SecretField
             id={keyId}
-            keyStored={Boolean(stored?.apiKeySet)}
+            label={API_KEY_LABEL}
+            optional
+            autoComplete="off"
             value={apiKey}
             onChange={typeKey}
-            remove={removeKey}
-            onRemoveChange={onRemoveKeyChange}
-            error={errors.apiKey}
+            stored={Boolean(stored?.apiKeySet)}
+            error={errors.apiKey ?? keyRefusal}
             hint={needsKey ? KEY_HINT_NEEDED : undefined}
+            removal={{
+              requested: removeKey,
+              onChange: (remove) => {
+                onRemoveKeyChange(remove)
+                setRefused(false)
+              },
+              ...KEY_REMOVAL_TEXTS,
+            }}
           />
-          {/* The outcome of the discovery and its quiet action on the left field edge; the
-              status's own top margin belongs to the admin dialog, the step's rhythm spaces it. */}
-          <Box sx={{ '&& [role="status"] > *': { mt: 0 } }}>
-            <DiscoveryStatus state={discovery.state} idleHint={plan.hint} purpose={purpose} />
-            <BusyButton
-              size="small"
-              variant="text"
-              busy={loading}
-              // The status region above announces the loading; the button stays silent.
-              busyAnnouncement=""
-              unavailable={!plan.request}
-              onClick={() => fetchModels(plan, true)}
-              sx={{ ...EDGE_ALIGNED_TEXT_BUTTON_SX, mt: STEP_RHYTHM.fieldToOwnAction }}
-            >
-              Modelle abrufen
-            </BusyButton>
-          </Box>
+          {discover && (
+            // The status's own top margin belongs to a dialog; the block's rhythm spaces it here.
+            <Box sx={{ '&& [role="status"] > *': { mt: 0 } }}>
+              <DiscoveryStatus state={discovery.state} idleHint={plan.hint} purpose={purpose} />
+              <BusyButton
+                size="small"
+                variant="text"
+                busy={loading}
+                // The status region above announces the loading; the button stays silent.
+                busyAnnouncement=""
+                onClick={() => fetchModels(plan, true)}
+                sx={{ px: 1, ml: -1, mt: SETUP_RHYTHM.fieldToOwn }}
+              >
+                Modelle abrufen
+              </BusyButton>
+            </Box>
+          )}
         </Stack>
       </Box>
 
@@ -301,20 +349,31 @@ export default function ModelEndpointFields({
         <SectionHead component="h3" id={`${id}-model`}>
           Modell
         </SectionHead>
-        <Stack spacing={STEP_RHYTHM.betweenGroups}>
-          <ModelIdentifierField
-            id={`${id}-model-identifier`}
-            purpose={purpose}
-            value={model}
-            models={discovery.models}
-            loading={loading}
-            error={errors.model}
-            onInputChange={onModelChange}
-            onSelect={(selected) => {
-              onModelChange(selected.identifier)
-              onModelSelect?.(selected)
-            }}
-          />
+        <Stack spacing={SETUP_RHYTHM.betweenFields}>
+          {modelFixed ? (
+            <SetupField
+              id={`${id}-model-identifier`}
+              label="Modell-Kennung"
+              value={model}
+              onChange={onModelChange}
+              disabled
+              error={errors.model}
+            />
+          ) : (
+            <ModelIdentifierField
+              id={`${id}-model-identifier`}
+              purpose={purpose}
+              value={model}
+              models={discovery.models}
+              loading={loading}
+              error={errors.model}
+              onInputChange={onModelChange}
+              onSelect={(selected) => {
+                onModelChange(selected.identifier)
+                onModelSelect?.(selected)
+              }}
+            />
+          )}
           {children}
         </Stack>
       </Box>

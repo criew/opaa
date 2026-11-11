@@ -13,6 +13,7 @@ import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import CreateButton from '@/shared/ui/CreateButton'
 import AreaTabs from '@/shared/ui/AreaTabs'
+import { SETUP_NAMES } from '@/shared/ui/setup/setupNames'
 import EmbeddingChangeSection from '../components/EmbeddingChangeSection'
 import EmbeddingInfoTable from '../components/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/LlmModelFormDialog'
@@ -30,14 +31,15 @@ function isLlmModelTab(value: string | undefined): value is LlmModelTab {
   return tabs.some((tab) => tab.value === value)
 }
 
-// „Chat-Modelle" instead of „Chat": the application's main area has that name too, and what is
-// meant here is not the conversation but the model that answers it.
+// The tabs carry the names of the assistant's steps (guidelines 5.17). „Chat-Modell" instead of
+// „Chat": the application's main area has that name too, and what is meant here is not the
+// conversation but the model that answers it.
 const tabs: Array<{ value: LlmModelTab; label: string }> = [
-  { value: 'chat', label: 'Chat-Modelle' },
-  { value: 'embedding', label: 'Einbettung' },
-  { value: 'rerank', label: 'Reranking' },
-  { value: 'transcription', label: 'Spracheingabe' },
-  { value: 'text-recognition', label: 'Texterkennung' },
+  { value: 'chat', label: SETUP_NAMES.chatModel },
+  { value: 'embedding', label: SETUP_NAMES.embeddingModel },
+  { value: 'rerank', label: SETUP_NAMES.rerankModel },
+  { value: 'transcription', label: SETUP_NAMES.transcriptionModel },
+  { value: 'text-recognition', label: SETUP_NAMES.textRecognitionModel },
 ]
 
 /**

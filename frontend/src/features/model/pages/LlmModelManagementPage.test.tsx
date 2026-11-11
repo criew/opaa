@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -146,7 +146,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderPage('/admin/models')
 
-    expect(await screen.findByRole('tab', { name: 'Chat-Modelle' })).toHaveAttribute(
+    expect(await screen.findByRole('tab', { name: 'Chat-Modell' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -169,7 +169,7 @@ describe('LlmModelManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderPage('/admin/models/quatsch')
 
-    expect(await screen.findByRole('tab', { name: 'Chat-Modelle' })).toHaveAttribute(
+    expect(await screen.findByRole('tab', { name: 'Chat-Modell' })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -421,7 +421,7 @@ describe('LlmModelManagementPage', () => {
     renderChat()
     await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
     const dialog = within(screen.getByRole('dialog'))
-    expect(dialog.getByLabelText('Temperatur (optional)')).toHaveValue(null)
+    expect(dialog.getByLabelText('Temperatur (optional)')).toHaveValue('')
 
     await user.type(dialog.getByLabelText('Anzeigename', { exact: false }), 'Haiku')
     await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
@@ -429,7 +429,10 @@ describe('LlmModelManagementPage', () => {
     await user.click(dialog.getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    const anlegen = aufrufe.find((aufruf) => aufruf.method === 'POST')
+    // the address alone already asks the endpoint for its models, hence the path
+    const anlegen = aufrufe.find(
+      (aufruf) => aufruf.method === 'POST' && aufruf.path === '/api/v1/admin/models',
+    )
     expect(anlegen?.body?.temperature).toBeNull()
     expect(anlegen?.body?.maxTokens).toBe(8000)
   })
@@ -572,9 +575,7 @@ describe('LlmModelManagementPage', () => {
 
     const dialog = await openEditDialog(user, 'Modell mit Schlüssel')
     await user.click(
-      within(dialog).getByRole('button', {
-        name: 'Gespeicherten Schlüssel entfernen: Modell mit Schlüssel',
-      }),
+      within(dialog).getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }),
     )
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
@@ -608,7 +609,7 @@ describe('LlmModelManagementPage', () => {
     await screen.findByRole('table', { name: 'Chat-Modelle' })
     const dialog = await openEditDialog(user, 'Modell mit Temperatur')
     const feld = within(dialog).getByLabelText('Temperatur (optional)')
-    expect(feld).toHaveValue(0.7)
+    expect(feld).toHaveValue('0.7')
     await user.clear(feld)
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
@@ -616,8 +617,8 @@ describe('LlmModelManagementPage', () => {
     expect(aufrufe.find((aufruf) => aufruf.method === 'PUT')!.body?.temperature).toBeNull()
   })
 
-  // The browser reports an unreadable number as an empty value with `validity.badInput`; it must
-  // not be silently saved as „keine Temperatur“. jsdom does not know badInput, hence it is set.
+  // An unreadable entry must not be silently saved as „keine Temperatur“: the field keeps the
+  // text as typed, and saving names it there.
   it('blocks saving an unreadable temperature instead of storing none', async () => {
     signInAs('SYSTEM_ADMIN')
     const aufrufe = recordModelRequests()
@@ -629,15 +630,17 @@ describe('LlmModelManagementPage', () => {
     await user.type(dialog.getByLabelText('Anzeigename', { exact: false }), 'Haiku')
     await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
     await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
-    const feld = dialog.getByLabelText('Temperatur (optional)') as HTMLInputElement
-    // A value first, so that React reports the following change to „leer“ as a change.
-    await user.type(feld, '1')
-    Object.defineProperty(feld, 'validity', { value: { badInput: true }, configurable: true })
-    fireEvent.change(feld, { target: { value: '' } })
+    const feld = dialog.getByLabelText('Temperatur (optional)')
+    await user.type(feld, 'warm')
 
-    expect(dialog.getByText(/keine gültige Zahl/)).toBeInTheDocument()
     await user.click(dialog.getByRole('button', { name: 'Anlegen' }))
-    expect(aufrufe.filter((aufruf) => aufruf.method === 'POST')).toEqual([])
+    expect(feld).toHaveAccessibleDescription(/Die Temperatur ist eine Zahl von 0 bis 2/)
+    await waitFor(() => expect(feld).toHaveFocus())
+    expect(
+      aufrufe.filter(
+        (aufruf) => aufruf.method === 'POST' && aufruf.path === '/api/v1/admin/models',
+      ),
+    ).toEqual([])
   })
 
   it('runs a connection test and shows the outcome', async () => {

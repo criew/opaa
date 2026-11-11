@@ -253,7 +253,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
               onClick={() => void handleTest()}
               disabled={isSaving || isTesting || isDirty}
             >
-              Testmail senden
+              Testnachricht senden
             </Button>
             <Button
               color="error"
@@ -266,8 +266,8 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
 
           {isDirty && (
             <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-              Zum Testen zuerst speichern: Die Testmail verschickt die gespeicherte Fassung, nicht
-              den Entwurf im Editor.
+              Zum Testen zuerst speichern: Die Testnachricht verschickt die gespeicherte Fassung,
+              nicht den Entwurf im Editor.
             </Typography>
           )}
 

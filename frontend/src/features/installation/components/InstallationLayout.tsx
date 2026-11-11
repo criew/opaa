@@ -18,8 +18,8 @@ interface InstallationLayoutProps {
 
 /**
  * The frame of the assistant, outside the application shell: the installation's mark and the
- * page's one h1 on top, the step list in a light secondary column beside the step from `md` on,
- * above it below that. The step keeps a reading width; extra width goes to the margins.
+ * page's one h1 on top, the step list in a light secondary column beside the step from `md` (900 px)
+ * on, collapsed to one line above it below that. The step keeps a reading width; extra width goes to the margins.
  */
 export default function InstallationLayout({
   progress,
@@ -49,7 +49,14 @@ export default function InstallationLayout({
       >
         <BrandMark variant="h6" logoHeight={28} />
         {progress && (
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          <Typography
+            sx={{
+              // Below md the collapsed step list names the position.
+              display: { xs: 'none', md: 'block' },
+              fontSize: fontSize.text,
+              color: 'text.secondary',
+            }}
+          >
             {progress}
           </Typography>
         )}
@@ -72,7 +79,7 @@ export default function InstallationLayout({
               borderRight: { md: `1px solid ${roles.borderStrong}` },
               borderBottom: { xs: `1px solid ${roles.borderStrong}`, md: 'none' },
               px: 1.5,
-              pb: 2.5,
+              pb: { xs: 1, md: 2.5 },
             }}
           >
             {navigation}

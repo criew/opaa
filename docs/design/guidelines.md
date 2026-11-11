@@ -511,9 +511,8 @@ Jedes Eingabefeld – Text, Auswahl, Autocomplete, Datum – kommt aus dem Baust
 Bewusste Ausnahmen: Felder ohne sichtbare Beschriftung, die ihren Namen über `aria-label` tragen
 und in einer Tabellenzeile, einer Titelzeile oder einem Such-Baustein stehen (`ListSearch`,
 `SubjectPicker`, `UserPicker`, `GroupPicker`, die Gruppenwahl in `AssetOwnerFields` unter der
-Beschriftung „Eigentümer"), bleiben MUI-Felder. Anmelde- und Installationsseiten liegen außerhalb
-dieser Umstellung; sie setzen die Beschriftung bis zu ihrer eigenen Umstellung mit
-`FormFieldLabel` über das Feld.
+Beschriftung „Eigentümer"), bleiben MUI-Felder. Der Installationsassistent und die
+Einstellungsseiten, die dasselbe abfragen, nehmen ihre Felder aus den Feldblöcken (5.17).
 
 **Beschriftung.** Oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
 schwebendes Label im Feld), mit dem Feld verbunden (`htmlFor`, bei einer Auswahl
@@ -543,7 +542,15 @@ auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahm
 ohne Fokusring, für Textfelder, Auswahllisten und Autocomplete
 gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
 behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
-Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
+
+**Geheimnisse.** Passwort, Schlüssel und Token haben ein Feld: `SecretField`
+(`frontend/src/shared/ui/form/SecretField.tsx`). Es ist verdeckt und trägt ein Auge, das die
+Eingabe zeigt; das Auge nennt sein Feld („Passwort anzeigen") und bleibt in der Tabreihenfolge.
+Ein hinterlegtes Geheimnis wird nie zurückgespiegelt: Das Feld zeigt „Gesetzt" mit „Ersetzen",
+erst „Ersetzen" öffnet ein leeres Feld, „Gespeicherten Wert behalten" nimmt das zurück. Lässt
+sich ein hinterlegtes Geheimnis löschen, steht dafür eine Textaktion am Feld („Gespeichertes
+Passwort löschen"), still und nicht rot; ein leeres Feld löscht nie. Einen zweiten Baustein für
+Geheimnisse gibt es nicht (`setupRules.test.ts`).
 
 **Breite und Anordnung.** Formulare auf Einstellungsseiten sind einspaltig und 640 px breit
 (`formWidth.column` im Theme). Nebeneinander stehen nur Wertepaare, die als ein
@@ -1240,6 +1247,46 @@ Speichern-Knopf, keinen `Switch` in einem `SettingsForm` und „Verbindung teste
 Baustein zu. Das Zählbudget `disabledSubmits` = 0 der Prüfliste gilt damit auch für
 Einstellungsseiten.
 
+### 5.17 Einrichten und Verwalten
+
+Der Installationsassistent fragt ab, was die Verwaltung danach pflegt: Chat-Modell, Einbettung,
+Reranking, Spracheingabe, Texterkennung, Virenprüfung, E-Mail und Branding. Beide zeigen dafür
+dasselbe Formular.
+
+1. **Ein Feldblock je Einstellung.** Was Assistent und Verwaltung beide abfragen, kommt aus einem
+   Feldblock unter `frontend/src/shared/ui/setup/` (`SmtpFields`, `MalwareScanFields`,
+   `BrandingFields`, `ModelEndpointFields` mit `ModelParameterFields`, `TranscriptionFields`,
+   `TextRecognitionFields`): dieselben Felder in derselben Reihenfolge, mit denselben
+   Beschriftungen, Hilfetexten und Bedienelementen. Der Rahmen unterscheidet sich (Schritt oder
+   Einstellungsseite), der Inhalt nicht. Kein Schritt und keine dieser Einstellungsseiten baut
+   ein Feld daneben aus `TextField`; ein Feld, das es nur auf einer Seite gibt, nimmt `SetupField`
+   oder `FormField`.
+2. **Unterschiede nur durch Weglassen.** Der Assistent darf ein Feld weglassen, wenn sein Text
+   sagt, wo es später steht („später unter Modelle", „… lädt die Systemverwaltung später unter
+   „Administration → Allgemein & Branding" hoch"). Verschiedene Bedienelemente für denselben Wert
+   gibt es nicht. Was nur eine Seite kennt, steht außerhalb des Blocks: im Assistenten
+   „Testnachricht an" (vor dem Abschluss gibt es kein Konto, an das die Verwaltung testen
+   könnte), in der Verwaltung das Auswahlkästchen, das eine Funktion einschaltet, und ihr Zustand.
+3. **Ein Name je Einstellung.** Der Schritt heißt wie der Reiter oder der Eintrag der Verwaltung:
+   Identitätsanbieter, Chat-Modell, Einbettung, Reranking, Spracheingabe, Texterkennung,
+   Virenprüfung, E-Mail, Branding (`SETUP_NAMES` in `setupNames.ts`, Begriffe in Abschnitt 6).
+4. **Geheimnisse** stehen im `SecretField` (5.2).
+5. **Schaltflächen sind immer aktiv.** „Prüfen und weiter", „Installation abschließen" und
+   „Modelle abrufen" sind nie gesperrt. Fehlt eine Eingabe, steht der Grund am Feld, und der Fokus
+   geht hinein. Hält ein Schritt den Abschluss auf, nennt ein Hinweis über der Übersicht die
+   Schritte als Links. Jede Zeile der Abschlussübersicht ist ein Link zu ihrem Schritt.
+6. **Fußzeile eines Schritts.** Rechts „Zurück" (sekundär), bei optionalen Schritten
+   „Überspringen" (still) und die Primärschaltfläche „Prüfen und weiter". Einen Schalter gibt es
+   in einem Schritt nicht: Was mit der Schaltfläche wirksam wird, ist ein Auswahlkästchen.
+7. **Schrittliste.** Eine Schrittliste mit mehr als fünf Schritten steht ab 900 px Breite links
+   als Liste. Darunter zeigt sie nur Position und Namen („Schritt 2 von 12 · Erstes Konto") und
+   klappt auf Antippen auf; die Wahl eines Schritts klappt sie wieder zu.
+8. **Einleitung.** Höchstens zwei Sätze: was hier eingestellt wird und was passiert, wenn man den
+   Schritt überspringt. Alles Weitere steht im Handbuch hinter dem „?" neben der Dachzeile.
+
+`setupRules.test.ts` prüft die Regeln 1, 3 und 4 am Quelltext, `fieldBlocks.test.tsx` jeden
+Feldblock einmal.
+
 ---
 
 ## 6 · Sprache und Begriffe
@@ -1290,6 +1337,13 @@ Verbindliche Begriffe:
 | **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11) |
 | **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                |
 | **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |
+| **Identitätsanbieter**    | der Dienst, über den sich Konten anmelden (OIDC); Schritt und Eintrag der Verwaltung heißen so. Nicht „Anmeldeverfahren", nicht „OIDC-Anbieter" |
+| **Einbettung**            | Name von Schritt und Reiter für das Modell, das Inhalte und Fragen in Vektoren umsetzt. Nicht „Embedding-Modell" als Name der Einstellung |
+| **Reranking**             | Name von Schritt und Reiter für das Neuordnen der Suchkandidaten. Nicht „Rerank-Modell" als Name der Einstellung |
+| **Spracheingabe**         | Name von Schritt und Reiter für Diktat und Live-Transkript. Nicht „Transkriptionsmodell" als Name der Einstellung |
+| **Texterkennung**         | Name von Schritt und Reiter für das Lesen gescannter PDFs (OCR)                              |
+| **API-Schlüssel**         | das Geheimnis, mit dem sich OPAA an einem Modell-Endpunkt ausweist. Nicht „Zugangsschlüssel" |
+| **Testnachricht**         | die E-Mail, die den Versand prüft. Nicht „Testmail"                                          |
 | **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
 | **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |

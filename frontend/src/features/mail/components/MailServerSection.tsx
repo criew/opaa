@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { smtpDraftOf, type SmtpDraft, type StoredSmtp } from '@/shared/ui/setup/setupDrafts'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Checkbox from '@mui/material/Checkbox'
-import FormField from '@/shared/ui/form/FormField'
-import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
 import type {
-  MailEncryption,
   MailSendResultResponse,
   MailSettingsResponse,
   MailSettingsUpdateRequest,
@@ -21,13 +17,8 @@ import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import PageSection from '@/shared/ui/PageSection'
 import PublicBaseUrlMissingAlert from '@/shared/ui/smtp/PublicBaseUrlMissingAlert'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
-import {
-  SMTP_ENCRYPTION_OPTIONS,
-  SMTP_LABELS,
-  SMTP_TEXTS,
-  parseSmtpPort,
-  smtpTargetChanged,
-} from '@/shared/ui/smtp/smtpSettings'
+import SmtpFields from '@/shared/ui/setup/SmtpFields'
+import { SMTP_TEXTS, parseSmtpPort, smtpPortError } from '@/shared/ui/smtp/smtpSettings'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
@@ -40,37 +31,24 @@ import LoadingState from '@/shared/ui/states/LoadingState'
 /** Mirrors `MailSettingsService.PASSWORD_MASK`: sending it back means „unverändert". */
 const PASSWORD_MASK = '***'
 
-interface FormState {
-  enabled: boolean
-  host: string
-  port: string
-  username: string
-  password: string
-  encryption: MailEncryption
-  fromAddress: string
-  fromName: string
-}
-
-function formOf(settings: MailSettingsResponse): FormState {
+function storedOf(settings: MailSettingsResponse): StoredSmtp {
   return {
-    enabled: settings.enabled,
-    host: settings.host ?? '',
-    port: settings.port != null ? String(settings.port) : '',
-    username: settings.username ?? '',
-    // Never the stored value and never the mask: the field starts empty, and an empty field is
-    // exactly what „unverändert" looks like.
-    password: '',
+    host: settings.host ?? null,
+    port: settings.port ?? null,
+    username: settings.username ?? null,
     encryption: settings.encryption,
-    fromAddress: settings.fromAddress ?? '',
-    fromName: settings.fromName ?? '',
+    fromAddress: settings.fromAddress,
+    fromName: settings.fromName,
+    passwordSet: settings.passwordSet,
   }
 }
 
 /**
- * The installation's SMTP form (ADR-0033 Entscheidung 10).
+ * The installation's SMTP form (ADR-0033 Entscheidung 10), with the fields of the assistant's
+ * step „E-Mail“ (`SmtpFields`).
  *
  * The password is write-protected in both directions: the response carries only the mask, the
- * field starts empty, and whoever enters nothing sends the mask back — the secret never passes
+ * field reads „Gesetzt“, and whoever enters nothing sends the mask back — the secret never passes
  * through the browser just because a form was rendered. Deleting is therefore an action of its
  * own with a name and not the side effect of an empty field.
  */
@@ -83,8 +61,10 @@ export default function MailServerSection() {
   const saveSettings = useMailStore((s) => s.saveSettings)
   const sendTestMail = useMailStore((s) => s.sendTestMail)
 
-  const [form, setForm] = useState<FormState | null>(null)
-  const [clearPassword, setClearPassword] = useState(false)
+  const [enabled, setEnabled] = useState(false)
+  const [draft, setDraft] = useState<SmtpDraft | null>(null)
+  // Remounts the fields after a save, so the password reads „Gesetzt“ again.
+  const [savedCount, setSavedCount] = useState(0)
   const [testResult, setTestResult] = useState<MailSendResultResponse | null>(null)
   const [isTesting, setIsTesting] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
@@ -101,13 +81,14 @@ export default function MailServerSection() {
   useEffect(() => {
     if (hydrated.current || !settings) return
     hydrated.current = true
-    setForm(formOf(settings))
+    setEnabled(settings.enabled)
+    setDraft(smtpDraftOf(storedOf(settings)))
   }, [settings])
 
-  if (isLoading && !form) {
+  if (isLoading && !draft) {
     return <LoadingState shape="detail" count={8} />
   }
-  if (!form || !settings) {
+  if (!draft || !settings) {
     return error ? (
       <LoadError
         message="Die E-Mail-Einstellungen konnten nicht geladen werden."
@@ -118,47 +99,39 @@ export default function MailServerSection() {
   }
 
   // Local, non-null bindings so the handlers below need no assertions.
-  const currentForm: FormState = form
+  const currentDraft: SmtpDraft = draft
   const currentSettings: MailSettingsResponse = settings
 
-  const update = (patch: Partial<FormState>) => setForm({ ...currentForm, ...patch })
-  const portNumber = parseSmtpPort(form.port)
-  const isPortValid = !Number.isNaN(portNumber ?? 0)
-  const canEnable = form.host.trim() !== '' && portNumber !== null && form.fromAddress.trim() !== ''
-  const connectionChanged = smtpTargetChanged(
-    {
-      host: settings.host ?? null,
-      port: settings.port ?? null,
-      username: settings.username ?? null,
-      encryption: settings.encryption,
-    },
-    { host: form.host, port: portNumber, username: form.username, encryption: form.encryption },
-  )
-  const passwordNeeded =
-    settings.passwordSet && connectionChanged && !clearPassword && form.password === ''
+  const portNumber = parseSmtpPort(draft.port)
+  const canEnable =
+    draft.host.trim() !== '' && portNumber !== null && draft.fromAddress.trim() !== ''
 
   function passwordForRequest(): string {
-    if (clearPassword) return ''
-    if (currentForm.password !== '') return currentForm.password
+    if (currentDraft.removePassword) return ''
+    if (currentDraft.password !== '') return currentDraft.password
     return currentSettings.passwordSet ? PASSWORD_MASK : ''
   }
 
-  const saved = formOf(settings)
+  const saved = smtpDraftOf(storedOf(settings))
   const dirty =
-    clearPassword ||
-    (Object.keys(saved) as (keyof FormState)[]).some((key) => form[key] !== saved[key])
+    enabled !== settings.enabled ||
+    (Object.keys(saved) as (keyof SmtpDraft)[]).some((key) => draft[key] !== saved[key])
   // what switching on needs is told at its field once „Speichern“ was pressed without it
   const missing = (empty: boolean, message: string) =>
-    checked && form.enabled && empty ? message : null
-  const hostError = missing(form.host.trim() === '', SMTP_TEXTS.hostMissing)
-  const portError = !isPortValid
-    ? SMTP_TEXTS.portInvalid
-    : missing(portNumber === null, SMTP_TEXTS.portMissing)
-  const fromAddressError = missing(form.fromAddress.trim() === '', SMTP_TEXTS.fromAddressMissing)
+    checked && enabled && empty ? message : undefined
+  const portError =
+    smtpPortError(draft.port) ?? missing(portNumber === null, SMTP_TEXTS.portMissing)
+  const errors = {
+    host: missing(draft.host.trim() === '', SMTP_TEXTS.hostMissing),
+    port: portError,
+    password: passwordError ?? undefined,
+    fromAddress: missing(draft.fromAddress.trim() === '', SMTP_TEXTS.fromAddressMissing),
+  }
 
   function discard() {
-    setForm(saved)
-    setClearPassword(false)
+    setEnabled(currentSettings.enabled)
+    setDraft(saved)
+    setSavedCount((count) => count + 1)
     setPasswordError(null)
     setRefusal(null)
     setChecked(false)
@@ -166,24 +139,25 @@ export default function MailServerSection() {
 
   async function handleSave(afterConfirmation = false) {
     setChecked(true)
-    if (!isPortValid || (currentForm.enabled && !canEnable)) return
+    if (portError !== undefined || (enabled && !canEnable)) return
     const request: MailSettingsUpdateRequest = {
-      enabled: currentForm.enabled,
-      host: currentForm.host.trim() || null,
+      enabled,
+      host: currentDraft.host.trim() || null,
       port: portNumber,
-      username: currentForm.username.trim() || null,
+      username: currentDraft.username.trim() || null,
       password: passwordForRequest(),
-      encryption: currentForm.encryption,
-      fromAddress: currentForm.fromAddress.trim() || null,
-      fromName: currentForm.fromName.trim() || null,
+      encryption: currentDraft.encryption,
+      fromAddress: currentDraft.fromAddress.trim() || null,
+      fromName: currentDraft.fromName.trim() || null,
     }
     setPasswordError(null)
     setRefusal(null)
     try {
       const stored = await saveSettings(request)
       gate.settled()
-      setForm(formOf(stored))
-      setClearPassword(false)
+      setEnabled(stored.enabled)
+      setDraft(smtpDraftOf(storedOf(stored)))
+      setSavedCount((count) => count + 1)
       setChecked(false)
       notify('Die E-Mail-Einstellungen wurden gespeichert.', 'success')
     } catch (err) {
@@ -237,10 +211,10 @@ export default function MailServerSection() {
             <BusyButton
               variant="outlined"
               busy={isTesting}
-              busyAnnouncement="Testmail wird gesendet"
+              busyAnnouncement="Testnachricht wird gesendet"
               onClick={() => void handleTest()}
             >
-              Testmail an mich senden
+              Testnachricht an mich senden
             </BusyButton>
           }
           result={
@@ -260,114 +234,23 @@ export default function MailServerSection() {
           <Stack spacing={2.5}>
             <FormControlLabel
               control={
-                <Checkbox
-                  checked={form.enabled}
-                  onChange={(e) => update({ enabled: e.target.checked })}
-                />
+                <Checkbox checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
               }
               label="Versand aktiv"
             />
-            {form.enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
+            {enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
 
-            <FormFieldRow>
-              <FormField
-                label={SMTP_LABELS.host}
-                value={form.host}
-                onChange={(e) => update({ host: e.target.value })}
-                error={hostError !== null}
-                helperText={hostError ?? SMTP_TEXTS.hostHint}
-              />
-              <FormField
-                label={SMTP_LABELS.port}
-                value={form.port}
-                onChange={(e) => update({ port: e.target.value })}
-                error={portError !== null}
-                helperText={portError ?? SMTP_TEXTS.portHint}
-                numeric
-                fullWidth={false}
-              />
-            </FormFieldRow>
-
-            <FormField
-              select
-              label={SMTP_LABELS.encryption}
-              value={form.encryption}
-              onChange={(e) => update({ encryption: e.target.value as MailEncryption })}
-              helperText={SMTP_ENCRYPTION_OPTIONS.find((o) => o.value === form.encryption)?.hint}
-              fullWidth
-            >
-              {SMTP_ENCRYPTION_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </FormField>
-
-            <Stack spacing={2.5}>
-              <FormField
-                label={SMTP_LABELS.username}
-                optional
-                value={form.username}
-                onChange={(e) => update({ username: e.target.value })}
-                helperText={SMTP_TEXTS.usernameHint}
-              />
-              <FormField
-                label={SMTP_LABELS.password}
-                type="password"
-                value={form.password}
-                onChange={(e) => {
-                  setClearPassword(false)
-                  setPasswordError(null)
-                  update({ password: e.target.value })
-                }}
-                disabled={clearPassword}
-                autoComplete="new-password"
-                error={passwordError !== null || passwordNeeded}
-                helperText={
-                  passwordError ??
-                  (clearPassword
-                    ? 'Das gespeicherte Passwort wird beim Speichern gelöscht.'
-                    : passwordNeeded
-                      ? SMTP_TEXTS.passwordFollowsTarget
-                      : settings.passwordSet
-                        ? SMTP_TEXTS.passwordStored
-                        : SMTP_TEXTS.passwordNone)
-                }
-              />
-            </Stack>
-            {settings.passwordSet && (
-              <Box>
-                <Button
-                  size="small"
-                  color={clearPassword ? 'primary' : 'error'}
-                  onClick={() => {
-                    setClearPassword(!clearPassword)
-                    update({ password: '' })
-                  }}
-                >
-                  {clearPassword
-                    ? 'Löschen des Passworts abbrechen'
-                    : 'Gespeichertes Passwort löschen'}
-                </Button>
-              </Box>
-            )}
-
-            <Stack spacing={2.5}>
-              <FormField
-                label={SMTP_LABELS.fromAddress}
-                value={form.fromAddress}
-                onChange={(e) => update({ fromAddress: e.target.value })}
-                error={fromAddressError !== null}
-                helperText={fromAddressError ?? SMTP_TEXTS.fromAddressHint}
-              />
-              <FormField
-                label={SMTP_LABELS.fromName}
-                optional
-                value={form.fromName}
-                onChange={(e) => update({ fromName: e.target.value })}
-                helperText={SMTP_TEXTS.fromNameHint}
-              />
-            </Stack>
+            <SmtpFields
+              key={savedCount}
+              idPrefix="mail-server"
+              value={draft}
+              onChange={(patch) => {
+                if ('password' in patch || 'removePassword' in patch) setPasswordError(null)
+                setDraft({ ...currentDraft, ...patch })
+              }}
+              errors={errors}
+              stored={storedOf(settings)}
+            />
           </Stack>
         </SettingsForm>
       </PageSection>

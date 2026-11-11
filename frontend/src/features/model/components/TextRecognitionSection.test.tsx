@@ -56,8 +56,10 @@ describe('TextRecognitionSection', () => {
     expect(toggle).toHaveAccessibleDescription(
       'Bestehende Scans werden nach dem Einschalten automatisch nachverarbeitet.',
     )
-    expect(screen.getByRole('radio', { name: /docling-serve/ })).toBeChecked()
-    expect(screen.getByLabelText(/Basis-Adresse/)).toHaveValue('')
+    // A role never set up starts where the assistant starts: at the bundled service.
+    expect(screen.getByRole('radio', { name: /Mitgelieferter Dienst/ })).toBeChecked()
+    expect(screen.queryByRole('radiogroup', { name: 'Anbindung' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/Basis-Adresse/)).toHaveValue('http://opaa-ocr:5001')
     expect(screen.queryByLabelText(/Modell-Kennung/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Gespeicherten Schlüssel entfernen' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeEnabled()
@@ -68,7 +70,8 @@ describe('TextRecognitionSection', () => {
     const sent = capture('post', `${PATH}/test`)
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.click(await screen.findByRole('button', { name: 'Verbindung testen' }))
+    await user.clear(await screen.findByLabelText(/Basis-Adresse/))
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     expect(await screen.findByText('Basis-Adresse fehlt')).toBeInTheDocument()
     expect(screen.getByLabelText(/Basis-Adresse/)).toBeInvalid()
@@ -84,10 +87,9 @@ describe('TextRecognitionSection', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Texterkennung einschalten' })).toBeChecked()
     expect(screen.getByLabelText(/Basis-Adresse/)).toHaveValue('http://opaa-ocr:5001')
-    expect(screen.getByLabelText(/^Zugangsschlüssel(?! anzeigen)/)).toHaveValue('')
-    expect(
-      screen.getByText('Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'API-Schlüssel ersetzen' })).toBeInTheDocument()
+    expect(document.querySelector('input[type="password"]')).toBeNull()
     expect(
       screen.getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }),
     ).toBeInTheDocument()
@@ -99,6 +101,7 @@ describe('TextRecognitionSection', () => {
     renderWithProviders(<TextRecognitionSection />)
 
     await user.click(await screen.findByRole('checkbox', { name: 'Texterkennung einschalten' }))
+    await user.clear(screen.getByLabelText(/Basis-Adresse/))
     await user.type(screen.getByLabelText(/Basis-Adresse/), ' http://opaa-ocr:5001 ')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
@@ -117,7 +120,12 @@ describe('TextRecognitionSection', () => {
     const sent = capture('put', PATH)
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.click(await screen.findByRole('radio', { name: /Vision-Modell/ }))
+    await user.click(await screen.findByRole('radio', { name: /Eigener Endpunkt/ }))
+    await user.click(
+      within(screen.getByRole('radiogroup', { name: 'Anbindung' })).getByRole('radio', {
+        name: /Vision-Modell/,
+      }),
+    )
     expect(screen.getByText(/nicht als Rahmen markiert/)).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Texterkennung einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://vllm:8000/v1')
@@ -165,7 +173,8 @@ describe('TextRecognitionSection', () => {
     mockModelRoles.textRecognition = configuredTextRecognitionModel()
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.type(await screen.findByLabelText(/^Zugangsschlüssel(?! anzeigen)/), 'falsch')
+    await user.click(await screen.findByRole('button', { name: 'API-Schlüssel ersetzen' }))
+    await user.type(screen.getByLabelText(/^API-Schlüssel/, { selector: 'input' }), 'falsch')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     await screen.findByRole('region', { name: 'Ergebnis des Verbindungstests' })
@@ -181,7 +190,9 @@ describe('TextRecognitionSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.type(await screen.findByLabelText(/Basis-Adresse/), 'http://ohne-engine:5001')
+    const address = await screen.findByLabelText(/Basis-Adresse/)
+    await user.clear(address)
+    await user.type(address, 'http://ohne-engine:5001')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     await screen.findByRole('region', { name: 'Ergebnis des Verbindungstests' })
@@ -193,7 +204,9 @@ describe('TextRecognitionSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.type(await screen.findByLabelText(/Basis-Adresse/), 'http://langsam:5001')
+    const address = await screen.findByLabelText(/Basis-Adresse/)
+    await user.clear(address)
+    await user.type(address, 'http://langsam:5001')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     await screen.findByRole('region', { name: 'Ergebnis des Verbindungstests' })
@@ -207,6 +220,7 @@ describe('TextRecognitionSection', () => {
     renderWithProviders(<TextRecognitionSection />)
 
     const address = await screen.findByLabelText(/Basis-Adresse/)
+    await user.clear(address)
     await user.type(address, 'http://gesperrt:5001')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
@@ -223,6 +237,7 @@ describe('TextRecognitionSection', () => {
     renderWithProviders(<TextRecognitionSection />)
 
     const address = await screen.findByLabelText(/Basis-Adresse/)
+    await user.clear(address)
     await user.type(address, 'http://unerreichbar:5001')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
     expect(await screen.findByText('Die Verbindung wurde vom Server abgelehnt.')).toBeVisible()

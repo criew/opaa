@@ -1,5 +1,8 @@
 import type { FieldError } from '@/shared/session/types'
+import { isBlank, urlError } from '@/shared/ui/setup/setupNames'
 import { STEP_REQUEST_KEY } from '../api/types'
+
+export { isBlank, urlError }
 
 /** Field name → German message; an empty record means the entries can be sent. */
 export type FieldErrors = Readonly<Record<string, string>>
@@ -9,10 +12,6 @@ export const RESERVED_ADMIN_EMAIL = 'admin@opaa.local'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
-
-export function isBlank(value: string): boolean {
-  return value.trim() === ''
-}
 
 /** A deliverable-looking address; the backend decides the rest. */
 export function emailError(value: string): string | undefined {
@@ -26,27 +25,11 @@ export function emailError(value: string): string | undefined {
   return undefined
 }
 
-/** An absolute http(s) address; whether it is reachable is the step's check. */
-export function urlError(value: string, what: string, optional = false): string | undefined {
-  if (isBlank(value)) return optional ? undefined : `Bitte ${what} angeben.`
-  try {
-    const url = new URL(value.trim())
-    if (url.protocol === 'http:' || url.protocol === 'https:') return undefined
-  } catch {
-    // falls through to the message below
-  }
-  return `${capitalize(what)} beginnt mit http:// oder https://.`
-}
-
 export function hexColorError(value: string): string | undefined {
   if (isBlank(value)) return 'Bitte eine Farbe angeben.'
   return HEX_COLOR_PATTERN.test(value.trim())
     ? undefined
     : 'Die Farbe steht als Hex-Wert mit sechs Stellen, etwa #1292EE.'
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 /** Only the fields that carry a message. */

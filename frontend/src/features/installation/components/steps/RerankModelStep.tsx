@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { secretPart } from '@/shared/ui/setup/setupDrafts'
 import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
 import type {
   InstallationModelDiscoveryRequest,
   InstallationStepState,
@@ -8,10 +10,8 @@ import type {
 } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
-import { apiKeyPart } from '../../utils/apiKey'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank, urlError } from '../../utils/validation'
-import ModelEndpointFields from '../ModelEndpointFields'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface RerankModelStepProps extends StepNavigationProps {
@@ -24,8 +24,8 @@ const RERANK_MODEL_FIELDS = ['baseUrl', 'model', 'apiKey']
 
 /**
  * The model that orders the candidates of every search anew, with the fields and the probe of
- * the rerank model administration; the completion switches reranking on with it. The list of
- * models is offered where the endpoint has one, otherwise the identifier is typed.
+ * „Modelle → Reranking“; the completion switches reranking on with it. The list of models is
+ * offered where the endpoint has one, otherwise the identifier is typed.
  */
 export default function RerankModelStep({
   step,
@@ -46,11 +46,12 @@ export default function RerankModelStep({
       baseUrl: urlError(baseUrl, 'die Basis-Adresse'),
       model: isBlank(model) ? 'Bitte die Modell-Kennung angeben.' : undefined,
     })
+    const key = secretPart(apiKey, removeKey)
     void form.submit(localErrors, RERANK_MODEL_FIELDS, () =>
       submit({
         baseUrl: baseUrl.trim(),
         model: model.trim(),
-        ...apiKeyPart(apiKey, removeKey),
+        ...(key === undefined ? {} : { apiKey: key }),
       }),
     )
   }
@@ -60,10 +61,10 @@ export default function RerankModelStep({
       title={STEP_INFO.RERANK_MODEL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.RERANK_MODEL.laterUnder}
-      description={`${MODEL_ROLE_TEXTS.rerank.purpose} Die Prüfung schickt eine Rerank-Anfrage mit einem Prüftext an den Endpunkt, wie „Verbindung testen“ in der Modellverwaltung; der Abschluss schaltet das Reranking damit ein. Ohne Rerank-Modell sucht OPAA ohne diese Stufe, bis die Systemverwaltung es unter Modelle einschaltet.`}
+      description={`${MODEL_ROLE_TEXTS.rerank.purpose} Übersprungen sucht OPAA ohne diese Stufe, bis die Systemverwaltung sie unter „Modelle → Reranking“ einschaltet.`}
       failure={form.failure}
       busy={form.busy}
-      busyAnnouncement="Probe an das Rerank-Modell läuft"
+      busyAnnouncement="Probe an das Reranking-Modell läuft"
       onSubmit={handleSubmit}
       onBack={onBack}
       onSkip={onSkip}

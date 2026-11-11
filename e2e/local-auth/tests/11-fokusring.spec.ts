@@ -237,7 +237,7 @@ test.describe("Fokusring nach Tastaturnavigation", () => {
       await page.emulateMedia({ colorScheme: scheme });
       await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
       await page.goto("/admin/branding");
-      const name = page.getByLabel("Produktname", { exact: true });
+      const name = page.getByLabel("Produktname (optional)", { exact: true });
       await expect(name).toBeVisible({ timeout: 20_000 });
 
       await tabTo(page, name);
