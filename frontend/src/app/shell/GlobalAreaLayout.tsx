@@ -1,16 +1,14 @@
 import { Suspense } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import GlobalBadge from '@/shared/ui/GlobalBadge'
 import { darkRoles, fontSize, lightRoles } from '@/shared/theme/tokens'
+import AreaSectionRow from './AreaSectionRow'
+import { sectionState, type GlobalAreaSection } from './areaSections'
 import PageLoading from './PageLoading'
-
-interface GlobalAreaSection {
-  label: string
-  to: string
-}
 
 /**
  * Either a full secondary column (title + sections) or none at all: the title names the
@@ -42,6 +40,9 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
   // bg2 (the raised light surface) has no palette slot - buildTheme maps bg1 onto both
   // background.default and background.paper - so the column reads its role directly.
   const roles = theme.palette.mode === 'light' ? lightRoles : darkRoles
+  // Below 900 px the column gives way to one row above the page (guidelines 4.7); only
+  // AreaSectionRow knows its form.
+  const compact = useMediaQuery(theme.breakpoints.down('md'))
 
   return (
     <Box
@@ -52,58 +53,42 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
         minHeight: 0,
       }}
     >
-      {sections && (
+      {sections && compact && <AreaSectionRow title={title} sections={sections} />}
+      {sections && !compact && (
         <Box
           component="nav"
           aria-label={title}
           sx={{
-            width: { md: 232 },
+            width: 232,
             flexShrink: 0,
             bgcolor: roles.bg2,
-            borderRight: { md: 1 },
-            borderBottom: { xs: 1, md: 0 },
+            borderRight: 1,
             // The design outlines the column edge one step stronger than the standard rule.
             borderColor: roles.borderStrong,
             px: '12px',
-            py: { xs: 1.5, md: '18px' },
+            py: '18px',
             display: 'flex',
             flexDirection: 'column',
-            gap: { xs: 1, md: '1px' },
+            gap: '1px',
           }}
         >
-          <Box
-            sx={{ display: 'flex', alignItems: 'center', gap: '7px', px: 1, pb: { md: '12px' } }}
-          >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '7px', px: 1, pb: '12px' }}>
             <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
               {title}
             </Typography>
             <GlobalBadge />
           </Box>
-          {/* On phones the entries wrap below the title instead of scrolling sideways - a
-              320px viewport must show every destination. */}
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'row', md: 'column' },
-              flexWrap: { xs: 'wrap', md: 'nowrap' },
-              gap: { xs: 0.5, md: '1px' },
-            }}
-          >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
             {sections.map((section) => {
-              // Prefix match like the rail: a future subroute keeps its section marked.
-              const exact = location.pathname === section.to
-              const active = exact || location.pathname.startsWith(`${section.to}/`)
+              const { active, current } = sectionState(section, location.pathname)
               return (
                 <Box
                   key={section.to}
                   component={NavLink}
                   to={section.to}
-                  aria-current={active ? (exact ? 'page' : 'true') : undefined}
+                  aria-current={current}
                   sx={{
                     display: 'block',
-                    // xs: shrink-and-wrap so a single long label breaks inside its pill instead
-                    // of pushing the row past 320px (a 47-char label measured 326px).
-                    flex: { xs: '0 1 auto', md: 'none' },
                     px: '10px',
                     py: '7px',
                     borderRadius: '6px',

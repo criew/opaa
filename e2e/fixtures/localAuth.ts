@@ -170,14 +170,25 @@ export async function configureSmtp(page: Page): Promise<void> {
   if (!(await active.isChecked())) {
     await active.click();
   }
+  // After the installation's step „E-Mail" the stored settings may already be exactly these;
+  // „Speichern" then saves nothing and says so (guidelines 5.16), the reload below checks them.
   await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByText("Die E-Mail-Einstellungen wurden gespeichert.")).toBeVisible();
+  await expect(
+    page.getByText(
+      /^(Die E-Mail-Einstellungen wurden gespeichert\.|Es gibt keine Änderungen zu speichern\.)$/,
+    ),
+  ).toBeVisible();
 
   // Asserted after a reload, not just from the snackbar: everything downstream depends on delivery
   // being on, and a mail that is merely skipped looks exactly like one that was never triggered.
   await page.reload();
   await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeChecked();
   await expect(page.getByLabel("Server", { exact: true })).toHaveValue(smtp.host);
+  await expect(page.getByLabel("Port", { exact: true })).toHaveValue(smtp.port);
+  await expect(page.getByLabel("Absenderadresse", { exact: true })).toHaveValue(smtp.fromAddress);
+  await expect(
+    page.getByRole("radiogroup", { name: "Verschlüsselung" }).getByRole("radio", { name: /Keine/ }),
+  ).toBeChecked();
 }
 
 /**

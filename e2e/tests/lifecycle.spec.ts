@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "../fixtures/auth";
-import { askQuestion } from "../fixtures/chat";
+import { askQuestion, expectAnswerSettled, isChatAnswer } from "../fixtures/chat";
 import { acceptConfirm, runIndexingViaApi } from "../fixtures/connectionProfiles";
 import { queryDatabase } from "../fixtures/database";
 import { apiAs } from "../fixtures/externalAccess";
@@ -133,9 +133,16 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
 
   test("Eigentümerwechsel über die Einstellungen", async ({ authenticatedPage: page }) => {
     await page.goto(`/spaces/${spaceId}/chats/new`);
-    await askQuestion(page, question);
+    // The URL carries the chat's id as soon as the chat exists, before its question is answered;
+    // leaving earlier could cancel the question and leave the chat of the next step empty.
+    const [answered] = await Promise.all([
+      page.waitForResponse(isChatAnswer),
+      askQuestion(page, question),
+    ]);
+    expect(answered.status()).toBe(200);
     await page.waitForURL(new RegExp(`/spaces/${spaceId}/chats/(?!new$)[^/]+$`));
     chatPath = new URL(page.url()).pathname;
+    await expectAnswerSettled(page);
 
     await page.goto(`/spaces/${spaceId}/settings/members`);
     const row = page.getByTestId("space-member-row").filter({ hasText: "Dev User" });

@@ -35,10 +35,17 @@ class AgentResearchProvisioner {
   static final String RESEARCH_RESPONSIBLE = "Systemverwaltung";
 
   static final String RESEARCH_INSTRUCTION =
-      "Zerlege die Frage in Teilfragen und suche zu jeder gezielt. Grenzt die Person im Plan auf"
-          + " Bibliotheken, Zeiträume oder Dokumentarten ein, halte dich daran. Lies bei wichtigen"
-          + " Fundstellen im Dokument weiter. Antworte als gegliederter Bericht: kurze"
-          + " Zusammenfassung, dann je Teilfrage die Ergebnisse, jede Aussage mit ihrer Fundstelle."
+      "Gehe in drei Schritten vor. 1. Zerlege die Frage in Teilfragen und nimm jeden Aspekt auf,"
+          + " den sie nennt - Voraussetzungen, Nachweise, Fristen, Zuständigkeit, Vertretung,"
+          + " Gebühren, Ausnahmen. 2. Suche zu jeder Teilfrage mit einer eigenen, gezielten Suche;"
+          + " verweist eine Fundstelle auf ein weiteres Dokument (Gebührenordnung, Anlage,"
+          + " ergänzende Regelung), suche auch dieses. Grenzt die Person im Plan auf Bibliotheken,"
+          + " Zeiträume oder Dokumentarten ein, halte dich daran. Lies bei wichtigen Fundstellen im"
+          + " Dokument weiter. 3. Prüfe vor der Antwort, ob jede Teilfrage Fundstellen hat; suche"
+          + " zu einer unbelegten Teilfrage noch einmal mit anderen Begriffen, bevor du sie als Lücke"
+          + " benennst. Antworte als gegliederter Bericht: kurze Zusammenfassung, dann je Teilfrage"
+          + " die Ergebnisse. Setze hinter jede Aussage, auch in der Zusammenfassung, die Zitiermarke"
+          + " ihrer Fundstelle; ein Satz ohne Zitiermarke gehört nicht in den Bericht."
           + " Widersprechen sich Fundstellen, nenne die Widersprüche ausdrücklich mit beiden"
           + " Fundstellen und entscheide nicht stillschweigend für eine Seite. Benenne Lücken: was"
           + " du gesucht und nicht gefunden hast. Rechne nur mit Code, wenn die Fundstellen Zahlen"
@@ -48,10 +55,11 @@ class AgentResearchProvisioner {
 
   /**
    * Above the default of a self-made agent ({@link AgentService#DEFAULT_LIMITS}) and within the
-   * installation's limits; a lower installation limit still wins. Starting values for the cases in
-   * {@code eval/agents/recherche}, to be calibrated by their first measurement.
+   * installation's limits; a lower installation limit still wins. The collected volume of 150000
+   * characters (about 45k tokens) leaves the rest of a 128k-token context for rules, history and
+   * the report.
    */
-  static final AgentLimits RESEARCH_LIMITS = new AgentLimits(12, 8, 240, null);
+  static final AgentLimits RESEARCH_LIMITS = new AgentLimits(12, 8, 240, 150_000);
 
   private final JdbcTemplate jdbc;
   private final AgentRepository agentRepository;

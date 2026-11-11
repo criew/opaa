@@ -28,6 +28,7 @@ import {
   triggerIndexingInUi,
 } from '../fixtures/connectionProfiles'
 import { deleteLibraryCompletely, libraryIdFromCurrentUrl } from '../fixtures/libraries'
+import { headerCreateButton } from '../fixtures/pageHeader'
 import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 import type { Page } from '@playwright/test'
 
@@ -128,7 +129,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     authenticatedPage: page,
   }) => {
     await gotoConnectionProfiles(page)
-    await page.getByRole('button', { name: 'Neuer Zugang' }).click()
+    await headerCreateButton(page, 'Neuer Zugang').click()
     const form = page.getByRole('dialog', { name: 'Neuer Zugang' })
     await form.getByRole('combobox', { name: /Quellart/ }).click()
     await page.getByRole('option', { name: /RSS-Feed/ }).click()
@@ -167,7 +168,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   test('1b. Gruppenmitglied legt eine Bibliothek über den Zugang an, sie läuft und wird gefunden', async ({
     regularUserPage: page,
   }) => {
-    await openRssSourceStep(page)
+    await openRssSourceStep(page, PROFILE_LIBRARY)
     const choice = connectionChoice(page)
     // Der freigegebene Zugang ist vorgewählt, „Eigene Adresse“ steht als letzte Wahl daneben.
     const profileWay = choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })

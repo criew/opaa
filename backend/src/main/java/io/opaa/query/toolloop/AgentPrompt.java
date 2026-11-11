@@ -75,6 +75,11 @@ final class AgentPrompt {
       bestätigt oder ändert ihn.
       - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.""";
 
+  /** Added to {@link #CONFIRMED_PLAN} when the run is offered {@code search_knowledge}. */
+  static final String CONFIRMED_PLAN_SEARCH =
+      """
+      - Beginne sofort mit search_knowledge; eine Antwort ohne Suche ist keine Antwort.""";
+
   /** Added to the fixed rules of the run that answers a question back of a plan's working run. */
   static final String RESUMED_PLAN =
       """
@@ -82,6 +87,20 @@ final class AgentPrompt {
       - Du hast einen von der Person bestätigten Plan abgearbeitet und dabei eine Rückfrage \
       gestellt. Die neue Nachricht der Person beantwortet sie.
       - Arbeite den Plan mit dieser Angabe fort und lege keinen neuen Plan vor.""";
+
+  /**
+   * Added to the system text of the closing call, which offers no tool: the answer from what was
+   * collected keeps the citation rules, also when the run ended at a limit.
+   */
+  static final String CLOSING_RULES =
+      """
+      ABSCHLUSS (verbindlich):
+      - Du darfst keine Werkzeuge mehr aufrufen. Antworte jetzt abschließend mit dem, was die \
+      bisherigen Werkzeugaufrufe geliefert haben, und nenne, was dabei offen bleibt.
+      - Die ZITIERREGELN gelten unverändert: Belege jede Sachaussage mit der Zitiermarke ihrer \
+      Textstelle, Zeichen für Zeichen aus der Zeile „Zitiermarke:“ übernommen, mit den Klammern \
+      【 und 】. Liegen Fundstellen vor, ist eine Antwort ohne Zitiermarken unzulässig; erfinde nie \
+      eine Zitiermarke.""";
 
   /** What a run does with a plan step. */
   enum PlanPhase {
@@ -110,10 +129,28 @@ final class AgentPrompt {
       String spaceInstruction,
       List<String> notePoints,
       PlanPhase phase) {
+    return systemText(blockId, agentInstruction, spaceInstruction, notePoints, phase, false);
+  }
+
+  /**
+   * As above; {@code searchOffered} adds the instruction to start searching to a confirmed plan.
+   */
+  static String systemText(
+      String blockId,
+      String agentInstruction,
+      String spaceInstruction,
+      List<String> notePoints,
+      PlanPhase phase,
+      boolean searchOffered) {
     StringBuilder text = new StringBuilder(FIXED_RULES.formatted(blockId));
     switch (phase) {
       case PLAN -> text.append("\n\n").append(PLAN_RULES);
-      case CONFIRMED -> text.append("\n\n").append(CONFIRMED_PLAN);
+      case CONFIRMED -> {
+        text.append("\n\n").append(CONFIRMED_PLAN);
+        if (searchOffered) {
+          text.append('\n').append(CONFIRMED_PLAN_SEARCH);
+        }
+      }
       case RESUMED -> text.append("\n\n").append(RESUMED_PLAN);
       case NONE -> {}
     }

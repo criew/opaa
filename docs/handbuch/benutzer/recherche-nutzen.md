@@ -15,7 +15,7 @@
 „Recherche“ arbeitet erst, wenn Sie seinen Plan gesehen haben. Der erste Lauf endet mit einer nummerierten Liste der Teilfragen und der Stellen, an denen er suchen will. Unter dem Plan stehen zwei Schaltflächen:
 
 - **„Bestätigen“** startet einen neuen Lauf, der den Plan abarbeitet.
-- **„Ändern“** wählt „Recherche“ wieder für die nächste Nachricht und setzt den Cursor ins Eingabefeld. Schreiben Sie, was anders sein soll, etwa nur bestimmte Bibliotheken, einen Zeitraum oder eine Dokumentart. Der Agent arbeitet dann mit Ihrer Änderung.
+- **„Ändern“** wählt „Recherche“ wieder für die nächste Nachricht und setzt den Cursor ins Eingabefeld. Schreiben Sie, was anders sein soll, etwa nur bestimmte Bibliotheken, einen Zeitraum oder eine Dokumentart. Der Agent arbeitet dann mit Ihrer Änderung. Legt er stattdessen erneut einen Plan vor, ohne zu suchen, endet der Lauf wieder als Plan mit den beiden Schaltflächen: Prüfen Sie den neuen Plan und bestätigen Sie ihn. Das geschieht höchstens einmal hintereinander; bei der nächsten Bestätigung läuft der Agent in jedem Fall.
 
 Der Plan nennt weder Dauer noch Kosten; die Schritte zeigt der Lauf selbst, sobald er arbeitet.
 

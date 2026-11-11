@@ -313,7 +313,8 @@ export default function LocalAuthSettingsCard() {
    * `null` after every save, so that the form shows what was actually saved.
    */
   const [edited, setEdited] = useState<RulesDraft | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // A switch reports beside the switches, the rules form under its footer (guidelines 5.16).
+  const [error, setError] = useState<{ text: string; from: 'switch' | 'form' } | null>(null)
   const gate = useRecentLoginGate(LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE)
   const draft = edited ?? (settings ? draftOf(settings) : null)
 
@@ -352,6 +353,7 @@ export default function LocalAuthSettingsCard() {
     discardDraft = false,
     afterConfirmation = false,
   ) {
+    const from = discardDraft ? 'form' : 'switch'
     setError(null)
     try {
       const saved = await saveSettings(request)
@@ -365,9 +367,12 @@ export default function LocalAuthSettingsCard() {
         afterConfirmation,
       )
       if (refused === null) {
-        setError(localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'))
+        setError({
+          text: localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'),
+          from,
+        })
       } else if (refused) {
-        setError(refused)
+        setError({ text: refused, from })
       }
     }
   }
@@ -411,7 +416,7 @@ export default function LocalAuthSettingsCard() {
 
   async function toggleSelfRegistration(next: boolean) {
     if (next && domains.length === 0) {
-      setError(DOMAIN_REQUIRED_HINT)
+      setError({ text: DOMAIN_REQUIRED_HINT, from: 'switch' })
       return
     }
     if (
@@ -446,7 +451,7 @@ export default function LocalAuthSettingsCard() {
 
   function saveRules() {
     if (settings!.selfRegistrationEnabled && domains.length === 0) {
-      setError(DOMAIN_REQUIRED_HINT)
+      setError({ text: DOMAIN_REQUIRED_HINT, from: 'form' })
       return
     }
     void persist(
@@ -465,9 +470,9 @@ export default function LocalAuthSettingsCard() {
           {PUBLIC_BASE_URL_HINT}
         </Alert>
       )}
-      {error && (
+      {error?.from === 'switch' && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+          {error.text}
         </Alert>
       )}
 
@@ -528,6 +533,13 @@ export default function LocalAuthSettingsCard() {
           busy={isSaving}
           dirty={edited !== null}
           onDiscard={() => setEdited(null)}
+          result={
+            error?.from === 'form' && (
+              <Alert severity="error" onClose={() => setError(null)}>
+                {error.text}
+              </Alert>
+            )
+          }
         >
           <Box
             sx={{

@@ -248,7 +248,7 @@ describe('ExternalToolsTab', () => {
     expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)
   })
 
-  it('zeigt einen Vorlauf über der längsten Befristung am Feld und als Meldung', async () => {
+  it('zeigt einen Vorlauf über der längsten Befristung nur am Feld und setzt den Fokus hinein', async () => {
     const user = userEvent.setup()
     render()
 
@@ -259,11 +259,9 @@ describe('ExternalToolsTab', () => {
     await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
 
     expect(await within(panel).findByText('Der Wert muss zwischen 0 und 364 liegen.')).toBeVisible()
-    expect(
-      within(panel)
-        .getAllByRole('alert')
-        .some((alert) => /außerhalb der zulässigen Grenzen/.test(alert.textContent ?? '')),
-    ).toBe(true)
+    // a field error is told at the field only (guidelines 5.6, P28), no message above or below
+    await waitFor(() => expect(lead).toHaveFocus())
+    expect(within(panel).queryByText(/außerhalb der zulässigen Grenzen/)).not.toBeInTheDocument()
     expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)
   })
 
@@ -375,7 +373,9 @@ describe('ExternalToolsTab', () => {
     expect(
       await within(panel).findByText('Bitte eine ganze Zahl von 0 bis 364 eingeben.'),
     ).toBeVisible()
-    expect(within(panel).getByText(/Die Erinnerung vor Ablauf ist nicht gespeichert/)).toBeVisible()
+    // told at the field only, and the focus goes into it (guidelines 5.6, P28)
+    expect(within(panel).queryByText(/nicht gespeichert/)).not.toBeInTheDocument()
+    await waitFor(() => expect(lead).toHaveFocus())
     expect(puts).toEqual([])
   })
 

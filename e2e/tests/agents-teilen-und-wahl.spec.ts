@@ -222,7 +222,9 @@ test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich', () => {
 
     await expect(page.getByTestId('question-agent')).toHaveText(`Agent: ${AGENT_NAME}`)
     await expect(page.getByTestId('used-prompt')).toContainText(`Prompt: ${PROMPT_TITLE}`)
-    await expect(page.getByText(PROMPT_TEXT, { exact: true })).toBeVisible()
+    await expect(
+      page.getByTestId('message-list').getByText(PROMPT_TEXT, { exact: true }),
+    ).toBeVisible()
     const answer = answers(page).first()
     await expect(answer).toContainText('Ergebnis des Agenten.')
     await expect(answer).toContainText('1 Schritt')

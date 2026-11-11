@@ -235,7 +235,7 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit', () => {
     await expect(asked).toContainText('Rückfrage')
     await expect(asked.getByRole('button', { name: /Schritte?$/ })).toBeVisible()
 
-    // The reply is a new message and a new run; the agent has to be chosen again.
+    // The reply is a new message and a new run; the asking agent is preselected for it.
     await askAgent(page, agentName, `Für „Wohngeld“ im Jahr 2025. (${SUFFIX})`)
     await expect(answers(page)).toHaveCount(2)
     await expect(answers(page).nth(1)).toContainText('Ergebnis des Agenten.')

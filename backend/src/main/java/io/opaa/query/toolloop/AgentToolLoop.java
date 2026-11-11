@@ -33,7 +33,6 @@ import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.runlog.AgentRunLogWriter;
-import io.opaa.retrieval.ChunkGroupingKey;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Clock;
@@ -386,13 +385,17 @@ class AgentToolLoop implements AgentTurnHandler {
             .toolCallbackResolver(
                 name -> AgentToolCallback.unknown(reminder, objectMapper, metrics, clock))
             .build();
+    boolean searchOffered =
+        callbacks.stream()
+            .anyMatch(c -> ToolNames.SEARCH_KNOWLEDGE.equals(c.getToolDefinition().name()));
     String system =
         AgentPrompt.systemText(
             run.blockId(),
             spec.instruction(),
             turn.spaceInstruction(),
             notes(turn.notePoints()),
-            phase);
+            phase,
+            searchOffered);
     Map<String, Object> toolContext = Map.of(AgentToolCallback.RUN_KEY, run);
 
     List<Message> history = new ArrayList<>(chatMemory.get(turn.conversationKey()));
@@ -411,7 +414,8 @@ class AgentToolLoop implements AgentTurnHandler {
       // The closing call offers no tools: the model answers with what the steps collected.
       List<ToolCallback> offered = closing ? List.of() : callbacks;
       List<Message> asked = history;
-      response = run.modelCall(() -> call(client, system, asked, offered, toolContext));
+      String callSystem = closing ? system + "\n\n" + AgentPrompt.CLOSING_RULES : system;
+      response = run.modelCall(() -> call(client, callSystem, asked, offered, toolContext));
       tokens += ChatResponses.totalTokens(response);
       if (closing || callbacks.isEmpty() || !response.hasToolCalls()) {
         break;
@@ -432,8 +436,18 @@ class AgentToolLoop implements AgentTurnHandler {
       }
     }
 
+    // A run that works a confirmed plan off but answers without a single tool call has put a new
+    // plan to the person instead of researching: it ends as a plan again, so it can be confirmed.
+    // Only once in a row and only when it could search, so a confirmation never loops.
+    boolean replannedWithoutWork =
+        phase == AgentPrompt.PlanPhase.CONFIRMED
+            && searchOffered
+            && !followsReplan(spec, turn.chat())
+            && run.toolCalls() == 0
+            && run.question() == null
+            && run.limitReached() == null;
     EndState endState =
-        phase == AgentPrompt.PlanPhase.PLAN
+        phase == AgentPrompt.PlanPhase.PLAN || replannedWithoutWork
             ? EndState.PLAN
             : run.question() != null
                 ? EndState.ASK_USER
@@ -535,6 +549,19 @@ class AgentToolLoop implements AgentTurnHandler {
   }
 
   /**
+   * Whether the plan to be confirmed is itself the result of a downgrade: a plan run never follows
+   * a plan run.
+   */
+  private boolean followsReplan(AgentRunSpec spec, Chat chat) {
+    return chatService
+        .previousAgentRun(chat.getId())
+        .filter(run -> spec.agentId().equals(run.agentId()))
+        .map(AgentRunRecord::endState)
+        .filter(state -> state == EndState.PLAN)
+        .isPresent();
+  }
+
+  /**
    * Where the run stands in the agent's plan step: an agent without one works at once; with one,
    * the run works off the plan when the chat's latest answer is this agent's plan - whatever the
    * person wrote confirms or changes it -, continues it when that answer is this agent's question
@@ -613,11 +640,7 @@ class AgentToolLoop implements AgentTurnHandler {
   private static List<Document> distinct(List<Document> passages) {
     Map<String, Document> byKey = new LinkedHashMap<>();
     for (Document passage : passages) {
-      String key =
-          ChunkGroupingKey.of(passage)
-              + "#"
-              + passage.getMetadata().getOrDefault("chunk_index", "0");
-      byKey.putIfAbsent(key, passage);
+      byKey.putIfAbsent(AgentRun.passageKey(passage), passage);
     }
     return new ArrayList<>(byKey.values());
   }
