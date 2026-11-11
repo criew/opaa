@@ -84,10 +84,6 @@ class OpenSandboxClient implements Sandboxes {
    */
   private static final Pattern PLAIN_NAME = Pattern.compile("[\\p{L}\\p{N}_][\\p{L}\\p{N}._ -]*");
 
-  static boolean isPlainName(String name) {
-    return name != null && PLAIN_NAME.matcher(name).matches();
-  }
-
   /** A script of the image: directly in {@link #INSTALLED_DIR}, with a plain name. */
   private static final Pattern INSTALLED_SCRIPT =
       Pattern.compile(Pattern.quote(INSTALLED_DIR + "/") + "[A-Za-z0-9_][A-Za-z0-9._-]*\\.py");
@@ -613,6 +609,10 @@ class OpenSandboxClient implements Sandboxes {
     } catch (NumberFormatException e) {
       return 1;
     }
+  }
+
+  static boolean isPlainName(String name) {
+    return name != null && PLAIN_NAME.matcher(name).matches();
   }
 
   private static String encode(String value) {

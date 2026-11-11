@@ -38,6 +38,11 @@ class OpenSandboxClientTest {
     assertThat(OpenSandboxClient.isPlainName("../etc/passwd")).isFalse();
     assertThat(OpenSandboxClient.isPlainName("a/b.pdf")).isFalse();
     assertThat(OpenSandboxClient.isPlainName(".hidden")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("a\uFF0Fb.pdf")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("a\u2215b.pdf")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("a\u202Eb.pdf")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("a\\b.pdf")).isFalse();
+    assertThat(OpenSandboxClient.isPlainName("a\u0000b.pdf")).isFalse();
     assertThat(OpenSandboxClient.isPlainName("")).isFalse();
     assertThat(OpenSandboxClient.isPlainName(null)).isFalse();
   }

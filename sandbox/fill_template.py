@@ -34,6 +34,7 @@ filled, 1 on any other failure.
 import json
 import os
 import re
+import unicodedata
 import shutil
 import signal
 import subprocess
@@ -169,7 +170,8 @@ def template_environment():
 
 def safe_name(name):
     """A plain file base name: letters, digits, space, dot, dash and underscore only."""
-    cleaned = re.sub(r"[^\w .-]", "_", str(name or ""), flags=re.UNICODE).strip(" .")
+    normalized = unicodedata.normalize("NFC", str(name or ""))
+    cleaned = re.sub(r"[^\w .-]", "_", normalized, flags=re.UNICODE).lstrip(" .-").rstrip(" .")
     cleaned = cleaned[:MAX_NAME_CHARS].strip(" .")
     return cleaned or "Dokument"
 

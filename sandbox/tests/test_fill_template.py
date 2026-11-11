@@ -313,6 +313,10 @@ class FillTemplateTest(unittest.TestCase):
                          result["errors"])
         self.assertFalse(os.path.exists(self.out))
 
+    def test_the_output_name_starts_with_a_letter_and_is_composed(self):
+        self.assertEqual("Bescheid", fill_template.safe_name("-Bescheid"))
+        self.assertEqual("Gebührenbescheid", fill_template.safe_name("Gebu\u0308hrenbescheid"))
+
     def test_the_output_name_is_plain_and_the_output_directory_must_be_new(self):
         make_template(self.template, ["{{ x }}"])
 
