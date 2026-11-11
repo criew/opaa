@@ -1,7 +1,6 @@
 # Agentenverzeichnis einsehen
 
-**Ziel:** Die Personalvertretung sieht, welche Agenten und Vorlagen es gibt und was sie tun, und hat
-eine Liste für die Anlage einer Dienstvereinbarung.
+**Ziel:** Die Personalvertretung sieht, welche Agenten und Vorlagen es gibt und was sie tun, und hat eine Liste für die Anlage einer Dienstvereinbarung.
 {: .kopf }
 
 **Wer:** Recht „Agentenverzeichnis einsehen“, „Administration → Agentenverzeichnis“ oder „Verzeichnis“ in der linken Leiste
