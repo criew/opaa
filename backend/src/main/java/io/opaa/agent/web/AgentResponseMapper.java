@@ -15,6 +15,7 @@ import io.opaa.api.dto.AgentSettingsResponse;
 import io.opaa.api.dto.AgentTemplate;
 import io.opaa.api.dto.AgentUpdateRequest;
 import io.opaa.api.dto.AssetReachResponse;
+import io.opaa.asset.web.AssetResponsibilityResponseMapper;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.web.SuccessionStateResponseMapper;
 import java.util.ArrayList;
@@ -28,7 +29,11 @@ final class AgentResponseMapper {
 
   static AgentCreation toCreation(AgentCreateRequest request) {
     return new AgentCreation(
-        request.getName(), request.getDescription(), request.getOwnerType(), request.getOwnerId());
+        request.getName(),
+        request.getDescription(),
+        request.getOwnerType(),
+        request.getOwnerId(),
+        AssetResponsibilityResponseMapper.toUnit(request.getResponsible()));
   }
 
   static AgentUpdate toUpdate(AgentUpdateRequest request) {
@@ -48,7 +53,8 @@ final class AgentResponseMapper {
                     limits.getMaxSearchCalls(),
                     limits.getMaxDurationSeconds(),
                     limits.getMaxCollectedChars()),
-            request.getTemplateIds() == null ? null : Set.copyOf(request.getTemplateIds())));
+            request.getTemplateIds() == null ? null : Set.copyOf(request.getTemplateIds())),
+        AssetResponsibilityResponseMapper.toUnit(request.getResponsible()));
   }
 
   static AgentResponse toResponse(AgentView view) {
@@ -80,6 +86,7 @@ final class AgentResponseMapper {
             agent.getOwnerId(),
             toReachResponse(view.reach()),
             view.myRole(),
+            AssetResponsibilityResponseMapper.toResponse(view.responsibility()),
             agent.getCreatedAt(),
             agent.getUpdatedAt())
         .description(agent.getDescription())

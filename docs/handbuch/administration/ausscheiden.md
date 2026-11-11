@@ -25,7 +25,8 @@ externe KI-Werkzeuge. Einschränken geht weiter.
 | Leere Gruppen | interne Gruppen ohne Mitglieder und Rechte | in der Gruppenverwaltung löschen |
 
 Ein Eintrag bleibt, bis wieder jemand zuständig ist; ab einem einstellbaren Alter heißt er „lange
-offen“. Die Liste geht vom Objekt aus: „Was gehörte Frau Vogt?“ beantwortet sie nicht.
+offen“. Agenten und Vorlagen ohne verantwortliche Stelle werden nach einer eigenen Frist gesperrt
+([Wenn die verantwortliche Stelle fehlt](agenten.md#wenn-die-verantwortliche-stelle-fehlt)). Die Liste geht vom Objekt aus: „Was gehörte Frau Vogt?“ beantwortet sie nicht.
 
 ## Rechte übertragen
 

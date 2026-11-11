@@ -293,7 +293,10 @@ class SecurityInvariantsTest {
           Map.entry("io.opaa.connection.profile.ConnectorTypePolicy", "lock of a connector type"),
           Map.entry("io.opaa.connection.profile.ConnectionProfile", "lock of a profile"),
           Map.entry("io.opaa.connection.profile.LibraryConnection", "end of a connection"),
-          Map.entry("io.opaa.connection.token.ConnectionToken", "expiry of a stored token"));
+          Map.entry("io.opaa.connection.token.ConnectionToken", "expiry of a stored token"),
+          Map.entry(
+              "io.opaa.asset.AssetResponsibility",
+              "lock of an agent or a template, which refuses every run"));
 
   /**
    * Persistent types with a field named like security state that carry none, each with what the
@@ -355,6 +358,10 @@ class SecurityInvariantsTest {
       "only moves the row toward revoked or ended; what it may write back stale (use day, lapse or"
           + " reminder marker) grants no access";
 
+  private static final String RESPONSIBILITY_ROW_LOCK =
+      "reads the row FOR UPDATE (findByIdForUpdate) and writes it in the same transaction; the"
+          + " period run changes it only by conditional updates, which wait for that lock";
+
   private static final String ROLE_ONLY =
       "the role is the only state that changes after creation, so the whole row is that write; a"
           + " row deleted meanwhile fails the update instead of returning";
@@ -391,6 +398,10 @@ class SecurityInvariantsTest {
           Map.entry("io.opaa.account.LocalUserService#create", NEW_ROW),
           Map.entry("io.opaa.account.LocalUserService#update", CHANGED_COLUMNS_IN_TRANSACTION),
           Map.entry("io.opaa.asset.AssetGrantService#grantAtCreation", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#establish", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#change", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#lock", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#unlock", RESPONSIBILITY_ROW_LOCK),
           Map.entry("io.opaa.asset.AssetGrantService#upsertGrant", ROLE_ONLY),
           Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#giveOwnerGrant", ROLE_ONLY),
           Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#moveOwnerGrant", ROLE_ONLY),

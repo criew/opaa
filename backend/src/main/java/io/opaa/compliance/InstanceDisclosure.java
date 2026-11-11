@@ -24,6 +24,7 @@ import java.util.Objects;
  * @param modelProviders the configured model endpoints of every model role
  * @param instances the running instances of the installation, the answering one included
  * @param protocol the description of the audit log for the staff council
+ * @param dataSets further data sets described field by field for the staff council, by id
  */
 public record InstanceDisclosure(
     String opaaVersion,
@@ -35,7 +36,8 @@ public record InstanceDisclosure(
     List<ConnectorUsage> connectorTypes,
     List<ModelProvider> modelProviders,
     List<RunningInstance> instances,
-    Protocol protocol) {
+    Protocol protocol,
+    List<DataSetDescription> dataSets) {
 
   public InstanceDisclosure {
     Objects.requireNonNull(opaaVersion, "opaaVersion");
@@ -48,6 +50,7 @@ public record InstanceDisclosure(
     connectorTypes = List.copyOf(connectorTypes);
     modelProviders = List.copyOf(modelProviders);
     instances = List.copyOf(instances);
+    dataSets = List.copyOf(dataSets);
   }
 
   /** The settings whose effective value differs from the delivered default. */
@@ -265,4 +268,29 @@ public record InstanceDisclosure(
 
   /** One way the protocol can be read. */
   public record QueryPath(String name, String description) {}
+
+  /**
+   * A data set besides the audit log that the staff council is shown field by field, such as the
+   * step log of the agent runs: what it is for, every field with granularity, purpose and
+   * retention, the query paths there are and the ones that deliberately do not exist.
+   *
+   * @param id stable identifier, the order of the disclosure
+   */
+  public record DataSetDescription(
+      String id,
+      String title,
+      String purpose,
+      List<ProtocolField> fields,
+      List<QueryPath> queryPaths,
+      List<String> absentQueryPaths) {
+
+    public DataSetDescription {
+      Objects.requireNonNull(id, "id");
+      Objects.requireNonNull(title, "title");
+      Objects.requireNonNull(purpose, "purpose");
+      fields = List.copyOf(fields);
+      queryPaths = List.copyOf(queryPaths);
+      absentQueryPaths = List.copyOf(absentQueryPaths);
+    }
+  }
 }

@@ -10,8 +10,8 @@
    (siehe unten). Als `.docx` speichern, ohne Makros.
 2. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Vorlagen“ und „Weiter“.
 3. **Stammdaten:** Name, Beschreibung und „Word-Datei auswählen“.
-4. **Freigaben:** als Eigentümer „Mein Konto“ oder „Eine Gruppe“; für eine Hausvorlage ist die
-   Gruppe die haltbarere Wahl. Auf Wunsch Rollen vormerken.
+4. **Freigaben:** Eigentümer („Eine Gruppe“ ist für Hausvorlagen haltbarer), „Verantwortliche
+   Stelle“ (Gruppe, Einheit oder Funktion, keine Einzelperson) und auf Wunsch Rollen.
 5. **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 
 OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
@@ -76,4 +76,5 @@ Leserecht, nicht zugeordnet) oder Sandbox antwortet der Agent ohne Datei im Chat
   einer abgeschotteten Umgebung; Werte aus dem Chat landen dort immer als Text, nie als Befehl.
 - Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen, und die
   Vorlage bekommt eine neue Fassung; eine Agentenantwort nennt die Fassung, die sie ausgefüllt hat.
+- Ohne verantwortliche Stelle über die Frist hinaus wird die Vorlage gesperrt (Reiter „Freigaben“).
 - Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, nie der Inhalt der Datei.

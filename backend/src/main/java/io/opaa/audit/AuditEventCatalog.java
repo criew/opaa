@@ -141,6 +141,8 @@ public final class AuditEventCatalog {
     put(keys, Set.of("name", "promptsRemoved"), PROMPT_LIBRARY_DELETED);
     put(keys, Set.of("name"), AGENT_CREATED, AGENT_DELETED);
     put(keys, Set.of("changedFields"), AGENT_CHANGED);
+    put(keys, Set.of("responsibleGroupId", "responsibleFunction"), ASSET_RESPONSIBILITY_CHANGED);
+    put(keys, Set.of("cause"), ASSET_LOCKED, ASSET_UNLOCKED);
     put(keys, Set.of("enabled", "enabledTools"), AGENT_SETTINGS_CHANGED);
     put(keys, Set.of("name", "promptLibraryId"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields", "promptLibraryId"), PROMPT_CHANGED);
@@ -238,6 +240,7 @@ public final class AuditEventCatalog {
     put(keys, Set.of("ownQuotaBytes", "quotaBytes"), SHARED_LIBRARY_QUOTA_CHANGED);
     put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);
     put(keys, Set.of("agingThresholdMonths", "overridden"), SUCCESSION_AGING_THRESHOLD_CHANGED);
+    put(keys, Set.of("responsibleLockDays", "overridden"), RESPONSIBILITY_LOCK_PERIOD_CHANGED);
     put(
         keys,
         Set.of("changeThresholdPercent", "overridden"),

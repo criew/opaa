@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -74,6 +74,11 @@ sind Sie verantwortlich.
 - „Stand vom …“: Die Quelle war beim Antworten nicht aktuell.
 - Eine Antwort ersetzt keine Rechtsprüfung, keine Mitzeichnung und keine Entscheidung. [Weitere
   Regeln, etwa zu Bescheiden oder Auskünften an Bürgerinnen und Bürger.]
+- Antworten eines Agenten und Dateien daraus, etwa ein Schreiben nach Vorlage, tragen „Entwurf,
+  nicht geprüft“ mit Agent, Fassung, Bibliotheken und Modell. Prüfen Sie sie wie jede Antwort,
+  bevor Sie sie weitergeben oder in die Akte nehmen; die Kennzeichnung in der Datei entfernen Sie
+  erst, wenn Sie den Inhalt verantworten. [Regel der Behörde, etwa Mitzeichnung bei Schreiben nach
+  außen.]
 
 #### 5. Fremde Inhalte nur mit Erlaubnis
 

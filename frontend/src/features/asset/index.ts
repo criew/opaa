@@ -28,6 +28,7 @@ export {
 } from './components/assetCreationReview'
 export { assetPickKey } from './components/assetPick'
 export type { AssetPick, AssetPickToggle, SpaceCreateLocationState } from './components/assetPick'
+export { default as AssetResponsibilitySection } from './components/AssetResponsibilitySection'
 export { default as AssetRightsFields } from './components/AssetRightsFields'
 export { default as AssetSpacesSection } from './components/AssetSpacesSection'
 export { default as AssetTile } from './components/AssetTile'
@@ -39,5 +40,15 @@ export type { PendingGrant } from './components/pendingGrants'
 export { useSpaceListLoader, SpaceListContext } from './components/spaceListContext'
 export type { SpaceListLoader } from './components/spaceListContext'
 export { useAssetCatalogEntry } from './components/useAssetCatalogEntry'
+export { default as ResponsibleUnitField } from './components/ResponsibleUnitField'
+export {
+  EMPTY_RESPONSIBLE,
+  RESPONSIBLE_REQUIRED,
+  responsibilityNote,
+  responsibleDraftOfGroup,
+  responsibleLabel,
+  responsibleRequest,
+} from './components/responsibility'
+export type { ResponsibleDraft } from './components/responsibility'
 export { useCatalogStore } from './stores/catalogStore'
 export { useGrantStore } from './stores/grantStore'

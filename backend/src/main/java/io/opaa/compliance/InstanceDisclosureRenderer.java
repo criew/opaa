@@ -5,6 +5,7 @@ import io.opaa.compliance.ComplianceManifest.DataEntry;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
@@ -66,6 +67,7 @@ public final class InstanceDisclosureRenderer {
     models(out, disclosure.modelProviders());
     data(out, disclosure.manifest().data());
     protocol(out, disclosure.manifest().auditEvents(), disclosure.protocol());
+    dataSets(out, disclosure.dataSets());
     return out.toString();
   }
 
@@ -236,6 +238,42 @@ public final class InstanceDisclosureRenderer {
     out.append("\n### Netzadresse\n\n");
     out.append(FactSheetRenderer.text(protocol.networkAddress())).append('\n');
     incidentScopeCases(out, protocol.incidentScopeCases());
+  }
+
+  private static void dataSets(StringBuilder out, List<DataSetDescription> dataSets) {
+    if (dataSets.isEmpty()) {
+      return;
+    }
+    out.append("## Weitere Bestände\n\n");
+    out.append(
+        "Bestände neben dem Revisionsprotokoll, Feld für Feld beschrieben, nicht ihr Inhalt.\n");
+    for (DataSetDescription dataSet : dataSets) {
+      out.append("\n### ").append(FactSheetRenderer.text(dataSet.title())).append("\n\n");
+      out.append(FactSheetRenderer.text(dataSet.purpose())).append("\n\n");
+      out.append("| Feld | Granularität | Zweck | Frist |\n");
+      out.append("|---|---|---|---|\n");
+      for (ProtocolField field : dataSet.fields()) {
+        row(
+            out,
+            FactSheetRenderer.code(field.name()),
+            FactSheetRenderer.text(field.granularity()),
+            FactSheetRenderer.text(field.purpose()),
+            FactSheetRenderer.text(field.retention()));
+      }
+      out.append("\nVorhandene Abfragewege:\n\n");
+      for (QueryPath path : dataSet.queryPaths()) {
+        out.append("- ")
+            .append(FactSheetRenderer.text(path.name()))
+            .append(": ")
+            .append(FactSheetRenderer.text(path.description()))
+            .append('\n');
+      }
+      out.append("\nNicht vorhandene Abfragewege:\n\n");
+      for (String absent : dataSet.absentQueryPaths()) {
+        out.append("- ").append(FactSheetRenderer.text(absent)).append('\n');
+      }
+    }
+    out.append('\n');
   }
 
   private static void incidentScopeCases(StringBuilder out, IncidentScopeCases cases) {

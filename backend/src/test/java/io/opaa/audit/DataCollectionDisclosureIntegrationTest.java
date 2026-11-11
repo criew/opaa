@@ -235,6 +235,7 @@ class DataCollectionDisclosureIntegrationTest {
           "locked_account_chat_cleanup_settings.delete_after_days",
           "audit_incident_scope_retention_settings.retention_years",
           "succession_settings.aging_threshold_months",
+          "responsibility_lock_settings.lock_after_days",
           "malware_scan_settings.enabled",
           "document_template_settings.enabled",
           "malware_scan_settings.host",
@@ -344,6 +345,9 @@ class DataCollectionDisclosureIntegrationTest {
         "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
             + " VALUES (1, 6, now())");
     jdbcTemplate.update(
+        "INSERT INTO responsibility_lock_settings (id, lock_after_days, updated_at)"
+            + " VALUES (1, 14, now())");
+    jdbcTemplate.update(
         "INSERT INTO rerank_model (id, enabled, base_url, model_identifier, updated_at)"
             + " VALUES (1, true, 'http://reranker.example/v1', 'bge-reranker', now())");
     jdbcTemplate.update(
@@ -372,6 +376,7 @@ class DataCollectionDisclosureIntegrationTest {
             Map.entry("locked_account_chat_cleanup_settings.delete_after_days", "500"),
             Map.entry("audit_incident_scope_retention_settings.retention_years", "4"),
             Map.entry("succession_settings.aging_threshold_months", "6"),
+            Map.entry("responsibility_lock_settings.lock_after_days", "14"),
             Map.entry("rerank_model.enabled", "true"),
             Map.entry("rerank_model.base_url", "http://reranker.example/v1"),
             Map.entry("rerank_model.model_identifier", "bge-reranker"),

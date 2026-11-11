@@ -40,8 +40,9 @@ verliert Werkzeugaufrufe bei der Ausgabe im Fluss, und eine zu kleine Kontextlä
 Werkzeugbeschreibungen stillschweigend ab. Die Angabe gilt deshalb für diesen Endpunkt und diese
 Laufzeit.
 
-Heute nutzt der Chat noch keine Werkzeuge im regulären Betrieb; die Angabe wirkt erst, sobald
-Anfragen mit Werkzeugen laufen. Sie lässt sich schon jetzt festhalten.
+Werkzeuge nutzt nur eine Frage an einen [Agenten](agenten.md); der gewöhnliche Chat braucht die
+Angabe nicht. Was vor dem Einschalten der Agenten zu prüfen ist, steht unter
+[Agenten betreiben](../betrieb/agenten-betreiben.md#nach-dem-update).
 
 1. Im Zeilenmenü „Werkzeugfähigkeit festlegen“.
 2. „Ungeprüft“, „Fähig“ oder „Nicht fähig“ wählen.

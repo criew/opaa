@@ -6,6 +6,7 @@ import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
@@ -306,6 +307,29 @@ class InstanceDisclosureAssemblerTest {
     assertThat(withCommit.commit()).isEqualTo("abc123");
     assertThat(withCommit.generatedAt()).isEqualTo(NOW);
     assertThat(withoutCommit.commit()).isEqualTo(InstanceDisclosureAssembler.UNKNOWN_COMMIT);
+  }
+
+  @Test
+  void collectsTheDescribedDataSetsOfEveryModuleById() {
+    InstanceStateSource later = describing("b-log");
+    InstanceStateSource earlier = describing("a-log");
+
+    InstanceDisclosure disclosure =
+        assembler(new MockEnvironment(), List.of(later, earlier))
+            .assemble(MANIFEST, PROTOCOL, ORGANIZATION);
+
+    assertThat(disclosure.dataSets())
+        .extracting(DataSetDescription::id)
+        .containsExactly("a-log", "b-log");
+  }
+
+  private static InstanceStateSource describing(String id) {
+    return new InstanceStateSource() {
+      @Override
+      public List<DataSetDescription> dataSetDescriptions() {
+        return List.of(new DataSetDescription(id, id, "Zweck", List.of(), List.of(), List.of()));
+      }
+    };
   }
 
   private static InstanceDisclosureAssembler assembler(

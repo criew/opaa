@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-09
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -240,7 +240,10 @@ Ausgeschlossen sind insbesondere:
 10. die Nutzung geteilter Inhalte für Beurteilungen,
 11. das Training von Modellen mit Fragen und Chats, auch beim Modellanbieter,
 12. die Weitergabe von Protokoll- oder Nutzungsdaten an Vorgesetzte außerhalb einer anlassbezogenen
-    Klärung.
+    Klärung,
+13. Auswertungen, wer wann welchen Agenten in welcher Fassung genutzt hat, und die Verknüpfung des
+    Schritt- oder Sandboxprotokolls eines Agentenlaufs mit dem Chat einer Person, außer zur
+    Fehlersuche an genau dem Lauf, den die Person selbst meldet.
 
 #### 11. Selbstauskunft
 
@@ -311,6 +314,19 @@ Datenfluss oder ein neues Ziel bedarf der Zustimmung.
 Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
 
 (3) Systemverwaltung und Revision werden vor Aufnahme ihrer Aufgabe zu dieser Vereinbarung geschult.
+
+(4) Für Agenten gilt, soweit die eingesetzte Version sie anbietet und sie eingeschaltet sind:
+
+1. Agenten und Vorlagen legt nur an, wem die Dienststelle das Anlegerecht gibt; die Empfänger stehen
+   in Anlage 4.
+2. Die Dienststelle führt ein Verzeichnis der angebotenen Agenten mit Zweck und zuständiger Stelle
+   und legt es dem Personalrat [vierteljährlich / bei jeder Änderung] vor. Es enthält keine Angaben
+   zur Nutzung.
+3. Jede Antwort eines Agenten und jede Datei daraus ist ein Entwurf. Wer sie verwendet, prüft sie
+   vorher; eine Entscheidung stützt sich nie allein auf sie.
+4. Die Nutzung je Person, je Space und je angelegtem Agenten wird nicht erhoben; die
+   Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis, getrennt nach
+   mitgeliefertem und angelegten Agenten. Es gilt Nummer 10 Nr. 13.
 
 #### 15. Änderungen und Updates
 

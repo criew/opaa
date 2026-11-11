@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import type { AgentCreateRequest, AgentResponse, AgentUpdateRequest } from '@/shared/api/types'
-import { createAgent, deleteAgent, getAgent, getAgents, updateAgent } from '../api/agentApi'
+import {
+  createAgent,
+  deleteAgent,
+  getAgent,
+  getAgents,
+  lockAgent,
+  unlockAgent,
+  updateAgent,
+} from '../api/agentApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 
@@ -14,6 +22,8 @@ interface AgentState {
   createAgent: (request: AgentCreateRequest) => Promise<string>
   updateAgent: (agentId: string, request: AgentUpdateRequest) => Promise<AgentResponse>
   deleteAgent: (agentId: string) => Promise<void>
+  lockAgent: (agentId: string, reason: string) => Promise<void>
+  unlockAgent: (agentId: string) => Promise<void>
 }
 
 /** The agents of this session; every write keeps the detail and the list in step with the server. */
@@ -64,6 +74,22 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       set({ details: { ...get().details, [agentId]: agent } })
     }
     return agent
+  },
+
+  lockAgent: async (agentId, reason) => {
+    const sessionEpoch = currentSessionEpoch()
+    const responsibility = await lockAgent(agentId, reason)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    const agent = get().details[agentId]
+    if (agent) set({ details: { ...get().details, [agentId]: { ...agent, responsibility } } })
+  },
+
+  unlockAgent: async (agentId) => {
+    const sessionEpoch = currentSessionEpoch()
+    const responsibility = await unlockAgent(agentId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    const agent = get().details[agentId]
+    if (agent) set({ details: { ...get().details, [agentId]: { ...agent, responsibility } } })
   },
 
   deleteAgent: async (agentId) => {

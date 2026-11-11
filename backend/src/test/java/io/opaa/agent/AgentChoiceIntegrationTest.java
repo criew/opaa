@@ -1,6 +1,7 @@
 package io.opaa.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
@@ -8,9 +9,11 @@ import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
+import io.opaa.asset.ResponsibleUnit;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
@@ -36,6 +39,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @OpaaIntegrationTest
 class AgentChoiceIntegrationTest {
+
+  private static final ResponsibleUnit RESPONSIBLE = ResponsibleUnit.ofFunction("Referat Z3");
 
   @Autowired private AgentChoice agentChoice;
   @Autowired private AgentService agentService;
@@ -76,7 +81,7 @@ class AgentChoiceIntegrationTest {
     space = spaceRepository.save(created).getId();
     agent =
         agentService
-            .create(new AgentCreation("Prüfhilfe", null, null, null), as(owner))
+            .create(new AgentCreation("Prüfhilfe", null, null, null, RESPONSIBLE), as(owner))
             .agent()
             .getId();
     associationService.associate(space, Agent.ASSET_TYPE, agent, as(owner));
@@ -122,7 +127,7 @@ class AgentChoiceIntegrationTest {
   void anAgentOutsideTheSpaceIsRefused() {
     UUID elsewhere =
         agentService
-            .create(new AgentCreation("Anderswo", null, null, null), as(owner))
+            .create(new AgentCreation("Anderswo", null, null, null, RESPONSIBLE), as(owner))
             .agent()
             .getId();
 
@@ -151,6 +156,32 @@ class AgentChoiceIntegrationTest {
 
     assertThat(agentChoice.available(as(owner), space)).isEmpty();
     assertThat(agentChoice.resolve(agent, organization, owner, space, Set.of())).isEmpty();
+  }
+
+  @Test
+  void aLockedAgentIsNotOfferedAndItsRunIsRefusedWithTheLockUntilItIsUnlocked() {
+    UUID administrator = createUser(organization, "Systemverwaltung");
+    CurrentUser admin =
+        CurrentUser.of(administrator, organization, SystemRole.SYSTEM_ADMIN, "Verwaltung");
+
+    agentService.lock(agent, "Wird überarbeitet", admin);
+
+    assertThat(agentChoice.available(as(owner), space))
+        .extracting(Agent::getId)
+        .doesNotContain(agent);
+    assertThatThrownBy(() -> agentChoice.resolve(agent, organization, owner, space, Set.of()))
+        .isInstanceOfSatisfying(
+            ConflictException.class,
+            e -> {
+              assertThat(e.getCode()).isEqualTo(AgentService.LOCKED_CODE);
+              assertThat(e.getMessage()).contains("„Prüfhilfe“ ist gesperrt");
+            });
+    assertThat(agentChoice.resolve(agent, organization, member, space, Set.of())).isEmpty();
+
+    agentService.unlock(agent, admin);
+
+    assertThat(agentChoice.available(as(owner), space)).extracting(Agent::getId).contains(agent);
+    assertThat(agentChoice.resolve(agent, organization, owner, space, Set.of())).isPresent();
   }
 
   private CurrentUser as(UUID userId) {

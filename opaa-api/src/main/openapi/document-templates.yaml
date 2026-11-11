@@ -89,7 +89,9 @@ paths:
         without macros or ActiveX controls, at most 10 MB, and its placeholders must be well
         formed: every for and if closed by its endfor and endif. The placeholders are read from
         the file and returned; nothing in it is executed. Rights are then given through
-        /api/v1/assets/DOCUMENT_TEMPLATE/{assetId}/grants. 404 while the switch "Vorlagen" is off;
+        /api/v1/assets/DOCUMENT_TEMPLATE/{assetId}/grants. The responsible unit
+        (responsibleGroupId or responsibleFunction) is required; without it the request is
+        refused with a field error on responsible. 404 while the switch "Vorlagen" is off;
         503 when the malware scan is switched on and could not check the file (nothing stored).
       requestBody:
         required: true
@@ -174,6 +176,56 @@ paths:
       responses:
         "204":
           description: Template deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/document-templates/{documentTemplateId}/lock:
+    parameters:
+      - $ref: "#/components/parameters/DocumentTemplateIdPath"
+
+    put:
+      operationId: lockDocumentTemplate
+      tags: [document-template]
+      summary: >
+        Lock this one template (system admin only), naming a reason. A locked template is offered
+        to no agent run - an agent then answers in the chat and says so - on every instance from
+        the next call on; it stays manageable and is never deleted. Locking a locked template
+        replaces cause and reason. Audited as ASSET_LOCKED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetLockRequest"
+      responses:
+        "200":
+          description: The template's responsibility with the lock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponsibilityResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unlockDocumentTemplate
+      tags: [document-template]
+      summary: >
+        Lift the lock of this template (system admin only), whatever its cause; a template
+        without lock answers unchanged. Audited as ASSET_UNLOCKED.
+      responses:
+        "200":
+          description: The template's responsibility without lock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponsibilityResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -298,6 +350,16 @@ components:
           type: string
           format: uuid
           description: The owning group, required when ownerType is GROUP.
+        responsibleGroupId:
+          type: string
+          format: uuid
+          description: >
+            The responsible group; exactly one of responsibleGroupId and responsibleFunction is
+            required (ResponsibleUnitRequest).
+        responsibleFunction:
+          type: string
+          maxLength: 200
+          description: The responsible organizational unit or function as free text.
 
     DocumentTemplateFileForm:
       type: object
@@ -312,6 +374,13 @@ components:
       type: object
       required: [name]
       properties:
+        responsible:
+          description: >
+            The responsible unit; null or absent keeps the stored one. A change is audited as
+            ASSET_RESPONSIBILITY_CHANGED.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ResponsibleUnitRequest"
         name:
           type: string
           maxLength: 255
@@ -356,6 +425,7 @@ components:
           fileName,
           sizeBytes,
           placeholders,
+          responsibility,
           revision,
           createdAt,
           updatedAt,
@@ -389,6 +459,8 @@ components:
             for a single template a system administrator counts as OWNER, as for every asset.
           allOf:
             - $ref: "#/components/schemas/AssetRole"
+        responsibility:
+          $ref: "#/components/schemas/AssetResponsibilityResponse"
         fileName:
           type: string
           description: The name of the uploaded file.
