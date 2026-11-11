@@ -14,6 +14,9 @@ import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import LoadError from '@/shared/ui/states/LoadError'
 
+/** The rights that read rather than create; they stand in a section of their own. */
+const READING_RIGHTS: Capability[] = ['VIEW_AGENT_DIRECTORY']
+
 /** The entries of one right side by side, in the order of the overview. */
 function groupByCapability(overviews: CapabilityOverviewResponse[]) {
   const groups = new Map<Capability, CapabilityOverviewResponse[]>()
@@ -70,6 +73,8 @@ export default function CapabilityManagementPage() {
   }
 
   const rights = groupByCapability(overviews)
+  const creationRights = rights.filter((entries) => !READING_RIGHTS.includes(entries[0].capability))
+  const readingRights = rights.filter((entries) => READING_RIGHTS.includes(entries[0].capability))
   const editingEntries = rights.find((entries) => entries[0].capability === editing) ?? null
 
   return (
@@ -109,7 +114,7 @@ export default function CapabilityManagementPage() {
                 borderColor: 'divider',
               }}
             >
-              {rights.map((entries) => (
+              {creationRights.map((entries) => (
                 <CapabilityRow
                   key={entries[0].capability}
                   entries={entries}
@@ -119,6 +124,37 @@ export default function CapabilityManagementPage() {
             </Box>
           )}
         </Box>
+
+        {!error && !isLoading && readingRights.length > 0 && (
+          <Box component="section" aria-labelledby="capability-reading-heading" sx={{ mt: 4 }}>
+            <Typography
+              id="capability-reading-heading"
+              component="h2"
+              sx={{ fontSize: fontSize.title, fontWeight: 600, mb: 1.5 }}
+            >
+              Wer darf das Agentenverzeichnis einsehen?
+            </Typography>
+            <Box
+              component="ul"
+              sx={{
+                listStyle: 'none',
+                p: 0,
+                m: 0,
+                borderTop: 1,
+                borderBottom: 1,
+                borderColor: 'divider',
+              }}
+            >
+              {readingRights.map((entries) => (
+                <CapabilityRow
+                  key={entries[0].capability}
+                  entries={entries}
+                  onEdit={() => setEditing(entries[0].capability)}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
       </Box>
 
       <CapabilityAccessPanel

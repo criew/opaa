@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type {
   AgentCreateRequest,
+  AgentDirectoryResponse,
   AgentResponse,
   AgentSettingsUpdateRequest,
   AgentUpdateRequest,
@@ -45,7 +46,90 @@ export function responsibilityOf(
 const RESPONSIBLE_REQUIRED =
   'Geben Sie die verantwortliche Stelle an: eine Gruppe, Organisationseinheit oder Funktion.'
 
+/** The directory as the server builds it: every mock agent and template, no owner, no usage. */
+function mockDirectory(): AgentDirectoryResponse {
+  const templatesIncluded = mockDocumentTemplateState.settings.enabled
+  const templateNames = new Map(
+    Object.values(mockDocumentTemplateState.templates).map((template) => [
+      template.id,
+      template.name,
+    ]),
+  )
+  return {
+    agents: Object.values(mockAgents)
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+      .map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+        instruction: agent.instruction ?? '',
+        libraryNames: agent.libraries.map((library) => library.name),
+        toolNames: agent.toolNames,
+        planStep: agent.planStep,
+        limits: agent.limits,
+        templateNames: templatesIncluded
+          ? agent.templates.map((template) => templateNames.get(template.id) ?? template.name)
+          : [],
+        revision: agent.revision,
+        delivered: agent.delivered,
+        responsibility: {
+          groupName: agent.responsibility.groupName,
+          function: agent.responsibility.function,
+          missing: agent.responsibility.missing,
+        },
+        locked: Boolean(agent.responsibility.lock),
+        lockedSince: agent.responsibility.lock?.lockedAt ?? null,
+      })),
+    templatesIncluded,
+    templates: templatesIncluded
+      ? Object.values(mockDocumentTemplateState.templates).map((template) => ({
+          id: template.id,
+          name: template.name,
+          description: template.description,
+          fileName: template.fileName,
+          placeholderNames: template.placeholders.map((placeholder) => placeholder.name),
+          revision: template.revision,
+          responsibility: {
+            groupName: template.responsibility.groupName,
+            function: template.responsibility.function,
+            missing: template.responsibility.missing,
+          },
+          locked: Boolean(template.responsibility.lock),
+          lockedSince: template.responsibility.lock?.lockedAt ?? null,
+        }))
+      : [],
+  }
+}
+
+function directoryRefused() {
+  return HttpResponse.json(
+    {
+      error:
+        'Ihnen fehlt das Recht „Agentenverzeichnis einsehen“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.',
+      code: 'CAPABILITY_REQUIRED',
+    },
+    { status: 403 },
+  )
+}
+
+const holdsDirectory = () => mockMyCapabilities.capabilities.includes('VIEW_AGENT_DIRECTORY')
+
 export const agentHandlers = [
+  http.get('/api/v1/agent-directory', () =>
+    offline()
+      ? notFound()
+      : holdsDirectory()
+        ? HttpResponse.json(mockDirectory())
+        : directoryRefused(),
+  ),
+  http.get('/api/v1/agent-directory/export', () => {
+    if (offline()) return notFound()
+    if (!holdsDirectory()) return directoryRefused()
+    const rows = mockDirectory().agents.map((agent) => `"Agent";"${agent.name}"`)
+    return new HttpResponse(`\uFEFF"Art";"Name"\r\n${rows.join('\r\n')}\r\n`, {
+      headers: { 'Content-Type': 'text/csv;charset=UTF-8' },
+    })
+  }),
   http.get('/api/v1/agents/availability', () =>
     HttpResponse.json({ enabled: mockAgentSettings.enabled }),
   ),
