@@ -195,13 +195,16 @@ pnpm exec playwright install --with-deps chromium   # Browser installieren (einm
 pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
 pnpm run test:local-auth                # lokale Anmeldung im Modus oidc, installiert aus e2e/installation/
 pnpm run test:installation              # Einrichtungs-Assistent gegen einen Stack im Installationsmodus
+pnpm run test:quick-tour                # Rundgang für neue Nutzer: local-auth-Stack mit eingeschaltetem Rundgang
 pnpm run test:ocr                       # Texterkennung mit echtem opaa-ocr, als Video (siehe unten)
 ```
 
 Die Stacks im Modus `oidc` (local-auth, Demo-Smoke, Zwei-Instanzen, ohne Internet) installieren sich
 mit den Antwortdateien unter `e2e/installation/` (ADR-0060); `test:installation` startet ohne
-Antwortdatei mit gesetztem Token. Beide Ziele laufen in `.github/workflows/local-auth-e2e.yml`,
-an einem PR über das Label `local-auth-suite`. Das Token des Ziels `installation`
+Antwortdatei mit gesetztem Token. Alle E2E-Stacks schalten den Rundgang für neue Nutzer ab, weil sein
+modaler Hinweis den leeren Chat verdeckt; nur `test:quick-tour` schaltet ihn über ein Overlay ein.
+Die drei Ziele laufen in `.github/workflows/local-auth-e2e.yml`, an einem PR über das Label
+`local-auth-suite`. Das Token des Ziels `installation`
 (`e2e/installation.env`) und die Passwörter unter `e2e/installation/` sind öffentliche Testwerte; sie
 stehen auch in den Playwright-Traces und Berichten, die die Workflows als Artefakt hochladen, und
 gehören in keine andere Installation.

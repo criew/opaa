@@ -1,0 +1,11 @@
+# Overlay applied only by scripts/run-e2e.mjs --target quick-tour, on top of
+# e2e/docker-compose.local-auth.yml and e2e/local-auth.env. Every E2E env file switches the quick
+# tour off, because its hint is a modal dialog over the empty chat that would block every other
+# scenario; this stack switches it back on for the specs under e2e/quick-tour/tests/ alone.
+services:
+  backend:
+    environment:
+      OPAA_FEATURES_QUICK_TOUR_ENABLED: "true"
+      # local-auth.env trusts the frontend address of the local-auth stack; this stack has a network
+      # of its own (run-e2e.mjs), so both can run side by side.
+      OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS: ${OPAA_COMPOSE_FRONTEND_ADDRESS}/32

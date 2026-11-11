@@ -13,6 +13,7 @@
     "test:installation": "node scripts/run-e2e.mjs --target installation",
     "test:sandbox": "node scripts/run-e2e.mjs --target sandbox",
     "test:ocr": "node scripts/run-e2e.mjs --target ocr",
+    "test:quick-tour": "node scripts/run-e2e.mjs --target quick-tour",
     "test:playwright": "playwright test",
     "install:browsers": "playwright install --with-deps chromium",
     "typecheck": "tsc --noEmit -p tsconfig.json"
