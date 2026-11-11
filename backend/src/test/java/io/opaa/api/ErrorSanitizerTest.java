@@ -25,8 +25,14 @@ class ErrorSanitizerTest {
   @Test
   void sanitizeRedactsTheCredentialOfAQuotedAuthorizationValue() {
     assertEquals(
-        "invalid header value: \"Bearer [REDACTED]\nX-Zusatz: 1\"",
+        "invalid header value: \"Bearer [REDACTED]\"",
         sanitizer.sanitize("invalid header value: \"Bearer pat-SENTINEL0123\nX-Zusatz: 1\""));
+    assertEquals(
+        "invalid header value: \"Bearer [REDACTED]\"",
+        sanitizer.sanitize("invalid header value: \"Bearer abc\ndef\""));
+    assertEquals(
+        "sent Bearer [REDACTED] and then failed",
+        sanitizer.sanitize("sent Bearer pat-SENTINEL0123 and then failed"));
     assertEquals(
         "invalid header value: \"Basic [REDACTED]\"",
         sanitizer.sanitize("invalid header value: \"Basic bnV0emVyOlNFTlRJTkVM\""));

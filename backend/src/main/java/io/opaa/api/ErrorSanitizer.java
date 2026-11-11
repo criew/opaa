@@ -11,9 +11,16 @@ public class ErrorSanitizer {
           "\\b(sk-[a-zA-Z0-9]{20,}|api[_-]?key[\"'=:\\s]+[a-zA-Z0-9-]+)\\b",
           Pattern.CASE_INSENSITIVE);
 
-  /** The credential of an Authorization header value, quoted by a refusal of the header. */
+  /**
+   * The credential of an Authorization header value right after a quote, as a refusal of the header
+   * quotes it: everything up to the closing quote, line breaks included.
+   */
+  private static final Pattern QUOTED_AUTHORIZATION_CREDENTIAL_PATTERN =
+      Pattern.compile("(?<=[\"'])(Bearer|Basic)\\s+[^\"']*");
+
+  /** The credential of an Authorization header value outside quotes, up to the next blank. */
   private static final Pattern AUTHORIZATION_CREDENTIAL_PATTERN =
-      Pattern.compile("\\b(Bearer|Basic)\\s+[^\\s\"']+");
+      Pattern.compile("\\b(Bearer|Basic)\\s+(?!\\[REDACTED])[^\\s\"']+");
 
   private static final Pattern URL_WITH_PARAMS_PATTERN =
       Pattern.compile("(https?://[^\\s?]+)\\?[^\\s]+");
@@ -31,6 +38,7 @@ public class ErrorSanitizer {
 
     String result = message;
     result = API_KEY_PATTERN.matcher(result).replaceAll("[REDACTED]");
+    result = QUOTED_AUTHORIZATION_CREDENTIAL_PATTERN.matcher(result).replaceAll("$1 [REDACTED]");
     result = AUTHORIZATION_CREDENTIAL_PATTERN.matcher(result).replaceAll("$1 [REDACTED]");
     result = URL_WITH_PARAMS_PATTERN.matcher(result).replaceAll("$1?[REDACTED]");
     result = replaceFilePathsPreservingUrls(result);

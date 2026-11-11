@@ -541,7 +541,8 @@ Begründung: neue Zeile, nur geänderte Spalten in einer Transaktion (`@DynamicU
 bewegt sich nur Richtung widerrufen, die Rolle ist der einzige änderbare Zustand, oder eine
 Zeilensperre (`FOR UPDATE`). `User`, `OidcProvider`, `Group` und `ConnectorTypePolicy` schreiben
 deshalb nur geänderte Spalten; die Übertragung von Berechtigungen liest die Berechtigung der
-Zielgruppe und die Änderung einer Dienstkonto-Zustimmung die offene Zustimmung unter Zeilensperre.
+Zielgruppe unter Zeilensperre; Änderung und Widerruf einer Dienstkonto-Zustimmung sperren zuerst
+die Zeile des Dienstkontos, dann die offene Zustimmung.
 Wettlauftests mit einer fremden Transaktion zwischen Lesen und Schreiben (`ForeignCommit`) stehen in
 `AccountRowWriteIntegrationTest`, `GroupRowWriteIntegrationTest`,
 `ConnectorTypePolicyRowWriteIntegrationTest`, `GroupGrantTransferRowWriteIntegrationTest` und
@@ -584,9 +585,10 @@ festgelegt: Auf DEBUG schreibt Tomcat jeden Anfragekopf samt `Authorization`. De
 JDK zitiert einen ungültigen Header-Wert samt Geheimnis in seiner Exception; deshalb prüft
 `io.opaa.common.HeaderValues#requireSafe` den Wert vorher, ohne ihn zu nennen: in
 `RedirectFollowingFetcher` für jeden Header (alle Konnektoren), in `ModelEndpointAccess#headerSafe`
-für Modellschlüssel, in `KeycloakAdminApi` und `OAuthClient` für Bearer-Token. Als zweite
+für Modellschlüssel, in `KeycloakAdminApi` und `OAuthClient` für Bearer-Token, in
+`OpenSandboxClient` für den Schlüssel des Sandbox-Servers. Als zweite
 Sicherung ersetzt `ErrorSanitizer` in der WARN-Zeile einer abgewiesenen Anfrage den Wert hinter
-`Bearer` und `Basic`.
+`Bearer` und `Basic`, in Anführungszeichen bis zum schließenden Zeichen.
 
 Im Frontend prüft `src/app/secretQueryRoutes.test.ts`, dass jede Seite, die `token`, `code` oder
 `state` aus der Query liest (selbst oder über einen exportierten Hook oder eine eingebundene
