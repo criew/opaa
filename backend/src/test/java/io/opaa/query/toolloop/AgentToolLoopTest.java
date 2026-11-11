@@ -1127,6 +1127,25 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void aWorkingRunThatAnswersAPlanChangeWithOnlyANewPlanEndsAsPlanAgain() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(answer("1. Nur Fassung 2024 suchen\n\nBitte bestätigen Sie den neuen Plan."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.PLAN);
+    assertThat(result.evidence()).isNull();
+    assertThat(runs("builtin", "plan")).isEqualTo(1.0);
+    assertThat(runs("builtin", "completed")).isZero();
+  }
+
+  @Test
   void theReplyToAQuestionBackOfTheWorkingRunContinuesThePlanInsteadOfAskingForANewOne() {
     planning(true);
     when(chatService.latestAgentRun(chat.getId()))

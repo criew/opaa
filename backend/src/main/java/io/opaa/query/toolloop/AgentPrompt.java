@@ -73,7 +73,8 @@ final class AgentPrompt {
       BESTÄTIGTER PLAN (verbindlich):
       - Deine letzte Antwort im Gesprächsverlauf ist ein Plan. Die neue Nachricht der Person \
       bestätigt oder ändert ihn.
-      - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.""";
+      - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.
+      - Beginne sofort mit search_knowledge; eine Antwort ohne Suche ist keine Antwort.""";
 
   /** Added to the fixed rules of the run that answers a question back of a plan's working run. */
   static final String RESUMED_PLAN =

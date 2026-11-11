@@ -432,8 +432,16 @@ class AgentToolLoop implements AgentTurnHandler {
       }
     }
 
+    // A run that works a confirmed plan off but answers without a single tool call has put a new
+    // plan to the person instead of researching: it ends as a plan again, so it can be confirmed.
+    boolean replannedWithoutWork =
+        phase == AgentPrompt.PlanPhase.CONFIRMED
+            && !callbacks.isEmpty()
+            && run.toolCalls() == 0
+            && run.question() == null
+            && run.limitReached() == null;
     EndState endState =
-        phase == AgentPrompt.PlanPhase.PLAN
+        phase == AgentPrompt.PlanPhase.PLAN || replannedWithoutWork
             ? EndState.PLAN
             : run.question() != null
                 ? EndState.ASK_USER
