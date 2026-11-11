@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -32,6 +33,8 @@ interface MessageListProps {
   streamingAnswer?: string | null
   /** The agent run this answer waits for while it works, null for an ordinary answer. */
   streamingRun?: LiveAgentRun | null
+  /** Shown right under the latest message, e.g. the answers to an agent's plan. */
+  afterMessages?: ReactNode
 }
 
 export const THINKING_STATUS = 'Denkt nach …'
@@ -79,6 +82,7 @@ export default function MessageList({
   targetMessageId,
   streamingAnswer = null,
   streamingRun = null,
+  afterMessages = null,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const targetRef = useRef<HTMLDivElement>(null)
@@ -220,6 +224,8 @@ export default function MessageList({
             </Box>
           )
         })}
+
+        {afterMessages}
 
         {isLoading && (
           <ChatStatusLine
