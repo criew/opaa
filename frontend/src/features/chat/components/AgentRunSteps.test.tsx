@@ -84,4 +84,13 @@ describe('AgentRunSteps', () => {
     expect(items[1]).toHaveTextContent(/^Lesen: regeln.pdf · 2 Treffer$/)
     expect(screen.queryByText(/unknown|read_document/)).not.toBeInTheDocument()
   })
+  it('marks a plan as waiting for confirmation and a question back in the polite form', () => {
+    const { rerender } = render(<AgentRunSteps run={{ ...RUN, steps: [], endState: 'PLAN' }} />)
+    expect(screen.getByText('Plan')).toBeInTheDocument()
+    expect(screen.getByText(/arbeitet erst, wenn Sie den Plan bestätigen/)).toBeInTheDocument()
+    expect(screen.queryByText('nicht geprüft')).not.toBeInTheDocument()
+
+    rerender(<AgentRunSteps run={{ ...RUN, endState: 'ASK_USER' }} />)
+    expect(screen.getByText(/braucht eine Angabe von Ihnen/)).toBeInTheDocument()
+  })
 })

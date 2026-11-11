@@ -136,4 +136,24 @@ describe('ChatInput: choosing an agent', () => {
     expect(screen.getByRole('listbox')).toHaveAccessibleName('Suchbereich')
     await waitFor(() => expect(requested).not.toHaveBeenCalled())
   })
+  // regression guard: the reply to a question back or a plan must reach the same agent, not the
+  // ordinary chat
+  it('chooses the agent of a pending question back or plan for the next message', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    const followUp = { key: 'answer-1', agent: { id: 'agent-recherche', name: 'Recherche' } }
+    const { rerender } = render(<ChatInput onSend={onSend} followUpAgent={followUp} />)
+    const input = screen.getByRole('combobox')
+
+    expect(await screen.findByTestId('chosen-agent-chip')).toHaveTextContent('Agent: Recherche')
+    await user.type(input, 'Nur 2026, bitte.{Enter}')
+    expect(onSend).toHaveBeenCalledWith('Nur 2026, bitte.', undefined, [], {
+      id: 'agent-recherche',
+      name: 'Recherche',
+    })
+
+    // the same pending answer does not bring the agent back once it was sent or removed
+    rerender(<ChatInput onSend={onSend} followUpAgent={followUp} />)
+    expect(screen.queryByTestId('chosen-agent-chip')).not.toBeInTheDocument()
+  })
 })
