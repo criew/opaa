@@ -319,6 +319,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
       <Box
         component="nav"
         aria-label="Chats"
+        {...tourAnchor('chats')}
         sx={{
           px: resizable ? 1.5 : 2,
           pt: resizable ? 1 : 0,

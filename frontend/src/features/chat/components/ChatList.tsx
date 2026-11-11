@@ -29,6 +29,7 @@ import { useSectionCollapsed, useUiStore } from '@/shared/stores/uiStore'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 import { exportChat } from './exportChat'
 import RowMenu from '@/shared/ui/RowMenu'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -547,6 +548,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
               <IconButton
                 size="small"
                 aria-label="Neuer Chat"
+                {...tourAnchor('new-chat')}
                 onClick={handleNewChat}
                 disabled={Boolean(isArchived)}
                 sx={{ p: 0.5, borderRadius: '4px' }}

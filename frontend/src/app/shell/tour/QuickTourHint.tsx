@@ -22,7 +22,7 @@ const TEXT_ID = 'quick-tour-hint-text'
  */
 export default function QuickTourHint() {
   const visible = useQuickTourHintVisible()
-  const audience = useTourAudience()
+  const audience = useTourAudience(visible)
   const start = useQuickTourStore((s) => s.start)
   const startRef = useRef<HTMLButtonElement>(null)
   if (!visible) return null

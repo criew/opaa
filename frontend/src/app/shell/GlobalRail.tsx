@@ -195,12 +195,15 @@ export default function GlobalRail() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Handbuch zu dieser Ansicht (öffnet in neuem Fenster)"
+            {...tourAnchor('handbook')}
           >
             <HelpOutlineIcon />
           </IconButton>
         </Tooltip>
 
-        <NotificationBell />
+        <Box {...tourAnchor('notifications')}>
+          <NotificationBell />
+        </Box>
 
         {user && (
           <>

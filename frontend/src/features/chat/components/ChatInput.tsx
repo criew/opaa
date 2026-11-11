@@ -477,6 +477,7 @@ export default function ChatInput({
         })}
       >
         <TextField
+          {...(actions.enabled ? tourAnchor('prompts') : {})}
           ref={setFieldEl}
           fullWidth
           multiline
@@ -537,6 +538,7 @@ export default function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
               aria-label="Dateien anhängen"
+              {...tourAnchor('attach')}
               sx={{ alignSelf: 'flex-end', p: 1, color: 'text.secondary' }}
             >
               <AttachFileIcon sx={{ fontSize: 18 }} />
@@ -715,7 +717,9 @@ export default function ChatInput({
             {scopeNotice}
           </Typography>
         )}
-        <AiNotice variant="line" />
+        <Box {...tourAnchor('ai-notice')}>
+          <AiNotice variant="line" />
+        </Box>
         {dictationError && (
           <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
             {dictationError}

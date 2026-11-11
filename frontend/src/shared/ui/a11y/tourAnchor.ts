@@ -7,7 +7,22 @@ export const TOUR_ANCHOR_ATTRIBUTE = 'data-tour-anchor'
 
 /** The elements a station of the quick tour can explain. */
 export type TourAnchorName =
-  'chat-input' | 'space-knowledge' | 'spaces' | 'catalog' | 'admin' | 'profile' | 'menu'
+  | 'chat-input'
+  | 'ai-notice'
+  | 'space-knowledge'
+  | 'filter'
+  | 'prompts'
+  | 'attach'
+  | 'dictate'
+  | 'new-chat'
+  | 'chats'
+  | 'spaces'
+  | 'catalog'
+  | 'handbook'
+  | 'notifications'
+  | 'admin'
+  | 'profile'
+  | 'menu'
 
 /** Spread onto the element a station explains: `<Box {...tourAnchor('spaces')}>`. */
 export function tourAnchor(name: TourAnchorName): Record<typeof TOUR_ANCHOR_ATTRIBUTE, string> {

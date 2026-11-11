@@ -12,6 +12,7 @@ import { useDictation } from '../hooks/useDictation'
 import type { DictationTransport } from '../hooks/useDictation'
 import { useTranscriptionAvailability } from '../hooks/useTranscriptionAvailability'
 import type { Recording, RecordingOptions } from '../utils/audioRecording'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 interface DictationControlProps {
   /** Receives the recognised text; the input decides where it goes. Never sends. */
@@ -62,7 +63,10 @@ function DictationButtons({
         : ''
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, alignSelf: 'flex-end' }}>
+    <Box
+      {...tourAnchor('dictate')}
+      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, alignSelf: 'flex-end' }}
+    >
       {status === 'recording' && (
         <>
           <Typography

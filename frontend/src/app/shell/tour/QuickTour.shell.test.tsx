@@ -105,7 +105,7 @@ describe('quick tour started from the profile menu', () => {
     expect(input).toHaveValue('')
 
     await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('dialog', { name: 'Worauf die Antwort sich stützt' })).toBeVisible()
+    expect(screen.getByRole('dialog', { name: 'Antworten prüfen' })).toBeVisible()
 
     await user.tab()
     await user.tab()

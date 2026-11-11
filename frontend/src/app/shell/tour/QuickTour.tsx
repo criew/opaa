@@ -34,7 +34,7 @@ export default function QuickTour() {
   // The opening is read out as the dialog's name and description; only a change is announced.
   const paged = useQuickTourStore((s) => s.paged)
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-  const steps = tourStepsFor(useTourAudience())
+  const steps = tourStepsFor(useTourAudience(open))
   const index = Math.min(step, steps.length - 1)
   const current = steps[index]
   const isLast = index === steps.length - 1

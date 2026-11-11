@@ -41,7 +41,9 @@ export default function MobileHeader() {
           <BrandMark logoHeight={24} />
         </Box>
         <Box sx={{ flexGrow: 1 }} />
-        <NotificationBell />
+        <Box {...tourAnchor('notifications')}>
+          <NotificationBell />
+        </Box>
       </Toolbar>
     </AppBar>
   )

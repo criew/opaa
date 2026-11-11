@@ -63,10 +63,21 @@ function Page({ grabFocus = false }: { grabFocus?: boolean }) {
       <button type="button" {...tourAnchor('profile')}>
         Profil und Einstellungen
       </button>
+      <button type="button" {...tourAnchor('new-chat')}>
+        Neuer Chat
+      </button>
+      <nav aria-label="Chats" {...tourAnchor('chats')} />
+      <button type="button" {...tourAnchor('notifications')}>
+        Benachrichtigungen
+      </button>
       <span {...tourAnchor('space-knowledge')}>@Space-Wissen</span>
       <div {...tourAnchor('chat-input')}>
         <textarea aria-label="Nachricht eingeben" />
       </div>
+      <button type="button" {...tourAnchor('attach')}>
+        Dateien anhängen
+      </button>
+      <p {...tourAnchor('ai-notice')}>Antworten werden von einer KI erzeugt.</p>
       <QuickTourHint />
       <QuickTour />
     </>
@@ -116,7 +127,7 @@ describe('quick tour', () => {
 
       const hint = screen.getByRole('dialog', { name: 'Neu hier?' })
       expect(hint).toHaveTextContent(
-        'Ein Rundgang in 5 Schritten zeigt, wie Sie fragen, worauf sich Antworten stützen und wo Sie Wissen finden.',
+        'Ein Rundgang in 9 Schritten zeigt, wie Sie fragen, worauf sich Antworten stützen und wo Sie Wissen finden.',
       )
       expect(within(hint).getByRole('button', { name: 'Rundgang starten' })).toBeInTheDocument()
       expect(within(hint).getByRole('button', { name: 'Nicht jetzt' })).toBeInTheDocument()
@@ -131,7 +142,7 @@ describe('quick tour', () => {
       const hint = screen.getByRole('dialog', { name: 'Neu hier?' })
       expect(hint).toHaveAttribute('aria-modal', 'true')
       expect(hint).toHaveAccessibleDescription(
-        'Ein Rundgang in 5 Schritten zeigt, wie Sie fragen, worauf sich Antworten stützen und wo Sie Wissen finden.',
+        'Ein Rundgang in 9 Schritten zeigt, wie Sie fragen, worauf sich Antworten stützen und wo Sie Wissen finden.',
       )
       await waitFor(() =>
         expect(within(hint).getByRole('button', { name: 'Rundgang starten' })).toHaveFocus(),
@@ -180,15 +191,32 @@ describe('quick tour', () => {
       expect(screen.queryByRole('dialog', { name: 'Neu hier?' })).not.toBeInTheDocument()
     })
 
+    it('counts an optional station only while its element is on screen', async () => {
+      const original = HTMLElement.prototype.getClientRects
+      // jsdom lays nothing out; here only the attach button counts as on screen.
+      HTMLElement.prototype.getClientRects = function (this: HTMLElement) {
+        return (this.getAttribute('data-tour-anchor') === 'attach'
+          ? [new DOMRect(0, 0, 10, 10)]
+          : []) as unknown as DOMRectList
+      }
+      try {
+        signIn({ quickTourHintDone: false })
+        renderWithProviders(<Page />)
+        expect(await screen.findByText(/Ein Rundgang in 10 Schritten/)).toBeInTheDocument()
+      } finally {
+        HTMLElement.prototype.getClientRects = original
+      }
+    })
+
     it('counts the stations for the width and the role', () => {
       signIn({ quickTourHintDone: false, systemRole: 'SYSTEM_ADMIN' })
       const { unmount } = renderWithProviders(<Page />)
-      expect(screen.getByText(/Ein Rundgang in 6 Schritten/)).toBeInTheDocument()
+      expect(screen.getByText(/Ein Rundgang in 10 Schritten/)).toBeInTheDocument()
       unmount()
 
       window.matchMedia = matchMediaFor(false)
       renderWithProviders(<Page />)
-      expect(screen.getByText(/Ein Rundgang in 3 Schritten/)).toBeInTheDocument()
+      expect(screen.getByText(/Ein Rundgang in 5 Schritten/)).toBeInTheDocument()
     })
 
     it('"Nicht jetzt" sets the marker, closes the hint and puts the focus into the input', async () => {
@@ -215,7 +243,7 @@ describe('quick tour', () => {
 
       const dialog = await screen.findByRole('dialog', { name: 'Fragen stellen' })
       expect(dialog).toHaveAccessibleDescription(
-        'Schreiben Sie Ihre Frage hier hinein, so wie Sie einen Menschen fragen würden. In der Antwort stehen kleine Zahlen: Jede zeigt, aus welchem Dokument die Information stammt. Ein Klick auf die Zahl öffnet genau diese Stelle.',
+        'Schreiben Sie Ihre Frage hier hinein, so wie Sie einen Menschen fragen würden, und schicken Sie sie mit Enter ab. Im selben Chat können Sie einfach weiterfragen.',
       )
       await waitFor(() =>
         expect(within(dialog).getByRole('button', { name: 'Weiter' })).toHaveFocus(),
@@ -262,12 +290,10 @@ describe('quick tour', () => {
       expect(screen.getByRole('status')).toBeEmptyDOMElement()
 
       await user.keyboard('{ArrowRight}')
-      expect(
-        screen.getByRole('dialog', { name: 'Worauf die Antwort sich stützt' }),
-      ).toBeInTheDocument()
-      expect(screen.getByText('2 von 5')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Antworten prüfen' })).toBeInTheDocument()
+      expect(screen.getByText('2 von 9')).toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent(
-        'Schritt 2 von 5: Worauf die Antwort sich stützt. OPAA sucht die Antwort in Dokumenten',
+        'Schritt 2 von 9: Antworten prüfen. In jeder Antwort stehen kleine Zahlen',
       )
 
       await user.keyboard('{ArrowLeft}')
@@ -276,7 +302,7 @@ describe('quick tour', () => {
 
     it('does not end the last station on →, only on "Fertig" - and then the input has the focus', async () => {
       const { user } = await openTour()
-      for (let i = 0; i < 4; i++) await user.keyboard('{ArrowRight}')
+      for (let i = 0; i < 8; i++) await user.keyboard('{ArrowRight}')
       expect(screen.getByRole('dialog', { name: 'Rundgang wiederholen' })).toBeInTheDocument()
 
       await user.keyboard('{ArrowRight}')
@@ -298,9 +324,7 @@ describe('quick tour', () => {
       await user.keyboard('abc')
       expect(input()).toHaveValue('')
       await user.keyboard('{ArrowRight}')
-      expect(
-        screen.getByRole('dialog', { name: 'Worauf die Antwort sich stützt' }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Antworten prüfen' })).toBeInTheDocument()
     })
 
     it('takes the focus back from a field the page focuses while the tour renders anew', async () => {
@@ -366,15 +390,15 @@ describe('quick tour', () => {
     it('ends below 900 px on the one step at the menu button', async () => {
       window.matchMedia = matchMediaFor(false)
       const { user } = await openTour()
-      await user.keyboard('{ArrowRight}{ArrowRight}')
+      for (let i = 0; i < 4; i++) await user.keyboard('{ArrowRight}')
       expect(screen.getByRole('dialog', { name: 'Alles Weitere im Menü' })).toBeInTheDocument()
-      expect(screen.getByText('3 von 3')).toBeInTheDocument()
+      expect(screen.getByText('5 von 5')).toBeInTheDocument()
     })
 
     it('reports neither the tour nor its progress to the server', async () => {
       const requests = recordRequests()
       const { user } = await openTour()
-      for (let i = 0; i < 4; i++) await user.keyboard('{ArrowRight}')
+      for (let i = 0; i < 8; i++) await user.keyboard('{ArrowRight}')
       await user.keyboard('{ArrowLeft}{ArrowRight}')
       await user.click(screen.getByRole('button', { name: 'Fertig' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
