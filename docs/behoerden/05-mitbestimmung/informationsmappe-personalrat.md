@@ -218,8 +218,15 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   dazu die Ergebnisse seiner Schritte ({{faktenblatt:datenfluesse#chat-model}}). Code eines Agenten
   läuft nur in einer abgeschotteten Umgebung ohne Netz ({{faktenblatt:datenfluesse#code-sandbox}}).
 
-Welche Agenten die Installation anbietet, mit Zweck und zuständiger Stelle, trägt die Dienststelle
-hier ein, ohne Angaben zur Nutzung: [Agent, Zweck, zuständige Stelle …]
+- **Agentenverzeichnis:** Welche Agenten und Vorlagen es gibt und was sie tun, zeigt OPAA selbst:
+  je Agent Zweck, Anweisung, die Namen seiner Bibliotheken, Werkzeuge, Grenzen, Vorlagen,
+  verantwortliche Stelle, Fassung und ob er gesperrt ist, ohne Inhalte der Bibliotheken, ohne
+  Eigentümer und ohne Angaben zur Nutzung. Die Systemverwaltung gibt das Recht dazu einer Person
+  oder Gruppe, etwa dem Personalrat; ab Werk hat es niemand außer ihr
+  ({{faktenblatt:rollensicht#view-agent-directory}}). Das Verzeichnis lässt sich als Tabelle für
+  die Anlage einer Dienstvereinbarung exportieren; jedes Ansehen und jeder Export steht im
+  Protokoll ({{faktenblatt:protokollereignisse#agent-directory-accessed}},
+  [Agentenverzeichnis einsehen](../../handbuch/administration/agentenverzeichnis.md)).
 
 ## 10. Glossar
 

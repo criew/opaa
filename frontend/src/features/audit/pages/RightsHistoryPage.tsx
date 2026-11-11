@@ -9,7 +9,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
@@ -21,7 +21,7 @@ import type {
   AccessAsOfSource,
   AccessBasis,
 } from '@/shared/api/types'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, formWidth } from '@/shared/theme/tokens'
 import { formatProtocolTime, MISSING_VALUE } from '@/shared/utils/formatDate'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
@@ -100,15 +100,15 @@ export default function RightsHistoryPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={HistoryOutlinedIcon}
           title="Stichtagsauskunft"
           description="Wer durfte ein bestimmtes Objekt in einem bestimmten Zeitraum lesen. Je Abfrage genau ein benanntes Objekt, höchstens 92 Tage Zeitraum und ein Anlass als Pflichtangabe. Jeder Abruf wird protokolliert."
         />
 
-        <Stack spacing={2} sx={{ mb: 3 }}>
-          <TextField
+        <Stack spacing={2} sx={{ mb: 3, maxWidth: formWidth.column }}>
+          <FormField
             select
             label="Objektart"
             value={objectType}
@@ -116,27 +116,25 @@ export default function RightsHistoryPage() {
           >
             <MenuItem value="KNOWLEDGE_LIBRARY">Wissensbibliothek</MenuItem>
             <MenuItem value="SPACE">Space</MenuItem>
-          </TextField>
-          <TextField
+          </FormField>
+          <FormField
             label="Kennung des Objekts"
             value={objectId}
             onChange={(event) => setObjectId(event.target.value)}
           />
-          <TextField
+          <FormField
             label="Von"
             type="datetime-local"
             value={from}
-            slotProps={{ inputLabel: { shrink: true } }}
             onChange={(event) => setFrom(event.target.value)}
           />
-          <TextField
+          <FormField
             label="Bis"
             type="datetime-local"
             value={to}
-            slotProps={{ inputLabel: { shrink: true } }}
             onChange={(event) => setTo(event.target.value)}
           />
-          <TextField
+          <FormField
             label="Anlass"
             value={reason}
             onChange={(event) => setReason(event.target.value)}

@@ -9,12 +9,11 @@ import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CreateGroupDialog from './CreateGroupDialog'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
+import CreateButton from '@/shared/ui/CreateButton'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import GroupStewardsSection from './GroupStewardsSection'
@@ -33,10 +32,10 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
-import { fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -103,8 +102,8 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Box>
-            <FieldLabel htmlFor={`my-group-${group.id}-name`}>Name der Gruppe</FieldLabel>
-            <TextField
+            <FormField
+              label="Name der Gruppe"
               id={`my-group-${group.id}-name`}
               fullWidth
               value={name}
@@ -113,14 +112,13 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`my-group-${group.id}-description`}>Beschreibung</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
               id={`my-group-${group.id}-description`}
               fullWidth
               value={description}
               onChange={(e) => setDraft({ groupId: group.id, name, description: e.target.value })}
               multiline
-              minRows={2}
               size="small"
             />
           </Box>
@@ -316,30 +314,21 @@ export default function MyGroupsSection() {
 
   return (
     <Box>
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={1}
-        sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between', mb: 2 }}
-      >
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+      <CreateButton disabled={missingCapability} onClick={() => setCreateDialogOpen(true)}>
+        Gruppe anlegen
+      </CreateButton>
+      <Stack spacing={1.5} sx={{ alignItems: 'flex-start', mb: 2 }}>
+        <Typography
+          sx={{ fontSize: fontSize.text, color: 'text.secondary', maxWidth: readingWidth }}
+        >
           Gruppen, für die Sie verantwortlich sind. Sie pflegen deren Mitglieder, geben sie zur
           Verwendung frei und geben die Verantwortung ab, wenn Sie die Aufgabe wechseln.
         </Typography>
-        <Stack direction="row" spacing={1}>
-          {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
-             automatism, but a visible way out on a change of duties. */}
-          <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
-            Verantwortung und Eigentum abgeben
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            disabled={missingCapability}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            Gruppe anlegen
-          </Button>
-        </Stack>
+        {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
+           automatism, but a visible way out on a change of duties. */}
+        <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
+          Verantwortung und Eigentum abgeben
+        </Button>
       </Stack>
 
       {missingCapability && (
@@ -367,13 +356,9 @@ export default function MyGroupsSection() {
           message="Noch keine Gruppen in Ihrer Verantwortung."
           action={
             missingCapability ? undefined : (
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={() => setCreateDialogOpen(true)}
-              >
+              <CreateButton placement="empty" onClick={() => setCreateDialogOpen(true)}>
                 Gruppe anlegen
-              </Button>
+              </CreateButton>
             )
           }
         />

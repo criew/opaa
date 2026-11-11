@@ -7,7 +7,8 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import InputAdornment from '@mui/material/InputAdornment'
 import Typography from '@mui/material/Typography'
 import type { FullSyncRhythmResponse } from '@/shared/api/types'
 import { listFullSyncRhythms, updateFullSyncRhythm } from '../api/fullSyncRhythmApi'
@@ -15,8 +16,10 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
+import { formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const MIN_DAYS = 1
 const MAX_DAYS = 365
@@ -116,8 +119,9 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
           noValidate
           sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
         >
-          <TextField
-            label="Tage"
+          <FormField
+            label={`Vollabgleich von ${name} alle … Tage`}
+            hideLabel
             size="small"
             value={draft}
             onChange={(event) => {
@@ -127,12 +131,10 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
             error={days === null || saveError !== null}
             helperText={days === null ? RANGE_ERROR : (saveError ?? undefined)}
             slotProps={{
-              htmlInput: {
-                inputMode: 'numeric',
-                'aria-label': `Vollabgleich von ${name} alle … Tage`,
-              },
+              htmlInput: { inputMode: 'numeric' },
+              input: { endAdornment: <InputAdornment position="end">Tage</InputAdornment> },
             }}
-            sx={{ width: 120 }}
+            sx={{ width: formWidth.number }}
           />
           <BusyButton
             type="submit"
@@ -222,7 +224,11 @@ export default function FullSyncRhythmSection() {
       ) : rhythms === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Table size="small" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
+        <Table
+          size="small"
+          aria-label="Vollabgleich-Rhythmus je Quellart"
+          sx={{ maxWidth: contentWidth.form }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Quellart</TableCell>

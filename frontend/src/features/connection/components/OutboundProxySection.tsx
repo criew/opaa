@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { OutboundProxyResponse } from '@/shared/api/types'
 import { getOutboundProxy, updateOutboundProxy } from '../api/outboundProxyApi'
@@ -11,7 +11,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -128,8 +128,8 @@ export default function OutboundProxySection() {
               ? `Ausgehende Verbindungen gehen über ${current.proxyUrl}.`
               : 'Es ist kein Ausgangsproxy eingetragen; alle Verbindungen gehen direkt hinaus.'}
           </Typography>
-          <Stack spacing={2} sx={{ maxWidth: 560 }}>
-            <TextField
+          <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
+            <FormField
               label="Proxy-Adresse"
               size="small"
               value={proxyDraft}
@@ -144,11 +144,10 @@ export default function OutboundProxySection() {
                 'http://host:port oder host:port. Leer lassen, um alle Verbindungen direkt aufzubauen.'
               }
             />
-            <TextField
+            <FormField
               label="Ausnahmeliste"
               size="small"
               multiline
-              minRows={3}
               value={noProxyDraft}
               placeholder={'intranet.example.org\n10.0.0.0/8'}
               onChange={(event) => {

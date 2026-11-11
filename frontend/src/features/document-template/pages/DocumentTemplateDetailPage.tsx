@@ -47,10 +47,10 @@ import {
 } from '../api/documentTemplateApi'
 import PlaceholderList from '../components/PlaceholderList'
 import TemplateFilePicker from '../components/TemplateFilePicker'
-import { fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 const ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -134,7 +134,9 @@ function FileArea({
           flexWrap: 'wrap',
         }}
       >
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: '80ch' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: readingWidth }}
+        >
           {template.fileName} · {formatFileSize(template.sizeBytes)}. Ein Agent füllt diese
           Platzhalter mit den Werten aus dem Chat; die Datei selbst bleibt unverändert.
         </Typography>
@@ -319,7 +321,7 @@ export default function DocumentTemplateDetailPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 880 }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <AssetDetailHeader
           assetType="DOCUMENT_TEMPLATE"
           assetId={templateId}

@@ -21,7 +21,7 @@ import { useSpaceStore } from '@/features/space'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
-import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The header's title until the chat has one of its own. */
@@ -314,7 +314,7 @@ export default function ChatPage() {
             }}
             onBlur={() => void commitRename(false)}
             slotProps={{ htmlInput: { 'aria-label': 'Chat-Titel' } }}
-            sx={{ flexGrow: 1, minWidth: 0, maxWidth: 520 }}
+            sx={{ flexGrow: 1, minWidth: 0, maxWidth: fieldWidth.long }}
           />
         ) : (
           // The title is a button, not a heading: the visually hidden PageHeading above

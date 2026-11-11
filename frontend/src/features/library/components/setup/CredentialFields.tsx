@@ -3,8 +3,8 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import SecretField from './SecretField'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import SecretField from '@/shared/ui/form/SecretField'
 import SetupTextField from './SetupTextField'
 import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
@@ -39,7 +39,7 @@ export default function CredentialFields({ account, secret, stored }: Credential
   if (stored && !replacing && !entered) {
     return (
       <Box>
-        <FieldLabel id={`${secret.id}-label`}>Zugangsdaten</FieldLabel>
+        <FormFieldLabel id={`${secret.id}-label`}>Zugangsdaten</FormFieldLabel>
         <Box
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
         >

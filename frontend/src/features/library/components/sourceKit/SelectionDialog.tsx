@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { fontFamily, fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontFamily, fontSize } from '@/shared/theme/tokens'
 import { incompleteNote } from './incompleteNote'
 import { plainMessage } from '../sourceCore/plainMessage'
 import PathLabel from '../sourceCore/PathLabel'
@@ -605,7 +605,7 @@ function SelectionDialogBody({
                         ...ellipsis,
                         fontSize: fontSize.text,
                         fontWeight: 600,
-                        maxWidth: { xs: 220, sm: 320 },
+                        maxWidth: { xs: fieldWidth.short, sm: fieldWidth.medium },
                       }}
                     >
                       {crumb.name}
@@ -614,7 +614,7 @@ function SelectionDialogBody({
                     <Button
                       size="small"
                       onClick={() => openLevel(level.slice(0, i))}
-                      sx={{ minWidth: 0, px: 0.5, maxWidth: { xs: 160, sm: 240 } }}
+                      sx={{ minWidth: 0, px: 0.5, maxWidth: fieldWidth.short }}
                     >
                       <Box component="span" sx={ellipsis}>
                         {crumb.name}

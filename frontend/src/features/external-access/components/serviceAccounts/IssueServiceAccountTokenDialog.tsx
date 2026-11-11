@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
-import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
+import { fieldWidth, fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { connectionsAdminRoute } from '@/shared/routes'
 import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
 import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
@@ -176,7 +176,7 @@ function TokenDialog({
         <Stack spacing={2.5} sx={{ mt: 1 }}>
           {formError && <Alert severity="error">{formError}</Alert>}
           <Typography sx={{ fontSize: fontSize.text }}>Für „{account.name}“</Typography>
-          <TextField
+          <FormField
             label="Name"
             placeholder="Produktion"
             value={name}
@@ -187,7 +187,7 @@ function TokenDialog({
             size="small"
             fullWidth
           />
-          <TextField
+          <FormField
             label="Läuft ab"
             type="date"
             value={expiry}
@@ -196,9 +196,8 @@ function TokenDialog({
             error={Boolean(errors.expiry)}
             helperText={errors.expiry ?? `höchstens ${maxDays} Tage`}
             size="small"
-            sx={{ maxWidth: 240 }}
+            sx={{ maxWidth: fieldWidth.short }}
             slotProps={{
-              inputLabel: { shrink: true },
               htmlInput: {
                 min: toDateInputValue(earliestExpiryDate()),
                 max: toDateInputValue(maxExpiryDate(maxDays)),

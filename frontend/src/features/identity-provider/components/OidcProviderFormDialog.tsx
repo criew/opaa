@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import NetworkCheckOutlinedIcon from '@mui/icons-material/NetworkCheckOutlined'
 import type { OidcProviderRequest, OidcProviderResponse } from '@/shared/api/types'
@@ -35,10 +35,6 @@ export const ISSUER_CHANGE_HINT =
   'einen Verzeichniszugang ohne eigene Admin-API-Adresse samt Geheimnis. Er ist danach für die ' +
   'neue Adresse neu zu hinterlegen.'
 const REQUIRED_FIELDS_HINT = 'Anzeigename, Issuer-URI und Client-ID sind erforderlich.'
-
-// Required fields carry aria-required but no asterisk; optional ones say so in their label
-// (guidelines 5.2).
-const REQUIRED_FIELD_SLOTS = { inputLabel: { required: false } } as const
 
 interface OidcProviderDraft {
   displayName: string
@@ -290,24 +286,24 @@ export default function OidcProviderFormDialog({
             Verbindung
           </SectionHead>
           <Stack spacing={2}>
-            <TextField
+            <FormField
               // eslint-disable-next-line jsx-a11y-x/no-autofocus
               autoFocus
               label="Anzeigename"
               required
               value={draft.displayName}
               onChange={(e) => update('displayName', e.target.value)}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 120 } }}
+              slotProps={{ htmlInput: { maxLength: 120 } }}
               helperText="So heißt der Anbieter auf der Anmeldeseite."
               fullWidth
               size="small"
             />
-            <TextField
+            <FormField
               label="Issuer-URI"
               required
               value={draft.issuerUri}
               onChange={(e) => update('issuerUri', e.target.value)}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 500 } }}
+              slotProps={{ htmlInput: { maxLength: 500 } }}
               helperText={ISSUER_HELP_TEXT}
               fullWidth
               size="small"
@@ -315,18 +311,19 @@ export default function OidcProviderFormDialog({
             {provider && draft.issuerUri.trim() !== provider.issuerUri && (
               <Alert severity="info">{ISSUER_CHANGE_HINT}</Alert>
             )}
-            <TextField
+            <FormField
               label="Client-ID"
               required
               value={draft.clientId}
               onChange={(e) => update('clientId', e.target.value)}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 255 } }}
+              slotProps={{ htmlInput: { maxLength: 255 } }}
               helperText="Der beim Anbieter angelegte öffentliche Client (ohne Secret, mit PKCE)."
               fullWidth
               size="small"
             />
-            <TextField
-              label="JWK-Set-Adresse (optional)"
+            <FormField
+              label="JWK-Set-Adresse"
+              optional
               value={draft.jwkSetUri}
               onChange={(e) => update('jwkSetUri', e.target.value)}
               slotProps={{ htmlInput: { maxLength: 500 } }}
@@ -352,7 +349,7 @@ export default function OidcProviderFormDialog({
           </Typography>
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
+              <FormField
                 label="E-Mail-Claim"
                 value={draft.emailClaim}
                 onChange={(e) => update('emailClaim', e.target.value)}
@@ -360,7 +357,7 @@ export default function OidcProviderFormDialog({
                 size="small"
                 sx={{ flex: 1 }}
               />
-              <TextField
+              <FormField
                 label="Anzeigename-Claim"
                 value={draft.displayNameClaim}
                 onChange={(e) => update('displayNameClaim', e.target.value)}
@@ -370,8 +367,9 @@ export default function OidcProviderFormDialog({
                 sx={{ flex: 1 }}
               />
             </Stack>
-            <TextField
-              label="Rollen-Claim (optional)"
+            <FormField
+              label="Rollen-Claim"
+              optional
               value={draft.rolesClaim}
               onChange={(e) => update('rolesClaim', e.target.value)}
               slotProps={{ htmlInput: { maxLength: 200 } }}
@@ -380,7 +378,7 @@ export default function OidcProviderFormDialog({
               size="small"
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
+              <FormField
                 label="Rollenwert für SYSTEM_ADMIN"
                 value={draft.systemAdminRole}
                 onChange={(e) => update('systemAdminRole', e.target.value)}
@@ -390,7 +388,7 @@ export default function OidcProviderFormDialog({
                 size="small"
                 sx={{ flex: 1 }}
               />
-              <TextField
+              <FormField
                 label="Rollenwert für AUDITOR"
                 value={draft.auditorRole}
                 onChange={(e) => update('auditorRole', e.target.value)}
@@ -401,8 +399,9 @@ export default function OidcProviderFormDialog({
                 sx={{ flex: 1 }}
               />
             </Stack>
-            <TextField
-              label="Gruppen-Claim (optional)"
+            <FormField
+              label="Gruppen-Claim"
+              optional
               value={draft.groupsClaim}
               onChange={(e) => update('groupsClaim', e.target.value)}
               slotProps={{ htmlInput: { maxLength: 200 } }}

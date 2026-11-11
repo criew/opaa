@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { AccountResponse, SystemRole } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
@@ -97,23 +97,12 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
           </Alert>
         )}
         <Box>
-          <Typography
-            id="role-change-role-label"
-            component="span"
-            sx={{ display: 'block', fontSize: fontSize.meta, fontWeight: 500, mb: 0.5 }}
-          >
-            Rolle
-          </Typography>
-          <TextField
+          <FormField
             id="role-change-role"
+            label="Rolle"
             select
             fullWidth
             size="small"
-            // MUI's select renders a display with role="combobox" that needs its name via
-            // aria-labelledby (axe aria-input-field-name) - pattern as in UserFormDialog.
-            slotProps={{
-              select: { SelectDisplayProps: { 'aria-labelledby': 'role-change-role-label' } },
-            }}
             value={selected}
             onChange={(e) => setRole(e.target.value as SystemRole)}
             disabled={saving}
@@ -123,7 +112,7 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
                 {SYSTEM_ROLE_LABEL[entry]}
               </MenuItem>
             ))}
-          </TextField>
+          </FormField>
         </Box>
         {selected === 'AUDITOR' && account?.systemRole !== 'AUDITOR' && (
           <Alert severity="info" sx={{ mt: 2 }}>

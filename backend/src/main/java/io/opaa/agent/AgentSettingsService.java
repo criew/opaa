@@ -11,6 +11,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
+import io.opaa.query.toolloop.AgentToolSwitches;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -31,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * provisions the delivered agent "Recherche" for the administrator's organization, once.
  */
 @Service
-public class AgentSettingsService {
+public class AgentSettingsService implements AgentToolSwitches {
 
   private static final String SETTINGS_OBJECT_ID = "agent_settings";
   private static final String SETTINGS_OBJECT_LABEL = "Agenten";
@@ -64,6 +65,7 @@ public class AgentSettingsService {
   }
 
   /** The tools switched on right now, read per call (ADR-0053). */
+  @Override
   @Transactional(readOnly = true)
   public Set<String> enabledTools() {
     return settings.findSingleton().map(AgentSettings::getEnabledTools).orElse(Set.of());

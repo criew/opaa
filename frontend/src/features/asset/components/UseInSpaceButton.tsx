@@ -6,7 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { AssetType, SpaceListResponse } from '@/shared/api/types'
 import { associateSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
@@ -148,10 +148,12 @@ export function UseInSpaceInline({
                 disabled={busy}
                 noOptionsText="Kein kuratierter Space gefunden"
                 renderInput={(params) => (
-                  <TextField
+                  <FormField
                     {...params}
                     size="small"
                     label="Space suchen"
+                    hideLabel
+                    fullWidth
                     placeholder="Name enthält …"
                   />
                 )}

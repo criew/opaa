@@ -6,7 +6,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   LlmModelResponse,
@@ -196,7 +196,7 @@ export default function ToolCapabilityDialog({
             />
           </RadioGroup>
           {basis === 'MEASURED' && (
-            <TextField
+            <FormField
               label="Messlauf"
               required
               fullWidth

@@ -199,6 +199,7 @@ const OBJECT_PHRASES: Partial<Record<CapabilityOverviewResponse['capability'], s
   CREATE_PROMPT_LIBRARY: 'Prompt-Bibliotheken anlegen',
   CREATE_AGENT: 'Agenten anlegen',
   CREATE_TEMPLATE: 'Vorlagen anlegen',
+  VIEW_AGENT_DIRECTORY: 'das Agentenverzeichnis einsehen',
 }
 
 /** What the right allows, as the end of a sentence: "… dürfen Spaces anlegen". */

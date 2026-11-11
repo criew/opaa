@@ -8,7 +8,7 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   SearchModelRoleState,
@@ -40,7 +40,7 @@ import {
   type TestStageState,
   type TextRecognitionTestView,
 } from './textRecognitionStages'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
@@ -203,7 +203,7 @@ export default function TextRecognitionSection() {
 
   if (!settings.textRecognitionAvailable) {
     return (
-      <Box sx={{ maxWidth: '72ch' }}>
+      <Box sx={{ maxWidth: formWidth.column }}>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
           {INTRO}
         </Typography>
@@ -219,7 +219,7 @@ export default function TextRecognitionSection() {
   const type = CONNECTION_TYPES[connectionType]
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {INTRO}
       </Typography>
@@ -282,7 +282,7 @@ export default function TextRecognitionSection() {
           </RadioGroup>
         </FormControl>
         {isVision && <Alert severity="info">{VISION_NOTICE}</Alert>}
-        <TextField
+        <FormField
           id="model-role-text-recognition-base-url"
           label="Basis-Adresse"
           required={enabled}
@@ -294,7 +294,7 @@ export default function TextRecognitionSection() {
           fullWidth
         />
         {isVision && (
-          <TextField
+          <FormField
             id="model-role-text-recognition-model"
             label="Modell-Kennung"
             required={enabled}

@@ -23,6 +23,10 @@ niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“
     - **Ablauf:** gleich loslegen oder erst den Plan bestätigen lassen; unter „Erweitert“ eigene
       Grenzen für Werkzeugaufrufe, Suchen, Laufzeit und Lesemenge.
 5. Im Reiter „Freigaben“ Personen oder Gruppen berechtigen, im Reiter „Zuordnungen“ Spaces wählen.
+   Dort rufen Mitglieder ihn im Chat auf ([Agenten verwenden](agenten-verwenden.md)).
+
+Jede Änderung an Auftrag, Wissen, Werkzeugen, Ablauf oder Grenzen ergibt eine neue Fassung, die an
+jeder Antwort des Agenten steht ([Agentenergebnis prüfen](agentenergebnis-pruefen.md)).
 
 ## Was ein Agent liest
 
@@ -56,7 +60,8 @@ sie erhalten. Eine gelöschte Vorlage fällt aus der Zuordnung.
 **Verantwortliche Stelle:** eine Gruppe aus der Liste oder eine Organisationseinheit bzw. Funktion
 als Text, etwa „Referat Z3 – Organisation“, keine Einzelperson. Vorbelegt ist die Gruppe des
 Eigentümers, sonst Ihre erste Gruppe. Ändern lässt sie sich im Reiter „Freigaben“. Fehlt die Stelle
-länger als die Frist der Systemverwaltung, wird der Agent gesperrt.
+länger als die Frist der Systemverwaltung, wird der Agent gesperrt
+([Agent oder Vorlage sperren](../administration/agenten.md#agent-oder-vorlage-sperren)).
 
 **Gut zu wissen:**
 
@@ -65,4 +70,7 @@ länger als die Frist der Systemverwaltung, wird der Agent gesperrt.
 - Ein Werkzeug, das die Systemverwaltung abgeschaltet hat, bietet ein Lauf nicht an, auch wenn der
   Agent es nennt.
 - Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, bei einer Änderung nur die Namen der
-  geänderten Felder, nie der Auftrag selbst. Das Aufrufen steht dort nicht.
+  geänderten Felder, nie der Auftrag selbst. Das Aufrufen steht dort nicht. Zweck, Auftrag,
+  Werkzeuge und Grenzen sieht, wer das
+  [Agentenverzeichnis](../administration/agentenverzeichnis.md) einsehen darf, etwa die
+  Personalvertretung.

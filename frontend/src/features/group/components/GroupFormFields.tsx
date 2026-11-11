@@ -2,9 +2,8 @@ import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { fontSize } from '@/shared/theme/tokens'
 
 const RELEASE_HELP = 'Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar.'
@@ -58,8 +57,8 @@ export default function GroupFormFields({
       {isInternal && (
         <>
           <Box>
-            <FieldLabel htmlFor={`${idPrefix}-name`}>Name der Gruppe</FieldLabel>
-            <TextField
+            <FormField
+              label="Name der Gruppe"
               // Focus moves to the first field of a dialog the user just opened (WAI-ARIA APG
               // dialog pattern).
               // eslint-disable-next-line jsx-a11y-x/no-autofocus
@@ -75,13 +74,13 @@ export default function GroupFormFields({
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`${idPrefix}-description`}>Beschreibung (optional)</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
+              optional
               id={`${idPrefix}-description`}
               fullWidth
               size="small"
               multiline
-              minRows={2}
               value={values.description}
               onChange={(e) => set({ description: e.target.value })}
               slotProps={{ htmlInput: { maxLength: 2000 } }}

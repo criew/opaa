@@ -1,4 +1,4 @@
-import { fontSize } from '@/shared/theme/tokens'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 import { useEffect, useMemo, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
@@ -9,7 +9,6 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ValueRow from '@/shared/ui/ValueRow'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -21,7 +20,8 @@ import type {
   DocumentTemplateResponse,
   LibraryListResponse,
 } from '@/shared/api/types'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import ListSearch from '@/shared/ui/ListSearch'
 import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 import { getReadableLibraries, getReadableTemplates } from '../api/agentApi'
@@ -94,14 +94,13 @@ export function InstructionArea({
       }
       editor={(errors) => (
         <Box id={`${id}-instruction`}>
-          <FieldLabel htmlFor={`${id}-field`}>Auftrag</FieldLabel>
-          <TextField
+          <FormField
+            label="Auftrag"
             id={`${id}-field`}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={INSTRUCTION_PLACEHOLDER}
             multiline
-            minRows={6}
             fullWidth
             error={Boolean(errors.instruction)}
             helperText={errors.instruction ?? INSTRUCTION_HELP}
@@ -192,7 +191,7 @@ export function KnowledgeAndToolsArea({
         value={libraryValue}
         editor={(errors) => (
           <Box id="agent-libraries-libraryIds" role="group" aria-labelledby="agent-libraries-label">
-            <FieldLabel id="agent-libraries-label">Bibliotheken</FieldLabel>
+            <FormFieldLabel id="agent-libraries-label">Bibliotheken</FormFieldLabel>
             <Typography sx={{ fontSize: fontSize.meta, mb: 1, ...muted }}>
               Ohne Auswahl liest der Agent alles, was die aufrufende Person lesen darf. Eine Auswahl
               grenzt ein, erweitert aber nie: Wer eine Bibliothek nicht lesen darf, erhält auch über
@@ -212,7 +211,7 @@ export function KnowledgeAndToolsArea({
               <LoadingState shape="lines" count={3} />
             )}
             {libraries !== null && libraries.length >= FILTER_FROM && (
-              <Box sx={{ mb: 1, maxWidth: 360 }}>
+              <Box sx={{ mb: 1, maxWidth: fieldWidth.medium }}>
                 <ListSearch
                   value={filter}
                   onChange={setFilter}
@@ -272,7 +271,7 @@ export function KnowledgeAndToolsArea({
         }
         editor={(errors) => (
           <Box id="agent-tools-toolNames" role="group" aria-labelledby="agent-tools-label">
-            <FieldLabel id="agent-tools-label">Werkzeuge</FieldLabel>
+            <FormFieldLabel id="agent-tools-label">Werkzeuge</FormFieldLabel>
             {AGENT_TOOLS.map((tool) => (
               <FormControlLabel
                 key={tool.name}
@@ -384,7 +383,9 @@ function TemplatesRow({
       value={value}
       editor={(errors) => (
         <Box id="agent-templates-templateIds" role="group" aria-labelledby="agent-templates-label">
-          <FieldLabel id="agent-templates-label">Vorlagen (optional)</FieldLabel>
+          <FormFieldLabel id="agent-templates-label" optional>
+            Vorlagen
+          </FormFieldLabel>
           <Typography sx={{ fontSize: fontSize.meta, mb: 1, ...muted }}>
             Nach diesen Vorlagen legt der Agent sein Ergebnis als Datei ab, wenn er das Werkzeug
             „Vorlage ausfüllen“ hat. Ein Lauf nutzt nur Vorlagen, die die aufrufende Person lesen
@@ -450,7 +451,7 @@ export function ProcedureArea({
         }
         editor={() => (
           <Box id="agent-plan-planStep">
-            <FieldLabel id="agent-plan-label">Plan</FieldLabel>
+            <FormFieldLabel id="agent-plan-label">Plan</FormFieldLabel>
             <RadioGroup
               aria-labelledby="agent-plan-label"
               value={planDraft}
@@ -528,17 +529,14 @@ export function ProcedureArea({
               >
                 {LIMIT_FIELDS.map((field) => (
                   <Box key={field.key} id={`agent-limits-limits.${field.key}`}>
-                    <FieldLabel htmlFor={`agent-limit-${field.key}`}>
-                      {`${field.label} (${field.unit})`}
-                    </FieldLabel>
-                    <TextField
+                    <FormField
+                      label={`${field.label} (${field.unit})`}
                       id={`agent-limit-${field.key}`}
                       size="small"
                       value={limitDraft[field.key]}
                       onChange={(e) =>
                         setLimitDraft((draft) => ({ ...draft, [field.key]: e.target.value }))
                       }
-                      placeholder="wie Installation"
                       fullWidth
                       error={Boolean(errors[`limits.${field.key}`])}
                       helperText={errors[`limits.${field.key}`]}

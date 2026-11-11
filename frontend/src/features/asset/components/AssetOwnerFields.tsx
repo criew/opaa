@@ -6,7 +6,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import type { AssetOwnerType, AssetType, GroupListResponse } from '@/shared/api/types'
 import type { MyGroupsState } from '@/features/principal'
 import { assetANominative } from '../../../shared/assetTypes'
@@ -45,7 +45,7 @@ export default function AssetOwnerFields({
   return (
     <>
       <FormControl>
-        <FieldLabel id={`${idPrefix}-owner-label`}>Eigentümer</FieldLabel>
+        <FormFieldLabel id={`${idPrefix}-owner-label`}>Eigentümer</FormFieldLabel>
         <RadioGroup
           row
           aria-labelledby={`${idPrefix}-owner-label`}

@@ -2,16 +2,15 @@ import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { Navigate, Link as RouterLink } from 'react-router'
+import { Navigate } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
-import SectionEyebrow from '../components/SectionEyebrow'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import SectionHead from '@/shared/ui/SectionHead'
+import FormField from '@/shared/ui/form/FormField'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
@@ -104,9 +103,7 @@ export default function ForgotPasswordPage() {
           message={MAIL_SENT_MESSAGE}
           detail="Bitte prüfen Sie Ihr Postfach. Der Link in der E-Mail gilt nur begrenzte Zeit; ein neuer Link macht einen älteren ungültig."
         >
-          <Link component={RouterLink} to={LOGIN_ROUTE}>
-            Zurück zur Anmeldung
-          </Link>
+          <SignInLink />
         </AuthNotice>
       </AuthLayout>
     )
@@ -127,28 +124,27 @@ export default function ForgotPasswordPage() {
         noValidate
         sx={{ mt: 3 }}
       >
-        <SectionEyebrow id="forgot-password-title">Link anfordern</SectionEyebrow>
+        <SectionHead id="forgot-password-title" underline={false}>
+          Link anfordern
+        </SectionHead>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Geben Sie die E-Mail-Adresse Ihres Kontos an. Wir schicken Ihnen einen Link, mit dem Sie
           ein neues Passwort festlegen können.
         </Typography>
         <Stack spacing={2}>
-          <Box>
-            <FieldLabel htmlFor="forgot-password-email">E-Mail-Adresse</FieldLabel>
-            <TextField
-              id="forgot-password-email"
-              inputRef={emailRef}
-              type="email"
-              size="small"
-              fullWidth
-              autoComplete="username"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.email)}
-              helperText={fieldErrors.email}
-            />
-          </Box>
+          <FormField
+            id="forgot-password-email"
+            label="E-Mail-Adresse"
+            inputRef={emailRef}
+            type="email"
+            size="small"
+            autoComplete="username"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={busy}
+            error={Boolean(fieldErrors.email)}
+            helperText={fieldErrors.email}
+          />
           <Button
             type="submit"
             variant="contained"
@@ -159,11 +155,7 @@ export default function ForgotPasswordPage() {
           </Button>
         </Stack>
       </Box>
-      <Typography sx={{ mt: 3, fontSize: fontSize.meta, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
-          Zurück zur Anmeldung
-        </Link>
-      </Typography>
+      <SignInLink sx={{ mt: 3 }} />
     </AuthLayout>
   )
 }

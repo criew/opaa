@@ -8,9 +8,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Every capability needs both German wordings: the label the refusal and the manual use, and the
- * sentence object the administration overview's plain-text line puts between "Alle Konten dürfen"
- * and "anlegen". A value added to {@link Capability} without them would otherwise reach the user
- * interface as the word "null".
+ * sentence end the administration overview's plain-text line puts after "Alle Konten dürfen". A
+ * value added to {@link Capability} without them would otherwise reach the user interface as the
+ * word "null".
  */
 class CapabilityLabelTest {
 
@@ -20,8 +20,8 @@ class CapabilityLabelTest {
     assertThat(CapabilityService.label(capability))
         .as("the name the refusal and the manual use for %s", capability)
         .isNotBlank();
-    assertThat(CapabilityService.creatable(capability))
-        .as("what the overview says %s creates", capability)
+    assertThat(CapabilityService.permits(capability))
+        .as("what the overview says %s permits", capability)
         .isNotBlank();
   }
 }

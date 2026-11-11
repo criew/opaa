@@ -85,7 +85,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await user.goto("/register");
     await expect(user.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
     await user.locator("#register-email").fill(outsideAddress);
-    await user.getByRole("button", { name: "Konto registrieren" }).click();
+    await user.getByRole("button", { name: "Registrieren", exact: true }).click();
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
     ).toBeVisible();
@@ -96,7 +96,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     // The form asks for the address alone: nobody can put a name on somebody else's account.
     await expect(user.locator("#register-display-name")).toHaveCount(0);
     await user.locator("#register-email").fill(address);
-    await user.getByRole("button", { name: "Konto registrieren" }).click();
+    await user.getByRole("button", { name: "Registrieren", exact: true }).click();
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
     ).toBeVisible();

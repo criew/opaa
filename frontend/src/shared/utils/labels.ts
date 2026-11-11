@@ -58,6 +58,7 @@ const capabilityLabels: Record<Capability, string> = {
   CREATE_PROMPT_LIBRARY: 'Prompt-Bibliotheken anlegen',
   CREATE_AGENT: 'Agenten anlegen',
   CREATE_TEMPLATE: 'Vorlagen anlegen',
+  VIEW_AGENT_DIRECTORY: 'Agentenverzeichnis einsehen',
 }
 
 /**
@@ -68,7 +69,7 @@ const capabilityLabels: Record<Capability, string> = {
  */
 export function capabilityMissingMessage(capability: Capability): string {
   return (
-    `Ihnen fehlt das Anlegerecht „${capabilityLabels[capability]}“. ` +
+    `Ihnen fehlt das ${capability === 'VIEW_AGENT_DIRECTORY' ? 'Recht' : 'Anlegerecht'} „${capabilityLabels[capability]}“. ` +
     'Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.'
   )
 }

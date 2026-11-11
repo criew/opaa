@@ -7,22 +7,22 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import SectionHead from '@/shared/ui/SectionHead'
 import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useMailStore } from '@/features/mail'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import PageSection from '@/shared/ui/PageSection'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import { mailStatusOf } from '@/features/mail'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
-import { fontSize } from '@/shared/theme/tokens'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
   'Reguläre lokale Konten können sich ab sofort nicht mehr anmelden, und ihre laufenden Sitzungen ' +
@@ -150,8 +150,8 @@ function LockoutField(props: LockoutFieldProps) {
   }
   return (
     <Box>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <TextField
+      <FormField
+        label={label}
         id={id}
         inputRef={inputRef}
         fullWidth
@@ -517,23 +517,19 @@ export default function LocalAuthSettingsCard() {
 
       <SmtpStatusLine />
 
-      <Box sx={{ mt: 2.5, pt: 2.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1.5 }}>
-          Regeln und Fristen
-        </Typography>
+      <Box sx={{ mt: 4 }}>
+        <SectionHead component="h3">Regeln und Fristen</SectionHead>
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            columnGap: 3,
+            gridTemplateColumns: '1fr',
             rowGap: 2,
+            maxWidth: formWidth.column,
           }}
         >
-          <Box sx={{ gridColumn: { sm: 'span 2' } }}>
-            <FieldLabel htmlFor="local-auth-domains">
-              Adress-Domänen der Selbstregistrierung
-            </FieldLabel>
-            <TextField
+          <Box>
+            <FormField
+              label="Adress-Domänen der Selbstregistrierung"
               id="local-auth-domains"
               fullWidth
               size="small"
@@ -553,8 +549,8 @@ export default function LocalAuthSettingsCard() {
             ] as Array<[keyof RulesDraft, string, string]>
           ).map(([field, label, help]) => (
             <Box key={field}>
-              <FieldLabel htmlFor={`local-auth-${field}`}>{label}</FieldLabel>
-              <TextField
+              <FormField
+                label={label}
                 id={`local-auth-${field}`}
                 fullWidth
                 size="small"
@@ -566,12 +562,7 @@ export default function LocalAuthSettingsCard() {
             </Box>
           ))}
         </Box>
-        <Typography
-          component="h3"
-          sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 3, mb: 0.5 }}
-        >
-          Sperre nach Fehlversuchen
-        </Typography>
+        <SectionHead component="h3">Sperre nach Fehlversuchen</SectionHead>
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
           Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
           der Betrieb fest, abschalten lässt sich die Sperre nicht.
@@ -587,9 +578,9 @@ export default function LocalAuthSettingsCard() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            columnGap: 3,
+            gridTemplateColumns: '1fr',
             rowGap: 2,
+            maxWidth: formWidth.column,
           }}
         >
           <LockoutField
