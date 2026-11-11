@@ -829,9 +829,7 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByLabelText('Name des Space')).toHaveValue('Fremdverwaltet')
     expect(screen.getByLabelText('Name des Space')).toHaveAttribute('readonly')
     expect(screen.getByLabelText('Beschreibung')).toHaveAttribute('readonly')
-    expect(
-      screen.queryByRole('button', { name: 'Speichern' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
     expect(screen.queryByText('Gefahrenbereich')).not.toBeInTheDocument()
   })
 
@@ -923,9 +921,7 @@ describe('SpaceSettingsPage', () => {
       expect(field).toHaveValue(instruction)
       expect(field).toHaveAttribute('readonly')
       expect(screen.getByText(/Nur Mitglieder mit der Rolle ADMIN/)).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'Speichern' }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
     })
 
     it('a curator cannot change it either', () => {
