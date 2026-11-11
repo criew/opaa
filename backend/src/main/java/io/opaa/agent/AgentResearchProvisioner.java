@@ -48,10 +48,12 @@ class AgentResearchProvisioner {
 
   /**
    * Above the default of a self-made agent ({@link AgentService#DEFAULT_LIMITS}) and within the
-   * installation's limits; a lower installation limit still wins. Starting values for the cases in
-   * {@code eval/agents/recherche}, to be calibrated by their first measurement.
+   * installation's limits; a lower installation limit still wins. The collected volume is 150000
+   * characters (about 45k tokens): the cases in {@code eval/agents/recherche} reached the former
+   * 60000 in most runs, and the rest of a 128k-token context stays free for rules, history and the
+   * report.
    */
-  static final AgentLimits RESEARCH_LIMITS = new AgentLimits(12, 8, 240, null);
+  static final AgentLimits RESEARCH_LIMITS = new AgentLimits(12, 8, 240, 150_000);
 
   private final JdbcTemplate jdbc;
   private final AgentRepository agentRepository;

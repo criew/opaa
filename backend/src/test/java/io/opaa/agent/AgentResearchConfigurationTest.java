@@ -64,6 +64,9 @@ class AgentResearchConfigurationTest {
     assertThat(limits.maxDurationSeconds())
         .isGreaterThan(own.maxDurationSeconds())
         .isLessThanOrEqualTo((int) system.maxDuration().toSeconds());
+    assertThat(limits.maxCollectedChars())
+        .isGreaterThan(own.maxCollectedChars())
+        .isLessThanOrEqualTo(system.maxCollectedChars());
     assertThat(own.maxToolCalls()).isLessThan(system.maxToolCalls());
   }
 }

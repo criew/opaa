@@ -445,14 +445,14 @@ settings:
         eigenen Wert setzt
   - key: io.opaa.agent.AgentResearchProvisioner#RESEARCH_LIMITS
     source: CONSTANT
-    defaultValue: "12 Werkzeugaufrufe, 8 Suchen, 240 Sekunden"
+    defaultValue: "12 Werkzeugaufrufe, 8 Suchen, 240 Sekunden, 150000 Zeichen Lesemenge"
     effect: >-
       Voreinstellung des mitgelieferten Agenten „Recherche“, den das Einschalten der Agenten je
       Organisation einmal anlegt: für alle Konten nutzbar, alle sechs Werkzeuge (angeboten werden
       nur die eingeschalteten, das Ausfüllen von Vorlagen nur mit zugeordneter Vorlage), Plan zur
       Bestätigung, keine feste Bibliothek (ein Lauf liest, was die fragende Person lesen darf),
       verantwortliche Stelle die Systemverwaltung, Grenzen über denen eines neu angelegten Agenten
-      (5 Werkzeugaufrufe, 3 Suchen, 120 Sekunden) und innerhalb der Grenzen der Installation
+      (5 Werkzeugaufrufe, 3 Suchen, 120 Sekunden, 60000 Zeichen) und innerhalb der Grenzen der Installation
     bearings: [VISIBILITY, DATA_FLOW]
     notes:
       - >-
