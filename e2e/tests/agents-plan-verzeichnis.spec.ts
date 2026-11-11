@@ -154,7 +154,8 @@ test.describe.serial("Agenten: Planbestätigung und Agentenverzeichnis", () => {
 
     await page
       .getByTestId("chosen-agent-chip")
-      .getByTestId("CancelIcon")
+      // the icon's data-testid exists only in development builds of MUI
+      .locator(".MuiChip-deleteIcon")
       .click();
     await expect(page.getByTestId("chosen-agent-chip")).toHaveCount(0);
     await confirmation.getByRole("button", { name: "Ändern" }).click();
