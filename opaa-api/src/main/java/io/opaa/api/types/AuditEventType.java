@@ -749,6 +749,12 @@ public enum AuditEventType {
   /** The installation-wide settings of agents changed: before/after of the switch and the tools. */
   AGENT_SETTINGS_CHANGED,
 
+  /**
+   * The agent directory was read or exported, or the attempt refused; {@code after} names the form
+   * ({@code VIEW} or {@code CSV}). Carries no content of the directory.
+   */
+  AGENT_DIRECTORY_ACCESSED,
+
   // Verbindungsprofile ("Zugänge", ADR-0041 Entscheidung 7)
   /** A connection profile was created; the client secret appears only as whether one is set. */
   CONNECTION_PROFILE_CREATED,

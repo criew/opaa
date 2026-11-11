@@ -688,3 +688,9 @@ capabilities:
     seesAboutOthers: Nichts über andere Personen
   - id: CREATE_TEMPLATE
     seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage
+  - id: VIEW_AGENT_DIRECTORY
+    seesAboutOthers: >-
+      Nichts über andere Personen; öffnet das Agentenverzeichnis mit Zweck, Anweisung,
+      Bibliotheksnamen, Werkzeugen, Grenzen, Vorlagen, verantwortlicher Stelle, Fassung und
+      Sperrzustand jedes Agenten und jeder Vorlage der Organisation, ohne Bibliotheksinhalte,
+      Eigentümer und Nutzungsangaben. Ab Werk niemand außer der Systemverwaltung

@@ -235,6 +235,64 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/agent-directory:
+    get:
+      operationId: getAgentDirectory
+      tags: [agent]
+      summary: >
+        The agent directory: every agent and, while the switch for document templates is on,
+        every document template of the caller's organization, readable or not, described by what
+        it is and does - purpose, instruction, the names of its libraries, tools, plan step,
+        limits, templates, responsible unit, revision and whether it is locked. Library contents,
+        owners, usage figures, the people using an object and the reason of a lock are not part
+        of it. Needs the capability VIEW_AGENT_DIRECTORY, which the system administration holds
+        implicitly. Every call, a refused one included, is audited as AGENT_DIRECTORY_ACCESSED
+        (form VIEW). While agents are switched off, answers like an unknown address.
+      responses:
+        "200":
+          description: The directory, agents and templates by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentDirectoryResponse"
+        "403":
+          description: >
+            The caller lacks the capability VIEW_AGENT_DIRECTORY (code CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/agent-directory/export:
+    get:
+      operationId: exportAgentDirectory
+      tags: [agent]
+      summary: >
+        The agent directory as a CSV file (UTF-8, semicolon-separated), one row per agent and per
+        document template with the fields of GET /api/v1/agent-directory - for the annex of a
+        service agreement. Same right and same answers as the directory; every call, a refused one
+        included, is audited as AGENT_DIRECTORY_ACCESSED (form CSV). Answered with
+        Content-Disposition: attachment.
+      responses:
+        "200":
+          description: The directory as a CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: >
+            The caller lacks the capability VIEW_AGENT_DIRECTORY (code CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/system/agents:
     get:
       operationId: getAgentSettings
@@ -587,3 +645,138 @@ components:
           description: >
             Display name of who changed the settings last; null unless that person belongs to the
             caller's organization.
+
+    AgentDirectoryResponse:
+      type: object
+      required: [agents, templatesIncluded, templates]
+      description: >
+        The agent directory of the organization. Describes objects, never people: no owner, no
+        usage figure, no list of users, no last use.
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentDirectoryEntry"
+        templatesIncluded:
+          type: boolean
+          description: >
+            Whether the switch for document templates is on; while it is off, templates is empty
+            and no agent names a template.
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentTemplateDirectoryEntry"
+
+    AgentDirectoryResponsibility:
+      type: object
+      required: [missing]
+      description: >
+        The responsible unit of a directory entry. A protected group the caller may not see by
+        name appears as "Geschützte Gruppe" (ADR-0036, Entscheidung 9).
+      properties:
+        groupName:
+          type: string
+          nullable: true
+        function:
+          type: string
+          nullable: true
+        missing:
+          type: boolean
+          description: Whether the responsibility is missing right now.
+
+    AgentDirectoryEntry:
+      type: object
+      required:
+        - id
+        - name
+        - instruction
+        - libraryNames
+        - toolNames
+        - planStep
+        - limits
+        - templateNames
+        - revision
+        - delivered
+        - responsibility
+        - locked
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+          description: The purpose.
+        instruction:
+          type: string
+          description: The instruction appended to the fixed rules; may be empty.
+        libraryNames:
+          type: array
+          description: >
+            The names of the assigned libraries that still exist, by name; never their content.
+            Empty means the agent searches whatever the calling person may read.
+          items:
+            type: string
+        toolNames:
+          type: array
+          items:
+            type: string
+        planStep:
+          $ref: "#/components/schemas/AgentPlanStep"
+        limits:
+          $ref: "#/components/schemas/AgentLimits"
+        templateNames:
+          type: array
+          description: The names of the assigned document templates, by name.
+          items:
+            type: string
+        revision:
+          type: integer
+          description: The "Fassung", as on the agent.
+        delivered:
+          type: boolean
+          description: The installation delivered this agent ("Recherche").
+        responsibility:
+          $ref: "#/components/schemas/AgentDirectoryResponsibility"
+        locked:
+          type: boolean
+        lockedSince:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the agent is locked; null while it is not.
+
+    DocumentTemplateDirectoryEntry:
+      type: object
+      required: [id, name, fileName, placeholderNames, revision, responsibility, locked]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+          description: The purpose.
+        fileName:
+          type: string
+        placeholderNames:
+          type: array
+          description: The placeholders of the file, in the order they first appear.
+          items:
+            type: string
+        revision:
+          type: integer
+          description: The "Fassung", as on the template.
+        responsibility:
+          $ref: "#/components/schemas/AgentDirectoryResponsibility"
+        locked:
+          type: boolean
+        lockedSince:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the template is locked; null while it is not.
