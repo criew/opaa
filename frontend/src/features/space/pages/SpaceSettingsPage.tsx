@@ -18,7 +18,7 @@ import {
   spaceSettingsRoute,
   type SpaceSettingsTab,
 } from '@/shared/routes'
-import { fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** The tabs in the order of the bar; every value in {@link SPACE_SETTINGS_TABS} has one. */
 const tabs: Array<{ value: SpaceSettingsTab; label: string }> = [
@@ -79,7 +79,7 @@ export default function SpaceSettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 760 }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <Box
           sx={{
             display: 'flex',

@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SectionHead from '@/shared/ui/SectionHead'
+import { readingWidth } from '@/shared/theme/tokens'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import EmbeddingIndexSection from './EmbeddingIndexSection'
@@ -39,7 +40,10 @@ export default function IndexStatusSection() {
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
         {metadataEnabled && (
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: 'text.secondary', mb: 2, maxWidth: readingWidth }}
+          >
             „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion tragen und wie viele je
             Feld noch ohne Wert sind. Beide Läufe lesen die Originaldateien in Chargen neu; die
             Suche bleibt verfügbar, ein angehaltener Lauf setzt später fort.

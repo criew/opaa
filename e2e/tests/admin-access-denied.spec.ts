@@ -66,7 +66,6 @@ const READ_ENDPOINTS = [
   '/api/v1/admin/search/status',
   '/api/v1/admin/self-disclosure/settings',
   '/api/v1/admin/source-connections/dormant',
-  '/api/v1/admin/succession/counts',
   '/api/v1/admin/succession/settings',
   '/api/v1/admin/succession?kind=OPEN_SUCCESSION',
   '/api/v1/admin/users',

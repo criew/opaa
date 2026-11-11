@@ -1,12 +1,12 @@
 import { useId } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
 import { fontSize, iconSize, radius } from '@/shared/theme/tokens'
+import { TextAction } from '@/shared/ui/DetailSection'
 import AccessBadge from './AccessBadge'
 import {
   accessBadgeLabel,
@@ -184,9 +184,9 @@ export default function CapabilityRow({ entries, onEdit }: CapabilityRowProps) {
       </Box>
 
       <Box sx={{ gridColumn: { xs: '2', md: '3' }, justifySelf: { md: 'end' } }}>
-        <Button variant="outlined" size="small" onClick={onEdit} aria-label={`Ändern: ${title}`}>
+        <TextAction onClick={onEdit} aria-label={`Ändern: ${title}`}>
           Ändern
-        </Button>
+        </TextAction>
       </Box>
     </Box>
   )
