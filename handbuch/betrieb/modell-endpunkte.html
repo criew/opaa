@@ -5382,7 +5382,7 @@ der Suche tut, steht unter <a href="../referenz/wie-die-suche-arbeitet.html#die-
   nicht taugt; das voreingestellte <code>OPAA_RERANK_TIMEOUT</code> lässt den Fall nur zu, damit er nicht als
   Ausfall erscheint.</li>
 </ul>
-<p>Zum Einschalten gehören drei Angaben zusammen: der Schalter „Reranking einschalten", die
+<p>Zum Einschalten gehören drei Angaben zusammen: das Auswahlkästchen „Reranking einschalten", die
 Basis-Adresse ohne den Pfad <code>/rerank</code> und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
 fortlaufend auf der Seite „Suche &amp; Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.</p>
@@ -5443,7 +5443,7 @@ der openai-kompatiblen Schnittstelle bedienen:</p>
 <li><code>GET {Basis-Adresse}/models</code> dient OPAA als Erreichbarkeitsprüfung, beim Start und danach
   regelmäßig. Sie überträgt kein Audio und kostet bei Anbietern mit Abrechnung je Aufruf nichts.</li>
 </ul>
-<p>Einzutragen sind unter <strong>Modelle → Spracheingabe</strong> der Schalter „Spracheingabe einschalten", die
+<p>Einzutragen sind unter <strong>Modelle → Spracheingabe</strong> das Auswahlkästchen „Spracheingabe einschalten", die
 Basis-Adresse ohne den Pfad <code>/audio/transcriptions</code> (etwa <code>https://stt.landesverwaltung.de/v1</code>),
 die Modell-Kennung und, falls der Dienst ihn verlangt, der Zugangsschlüssel. Der Schlüssel liegt
 verschlüsselt in der Datenbank und geht nur in den <code>Authorization</code>-Header der Anfrage, nie in ein
@@ -5667,7 +5667,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle <strong>Texterkennung</strong>. Si
    ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
    Er steht beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
    Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.</li>
-<li><strong>Schalter der Rolle</strong> in der Modellverwaltung, Reiter „Texterkennung“
+<li><strong>Auswahlkästchen der Rolle</strong> in der Modellverwaltung, Reiter „Texterkennung“
    (<a href="../administration/modelle.html#texterkennung-einrichten">Texterkennung einrichten</a>). Dazu
    gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
    verlangt, der Zugangsschlüssel. Jede Änderung steht
@@ -5882,7 +5882,7 @@ Ollama Werkzeuge sauber aufrufen und unter einer anderen Laufzeit nicht. Eine fe
 das für die Kombination des Hauses, mit Fällen wie eine Gebührenfrage, die eine Suche verlangt, ein
 Dank, der keine verlangt, oder ein Suchergebnis mit eingeschmuggelter Anweisung. Das Werkzeug ist
 eine Attrappe mit festen Antworten; die laufende Installation wird nicht berührt.</p>
-<p>Mit eingeschaltetem Schalter „Agenten“ startet die Systemverwaltung dieselbe Messung auch in der
+<p>Sind Agenten eingeschaltet, startet die Systemverwaltung dieselbe Messung auch in der
 Anwendung, siehe <a href="../administration/modelle.html#werkzeuge-prüfen">Werkzeuge prüfen</a>; der Weg hier
 bleibt für Messungen vor der Installation, für Kombinationen außerhalb der Modellverwaltung und für
 Messreihen mit Ausgabe im Fluss oder der Definition der Agenten-Suche
