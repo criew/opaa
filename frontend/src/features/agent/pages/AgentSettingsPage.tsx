@@ -14,7 +14,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageSection from '@/shared/ui/PageSection'
-import { contentWidth, fontSize } from '@/shared/theme/tokens'
+import { contentWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 import { getAgentSettings, updateAgentSettings } from '../api/agentApi'
 import { AGENT_TOOLS } from '../components/agentTexts'
 
@@ -49,7 +49,7 @@ export default function AgentSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Agenten" gutterBottom />
         <Alert severity="info">
           Agenten schaltet die Systemverwaltung frei. Für Ihr Konto ist diese Seite nicht
@@ -82,7 +82,7 @@ export default function AgentSettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={SmartToyOutlinedIcon}
           title="Agenten"
@@ -98,7 +98,9 @@ export default function AgentSettingsPage() {
                 }
                 label="Agenten in dieser Installation anbieten"
               />
-              <Typography sx={{ fontSize: fontSize.meta, mt: 0.5, maxWidth: '80ch', ...muted }}>
+              <Typography
+                sx={{ fontSize: fontSize.meta, mt: 0.5, maxWidth: readingWidth, ...muted }}
+              >
                 Ausgeschaltet sind Agenten, ihr Anlegerecht und ihre Seiten nirgends sichtbar und
                 über die Schnittstelle nicht erreichbar. Beim ersten Einschalten legt OPAA den
                 Agenten „Recherche“ an, sichtbar für alle Konten und danach frei änderbar. Wer
@@ -106,7 +108,7 @@ export default function AgentSettingsPage() {
               </Typography>
             </PageSection>
             <PageSection title="Werkzeuge">
-              <Typography sx={{ fontSize: fontSize.meta, mb: 1, maxWidth: '80ch', ...muted }}>
+              <Typography sx={{ fontSize: fontSize.meta, mb: 1, maxWidth: readingWidth, ...muted }}>
                 Ein abgeschaltetes Werkzeug bietet kein Lauf an, auch wenn ein Agent es nennt.
               </Typography>
               <Box role="group" aria-label="Freigeschaltete Werkzeuge">

@@ -33,6 +33,7 @@ import { updateRequest } from '../components/updateRequest'
 import { countLabel } from '../components/agentTexts'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const tabs: Array<{ value: AgentTab; label: string }> = [
   { value: 'auftrag', label: 'Auftrag' },
@@ -149,7 +150,7 @@ export default function AgentDetailPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 880 }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <AssetDetailHeader
           assetType="AGENT"
           assetId={id}

@@ -1,14 +1,7 @@
 import Box from '@mui/material/Box'
 import { alpha } from '@mui/material/styles'
 import { fontFamily, radius } from '../theme/tokens'
-
-/** The one or two letters a provider is recognised by: "Verzeichnisdienst" → V, "Landes Portal" → LP. */
-function providerInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return '?'
-  if (words.length === 1) return words[0].charAt(0).toUpperCase()
-  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase()
-}
+import { providerInitials } from './providerInitials'
 
 interface ProviderMonogramProps {
   name: string
@@ -50,8 +43,10 @@ export default function ProviderMonogram({
         lineHeight: 1,
         border: 1,
         ...(tone === 'inverse' && {
+          // No tint of its own: the letters stand on the accent surface like the button's text,
+          // which is the pairing the contrast rule covers (guidelines 2.4).
           color: 'inherit',
-          bgcolor: alpha('#FFFFFF', 0.16),
+          bgcolor: 'transparent',
           borderColor: alpha('#FFFFFF', 0.4),
         }),
         ...(tone === 'accent' && {

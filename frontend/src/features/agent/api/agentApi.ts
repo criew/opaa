@@ -1,5 +1,7 @@
+import axios from 'axios'
 import type {
   AgentCreateRequest,
+  AgentDirectoryResponse,
   AgentResponse,
   AgentSettingsResponse,
   AgentSettingsUpdateRequest,
@@ -140,5 +142,47 @@ export async function updateAgentSettings(
     return data
   } catch (err) {
     normalizeError(err)
+  }
+}
+
+/**
+ * The agent directory - every agent and template of the organization, for whoever holds the right
+ * „Agentenverzeichnis einsehen“. Every call is recorded in the audit log.
+ */
+export async function getAgentDirectory(): Promise<AgentDirectoryResponse> {
+  try {
+    const { data } = await apiClient.get<AgentDirectoryResponse>('/v1/agent-directory')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export const AGENT_DIRECTORY_EXPORT_FAILED =
+  'Das Agentenverzeichnis konnte nicht exportiert werden.'
+
+/**
+ * The directory as a CSV file built by the server; recorded in the audit log like a view. A refusal
+ * arrives as a blob too; its German message is read from it.
+ */
+export async function exportAgentDirectory(): Promise<Blob> {
+  try {
+    const { data } = await apiClient.get<Blob>('/v1/agent-directory/export', {
+      responseType: 'blob',
+    })
+    return data
+  } catch (err) {
+    let message: string | null = null
+    if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+      try {
+        const parsed: unknown = JSON.parse(await err.response.data.text())
+        if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+          message = String((parsed as { error: unknown }).error)
+        }
+      } catch {
+        message = null
+      }
+    }
+    throw new Error(message ?? AGENT_DIRECTORY_EXPORT_FAILED, { cause: err })
   }
 }

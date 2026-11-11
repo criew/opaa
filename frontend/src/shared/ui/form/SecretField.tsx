@@ -26,6 +26,11 @@ export interface SecretRemoval {
 interface SecretFieldProps {
   id: string
   label: string
+  /**
+   * What the toggle calls its field, where the label is a phrase that reads badly in front of
+   * „anzeigen“ (a repetition field: „Wiederholung“). Defaults to the label.
+   */
+  toggleName?: string
   value: string
   onChange: (value: string) => void
   /** A secret is stored and still serves: the field reads „Gesetzt“ until it is replaced. */
@@ -33,8 +38,13 @@ interface SecretFieldProps {
   error?: string | null
   hint?: string
   optional?: boolean
-  autoComplete?: 'new-password' | 'one-time-code' | 'off'
+  /** `current-password` for the mask of a sign-in; a secret that is being set keeps the default. */
+  autoComplete?: 'new-password' | 'current-password' | 'one-time-code' | 'off'
+  disabled?: boolean
   inputRef?: Ref<HTMLInputElement>
+  /** Reveals the entry from outside, e.g. after a generator filled the field. */
+  shown?: boolean
+  onShownChange?: (shown: boolean) => void
   removal?: SecretRemoval
 }
 
@@ -49,11 +59,13 @@ const EDGE_ALIGNED_SX = { px: 1, ml: -1 } as const
  * what was typed here. A stored secret is never mirrored back; it reads „Gesetzt“ with „Ersetzen“,
  * and only replacing it opens an empty field. Removing a stored secret is a text action at the
  * field. The control that stands for the field carries its id and error in every state, so a
- * form's focus on the first invalid entry lands on it.
+ * form's focus on the first invalid entry lands on it. The toggle names its field and stays in
+ * the tab order, so that revealing a long value is not a mouse-only action.
  */
 export default function SecretField({
   id,
   label,
+  toggleName = label,
   value,
   onChange,
   stored = false,
@@ -61,11 +73,21 @@ export default function SecretField({
   hint,
   optional = false,
   autoComplete = 'new-password',
+  disabled = false,
   inputRef,
+  shown: controlledShown,
+  onShownChange,
   removal,
 }: SecretFieldProps) {
   const [replacing, setReplacing] = useState(false)
-  const [shown, setShown] = useState(false)
+  const [ownShown, setOwnShown] = useState(false)
+  const shown = controlledShown ?? ownShown
+
+  function toggleShown() {
+    const next = !shown
+    setOwnShown(next)
+    onShownChange?.(next)
+  }
   const errorId = `${id}-error`
 
   function focusControl() {
@@ -164,7 +186,10 @@ export default function SecretField({
         optional={optional}
         inputRef={inputRef}
         type={shown ? 'text' : 'password'}
+        size="small"
+        fullWidth
         autoComplete={autoComplete}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         error={Boolean(error)}
@@ -190,9 +215,8 @@ export default function SecretField({
                   <IconButton
                     size="small"
                     edge="end"
-                    aria-label={shown ? `${label} verbergen` : `${label} anzeigen`}
-                    aria-pressed={shown}
-                    onClick={() => setShown((current) => !current)}
+                    aria-label={shown ? `${toggleName} verbergen` : `${toggleName} anzeigen`}
+                    onClick={toggleShown}
                   >
                     {shown ? (
                       <VisibilityOffOutlined fontSize="small" />

@@ -79,7 +79,7 @@ export default function ConnectionsAdminPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Anbindungen" gutterBottom />
         <Alert severity="info">
           Die Anbindungen werden von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite
@@ -91,7 +91,7 @@ export default function ConnectionsAdminPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={CableOutlinedIcon}
           title="Anbindungen"

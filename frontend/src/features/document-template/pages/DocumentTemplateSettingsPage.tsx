@@ -13,7 +13,7 @@ export default function DocumentTemplateSettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Vorlagen" gutterBottom />
         <Alert severity="info">
           Vorlagen schaltet die Systemverwaltung ein. Für Ihr Konto ist diese Seite nicht
@@ -25,7 +25,7 @@ export default function DocumentTemplateSettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={DescriptionOutlinedIcon}
           title="Vorlagen"

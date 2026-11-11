@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import { notify } from '@/shared/stores/notificationStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import CreateButton from '@/shared/ui/CreateButton'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import { SETUP_NAMES } from '@/shared/ui/setup/setupNames'
 import EmbeddingChangeSection from '../components/EmbeddingChangeSection'
@@ -20,10 +20,10 @@ import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
 import ModelRoleSection from '../components/ModelRoleSection'
 import TextRecognitionSection from '../components/TextRecognitionSection'
-import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription' | 'text-recognition'
 
@@ -66,27 +66,10 @@ function ChatModelsSection() {
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
-        }}
-      >
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-          {models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setForm({ open: true, model: null })}
-        >
-          Neues Modell
-        </Button>
-      </Box>
+      {!isLoading && !error && (
+        <AreaPageCount total={models.length} unit={['Chat-Modell', 'Chat-Modelle']} />
+      )}
+      <CreateButton onClick={() => setForm({ open: true, model: null })}>Neues Modell</CreateButton>
 
       {error && models.length > 0 && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -95,7 +78,7 @@ function ChatModelsSection() {
       )}
 
       {!isLoading && !error && !models.some((model) => model.active) && (
-        <Alert severity="warning" sx={{ mb: 2, maxWidth: '80ch' }}>
+        <Alert severity="warning" sx={{ mb: 2, maxWidth: readingWidth }}>
           Es ist noch kein Chat-Modell aktiv. Bis eines angelegt und aktiviert ist, beantwortet der
           Chat keine Fragen; die Personen sehen dort einen Hinweis.
         </Alert>
@@ -114,13 +97,9 @@ function ChatModelsSection() {
           framed
           message="Noch keine Chat-Modelle."
           action={
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={() => setForm({ open: true, model: null })}
-            >
+            <CreateButton placement="empty" onClick={() => setForm({ open: true, model: null })}>
               Neues Modell
-            </Button>
+            </CreateButton>
           }
         />
       ) : (
@@ -172,7 +151,7 @@ function EmbeddingInfoSection() {
          its panel points to. */}
       {embeddingInfo?.model !== null && (
         <Typography
-          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, maxWidth: readingWidth }}
         >
           Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
           bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
@@ -181,7 +160,7 @@ function EmbeddingInfoSection() {
       )}
       {embeddingInfo && !embeddingInfo.model ? (
         <>
-          <Alert severity="warning" sx={{ mb: 3, maxWidth: '80ch' }}>
+          <Alert severity="warning" sx={{ mb: 3, maxWidth: readingWidth }}>
             Es ist noch kein Embedding-Modell eingerichtet. Ohne es gibt es keinen Suchindex:
             Indexierung, Upload und Suche stehen erst bereit, wenn das erste Modell festgelegt ist.
           </Alert>
@@ -232,7 +211,7 @@ export default function LlmModelManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Modelle" gutterBottom />
         <Alert severity="info">
           Die Modellverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite
@@ -244,7 +223,7 @@ export default function LlmModelManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={PsychologyOutlinedIcon}
           title="Modelle"

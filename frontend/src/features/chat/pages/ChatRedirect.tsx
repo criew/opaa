@@ -8,6 +8,7 @@ import { lastUsedSpace } from '@/features/space'
 import EmptyState from '@/shared/ui/states/EmptyState'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { fieldWidth } from '@/shared/theme/tokens'
 
 /**
  * Resolves the global `/chat` entry point: it always lands on an empty, not-yet-persisted chat
@@ -56,7 +57,10 @@ export default function ChatRedirect() {
   if (!defaultSpace) {
     return (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center', maxWidth: 400 }}>
+        <Stack
+          spacing={2}
+          sx={{ alignItems: 'center', textAlign: 'center', maxWidth: fieldWidth.medium }}
+        >
           {spacesError ? (
             <LoadError
               message="Spaces konnten nicht geladen werden."

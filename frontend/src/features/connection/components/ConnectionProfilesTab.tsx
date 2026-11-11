@@ -2,14 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import AddIcon from '@mui/icons-material/Add'
 import type {
   CapabilityOverviewResponse,
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
+import CreateButton from '@/shared/ui/CreateButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSourceTypes } from './useSourceTypes'
@@ -253,41 +252,27 @@ export default function ConnectionProfilesTab() {
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 2,
-          rowGap: 1.5,
-          alignItems: 'flex-start',
-          flexWrap: { xs: 'wrap', md: 'nowrap' },
-          mb: 3,
-        }}
+      <CreateButton
+        disabled={!anyTypeAdmitsProfiles}
+        onClick={() => setForm({ open: true, profile: null })}
       >
-        <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
-          {loading || error || !settled ? null : (
-            <StatusLine
-              component="h2"
-              label="Handlungsbedarf der Zugänge"
-              tone={summary.tone}
-              headline={summary.headline}
-              detail={
-                profiles.length === 0
-                  ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
-                  : summary.detail
-              }
-            />
-          )}
+        Neuer Zugang
+      </CreateButton>
+      {!loading && !error && settled && (
+        <Box sx={{ mb: 3 }}>
+          <StatusLine
+            component="h2"
+            label="Handlungsbedarf der Zugänge"
+            tone={summary.tone}
+            headline={summary.headline}
+            detail={
+              profiles.length === 0
+                ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
+                : summary.detail
+            }
+          />
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          disabled={!anyTypeAdmitsProfiles}
-          onClick={() => setForm({ open: true, profile: null })}
-          sx={{ flex: 'none' }}
-        >
-          Neuer Zugang
-        </Button>
-      </Box>
+      )}
 
       {sourceTypesLoaded && !anyTypeAdmitsProfiles && (
         <Alert severity="info" sx={{ mb: 2 }} data-testid="no-profile-source-type">
@@ -324,13 +309,12 @@ export default function ConnectionProfilesTab() {
           message="Noch keine Zugänge. Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
           action={
             anyTypeAdmitsProfiles ? (
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
+              <CreateButton
+                placement="empty"
                 onClick={() => setForm({ open: true, profile: null })}
               >
                 Neuer Zugang
-              </Button>
+              </CreateButton>
             ) : undefined
           }
         />

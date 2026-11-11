@@ -25,6 +25,7 @@ Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht u
 | Mailversand und Vorlagen | [E-Mail](e-mail.md) |
 | Virenscanner anbinden | [Virenprüfung einrichten](virenpruefung.md) |
 | Agenten und ihre Werkzeuge zulassen | [Agenten einschalten](agenten.md) |
+| Agenten und Vorlagen für die Personalvertretung auflisten | [Agentenverzeichnis einsehen](agentenverzeichnis.md) |
 | Word-Vorlagen anbieten | [Vorlagen einschalten](vorlagen.md) |
 | Einstellungen in eine andere Installation mitnehmen | [Einstellungen übertragen](einstellungen-uebertragen.md) |
 

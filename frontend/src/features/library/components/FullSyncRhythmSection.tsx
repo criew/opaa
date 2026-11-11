@@ -19,6 +19,7 @@ import PageSection from '@/shared/ui/PageSection'
 import { formWidth } from '@/shared/theme/tokens'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const MIN_DAYS = 1
 const MAX_DAYS = 365
@@ -223,7 +224,11 @@ export default function FullSyncRhythmSection() {
       ) : rhythms === null ? (
         <LoadingState shape="lines" count={2} />
       ) : (
-        <Table size="small" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
+        <Table
+          size="small"
+          aria-label="Vollabgleich-Rhythmus je Quellart"
+          sx={{ maxWidth: contentWidth.form }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Quellart</TableCell>

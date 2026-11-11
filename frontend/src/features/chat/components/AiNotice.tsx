@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { fontSize, iconSize, readingWidth } from '@/shared/theme/tokens'
 
 /** The accessible name of the notice region; screen readers announce it before the text. */
 const NOTICE_NAME = 'Hinweis zur KI-Nutzung'
@@ -49,7 +49,7 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         display: 'flex',
         alignItems: 'flex-start',
         gap: 1,
-        maxWidth: 520,
+        maxWidth: readingWidth,
         px: 2,
         py: 0.5,
         borderLeft: 3,

@@ -94,7 +94,7 @@ export default function SettingsPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       {/* one width for every area, so the tab row scrolls alike in all of them */}
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={TuneOutlinedIcon}
           title="Ihre Einstellungen"

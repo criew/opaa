@@ -33,6 +33,7 @@ export const ASSET_TYPE_RUNTIME_SWITCHES: Partial<Record<AssetType, keyof Runtim
 export const CAPABILITY_RUNTIME_SWITCHES: Partial<Record<Capability, keyof RuntimeSwitches>> = {
   CREATE_TEMPLATE: 'documentTemplates',
   CREATE_AGENT: 'agents',
+  VIEW_AGENT_DIRECTORY: 'agents',
 }
 
 /** Called by `authStore` on every change of its flags. */

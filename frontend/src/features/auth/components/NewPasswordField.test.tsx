@@ -5,46 +5,6 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
 import AuthLayout from './AuthLayout'
 import NewPasswordField from './NewPasswordField'
-import PasswordField from './PasswordField'
-
-function Harness() {
-  const [value, setValue] = useState('')
-  return (
-    <PasswordField
-      id="p"
-      label="Passwort"
-      value={value}
-      onChange={setValue}
-      autoComplete="new-password"
-    />
-  )
-}
-
-describe('PasswordField', () => {
-  it('masks the entry and reveals it on request', async () => {
-    renderWithProviders(<Harness />)
-    const field = screen.getByLabelText('Passwort')
-    await userEvent.type(field, 'geheim')
-    expect(field).toHaveAttribute('type', 'password')
-
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort anzeigen' }))
-
-    expect(field).toHaveAttribute('type', 'text')
-    expect(screen.getByRole('button', { name: 'Passwort verbergen' })).toBeInTheDocument()
-  })
-
-  // accessibility.md 2.1: revealing a long generated password may not be a mouse-only action.
-  it('reaches the toggle by keyboard', async () => {
-    renderWithProviders(<Harness />)
-    screen.getByLabelText('Passwort').focus()
-
-    await userEvent.tab()
-
-    expect(screen.getByRole('button', { name: 'Passwort anzeigen' })).toHaveFocus()
-    await userEvent.keyboard('{Enter}')
-    expect(screen.getByLabelText('Passwort')).toHaveAttribute('type', 'text')
-  })
-})
 
 function NewPasswordHarness({ minLength = 12 }: { minLength?: number }) {
   const [value, setValue] = useState('')

@@ -15,6 +15,7 @@ import type {
   EmbeddingModelProbeResponse,
   EmbeddingReindexStatusResponse,
 } from '@/shared/api/types'
+import SectionHead from '@/shared/ui/SectionHead'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
 import { EmbeddingModelFields } from '@/shared/ui/setup/ModelParameterFields'
@@ -374,13 +375,13 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
 
   return (
     <Box>
-      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
+      <SectionHead component="h3">
         {mode === 'change'
           ? 'Modell wechseln oder Endpunkt ändern'
           : mode === 'initial'
             ? 'Embedding-Modell festlegen'
             : 'Ersatz-Endpunkt'}
-      </Typography>
+      </SectionHead>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {mode === 'change'
           ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
