@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
@@ -9,13 +8,13 @@ import { getSharedLibraryQuota, updateSharedLibraryQuota } from '../api/sharedLi
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
 import { formWidth } from '@/shared/theme/tokens'
 import { formatNumber } from '@/shared/utils/formatDate'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 
 /** The limit in force in words; 0 is none. */
 function currentText(quota: SharedLibraryQuotaResponse): string {
@@ -64,12 +63,16 @@ function QuotaForm({
   const [draft, setDraft] = useState(current.quotaBytes === 0 ? '' : limitDraft(current.quotaBytes))
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // an empty field is no error while it is being filled, only once „Speichern“ was pressed
+  const [attempted, setAttempted] = useState(false)
 
   const parsed = validated(draft, current)
   const valid = parsed.error === null
   const changed = valid && parsed.bytes !== (own ?? current.quotaBytes)
 
-  async function save(next: number | null) {
+  const showInvalid = draft.trim() !== '' || attempted
+
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
@@ -81,18 +84,22 @@ function QuotaForm({
           : `Das Speicherkontingent geteilter Bibliotheken ist jetzt ${formatFileSize(saved.quotaBytes)} je Bibliothek.`,
         'success',
       )
+      return true
     } catch (err: unknown) {
       setSaveError(
         err instanceof Error ? err.message : 'Die Grenze konnte nicht gespeichert werden.',
       )
+      return false
     } finally {
       setBusy(false)
     }
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    setAttempted(true)
+    if (busy || !valid) return false
+    if (!changed) return true
     const confirmed = await confirmAction({
       question: `Speicherkontingent geteilter Bibliotheken auf ${formatFileSize(parsed.bytes)} je Bibliothek ändern?`,
       consequence:
@@ -100,8 +107,8 @@ function QuotaForm({
       confirmLabel: 'Ändern',
       tone: 'caution',
     })
-    if (!confirmed) return
-    await save(parsed.bytes)
+    if (!confirmed) return false
+    return save(parsed.bytes)
   }
 
   async function handleRemove() {
@@ -120,51 +127,45 @@ function QuotaForm({
   }
 
   return (
-    <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <FormField
-        label="Grenze je Bibliothek (GB)"
-        size="small"
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value)
-          setSaveError(null)
-        }}
-        error={!valid && draft.trim() !== ''}
-        helperText={
-          draft.trim() !== '' && parsed.error
-            ? parsed.error
-            : current.capBytes > 0
+    <SettingValueRow
+      title="Grenze je Bibliothek"
+      headingLevel="h3"
+      value={current.quotaBytes === 0 ? 'unbegrenzt' : formatFileSize(current.quotaBytes)}
+      onOpen={() => {
+        setDraft(current.quotaBytes === 0 ? '' : limitDraft(current.quotaBytes))
+        setSaveError(null)
+        setAttempted(false)
+      }}
+      onSave={handleSave}
+      editor={
+        <FormField
+          label="Grenze je Bibliothek (GB)"
+          size="small"
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            setSaveError(null)
+          }}
+          error={(!valid && showInvalid) || saveError !== null}
+          helperText={
+            saveError ??
+            (showInvalid ? parsed.error : null) ??
+            (current.capBytes > 0
               ? `Höchstens ${formatFileSize(current.capBytes)}, die Obergrenze des Betriebs.`
-              : 'Der Betrieb hat keine Obergrenze gesetzt.'
-        }
-        numeric
-        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-        sx={{ maxWidth: formWidth.column }}
-        action={
-          <>
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Grenze wird gespeichert"
-              disabled={!changed && !busy}
-            >
-              Grenze speichern
-            </BusyButton>
-            {own !== null && (
-              <Button variant="text" disabled={busy} onClick={() => void handleRemove()}>
-                Eigene Grenze entfernen
-              </Button>
-            )}
-          </>
-        }
-      />
-      {saveError && (
-        <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-          {saveError}
-        </Alert>
+              : 'Der Betrieb hat keine Obergrenze gesetzt.')
+          }
+          numeric
+          slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+          sx={{ maxWidth: formWidth.column }}
+        />
+      }
+    >
+      {own !== null && (
+        <Button variant="text" size="small" disabled={busy} onClick={() => void handleRemove()}>
+          Eigene Grenze entfernen
+        </Button>
       )}
-    </Box>
+    </SettingValueRow>
   )
 }
 

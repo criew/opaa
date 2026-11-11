@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
@@ -31,7 +31,7 @@ interface RealtimeTranscriptionFieldsProps {
 }
 
 /**
- * Live transcription as an optional addition to dictation: a switch, and while it is on the
+ * Live transcription as an optional addition to dictation: a checkbox, and while it is on the
  * dialect from a fixed list of tiles with the address and model it suggests. The dialect is never
  * free text; dictation stays available either way.
  */
@@ -74,7 +74,7 @@ export default function RealtimeTranscriptionFields({
       </Typography>
       <FormControlLabel
         control={
-          <Switch
+          <Checkbox
             checked={value.live}
             onChange={(e) => switchLive(e.target.checked)}
             disabled={disabled}

@@ -166,7 +166,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await user.locator("#change-password-current").fill(initialPassword);
     await user.locator("#change-password-new").fill(chosen);
     await user.locator("#change-password-repeat").fill(chosen);
-    await user.getByRole("button", { name: "Passwort speichern" }).click();
+    await user.getByRole("button", { name: "Speichern" }).click();
 
     // change-password mints a new access token without `pcr` right away (Entscheidung 8), so the
     // person is not sent back to the sign-in form.

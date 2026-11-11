@@ -42,7 +42,7 @@ describe('TextRecognitionSection', () => {
     expect(
       await screen.findByText(/Der Betrieb hat die Texterkennung nicht freigegeben/),
     ).toHaveTextContent('Die gespeicherte Anbindung bleibt erhalten.')
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
   })
@@ -51,7 +51,7 @@ describe('TextRecognitionSection', () => {
     renderWithProviders(<TextRecognitionSection />)
 
     expect(await screen.findByText('Zustand: Ausgeschaltet.')).toBeInTheDocument()
-    const toggle = screen.getByRole('switch', { name: 'Texterkennung einschalten' })
+    const toggle = screen.getByRole('checkbox', { name: 'Texterkennung einschalten' })
     expect(toggle).not.toBeChecked()
     expect(toggle).toHaveAccessibleDescription(
       'Bestehende Scans werden nach dem Einschalten automatisch nachverarbeitet.',
@@ -60,7 +60,19 @@ describe('TextRecognitionSection', () => {
     expect(screen.getByLabelText(/Basis-Adresse/)).toHaveValue('')
     expect(screen.queryByLabelText(/Modell-Kennung/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Gespeicherten Schlüssel entfernen' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeEnabled()
+  })
+
+  it('names the missing address at its field when the test is asked for without one', async () => {
+    const user = userEvent.setup()
+    const sent = capture('post', `${PATH}/test`)
+    renderWithProviders(<TextRecognitionSection />)
+
+    await user.click(await screen.findByRole('button', { name: 'Verbindung testen' }))
+
+    expect(await screen.findByText('Basis-Adresse fehlt')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Basis-Adresse/)).toBeInvalid()
+    expect(sent).toHaveLength(0)
   })
 
   it('shows a configured role without ever showing the stored key', async () => {
@@ -70,7 +82,7 @@ describe('TextRecognitionSection', () => {
     expect(
       await screen.findByText('Zustand: Eingeschaltet, der Dienst antwortet.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Texterkennung einschalten' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Texterkennung einschalten' })).toBeChecked()
     expect(screen.getByLabelText(/Basis-Adresse/)).toHaveValue('http://opaa-ocr:5001')
     expect(screen.getByLabelText(/^Zugangsschlüssel(?! anzeigen)/)).toHaveValue('')
     expect(
@@ -86,7 +98,7 @@ describe('TextRecognitionSection', () => {
     const sent = capture('put', PATH)
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Texterkennung einschalten' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Texterkennung einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), ' http://opaa-ocr:5001 ')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
@@ -107,7 +119,7 @@ describe('TextRecognitionSection', () => {
 
     await user.click(await screen.findByRole('radio', { name: /Vision-Modell/ }))
     expect(screen.getByText(/nicht als Rahmen markiert/)).toBeInTheDocument()
-    await user.click(screen.getByRole('switch', { name: 'Texterkennung einschalten' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Texterkennung einschalten' }))
     await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://vllm:8000/v1')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
@@ -228,7 +240,9 @@ describe('TextRecognitionSection', () => {
     const sent = capture('put', PATH)
     renderWithProviders(<TextRecognitionSection />)
 
-    await user.click(await screen.findByRole('button', { name: 'Speichern' }))
+    // a change that leaves the key field alone
+    await user.type(await screen.findByLabelText(/Basis-Adresse/), '/')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await waitFor(() => expect(sent).toHaveLength(1))
     expect(sent[0]).not.toHaveProperty('apiKey')
 
@@ -238,14 +252,15 @@ describe('TextRecognitionSection', () => {
     expect(sent[1]).toMatchObject({ apiKey: '' })
   })
 
-  it('keeps a factory role switched off when saved untouched', async () => {
+  it('keeps a factory role switched off when saved untouched: nothing is sent', async () => {
     const user = userEvent.setup()
     const sent = capture('put', PATH)
     renderWithProviders(<TextRecognitionSection />)
 
     await user.click(await screen.findByRole('button', { name: 'Speichern' }))
 
-    await waitFor(() => expect(sent).toHaveLength(1))
-    expect(sent[0]).toMatchObject({ enabled: false, baseUrl: '' })
+    expect(await screen.findByText('Es gibt keine Änderungen zu speichern.')).toBeInTheDocument()
+    expect(sent).toHaveLength(0)
+    expect(screen.getByRole('checkbox', { name: 'Texterkennung einschalten' })).not.toBeChecked()
   })
 })

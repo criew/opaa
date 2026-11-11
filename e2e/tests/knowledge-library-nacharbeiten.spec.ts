@@ -333,7 +333,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
     // statt des Leerzustands den Bestand des ersten Laufs.
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
@@ -407,7 +407,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     // Der vorbelegte Sofortstart würde hier das Anlagen-Fixture in den gemeinsamen Bestand
     // der Suite indizieren, obwohl dieses Szenario nie einen Lauf braucht.
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()

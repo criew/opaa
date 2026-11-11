@@ -4,7 +4,7 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import FormField from '@/shared/ui/form/FormField'
 import {
@@ -125,7 +125,7 @@ export function S3ConnectionFields({
           <Box>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   checked={values.pathStyle}
                   onChange={(e) => onChange({ pathStyle: e.target.checked })}
                 />

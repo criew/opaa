@@ -21,7 +21,9 @@ import {
   isInvalidPrimaryColor,
   singleLineNotice,
 } from '@/shared/ui/branding/brandingSettings'
-import { contentWidth, formWidth } from '@/shared/theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
+import { notify } from '@/shared/stores/notificationStore'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 
 /** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
@@ -59,7 +61,6 @@ export default function BrandingSettingsPage() {
   // "Speichern" carries every change the operator made on this page.
   const [pendingImages, setPendingImages] = useState<Partial<Record<BrandingImageKind, File>>>({})
   const [imageErrors, setImageErrors] = useState<Partial<Record<BrandingImageKind, string>>>({})
-  const [saved, setSaved] = useState(false)
   const fileInputRefs = useRef<Partial<Record<BrandingImageKind, HTMLInputElement | null>>>({})
 
   // The store may still be loading when this page mounts; adopt the values once they arrive,
@@ -139,7 +140,8 @@ export default function BrandingSettingsPage() {
   }
 
   async function handleSave() {
-    setSaved(false)
+    // the colour field tells what is wrong with it
+    if (colorInvalid) return
     try {
       await saveBranding({
         productName: productName.trim(),
@@ -158,11 +160,46 @@ export default function BrandingSettingsPage() {
         setPendingImages((files) => ({ ...files, [kind]: undefined }))
         clearInput(kind)
       }
-      setAiNotice(useBrandingStore.getState().branding.aiNotice)
-      setSaved(true)
+      // what is now in force, as a fresh visit would show it: nothing counts as changed
+      const stored = useBrandingStore.getState().branding
+      setProductName(stored.productName)
+      setClaim(stored.claim)
+      setAiNotice(stored.aiNotice)
+      setPrimaryColor(stored.primaryColor)
+      notify('Das Branding wurde gespeichert und ist sofort wirksam.', 'success')
     } catch {
       // The store already holds the message; the alert below renders it.
     }
+  }
+
+  const dirty =
+    productName !== branding.productName ||
+    claim !== branding.claim ||
+    aiNotice !== branding.aiNotice ||
+    primaryColor !== branding.primaryColor ||
+    Object.values(pendingImages).some(Boolean)
+
+  function clearPendingImages() {
+    setPendingImages({})
+    setImageErrors({})
+    for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) clearInput(kind)
+  }
+
+  function discard() {
+    setProductName(branding.productName)
+    setClaim(branding.claim)
+    setAiNotice(branding.aiNotice)
+    setPrimaryColor(branding.primaryColor)
+    clearPendingImages()
+  }
+
+  /** Empties the fields; the standard is in force only after „Speichern“. */
+  function resetToStandard() {
+    setProductName('')
+    setClaim('')
+    setAiNotice(branding.aiNoticeDefault)
+    setPrimaryColor('')
+    clearPendingImages()
   }
 
   const imageSlots: Array<{
@@ -190,7 +227,6 @@ export default function BrandingSettingsPage() {
   ]
 
   async function handleRemoveImage(kind: BrandingImageKind) {
-    setSaved(false)
     setPendingImages((files) => ({ ...files, [kind]: undefined }))
     clearInput(kind)
     try {
@@ -220,170 +256,151 @@ export default function BrandingSettingsPage() {
             {storeError}
           </Alert>
         )}
-        {saved && !storeError && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            Das Branding wurde gespeichert und ist sofort wirksam.
-          </Alert>
-        )}
-
-        <Stack spacing={3} sx={{ maxWidth: formWidth.column }}>
-          <FormField
-            label={BRANDING_LABELS.productName}
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.productName } }}
-            helperText={BRANDING_TEXTS.productNameHint}
-            fullWidth
-          />
-
-          <FormField
-            label={BRANDING_LABELS.claim}
-            value={claim}
-            onChange={(e) => setClaim(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.claim } }}
-            helperText={BRANDING_TEXTS.claimHint}
-            fullWidth
-          />
-
-          <Box>
-            <FormField
-              label={BRANDING_LABELS.aiNotice}
-              value={aiNotice}
-              onChange={(e) => setAiNotice(singleLineNotice(e.target.value))}
-              inputRef={aiNoticeRef}
-              onKeyDown={(e) => {
-                // Enter would insert a break the server rejects; swallowing it here keeps the
-                // cursor where it is, the replace in onChange only has to deal with pasted text.
-                if (e.key === 'Enter') e.preventDefault()
-              }}
-              slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.aiNotice } }}
-              helperText={BRANDING_TEXTS.aiNoticeHint}
-              multiline
-              fullWidth
-            />
-            <Button
-              size="small"
-              sx={{ mt: 1 }}
-              onClick={() => {
-                // Focus moves to the field before the button turns disabled, so keyboard focus
-                // never falls back to the document body.
-                aiNoticeRef.current?.focus()
-                setAiNotice(branding.aiNoticeDefault)
-              }}
-              disabled={isSaving || aiNotice === branding.aiNoticeDefault}
-            >
-              {BRANDING_TEXTS.aiNoticeReset}
-            </Button>
-          </Box>
-
-          <Box>
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-              <FormField
-                label={BRANDING_LABELS.primaryColor}
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                error={colorInvalid}
-                helperText={
-                  colorInvalid
-                    ? BRANDING_TEXTS.primaryColorInvalid
-                    : BRANDING_TEXTS.primaryColorHint
-                }
-                sx={{ flexGrow: 1 }}
-              />
-              <FormField
-                type="color"
-                label={BRANDING_LABELS.colorPicker}
-                value={isColorValid ? primaryColor : OPAA_BRANDING.primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
-                fullWidth={false}
-                sx={{ width: 96, flexShrink: 0 }}
-              />
-            </Stack>
-          </Box>
-
-          <AccentContrastWarning primaryColor={primaryColor} />
-
-          {imageSlots.map((slot) => (
-            <Box key={slot.kind}>
-              <SectionHead>{BRANDING_IMAGES[slot.kind].label}</SectionHead>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                {slot.description} PNG oder JPEG, höchstens{' '}
-                {Math.round(BRANDING_IMAGES[slot.kind].maxBytes / 1024)} KiB. SVG wird nicht
-                angenommen, weil eine SVG-Datei Skripte enthalten kann.
-              </Typography>
-              {imageErrors[slot.kind] && (
-                <Alert severity="error" sx={{ mb: 1.5 }}>
-                  {imageErrors[slot.kind]}
-                </Alert>
-              )}
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Button component="label" variant="outlined">
-                  {BRANDING_IMAGES[slot.kind].label} auswählen
-                  <Box
-                    component="input"
-                    type="file"
-                    ref={(element: HTMLInputElement | null) => {
-                      fileInputRefs.current[slot.kind] = element
-                    }}
-                    accept={ACCEPTED_IMAGE_TYPES.join(',')}
-                    hidden
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      selectImage(slot.kind, e.target.files?.[0] ?? null)
-                    }
-                  />
-                </Button>
-                {slot.configuredUrl && (
-                  <Button
-                    color="error"
-                    onClick={() => void handleRemoveImage(slot.kind)}
-                    disabled={isSaving}
-                  >
-                    {BRANDING_IMAGES[slot.kind].label} entfernen
-                  </Button>
-                )}
-                {pendingImages[slot.kind] && (
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {pendingImages[slot.kind]?.name} — wird beim Speichern übernommen
-                  </Typography>
-                )}
-              </Stack>
-            </Box>
-          ))}
-
-          <Box>
-            <SectionHead>{BRANDING_LABELS.preview}</SectionHead>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-              {BRANDING_TEXTS.previewHint}
-            </Typography>
-            <BrandingPreviews {...effectivePreview} />
-          </Box>
-
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              onClick={() => void handleSave()}
-              disabled={isSaving || colorInvalid}
-            >
-              Speichern
-            </Button>
-            <Button
-              onClick={() => {
-                setProductName('')
-                setClaim('')
-                setAiNotice(branding.aiNoticeDefault)
-                setPrimaryColor('')
-                setPendingImages({})
-                setImageErrors({})
-                for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) {
-                  clearInput(kind)
-                }
-              }}
-              disabled={isSaving}
-            >
+        <SettingsForm
+          aria-label="Branding"
+          onSave={handleSave}
+          busy={isSaving}
+          dirty={dirty}
+          onDiscard={discard}
+          secondaryAction={
+            <Button variant="outlined" onClick={resetToStandard} disabled={isSaving}>
               Auf OPAA-Standard zurücksetzen
             </Button>
+          }
+        >
+          <Stack spacing={3}>
+            <FormField
+              label={BRANDING_LABELS.productName}
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.productName } }}
+              helperText={BRANDING_TEXTS.productNameHint}
+              fullWidth
+            />
+
+            <FormField
+              label={BRANDING_LABELS.claim}
+              value={claim}
+              onChange={(e) => setClaim(e.target.value)}
+              slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.claim } }}
+              helperText={BRANDING_TEXTS.claimHint}
+              fullWidth
+            />
+
+            <Box>
+              <FormField
+                label={BRANDING_LABELS.aiNotice}
+                value={aiNotice}
+                onChange={(e) => setAiNotice(singleLineNotice(e.target.value))}
+                inputRef={aiNoticeRef}
+                onKeyDown={(e) => {
+                  // Enter would insert a break the server rejects; swallowing it here keeps the
+                  // cursor where it is, the replace in onChange only has to deal with pasted text.
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
+                slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.aiNotice } }}
+                helperText={BRANDING_TEXTS.aiNoticeHint}
+                multiline
+                fullWidth
+              />
+              <Button
+                size="small"
+                sx={{ mt: 1 }}
+                onClick={() => {
+                  // Focus moves to the field before the button turns disabled, so keyboard focus
+                  // never falls back to the document body.
+                  aiNoticeRef.current?.focus()
+                  setAiNotice(branding.aiNoticeDefault)
+                }}
+                disabled={isSaving || aiNotice === branding.aiNoticeDefault}
+              >
+                {BRANDING_TEXTS.aiNoticeReset}
+              </Button>
+            </Box>
+
+            <Box>
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+                <FormField
+                  label={BRANDING_LABELS.primaryColor}
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  error={colorInvalid}
+                  helperText={
+                    colorInvalid
+                      ? BRANDING_TEXTS.primaryColorInvalid
+                      : BRANDING_TEXTS.primaryColorHint
+                  }
+                  sx={{ flexGrow: 1 }}
+                />
+                <FormField
+                  type="color"
+                  label={BRANDING_LABELS.colorPicker}
+                  value={isColorValid ? primaryColor : OPAA_BRANDING.primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
+                  fullWidth={false}
+                  sx={{ width: 96, flexShrink: 0 }}
+                />
+              </Stack>
+            </Box>
+
+            <AccentContrastWarning primaryColor={primaryColor} />
+
+            {imageSlots.map((slot) => (
+              <Box key={slot.kind}>
+                <SectionHead>{BRANDING_IMAGES[slot.kind].label}</SectionHead>
+                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                  {slot.description} PNG oder JPEG, höchstens{' '}
+                  {Math.round(BRANDING_IMAGES[slot.kind].maxBytes / 1024)} KiB. SVG wird nicht
+                  angenommen, weil eine SVG-Datei Skripte enthalten kann.
+                </Typography>
+                {imageErrors[slot.kind] && (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>
+                    {imageErrors[slot.kind]}
+                  </Alert>
+                )}
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Button component="label" variant="outlined">
+                    {BRANDING_IMAGES[slot.kind].label} auswählen
+                    <Box
+                      component="input"
+                      type="file"
+                      ref={(element: HTMLInputElement | null) => {
+                        fileInputRefs.current[slot.kind] = element
+                      }}
+                      accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                      hidden
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        selectImage(slot.kind, e.target.files?.[0] ?? null)
+                      }
+                    />
+                  </Button>
+                  {slot.configuredUrl && (
+                    <Button
+                      color="error"
+                      onClick={() => void handleRemoveImage(slot.kind)}
+                      disabled={isSaving}
+                    >
+                      {BRANDING_IMAGES[slot.kind].label} entfernen
+                    </Button>
+                  )}
+                  {pendingImages[slot.kind] && (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {pendingImages[slot.kind]?.name} — wird beim Speichern übernommen
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+            ))}
+
+            <Box>
+              <SectionHead>{BRANDING_LABELS.preview}</SectionHead>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                {BRANDING_TEXTS.previewHint}
+              </Typography>
+              <BrandingPreviews {...effectivePreview} />
+            </Box>
           </Stack>
-        </Stack>
+        </SettingsForm>
       </Box>
     </Box>
   )

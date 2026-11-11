@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
@@ -247,7 +247,7 @@ export default function TranscriptionModelStep({
             <FormControlLabel
               sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}
               control={
-                <Switch
+                <Checkbox
                   checked={live}
                   onChange={(e) => switchLive(e.target.checked)}
                   slotProps={{ input: { 'aria-describedby': `${id}-live-hint` } }}

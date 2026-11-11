@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
-import NetworkCheckOutlinedIcon from '@mui/icons-material/NetworkCheckOutlined'
 import type { OidcProviderRequest, OidcProviderResponse } from '@/shared/api/types'
 import { testOidcProvider } from '../api/identityProviderApi'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
@@ -13,7 +12,7 @@ import SectionHead from '@/shared/ui/SectionHead'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { fontSize } from '@/shared/theme/tokens'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
 
 export const ISSUER_HELP_TEXT =
   'Die Issuer-URI, wie der Anbieter sie in seinen Tokens prägt (bei Keycloak die Realm-Adresse). ' +
@@ -227,17 +226,7 @@ export default function OidcProviderFormDialog({
         busy={submitting}
         busyAnnouncement="Der Anbieter wird gespeichert"
         hideSubmit={rolesConfirmationOpen}
-        secondaryAction={
-          <BusyButton
-            variant="outlined"
-            startIcon={<NetworkCheckOutlinedIcon />}
-            onClick={() => void handleTest()}
-            busy={testing}
-            busyAnnouncement="Verbindung wird getestet"
-          >
-            Verbindung testen
-          </BusyButton>
-        }
+        secondaryAction={<ConnectionTestButton busy={testing} onTest={() => void handleTest()} />}
       >
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5 }}>
           Öffentlicher Client mit PKCE – ein Secret gibt es nicht zu hinterlegen. Änderungen wirken

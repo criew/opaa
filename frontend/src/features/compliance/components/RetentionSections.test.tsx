@@ -55,7 +55,9 @@ describe('ChatAutoCleanupRetentionSection', () => {
     await user.clear(remove)
     await user.type(remove, '29')
 
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('warns that a shorter period deletes earlier and returns to the factory defaults', async () => {
@@ -102,7 +104,7 @@ describe('LockedAccountChatRetentionSection', () => {
     const user = userEvent.setup()
     render(<LockedAccountChatRetentionSection />)
 
-    const toggle = await screen.findByRole('switch', { name: 'Chats nach der Sperre löschen' })
+    const toggle = await screen.findByRole('checkbox', { name: 'Chats nach der Sperre löschen' })
     expect(toggle).toBeChecked()
     await user.click(toggle)
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
@@ -122,7 +124,9 @@ describe('IncidentScopeRetentionSection', () => {
     const field = await screen.findByLabelText('Löschfrist (Kalenderjahre)')
     await user.clear(field)
     await user.type(field, '11')
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.clear(field)
     await user.type(field, '3')
@@ -195,7 +199,7 @@ describe('reset and pause', () => {
       ),
     )
     render(<LockedAccountChatRetentionSection />)
-    await user.click(await screen.findByRole('switch', { name: 'Chats nach der Sperre löschen' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Chats nach der Sperre löschen' }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const dialog = await screen.findByRole('dialog')
@@ -291,6 +295,8 @@ describe('AgentRunLogRetentionSection', () => {
     await user.clear(step)
     await user.type(step, '31')
 
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
@@ -32,9 +32,23 @@ export default function PendingPlanSection({
   onDiscard,
 }: PendingPlanSectionProps) {
   const [reason, setReason] = useState('')
+  const [reasonMissing, setReasonMissing] = useState(false)
+  const reasonRef = useRef<HTMLInputElement>(null)
+  const blockerRef = useRef<HTMLParagraphElement>(null)
   const trimmed = reason.trim()
 
-  async function decide(action: (reason: string) => Promise<boolean>) {
+  /** Both answers stay active: a missing reason is told at its field, a blocker takes the focus. */
+  async function decide(action: (reason: string) => Promise<boolean>, blocker: string | null) {
+    if (busy) return
+    if (trimmed === '') {
+      setReasonMissing(true)
+      reasonRef.current?.focus()
+      return
+    }
+    if (blocker) {
+      blockerRef.current?.focus()
+      return
+    }
     if (await action(trimmed)) setReason('')
   }
 
@@ -60,31 +74,40 @@ export default function PendingPlanSection({
         fullWidth
         required
         label="Grund der Entscheidung"
-        helperText="Pflichtangabe, geht ins Protokoll."
+        inputRef={reasonRef}
+        error={reasonMissing}
+        helperText={reasonMissing ? 'Grund fehlt' : 'Pflichtangabe, geht ins Protokoll.'}
         value={reason}
-        onChange={(event) => setReason(event.target.value)}
+        onChange={(event) => {
+          setReason(event.target.value)
+          setReasonMissing(false)
+        }}
         sx={{ mt: 2 }}
       />
       <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
         <Button
           variant="contained"
           size="small"
-          disabled={busy || trimmed === '' || Boolean(confirmBlocker)}
-          onClick={() => void decide(onConfirm)}
+          disabled={busy}
+          onClick={() => void decide(onConfirm, confirmBlocker)}
         >
           Plan bestätigen
         </Button>
         <Button
           size="small"
           color="error"
-          disabled={busy || trimmed === ''}
-          onClick={() => void decide(onDiscard)}
+          disabled={busy}
+          onClick={() => void decide(onDiscard, null)}
         >
           Plan verwerfen
         </Button>
       </Stack>
       {confirmBlocker && (
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
+        <Typography
+          ref={blockerRef}
+          tabIndex={-1}
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}
+        >
           {confirmBlocker}
         </Typography>
       )}

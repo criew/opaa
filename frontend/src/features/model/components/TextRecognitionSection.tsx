@@ -1,13 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Checkbox from '@mui/material/Checkbox'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -15,7 +15,8 @@ import type {
   TextRecognitionConnectionType,
   TextRecognitionModelSettingsResponse,
 } from '@/shared/api/types'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import StateDot from '@/shared/ui/StateDot'
 import {
   TEXT_RECOGNITION_CONNECTION_TYPE_ORDER as CONNECTION_TYPE_ORDER,
@@ -65,7 +66,7 @@ const STAGE_STATE: Record<TestStageState, { tone: StatusTone; word: string }> = 
 }
 
 /**
- * The text recognition (OCR) model role: switch, connection type, endpoint, key and — for a
+ * The text recognition (OCR) model role: checkbox, connection type, endpoint, key and — for a
  * vision model — the model, with a connection test in the stages „Adresse · Anmeldung ·
  * Erkennung". While the operation has not released text recognition, only a notice is shown.
  * The key is write-only, as for the other roles.
@@ -163,6 +164,14 @@ export default function TextRecognitionSection() {
   }
 
   async function handleTest() {
+    const missing = {
+      ...(baseUrl.trim() === '' ? { baseUrl: 'Basis-Adresse fehlt' } : {}),
+      ...(isVision && model.trim() === '' ? { model: 'Modell-Kennung fehlt' } : {}),
+    }
+    if (Object.keys(missing).length > 0) {
+      setErrors((current) => ({ ...current, ...missing }))
+      return
+    }
     setTesting(true)
     setTestResult(null)
     setError(null)
@@ -217,6 +226,19 @@ export default function TextRecognitionSection() {
   }
 
   const type = CONNECTION_TYPES[connectionType]
+  const dirty =
+    enabled !== settings.enabled ||
+    connectionType !== settings.connectionType ||
+    baseUrl !== (settings.baseUrl ?? '') ||
+    model !== (settings.model ?? '') ||
+    JSON.stringify(apiKey) !== JSON.stringify(UNTOUCHED_API_KEY)
+
+  function discard() {
+    apply(settings!)
+    setErrors({})
+    setError(null)
+    setTestResult(null)
+  }
 
   return (
     <Box sx={{ maxWidth: formWidth.column }}>
@@ -226,114 +248,107 @@ export default function TextRecognitionSection() {
       <Typography role="status" sx={{ fontSize: fontSize.text, mb: 2 }}>
         Zustand: {checking ? 'Wird geprüft …' : STATE_TEXT[settings.state]}
       </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Stack spacing={2}>
-        <Box>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                slotProps={{ input: { 'aria-describedby': catchUpHintId } }}
-              />
-            }
-            label="Texterkennung einschalten"
-          />
-          <Typography id={catchUpHintId} sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-            {CATCH_UP_HINT}
-          </Typography>
-        </Box>
-        <FormControl>
-          <FormLabel id={connectionLabelId} sx={{ fontSize: fontSize.meta, mb: 0.5 }}>
-            Anbindung
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby={connectionLabelId}
-            value={connectionType}
-            onChange={(e) =>
-              changeConnection(
-                () => setConnectionType(e.target.value as TextRecognitionConnectionType),
-                'connectionType',
-              )
-            }
-          >
-            {CONNECTION_TYPE_ORDER.map((key) => (
-              <FormControlLabel
-                key={key}
-                value={key}
-                control={<Radio size="small" />}
-                sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
-                label={
-                  <Box>
-                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
-                      {CONNECTION_TYPES[key].label}
-                    </Typography>
-                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                      {CONNECTION_TYPES[key].description}
-                    </Typography>
-                  </Box>
-                }
-              />
-            ))}
-          </RadioGroup>
-        </FormControl>
-        {isVision && <Alert severity="info">{VISION_NOTICE}</Alert>}
-        <FormField
-          id="model-role-text-recognition-base-url"
-          label="Basis-Adresse"
-          required={enabled}
-          value={baseUrl}
-          onChange={(e) => changeConnection(() => setBaseUrl(e.target.value), 'baseUrl')}
-          error={Boolean(errors.baseUrl)}
-          helperText={errors.baseUrl ?? type.addressHint}
-          size="small"
-          fullWidth
-        />
-        {isVision && (
+      <SettingsForm
+        aria-label="Texterkennung"
+        onSave={handleSave}
+        busy={saving}
+        dirty={dirty}
+        onDiscard={discard}
+        secondaryAction={<ConnectionTestButton busy={testing} onTest={() => void handleTest()} />}
+        result={
+          <Stack spacing={2}>
+            <Box role="status">{testResult && <StagedTestResult result={testResult} />}</Box>
+            {error && <Alert severity="error">{error}</Alert>}
+          </Stack>
+        }
+      >
+        <Stack spacing={2}>
+          <Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.target.checked)}
+                  slotProps={{ input: { 'aria-describedby': catchUpHintId } }}
+                />
+              }
+              label="Texterkennung einschalten"
+            />
+            <Typography
+              id={catchUpHintId}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+            >
+              {CATCH_UP_HINT}
+            </Typography>
+          </Box>
+          <FormControl>
+            <FormLabel id={connectionLabelId} sx={{ fontSize: fontSize.meta, mb: 0.5 }}>
+              Anbindung
+            </FormLabel>
+            <RadioGroup
+              aria-labelledby={connectionLabelId}
+              value={connectionType}
+              onChange={(e) =>
+                changeConnection(
+                  () => setConnectionType(e.target.value as TextRecognitionConnectionType),
+                  'connectionType',
+                )
+              }
+            >
+              {CONNECTION_TYPE_ORDER.map((key) => (
+                <FormControlLabel
+                  key={key}
+                  value={key}
+                  control={<Radio size="small" />}
+                  sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
+                  label={
+                    <Box>
+                      <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                        {CONNECTION_TYPES[key].label}
+                      </Typography>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+                        {CONNECTION_TYPES[key].description}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              ))}
+            </RadioGroup>
+          </FormControl>
+          {isVision && <Alert severity="info">{VISION_NOTICE}</Alert>}
           <FormField
-            id="model-role-text-recognition-model"
-            label="Modell-Kennung"
+            id="model-role-text-recognition-base-url"
+            label="Basis-Adresse"
             required={enabled}
-            value={model}
-            onChange={(e) => changeConnection(() => setModel(e.target.value), 'model')}
-            error={Boolean(errors.model)}
-            helperText={errors.model}
+            value={baseUrl}
+            onChange={(e) => changeConnection(() => setBaseUrl(e.target.value), 'baseUrl')}
+            error={Boolean(errors.baseUrl)}
+            helperText={errors.baseUrl ?? type.addressHint}
             size="small"
             fullWidth
           />
-        )}
-        <RoleApiKeyField
-          id="model-role-text-recognition-api-key"
-          value={apiKey}
-          onChange={(next) => changeConnection(() => setApiKey(next), 'apiKey')}
-          apiKeySet={settings.apiKeySet}
-          error={errors.apiKey}
-        />
-        <Box role="status">{testResult && <StagedTestResult result={testResult} />}</Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-          <BusyButton
-            variant="outlined"
-            busy={testing}
-            busyAnnouncement="Verbindung wird getestet"
-            disabled={baseUrl.trim() === '' || (isVision && model.trim() === '')}
-            onClick={() => void handleTest()}
-          >
-            Verbindung testen
-          </BusyButton>
-          <BusyButton
-            variant="contained"
-            busy={saving}
-            busyAnnouncement="Wird gespeichert"
-            onClick={() => void handleSave()}
-          >
-            Speichern
-          </BusyButton>
+          {isVision && (
+            <FormField
+              id="model-role-text-recognition-model"
+              label="Modell-Kennung"
+              required={enabled}
+              value={model}
+              onChange={(e) => changeConnection(() => setModel(e.target.value), 'model')}
+              error={Boolean(errors.model)}
+              helperText={errors.model}
+              size="small"
+              fullWidth
+            />
+          )}
+          <RoleApiKeyField
+            id="model-role-text-recognition-api-key"
+            value={apiKey}
+            onChange={(next) => changeConnection(() => setApiKey(next), 'apiKey')}
+            apiKeySet={settings.apiKeySet}
+            error={errors.apiKey}
+          />
         </Stack>
-      </Stack>
+      </SettingsForm>
     </Box>
   )
 }

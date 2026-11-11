@@ -143,7 +143,7 @@ describe('SettingsPage', () => {
     await userEvent.type(screen.getByLabelText('Aktuelles Passwort'), mockLocalAccount.password)
     await userEvent.type(screen.getByLabelText('Neues Passwort'), 'Sommerregen-42x')
     await userEvent.type(screen.getByLabelText('Neues Passwort wiederholen'), 'Sommerregen-42x')
-    await userEvent.click(screen.getByRole('button', { name: 'Passwort speichern' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ihre Einstellungen' }),

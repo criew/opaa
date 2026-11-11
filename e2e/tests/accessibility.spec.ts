@@ -777,7 +777,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       name: "Einstellungen",
     });
     await expect(
-      panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" }),
+      panel.getByRole("checkbox", { name: "Externe KI-Werkzeuge zulassen" }),
     ).toBeVisible();
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
