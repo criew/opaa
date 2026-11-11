@@ -443,6 +443,21 @@ settings:
       - >-
         Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
         eigenen Wert setzt
+  - key: io.opaa.agent.AgentResearchProvisioner#RESEARCH_LIMITS
+    source: CONSTANT
+    defaultValue: "12 Werkzeugaufrufe, 8 Suchen, 240 Sekunden"
+    effect: >-
+      Voreinstellung des mitgelieferten Agenten „Recherche“, den das Einschalten der Agenten je
+      Organisation einmal anlegt: für alle Konten nutzbar, alle sechs Werkzeuge (angeboten werden
+      nur die eingeschalteten, das Ausfüllen von Vorlagen nur mit zugeordneter Vorlage), Plan zur
+      Bestätigung, keine feste Bibliothek (ein Lauf liest, was die fragende Person lesen darf),
+      verantwortliche Stelle die Systemverwaltung, Grenzen über denen eines neu angelegten Agenten
+      (5 Werkzeugaufrufe, 3 Suchen, 120 Sekunden) und innerhalb der Grenzen der Installation
+    bearings: [VISIBILITY, DATA_FLOW]
+    notes:
+      - >-
+        Der Agent ist ein gewöhnliches Arbeitsmittel: Wer ihn verwaltet, kann Anweisung, Werkzeuge,
+        Planschritt und Grenzen ändern; die Systemverwaltung kann ihn sperren
   - key: agent_run_log_retention_settings.step_log_retention_days
     source: DATABASE
     defaultValue: "7"

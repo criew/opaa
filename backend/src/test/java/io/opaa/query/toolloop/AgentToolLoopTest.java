@@ -1081,7 +1081,10 @@ class AgentToolLoopTest {
   void theConfirmationOfAPlanStartsANewRunThatWorksWithThePlanInItsHistory() {
     planning(true);
     when(chatService.latestAgentRun(chat.getId()))
-        .thenReturn(Optional.of(new AgentRunRecord(UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
     when(chatMemory.get(any()))
         .thenReturn(
             List.of(
@@ -1113,7 +1116,11 @@ class AgentToolLoopTest {
         .extracting(CitationValidator.ValidatedCitation::valid)
         .containsExactly(true, false);
     assertThat(
-            meters.find(AgentMetrics.CITATIONS_UNVERIFIABLE).tag("kind", "builtin").counter().count())
+            meters
+                .find(AgentMetrics.CITATIONS_UNVERIFIABLE)
+                .tag("kind", "builtin")
+                .counter()
+                .count())
         .isEqualTo(1.0);
     assertThat(runs("builtin", "completed")).isEqualTo(1.0);
     assertThat(runs("builtin", "plan")).isZero();

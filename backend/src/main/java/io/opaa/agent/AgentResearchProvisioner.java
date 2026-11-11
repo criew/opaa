@@ -35,10 +35,23 @@ class AgentResearchProvisioner {
   static final String RESEARCH_RESPONSIBLE = "Systemverwaltung";
 
   static final String RESEARCH_INSTRUCTION =
-      "Zerlege die Frage in Teilfragen und suche zu jeder gezielt. Lies bei wichtigen Fundstellen im"
-          + " Dokument weiter. Antworte gegliedert, belege jede Aussage mit ihrer Fundstelle und"
-          + " benenne Lücken und Widersprüche ausdrücklich. Ist die Frage unklar, frage nach, bevor"
-          + " du suchst.";
+      "Zerlege die Frage in Teilfragen und suche zu jeder gezielt. Grenzt die Person im Plan auf"
+          + " Bibliotheken, Zeiträume oder Dokumentarten ein, halte dich daran. Lies bei wichtigen"
+          + " Fundstellen im Dokument weiter. Antworte als gegliederter Bericht: kurze"
+          + " Zusammenfassung, dann je Teilfrage die Ergebnisse, jede Aussage mit ihrer Fundstelle."
+          + " Widersprechen sich Fundstellen, nenne die Widersprüche ausdrücklich mit beiden"
+          + " Fundstellen und entscheide nicht stillschweigend für eine Seite. Benenne Lücken: was"
+          + " du gesucht und nicht gefunden hast. Rechne nur mit Code, wenn die Fundstellen Zahlen"
+          + " liefern, die verglichen oder summiert werden müssen. Wünscht die Person eine Datei,"
+          + " fülle eine Vorlage des Agenten aus; gibt es keine, sage das und antworte im Chat. Ist"
+          + " die Frage unklar, frage nach, bevor du suchst.";
+
+  /**
+   * Above the default of a self-made agent ({@link AgentService#DEFAULT_LIMITS}) and within the
+   * installation's limits; a lower installation limit still wins. Starting values for the cases in
+   * {@code eval/agents/recherche}, to be calibrated by their first measurement.
+   */
+  static final AgentLimits RESEARCH_LIMITS = new AgentLimits(12, 8, 240, null);
 
   private final JdbcTemplate jdbc;
   private final AgentRepository agentRepository;
@@ -59,6 +72,21 @@ class AgentResearchProvisioner {
     this.grantService = grantService;
   }
 
+  /**
+   * What "Recherche" is delivered with: every tool - a run is offered only those switched on, and
+   * {@code fill_template} only with a template -, a plan to confirm, no fixed library (a run
+   * searches what the asker may read) and no template until someone assigns one.
+   */
+  static AgentConfiguration researchConfiguration() {
+    return new AgentConfiguration(
+        RESEARCH_INSTRUCTION,
+        Set.of(),
+        Set.copyOf(AgentTools.ASSIGNABLE),
+        AgentPlanStep.CONFIRM,
+        RESEARCH_LIMITS,
+        Set.of());
+  }
+
   @Transactional(propagation = Propagation.MANDATORY)
   void provisionResearch(CurrentUser administrator) {
     int taken =
@@ -74,17 +102,7 @@ class AgentResearchProvisioner {
         Agent.ownedByUser(
             administrator.organizationId(), RESEARCH_NAME, RESEARCH_PURPOSE, administrator.id());
     agent.markDelivered(RESEARCH_SEED);
-    agent.configure(
-        new AgentConfiguration(
-            RESEARCH_INSTRUCTION,
-            Set.of(),
-            Set.of(
-                AgentTools.SEARCH_KNOWLEDGE,
-                AgentTools.READ_DOCUMENT,
-                AgentTools.LIST_SOURCES,
-                AgentTools.ASK_USER),
-            AgentPlanStep.OFF,
-            AgentLimits.INSTALLATION));
+    agent.configure(researchConfiguration());
     Agent saved = agentRepository.saveAndFlush(agent);
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", saved.getName());

@@ -9,10 +9,10 @@ import java.util.List;
 
 /**
  * The system text of every model call of a run, in the order of ADR-0070, Entscheidung 5: fixed
- * rules, the agent's instruction as a marked block, the space's instruction, the Gesprächsnotiz.
- * The tool definitions go to the model as definitions, not as text; history, question and steps
- * follow as messages. The text is the same for every call of a run - a step only appends a result
- * with its own {@link #reminder}.
+ * rules (with the rules of the plan step, if the agent has one), the agent's instruction as a
+ * marked block, the space's instruction, the Gesprächsnotiz. The tool definitions go to the model
+ * as definitions, not as text; history, question and steps follow as messages. The text is the same
+ * for every call of a run - a step only appends a result with its own {@link #reminder}.
  */
 final class AgentPrompt {
 
@@ -55,12 +55,57 @@ final class AgentPrompt {
 
   static final String AGENT_END = "[Ende der Agenten-Anweisung]";
 
+  /** Added to the fixed rules of a plan run: the run answers with its plan and nothing else. */
+  static final String PLAN_RULES =
+      """
+      PLANSCHRITT (verbindlich):
+      - Dieser Agent legt zuerst einen Plan vor und arbeitet erst, wenn die Person ihn bestätigt \
+      oder ändert.
+      - Antworte jetzt nur mit dem Plan: eine nummerierte Liste der Teilfragen, denen du \
+      nachgehen willst, und je Teilfrage, wo du suchen willst.
+      - Suche noch nicht, beantworte die Frage noch nicht und zitiere nichts.
+      - Ist die Frage unklar, nenne im Plan, was du annimmst.
+      - Schließe mit der Bitte, den Plan zu bestätigen oder zu ändern.""";
+
+  /** Added to the fixed rules of the run that follows a plan. */
+  static final String CONFIRMED_PLAN =
+      """
+      BESTÄTIGTER PLAN (verbindlich):
+      - Deine letzte Antwort im Gesprächsverlauf ist ein Plan. Die neue Nachricht der Person \
+      bestätigt oder ändert ihn.
+      - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.""";
+
+  /** What a run does with a plan step. */
+  enum PlanPhase {
+    /** The agent has no plan step, or ended its last run differently. */
+    NONE,
+    /** The run answers with a plan only. */
+    PLAN,
+    /** The run works off the plan the person confirmed or changed. */
+    CONFIRMED
+  }
+
   private AgentPrompt() {}
 
   /** The system text for a run whose results are fenced with {@code blockId}. */
   static String systemText(
       String blockId, String agentInstruction, String spaceInstruction, List<String> notePoints) {
+    return systemText(blockId, agentInstruction, spaceInstruction, notePoints, PlanPhase.NONE);
+  }
+
+  /** The system text for a run in the given phase of its plan step. */
+  static String systemText(
+      String blockId,
+      String agentInstruction,
+      String spaceInstruction,
+      List<String> notePoints,
+      PlanPhase phase) {
     StringBuilder text = new StringBuilder(FIXED_RULES.formatted(blockId));
+    switch (phase) {
+      case PLAN -> text.append("\n\n").append(PLAN_RULES);
+      case CONFIRMED -> text.append("\n\n").append(CONFIRMED_PLAN);
+      case NONE -> {}
+    }
     if (agentInstruction != null && !agentInstruction.isBlank()) {
       text.append("\n\n")
           .append(AGENT_HEADER)

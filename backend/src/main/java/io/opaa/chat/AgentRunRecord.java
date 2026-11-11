@@ -9,7 +9,8 @@ import java.util.UUID;
  * hit count, and the version stamp. It lives and is deleted with the chat.
  *
  * @param endState how the run ended; a limit is shown as a set-off state "nicht geprüft", never as
- *     an error; {@link EndState#ASK_USER} as a question back to the person.
+ *     an error; {@link EndState#ASK_USER} as a question back to the person, {@link EndState#PLAN}
+ *     as a plan to confirm or change.
  * @param agentId the agent that ran; {@code null} in records kept before it was recorded.
  * @param agentName the agent's name at the time of the run, shown at the answer.
  * @param stamp the rest of the version stamp - revision, libraries, templates, model; {@code null}
@@ -45,7 +46,12 @@ public record AgentRunRecord(
     LIMIT_DURATION,
     LIMIT_VOLUME,
     /** The agent asked the person back; the answer is the question, the run ended there. */
-    ASK_USER
+    ASK_USER,
+    /**
+     * The agent asks for confirmation of its plan; the answer is the plan, the run ended there and
+     * the next question with the same agent works it off in a new run.
+     */
+    PLAN
   }
 
   /** The outcome of one step as the person reads it. */

@@ -268,9 +268,9 @@ opaa:
   # same on every instance; a request beyond it is refused before its run begins.
   # workspace-capacity-per-person is one person's share of it (at least 1, at most the capacity).
   agent:
-    max-tool-calls: ${OPAA_AGENT_MAX_TOOL_CALLS:5}
-    max-search-calls: ${OPAA_AGENT_MAX_SEARCH_CALLS:3}
-    max-duration: ${OPAA_AGENT_MAX_DURATION:120s}
+    max-tool-calls: ${OPAA_AGENT_MAX_TOOL_CALLS:12}
+    max-search-calls: ${OPAA_AGENT_MAX_SEARCH_CALLS:8}
+    max-duration: ${OPAA_AGENT_MAX_DURATION:240s}
     max-collected-chars: ${OPAA_AGENT_MAX_COLLECTED_CHARS:60000}
     workspace-capacity: ${OPAA_AGENT_WORKSPACE_CAPACITY:2}
     workspace-capacity-per-person: ${OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON:1}

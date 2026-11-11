@@ -74,6 +74,12 @@ public class AgentService {
   static final int MAX_LIBRARIES = 100;
   static final int MAX_TEMPLATES = 20;
 
+  /**
+   * The limits a new agent starts with, below the installation's limits so a delivered agent like
+   * "Recherche" can go further; the owner may change them within those limits.
+   */
+  static final AgentLimits DEFAULT_LIMITS = new AgentLimits(5, 3, 120, null);
+
   /** The code a run of a locked agent is refused with. */
   public static final String LOCKED_CODE = "AGENT_LOCKED";
 
@@ -159,12 +165,7 @@ public class AgentService {
     }
     agent.configure(
         new AgentConfiguration(
-            "",
-            Set.of(),
-            AgentTools.DEFAULT,
-            AgentPlanStep.OFF,
-            AgentLimits.INSTALLATION,
-            Set.of()));
+            "", Set.of(), AgentTools.DEFAULT, AgentPlanStep.OFF, DEFAULT_LIMITS, Set.of()));
     Agent saved = agentRepository.save(agent);
     shellService.registerCreated(saved, caller.id(), auditPayload(saved));
     responsibilityService.establish(saved, responsible);

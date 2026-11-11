@@ -8,9 +8,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * The system limits of an agent run and the workspace in front of it (ADR-0070 Entscheidung 6).
- * Conservative defaults, to be calibrated on realistic cases; an agent may only lower the four run
- * limits. The same on every instance: the workspace capacity is the installation's absolute figure,
- * never divided by the number of instances.
+ * Defaults are starting values from the research cases in {@code eval/agents/recherche}, to be
+ * calibrated by their first measurement; an agent may only lower the four run limits. The same on
+ * every instance: the workspace capacity is the installation's absolute figure, never divided by
+ * the number of instances.
  *
  * @param maxToolCalls tool calls per run, over all tools.
  * @param maxSearchCalls calls of {@code search_knowledge} per run.
@@ -30,9 +31,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @InstallationWide
 @NoDataImpact("limits of a run and of the runs at the same time")
 public record AgentToolLoopProperties(
-    @DefaultValue("5") int maxToolCalls,
-    @DefaultValue("3") int maxSearchCalls,
-    @DefaultValue("120s") @NoDataImpact("wall-clock limit of a run") Duration maxDuration,
+    @DefaultValue("12") int maxToolCalls,
+    @DefaultValue("8") int maxSearchCalls,
+    @DefaultValue("240s") @NoDataImpact("wall-clock limit of a run") Duration maxDuration,
     @DefaultValue("60000") int maxCollectedChars,
     @DefaultValue("2") int workspaceCapacity,
     @DefaultValue("1") int workspaceCapacityPerPerson,
