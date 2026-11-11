@@ -185,6 +185,7 @@ export async function configureSmtp(page: Page): Promise<void> {
   await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeChecked();
   await expect(page.getByLabel("Server", { exact: true })).toHaveValue(smtp.host);
   await expect(page.getByLabel("Port", { exact: true })).toHaveValue(smtp.port);
+  await expect(page.getByLabel("Absenderadresse", { exact: true })).toHaveValue(smtp.fromAddress);
   await expect(
     page.getByRole("radiogroup", { name: "Verschlüsselung" }).getByRole("radio", { name: /Keine/ }),
   ).toBeChecked();

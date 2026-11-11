@@ -135,7 +135,11 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
     await page.goto(`/spaces/${spaceId}/chats/new`);
     // The URL carries the chat's id as soon as the chat exists, before its question is answered;
     // leaving earlier could cancel the question and leave the chat of the next step empty.
-    await Promise.all([page.waitForResponse(isChatAnswer), askQuestion(page, question)]);
+    const [answered] = await Promise.all([
+      page.waitForResponse(isChatAnswer),
+      askQuestion(page, question),
+    ]);
+    expect(answered.status()).toBe(200);
     await page.waitForURL(new RegExp(`/spaces/${spaceId}/chats/(?!new$)[^/]+$`));
     chatPath = new URL(page.url()).pathname;
     await expectAnswerSettled(page);
