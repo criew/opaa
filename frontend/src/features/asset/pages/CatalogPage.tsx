@@ -122,10 +122,16 @@ export default function CatalogPage() {
           <CatalogCard entry={entry} to={definition.detailRoute(entry.assetId)} />
         ) : null
       }}
-      emptyState={
-        <Typography sx={{ color: 'text.secondary' }}>
-          Der Katalog ist noch leer. Er zeigt alles, was Sie lesen dürfen.
-        </Typography>
+      errorMessage="Der Katalog konnte nicht geladen werden."
+      onRetry={() => void load({ type: filterType, q: appliedQuery, favorites: favoritesOnly })}
+      onResetFilters={() => {
+        setParam('type', null)
+        setParam('favorites', null)
+      }}
+      emptyMessage={
+        canCreate
+          ? 'Noch keine Katalogeinträge. Der Katalog zeigt alles, was Sie lesen dürfen.'
+          : 'Noch keine Katalogeinträge. Der Katalog zeigt alles, was Sie lesen dürfen; Einträge anlegen kann, wem die Verwaltung das Anlegerecht gegeben hat.'
       }
       listFooter={
         page + 1 < totalPages ? (

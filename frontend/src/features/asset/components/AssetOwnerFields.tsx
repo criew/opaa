@@ -72,7 +72,7 @@ export default function AssetOwnerFields({
               option.deactivated ? `${option.name} (deaktiviert)` : option.name
             }
             getOptionDisabled={(option) => option.deactivated}
-            noOptionsText="Keine Treffer"
+            noOptionsText="Keine Treffer."
             value={selectedGroup}
             onChange={(_e, value) => onSelectedGroupChange(value)}
             disabled={groups.length === 0}

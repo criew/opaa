@@ -11,7 +11,6 @@ import MobileHeader from './MobileHeader'
 import SkipLink from '@/shared/ui/a11y/SkipLink'
 import { MAIN_CONTENT_ID } from '@/shared/ui/a11y/PageHeading'
 import { arrivalFocusTarget, keepsFocus } from '@/shared/ui/a11y/routeFocus'
-import { IndexingSnackbar } from '@/features/search-admin'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
@@ -143,7 +142,6 @@ export default function AppShell() {
         </Box>
       </Box>
 
-      <IndexingSnackbar />
       <NotificationHost />
       <ConfirmHost />
     </Box>

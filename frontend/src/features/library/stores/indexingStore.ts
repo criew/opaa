@@ -10,6 +10,7 @@ import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../api/inde
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { sourceRegistration } from '../components/sources/registry'
 import { registerSessionStore } from '@/shared/session/resettableStores'
+import { notify } from '@/shared/stores/notificationStore'
 
 const POLL_INTERVAL_MS = 2000
 
@@ -25,14 +26,6 @@ const MAX_POLL_BACKOFF_MS = 30_000
 // FAILED, since no run was ever started.
 export const UPLOAD_LIBRARY_INDEXING_ERROR =
   'Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf'
-
-type SnackbarSeverity = 'success' | 'error'
-
-interface Snackbar {
-  open: boolean
-  message: string
-  severity: SnackbarSeverity
-}
 
 // A single global run status shared across every library would let a stale response for library
 // A overwrite the state shown for library B after a quick switch, while A's interval silently kept
@@ -95,7 +88,6 @@ interface IndexingState {
   // runsByLibrary above, which only ever tracks the single current/most recent run for the
   // polling-driven "Quellkonfiguration" section.
   runHistoryByLibrary: Record<string, IndexingRunResponse[]>
-  snackbar: Snackbar
 
   triggerIndexing: (
     libraryId: string,
@@ -107,7 +99,6 @@ interface IndexingState {
   stopPolling: (libraryId: string) => void
   // Resumes polling after it gave up, starting with an immediate fetch.
   retryStatusPolling: (libraryId: string) => void
-  closeSnackbar: () => void
   reset: () => void
 }
 
@@ -120,7 +111,7 @@ interface PollHandle {
 const pollHandles: Record<string, PollHandle> = {}
 
 /**
- * Formats a completed run's counts for the completion snackbar. Which wording is used is
+ * Formats a completed run's counts for the completion notice. Which wording is used is
  * decided by isRssFeed (the library's own sourceType) rather than by
  * comparing documentsIndexedTotal to documentCount - an RSS_FEED run whose entries carried no
  * attachments would otherwise wrongly fall back to the FILESYSTEM/HTTP_DIRECTORY wording.
@@ -164,7 +155,6 @@ function setRun(
 export const useIndexingStore = create<IndexingState>((set, get) => ({
   runsByLibrary: {},
   runHistoryByLibrary: {},
-  snackbar: { open: false, message: '', severity: 'success' },
 
   loadRunHistory: async (libraryId: string) => {
     const sessionEpoch = currentSessionEpoch()
@@ -224,12 +214,12 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       const message =
         err instanceof Error ? err.message : 'Indizierung konnte nicht gestartet werden'
       // An UPLOAD library never had a run to fail - overwriting status to FAILED would misleadingly
-      // suggest one started and broke, so only the snackbar reports it, and status is left as-is.
+      // suggest one started and broke, so only the notice reports it, and status is left as-is.
       const isUploadLibrary = message === UPLOAD_LIBRARY_INDEXING_ERROR
       if (!isUploadLibrary) {
         setRun(libraryId, { status: 'FAILED', message, sourceType }, set, get)
       }
-      set({ snackbar: { open: true, message, severity: 'error' } })
+      notify(message, 'error')
     }
   },
 
@@ -288,8 +278,6 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     startPolling(libraryId, set, get, 0)
   },
 
-  closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
-
   reset: () => {
     Object.keys(pollHandles).forEach((libraryId) => get().stopPolling(libraryId))
     set({
@@ -297,7 +285,6 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // runHistoryByLibrary caches the previous user's last 10 runs per library; left in place it
       // would stay visible to whichever user signs in next in the same tab.
       runHistoryByLibrary: {},
-      snackbar: { open: false, message: '', severity: 'success' },
     })
   },
 }))
@@ -389,14 +376,9 @@ async function runPollTick(
   }
   get().stopPolling(libraryId)
   void get().loadRunHistory(libraryId)
-  set({
-    snackbar: {
-      open: true,
-      message:
-        response.status === 'COMPLETED'
-          ? formatCompletionMessage(response, isRssFeed)
-          : (response.message ?? 'Indizierung fehlgeschlagen'),
-      severity: response.status === 'COMPLETED' ? 'success' : 'error',
-    },
-  })
+  if (response.status === 'COMPLETED') {
+    notify(formatCompletionMessage(response, isRssFeed), 'success')
+  } else {
+    notify(response.message ?? 'Indizierung fehlgeschlagen', 'error')
+  }
 }

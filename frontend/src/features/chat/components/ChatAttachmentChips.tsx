@@ -1,6 +1,5 @@
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
-import CircularProgress from '@mui/material/CircularProgress'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
@@ -45,7 +44,6 @@ export function ChatAttachmentDraftChips({ items, notice, onRemove, disabled }: 
     >
       {items.map((item) => {
         const text = phaseText(item)
-        const busy = item.phase === 'uploading' || item.phase === 'processing'
         const failed = item.phase === 'failed'
         return (
           <Box component="li" key={item.key} sx={{ maxWidth: '100%' }}>
@@ -53,10 +51,9 @@ export function ChatAttachmentDraftChips({ items, notice, onRemove, disabled }: 
               <Chip
                 size="small"
                 variant="outlined"
+                // The phase text after the name says whether the file is still on its way.
                 icon={
-                  busy ? (
-                    <CircularProgress size={12} aria-hidden />
-                  ) : failed ? (
+                  failed ? (
                     <ReportProblemOutlinedIcon aria-hidden sx={{ color: 'error.main' }} />
                   ) : (
                     <AttachFileIcon aria-hidden />

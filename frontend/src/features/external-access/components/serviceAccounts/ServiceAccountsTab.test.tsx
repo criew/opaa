@@ -89,8 +89,8 @@ describe('ServiceAccountsTab', () => {
 
     await user.clear(search)
     await user.type(search, 'Grundsteuer')
-    expect(screen.getByText('Keine Treffer für „Grundsteuer“.')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Suche zurücksetzen' }))
+    expect(screen.getByText('Keine Treffer.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
     expect(accountRows()).toHaveLength(8)
   })
 

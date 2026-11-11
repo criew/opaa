@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { SvgIconComponent } from '@mui/icons-material'
 import type { FeatureName, FeatureFlags } from '@/shared/session/types'
 import { featureEnabledIn } from '@/shared/session/authStore'
+import type { LoadErrorMessage } from '@/shared/ui/states/LoadError'
 
 /** One entry of the '/' menu. */
 export interface ChatActionOption {
@@ -54,11 +55,10 @@ export interface ChatActionTexts {
   heading: string
   /** The accessible name of the list. */
   listLabel: string
-  loading: string
   /** Nothing to offer at all in this context. */
-  none: string
-  noMatch: string
-  loadFailed: string
+  none: `${string}.`
+  noMatch: `${string}.`
+  loadFailed: LoadErrorMessage
   chooseFailed: string
 }
 
@@ -88,10 +88,9 @@ export interface ChatActionSource {
 export const GENERIC_CHAT_ACTION_TEXTS: ChatActionTexts = {
   heading: 'Aktion einsetzen',
   listLabel: 'Aktionen',
-  loading: 'Aktionen werden geladen …',
-  none: 'In diesem Space stehen keine Aktionen zur Verfügung',
-  noMatch: 'Keine passende Aktion gefunden',
-  loadFailed: 'Aktionen konnten nicht geladen werden',
+  none: 'In diesem Space stehen keine Aktionen zur Verfügung.',
+  noMatch: 'Keine Treffer.',
+  loadFailed: 'Aktionen konnten nicht geladen werden.',
   chooseFailed: 'Die Aktion konnte nicht geladen werden',
 }
 

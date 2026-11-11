@@ -2619,7 +2619,9 @@ describe('LibraryDetailPage', () => {
     }))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/konnten nicht vollständig geladen werden/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Die Angaben zu dieser Bibliothek konnten nicht geladen werden.'),
+    ).toBeInTheDocument()
     expect(screen.getByText(managerLibrary.name)).toBeInTheDocument()
   })
 
@@ -2635,18 +2637,20 @@ describe('LibraryDetailPage', () => {
     }))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/konnten nicht vollständig geladen werden/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Die Angaben zu dieser Bibliothek konnten nicht geladen werden.'),
+    ).toBeInTheDocument()
     expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Quelle' })).toBeInTheDocument()
 
     mockGetLibrary.mockResolvedValueOnce(
       detailsOf(connectorLibrary, { sourcePath: '/data/dokumente' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
 
     await waitFor(() =>
       expect(
-        screen.queryByText(/konnten nicht vollständig geladen werden/i),
+        screen.queryByText(/Angaben zu dieser Bibliothek konnten nicht geladen werden/),
       ).not.toBeInTheDocument(),
     )
   })

@@ -19,6 +19,8 @@ import {
 } from '../api/connectionProfileApi'
 import { notify } from '@/shared/stores/notificationStore'
 import FormDialog from '@/shared/ui/dialog/FormDialog'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface Loaded {
   requirement: ConnectorProfileRequirementResponse | null
@@ -49,6 +51,7 @@ export default function ProfileRequirementDialog({
   onChanged,
 }: ProfileRequirementDialogProps) {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [stock, setStock] = useState<OwnAddressStock>(state.ownAddressStock ?? 'RUNS')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -71,7 +74,7 @@ export default function ProfileRequirementDialog({
     return () => {
       cancelled = true
     }
-  }, [open, state.sourceType])
+  }, [open, state.sourceType, attempt])
 
   const requirement = loaded?.requirement ?? null
   const blocked = switchingOn && requirement !== null && !requirement.switchable
@@ -121,12 +124,17 @@ export default function ProfileRequirementDialog({
       hideSubmit={blocked || requirement === null}
     >
       <Stack spacing={2} sx={{ mt: 1 }}>
-        {loaded === null && (
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Angaben werden geladen …
-          </Typography>
+        {loaded === null && <LoadingState shape="lines" count={3} />}
+        {loaded?.error && (
+          <LoadError
+            message="Die Angaben zur Quellart konnten nicht geladen werden."
+            detail={loaded.error}
+            onRetry={() => {
+              setLoaded(null)
+              setAttempt((n) => n + 1)
+            }}
+          />
         )}
-        {loaded?.error && <Alert severity="error">{loaded.error}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
         {blocked && (
           <Alert severity="info" data-testid="profile-requirement-not-switchable">
