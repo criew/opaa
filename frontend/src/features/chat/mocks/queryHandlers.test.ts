@@ -43,7 +43,10 @@ describe('mock answer stream', () => {
     const response = await fetch('/api/v1/query/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: '@test Was regelt die Dienstvereinbarung?' }),
+      body: JSON.stringify({
+        question: 'Was regelt die Dienstvereinbarung?',
+        agentId: '00000000-0000-4000-8000-00000000a9e1',
+      }),
     })
     const events = [...(await response.text()).matchAll(/^event: (\S+)$/gm)].map((m) => m[1])
 

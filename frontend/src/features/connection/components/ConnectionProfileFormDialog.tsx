@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
+import Box from '@mui/material/Box'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -22,7 +18,6 @@ import type {
   SourceTypeDescriptor,
   SourceTypeSignIn,
 } from '@/shared/api/types'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
   changeRejected,
   createConnectionProfile,
@@ -37,6 +32,8 @@ import ProfileChangePreview from './ProfileChangePreview'
 import ServiceAccountKeyField from './ServiceAccountKeyField'
 import SourceTypeSelect from './SourceTypeSelect'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
   'OAUTH',
@@ -335,8 +332,36 @@ export default function ConnectionProfileFormDialog({
     return impact
   }
 
+  /** Labels of the fields that still lack a usable value, in the order of the form. */
+  function missingFields(): string[] {
+    if (!showFields) return ['Quellart']
+    return [
+      draft.name.trim() === '' && 'Name',
+      fixedAddress === null && draft.serverUrl.trim() === '' && 'Server-Adresse',
+      method === null && 'Anmeldeart',
+      !ownerships.includes(draft.ownership) && 'Besitzart',
+      usesRegistration && !usesKey && draft.clientId.trim() === '' && 'Client-ID',
+      ...endpointFields.map(
+        (field) =>
+          (draft[field.key].trim() === '' || endpointError(field, draft[field.key]) !== null) &&
+          field.label,
+      ),
+      secretMustFollow && !withoutSecret && secret.trim() === '' && 'Client-Secret',
+    ].filter((label): label is string => typeof label === 'string')
+  }
+
   async function handleSubmit() {
-    if (!complete) return
+    if (!complete) {
+      const missing = missingFields()
+      if (missing.length > 0) setError(`Bitte ausfüllen: ${missing.join(', ')}.`)
+      return
+    }
+    if (refused) {
+      setError(
+        'Nichts wurde gespeichert: Der Konnektor lehnt die Änderung ab. Die Gründe je Bibliothek stehen in der Vorschau.',
+      )
+      return
+    }
     setError(null)
     setSubmitting(true)
     try {
@@ -379,273 +404,266 @@ export default function ConnectionProfileFormDialog({
   }
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
-      <DialogTitle>{isEdit ? `„${profile.name}“ bearbeiten` : 'Zugang anlegen'}</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
+    <FormDialog
+      open={open}
+      title={isEdit ? `„${profile.name}“ bearbeiten` : 'Neuer Zugang'}
+      submitLabel={
+        !isEdit ? 'Anlegen' : reachesLibraries && shownPreview === null ? 'Weiter' : 'Speichern'
+      }
+      onSubmit={() => void handleSubmit()}
+      onClose={close}
+      busy={submitting}
+      busyAnnouncement={
+        reachesLibraries && shownPreview === null
+          ? 'Auswirkungen werden ermittelt'
+          : 'Zugang wird gespeichert'
+      }
+      hideSubmit={descriptorMissing}
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {descriptorMissing && !sourceTypesLoaded && (
+        <Box sx={{ mb: 2 }}>
+          <LoadingState shape="lines" count={2} />
+        </Box>
+      )}
+      {descriptorMissing && sourceTypesLoaded && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Die Angaben der Quellart liegen nicht vor. Ohne sie gingen die Vorgaben des Zugangs beim
+          Speichern verloren. Bitte die Seite neu laden und erneut bearbeiten.
+        </Alert>
+      )}
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        {!isEdit && (
+          <SourceTypeSelect
+            types={connectorTypes}
+            value={chosenType}
+            onChange={(next) => {
+              setSourceType(next)
+              setDraft({ ...draft, authMethod: '', defaults: {} })
+            }}
+          />
         )}
-        {descriptorMissing && !sourceTypesLoaded && (
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            Die Angaben der Quellart werden geladen …
-          </Typography>
-        )}
-        {descriptorMissing && sourceTypesLoaded && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Die Angaben der Quellart liegen nicht vor. Ohne sie gingen die Vorgaben des Zugangs beim
-            Speichern verloren. Bitte die Seite neu laden und erneut bearbeiten.
-          </Alert>
-        )}
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {!isEdit && (
-            <SourceTypeSelect
-              types={connectorTypes}
-              value={chosenType}
-              onChange={(next) => {
-                setSourceType(next)
-                setDraft({ ...draft, authMethod: '', defaults: {} })
-              }}
+        {showFields && (
+          <>
+            <FormField
+              label="Name"
+              required
+              size="small"
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              helperText="Erscheint in der Auswahl, z. B. „Zugang Nextcloud intern“."
             />
-          )}
-          {showFields && (
-            <>
+            {fixedAddress === null ? (
               <FormField
-                label="Name"
+                label="Server-Adresse"
                 required
                 size="small"
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                helperText="Erscheint in der Auswahl, z. B. „Zugang Nextcloud intern“."
+                value={draft.serverUrl}
+                onChange={(e) => setDraft({ ...draft, serverUrl: e.target.value })}
+                helperText={addressHint(schemes)}
               />
-              {fixedAddress === null ? (
+            ) : (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Die Quellart hat eine feste Adresse: {fixedAddress}
+              </Typography>
+            )}
+            <FormField
+              select
+              label="Anmeldeart"
+              required
+              size="small"
+              value={draft.authMethod}
+              onChange={(e) => {
+                const next = e.target.value as ConnectionAuthMethod
+                const allowed = ownershipsFor(
+                  descriptor?.signIns.find((signIn) => signIn.method === next),
+                )
+                setDraft({
+                  ...draft,
+                  authMethod: next,
+                  ownership: allowed.includes(draft.ownership) ? draft.ownership : allowed[0],
+                })
+              }}
+            >
+              {methods.map((m) => (
+                <MenuItem key={m} value={m}>
+                  {AUTH_METHOD_LABELS[m]}
+                </MenuItem>
+              ))}
+            </FormField>
+            <FormField
+              select
+              label="Besitzart"
+              required
+              size="small"
+              value={draft.ownership}
+              onChange={(e) =>
+                setDraft({ ...draft, ownership: e.target.value as ConnectionOwnership })
+              }
+              helperText="Welche Verbindungen auf diesem Zugang entstehen dürfen."
+            >
+              {ownerships.map((o) => (
+                <MenuItem key={o} value={o}>
+                  {OWNERSHIP_LABELS[o]}
+                </MenuItem>
+              ))}
+            </FormField>
+            {usesKey && (
+              <ServiceAccountKeyField
+                idPrefix="connection-profile"
+                storedAccount={profile?.clientId ?? null}
+                keySet={profile?.clientSecretSet ?? false}
+                onChange={setSecret}
+              />
+            )}
+            {usesRegistration && !usesKey && (
+              <>
                 <FormField
-                  label="Server-Adresse"
+                  label="Client-ID"
                   required
                   size="small"
-                  value={draft.serverUrl}
-                  onChange={(e) => setDraft({ ...draft, serverUrl: e.target.value })}
-                  helperText={addressHint(schemes)}
+                  value={draft.clientId}
+                  onChange={(e) => setDraft({ ...draft, clientId: e.target.value })}
                 />
-              ) : (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Die Quellart hat eine feste Adresse: {fixedAddress}
-                </Typography>
-              )}
-              <FormField
-                select
-                label="Anmeldeart"
-                required
-                size="small"
-                value={draft.authMethod}
-                onChange={(e) => {
-                  const next = e.target.value as ConnectionAuthMethod
-                  const allowed = ownershipsFor(
-                    descriptor?.signIns.find((signIn) => signIn.method === next),
-                  )
-                  setDraft({
-                    ...draft,
-                    authMethod: next,
-                    ownership: allowed.includes(draft.ownership) ? draft.ownership : allowed[0],
-                  })
-                }}
-              >
-                {methods.map((m) => (
-                  <MenuItem key={m} value={m}>
-                    {AUTH_METHOD_LABELS[m]}
-                  </MenuItem>
-                ))}
-              </FormField>
-              <FormField
-                select
-                label="Besitzart"
-                required
-                size="small"
-                value={draft.ownership}
-                onChange={(e) =>
-                  setDraft({ ...draft, ownership: e.target.value as ConnectionOwnership })
-                }
-                helperText="Welche Verbindungen auf diesem Zugang entstehen dürfen."
-              >
-                {ownerships.map((o) => (
-                  <MenuItem key={o} value={o}>
-                    {OWNERSHIP_LABELS[o]}
-                  </MenuItem>
-                ))}
-              </FormField>
-              {usesKey && (
-                <ServiceAccountKeyField
-                  idPrefix="connection-profile"
-                  storedAccount={profile?.clientId ?? null}
-                  keySet={profile?.clientSecretSet ?? false}
-                  onChange={setSecret}
-                />
-              )}
-              {usesRegistration && !usesKey && (
-                <>
-                  <FormField
-                    label="Client-ID"
-                    required
-                    size="small"
-                    value={draft.clientId}
-                    onChange={(e) => setDraft({ ...draft, clientId: e.target.value })}
-                  />
-                  <FormField
-                    label="Client-Secret"
-                    type="password"
-                    size="small"
-                    autoComplete="new-password"
-                    required={secretMustFollow && !withoutSecret}
-                    disabled={sendsNoSecret}
-                    value={sendsNoSecret ? '' : secret}
-                    onChange={(e) => setSecret(e.target.value)}
-                    helperText={
-                      secretMustFollow
-                        ? secretHint(movedSecretEndpoints)
-                        : profile?.clientSecretSet
-                          ? 'Ein Secret ist hinterlegt. Leer lassen, um es zu behalten.'
-                          : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
-                    }
-                  />
-                  {secretMustFollow && (
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={withoutSecret}
-                          onChange={(e) => setWithoutSecret(e.target.checked)}
-                        />
-                      }
-                      label="Ohne Client-Secret speichern (öffentlicher Client)"
-                    />
-                  )}
-                  <FormField
-                    label="Ablaufdatum des Secrets"
-                    type="date"
-                    size="small"
-                    value={draft.clientSecretExpiresOn}
-                    onChange={(e) => setDraft({ ...draft, clientSecretExpiresOn: e.target.value })}
-                    helperText="OPAA warnt 14 Tage vorher."
-                  />
-                  <FormField
-                    label="Mandant"
-                    size="small"
-                    value={draft.tenant}
-                    onChange={(e) => setDraft({ ...draft, tenant: e.target.value })}
-                  />
-                </>
-              )}
-              {usesScopes && (
                 <FormField
-                  label="Scopes"
+                  label="Client-Secret"
+                  type="password"
                   size="small"
-                  value={draft.scopes}
-                  onChange={(e) => setDraft({ ...draft, scopes: e.target.value })}
+                  autoComplete="new-password"
+                  required={secretMustFollow && !withoutSecret}
+                  disabled={sendsNoSecret}
+                  value={sendsNoSecret ? '' : secret}
+                  onChange={(e) => setSecret(e.target.value)}
                   helperText={
-                    signIn?.defaultScopes
-                      ? `Durch Leerzeichen getrennt. Leer lassen für die Vorgabe der Quellart: „${signIn.defaultScopes}“.`
-                      : 'Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“.'
+                    secretMustFollow
+                      ? secretHint(movedSecretEndpoints)
+                      : profile?.clientSecretSet
+                        ? 'Ein Secret ist hinterlegt. Leer lassen, um es zu behalten.'
+                        : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
                   }
                 />
-              )}
-              {endpointFields.map((field) => {
-                const invalid = endpointError(field, draft[field.key])
-                return (
-                  <FormField
-                    key={field.key}
-                    label={field.label}
-                    required
-                    size="small"
-                    value={draft[field.key]}
-                    onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
-                    placeholder="https://"
-                    autoComplete="off"
-                    error={invalid !== null}
-                    helperText={
-                      invalid ??
-                      `${field.hint} Beginnt mit https://; eine Änderung verlangt neue Zustimmungen.`
+                {secretMustFollow && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={withoutSecret}
+                        onChange={(e) => setWithoutSecret(e.target.checked)}
+                      />
                     }
-                    slotProps={{ htmlInput: { maxLength: 2000 } }}
+                    label="Ohne Client-Secret speichern (öffentlicher Client)"
                   />
-                )
-              })}
-              {method === 'OAUTH' && redirect === 'failed' && (
-                <Alert severity="warning" data-testid="connection-profile-redirect-uri">
-                  Die Rücksprungadresse ließ sich nicht laden. Sie lautet
-                  {' {OPAA_PUBLIC_BASE_URL}/connections/callback'}.
-                </Alert>
-              )}
-              {method === 'OAUTH' && redirect !== undefined && redirect !== 'failed' && (
-                <>
-                  {redirect.uri ? (
-                    <Typography
-                      variant="body2"
-                      sx={{ color: 'text.secondary', wordBreak: 'break-all' }}
-                      data-testid="connection-profile-redirect-uri"
-                    >
-                      Rücksprungadresse für die App-Registrierung beim Anbieter: {redirect.uri}
-                    </Typography>
-                  ) : (
-                    <Alert severity="warning" data-testid="connection-profile-redirect-uri">
-                      Die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL) ist nicht gesetzt.
-                      Ohne sie gibt es keine Rücksprungadresse, und über diesen Zugang lässt sich
-                      kein Konto beim Anbieter verbinden. Zuständig ist der Betrieb der
-                      Installation.
-                    </Alert>
-                  )}
-                </>
-              )}
-              {defaultKeys.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" component="h3">
-                    Vorgaben für jede Bibliothek
+                )}
+                <FormField
+                  label="Ablaufdatum des Secrets"
+                  type="date"
+                  size="small"
+                  value={draft.clientSecretExpiresOn}
+                  onChange={(e) => setDraft({ ...draft, clientSecretExpiresOn: e.target.value })}
+                  helperText="OPAA warnt 14 Tage vorher."
+                />
+                <FormField
+                  label="Mandant"
+                  size="small"
+                  value={draft.tenant}
+                  onChange={(e) => setDraft({ ...draft, tenant: e.target.value })}
+                />
+              </>
+            )}
+            {usesScopes && (
+              <FormField
+                label="Scopes"
+                size="small"
+                value={draft.scopes}
+                onChange={(e) => setDraft({ ...draft, scopes: e.target.value })}
+                helperText={
+                  signIn?.defaultScopes
+                    ? `Durch Leerzeichen getrennt. Leer lassen für die Vorgabe der Quellart: „${signIn.defaultScopes}“.`
+                    : 'Durch Leerzeichen getrennt, z. B. „Files.Read offline_access“.'
+                }
+              />
+            )}
+            {endpointFields.map((field) => {
+              const invalid = endpointError(field, draft[field.key])
+              return (
+                <FormField
+                  key={field.key}
+                  label={field.label}
+                  required
+                  size="small"
+                  value={draft[field.key]}
+                  onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
+                  placeholder="https://"
+                  autoComplete="off"
+                  error={invalid !== null}
+                  helperText={
+                    invalid ??
+                    `${field.hint} Beginnt mit https://; eine Änderung verlangt neue Zustimmungen.`
+                  }
+                  slotProps={{ htmlInput: { maxLength: 2000 } }}
+                />
+              )
+            })}
+            {method === 'OAUTH' && redirect === 'failed' && (
+              <Alert severity="warning" data-testid="connection-profile-redirect-uri">
+                Die Rücksprungadresse ließ sich nicht laden. Sie lautet
+                {' {OPAA_PUBLIC_BASE_URL}/connections/callback'}.
+              </Alert>
+            )}
+            {method === 'OAUTH' && redirect !== undefined && redirect !== 'failed' && (
+              <>
+                {redirect.uri ? (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'text.secondary', wordBreak: 'break-all' }}
+                    data-testid="connection-profile-redirect-uri"
+                  >
+                    Rücksprungadresse für die App-Registrierung beim Anbieter: {redirect.uri}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Optional. Eine Vorgabe gilt für jede Bibliothek auf diesem Zugang und ersetzt
-                    deren eigene Einstellung.
-                  </Typography>
-                  {defaultKeys.map((key) => (
-                    <DefaultField
-                      key={key.key}
-                      defaultKey={key}
-                      value={draft.defaults[key.key] ?? ''}
-                      onChange={(value) =>
-                        setDraft({ ...draft, defaults: { ...draft.defaults, [key.key]: value } })
-                      }
-                    />
-                  ))}
-                </>
-              )}
-            </>
-          )}
-          {shownPreview && profile && (
-            <ProfileChangePreview
-              impact={shownPreview}
-              ownership={profile.ownership}
-              ownershipAfter={draft.ownership}
-            />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <BusyButton
-          variant="contained"
-          onClick={() => void handleSubmit()}
-          disabled={!complete || refused}
-          busy={submitting}
-          busyAnnouncement={
-            reachesLibraries && shownPreview === null
-              ? 'Auswirkungen werden ermittelt'
-              : 'Zugang wird gespeichert'
-          }
-        >
-          {!isEdit ? 'Anlegen' : reachesLibraries && shownPreview === null ? 'Weiter' : 'Speichern'}
-        </BusyButton>
-      </DialogActions>
-    </Dialog>
+                ) : (
+                  <Alert severity="warning" data-testid="connection-profile-redirect-uri">
+                    Die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL) ist nicht gesetzt. Ohne
+                    sie gibt es keine Rücksprungadresse, und über diesen Zugang lässt sich kein
+                    Konto beim Anbieter verbinden. Zuständig ist der Betrieb der Installation.
+                  </Alert>
+                )}
+              </>
+            )}
+            {defaultKeys.length > 0 && (
+              <>
+                <Typography variant="subtitle2" component="h3">
+                  Vorgaben für jede Bibliothek
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Optional. Eine Vorgabe gilt für jede Bibliothek auf diesem Zugang und ersetzt
+                  deren eigene Einstellung.
+                </Typography>
+                {defaultKeys.map((key) => (
+                  <DefaultField
+                    key={key.key}
+                    defaultKey={key}
+                    value={draft.defaults[key.key] ?? ''}
+                    onChange={(value) =>
+                      setDraft({ ...draft, defaults: { ...draft.defaults, [key.key]: value } })
+                    }
+                  />
+                ))}
+              </>
+            )}
+          </>
+        )}
+        {shownPreview && profile && (
+          <ProfileChangePreview
+            impact={shownPreview}
+            ownership={profile.ownership}
+            ownershipAfter={draft.ownership}
+          />
+        )}
+      </Stack>
+    </FormDialog>
   )
 }
 

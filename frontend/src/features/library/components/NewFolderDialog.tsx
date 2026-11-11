@@ -1,12 +1,8 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormField from '@/shared/ui/form/FormField'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface NewFolderDialogProps {
   open: boolean
@@ -19,9 +15,13 @@ export default function NewFolderDialog({ open, onClose, onCreate }: NewFolderDi
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nameMissing, setNameMissing] = useState(false)
 
   async function handleSubmit() {
-    if (!name.trim()) return
+    if (!name.trim()) {
+      setNameMissing(true)
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -37,38 +37,35 @@ export default function NewFolderDialog({ open, onClose, onCreate }: NewFolderDi
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Neuer Ordner</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Box sx={{ pt: 0.5 }}>
-          <FormField
-            label="Ordnername"
-            id="new-folder-name"
-            fullWidth
-            size="small"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleSubmit()
-            }}
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleSubmit()}
-          disabled={saving || !name.trim()}
-        >
-          {saving ? 'Wird angelegt …' : 'Anlegen'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open={open}
+      title="Neuer Ordner"
+      submitLabel="Anlegen"
+      onSubmit={() => void handleSubmit()}
+      onClose={onClose}
+      busy={saving}
+      busyAnnouncement="Der Ordner wird angelegt"
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Box sx={{ pt: 0.5 }}>
+        <FormField
+          label="Ordnername"
+          id="new-folder-name"
+          fullWidth
+          size="small"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value)
+            setNameMissing(false)
+          }}
+          error={nameMissing}
+          helperText={nameMissing ? 'Bitte einen Namen angeben.' : undefined}
+        />
+      </Box>
+    </FormDialog>
   )
 }

@@ -174,7 +174,7 @@ def summarize(rows, run):
     s['Textfarben (Median)'] = med([r.get('colors') for r in light])
     s['Wörter im Hauptbereich (Median)'] = med([r.get('words') for r in light])
     s['Bedienwörter ohne Daten (Median, small)'] = med([r.get('uiWords') for r in light if r.get('scenario') in ('small', 'default')])
-    for key, label in (('helpTextsPerForm', 'Hilfetexte je Formular'), ('helpTextLines', 'Hilfetext > 1 Zeile'), ('uiWords', 'Bedienwörter')):
+    for key, label in (('helpTextsPerForm', 'Hilfetexte je Formular'), ('helpTextLines', 'Hilfetext > 1 Zeile'), ('uiWords', 'Bedienwörter'), ('disabledSubmits', 'Gesperrtes Absenden')):
         s[f'Über Budget: {label} (Shots)'] = sum(1 for r in ok if key in (r.get('budgetViolations') or []))
     s['Schema nicht wie angefordert (Shots)'] = sum(1 for r in ok if r.get('appliedScheme') and r.get('appliedScheme') != r.get('scheme'))
     s['Fokussierbare Elemente (Median)'] = med([r.get('focusable') for r in light])

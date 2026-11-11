@@ -437,7 +437,7 @@ describe('ConnectedAccountsSection', () => {
     expect(within(dialog).getByLabelText(/Benutzername/)).toHaveValue('avogt')
     await user.click(within(dialog).getByLabelText(/Passwort oder App-Passwort/))
     await user.paste('neu-123')
-    await user.click(within(dialog).getByRole('button', { name: 'Neu verbinden' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Verbinden' }))
 
     await waitForDialogClosed()
     expect(sent).toEqual({ username: 'avogt', secret: 'neu-123' })

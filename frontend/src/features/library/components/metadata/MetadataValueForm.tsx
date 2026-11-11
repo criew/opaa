@@ -21,6 +21,8 @@ interface MetadataValueFormProps {
   /** The definition of a library field (`lib:…`); null while it is still loading. */
   libraryField?: LibraryMetadataFieldResponse | null
   disabled?: boolean
+  /** Shown at the value input, e.g. when the form was sent without a value. */
+  error?: string
 }
 
 // The input for one field - free text for the title, a choice from the controlled
@@ -36,6 +38,7 @@ export default function MetadataValueForm({
   vocabulary,
   libraryField = null,
   disabled = false,
+  error,
 }: MetadataValueFormProps) {
   const notDeterminable = isNotDeterminable(value)
   return (
@@ -47,6 +50,7 @@ export default function MetadataValueForm({
         vocabulary={vocabulary}
         libraryField={libraryField}
         disabled={disabled || notDeterminable}
+        error={notDeterminable ? undefined : error}
       />
       <FormControlLabel
         control={
@@ -77,6 +81,7 @@ function ValueInput({
   vocabulary,
   libraryField,
   disabled,
+  error,
 }: MetadataValueFormProps & { disabled: boolean }) {
   if (isLibraryFieldKey(fieldKey) && libraryField?.type !== 'DATE') {
     if (!libraryField) return null
@@ -89,8 +94,10 @@ function ValueInput({
           fullWidth
           required
           disabled={disabled}
+          error={Boolean(error)}
           helperText={
-            libraryField.valuePattern ? `Muster: ${libraryField.valuePattern}` : undefined
+            error ??
+            (libraryField.valuePattern ? `Muster: ${libraryField.valuePattern}` : undefined)
           }
         />
       )
@@ -106,6 +113,8 @@ function ValueInput({
         fullWidth
         required
         disabled={disabled}
+        error={Boolean(error)}
+        helperText={error}
         value={value.textValue ?? ''}
         onChange={(e) => onChange({ ...value, textValue: String(e.target.value) })}
       >
@@ -126,6 +135,8 @@ function ValueInput({
         fullWidth
         required
         disabled={disabled}
+        error={Boolean(error)}
+        helperText={error}
         slotProps={{ htmlInput: { maxLength: 1000 } }}
       />
     )
@@ -138,6 +149,8 @@ function ValueInput({
         fullWidth
         required
         disabled={disabled}
+        error={Boolean(error)}
+        helperText={error}
         value={value.vocabularyCode ?? ''}
         onChange={(e) => onChange({ ...value, vocabularyCode: String(e.target.value) })}
       >
@@ -158,12 +171,15 @@ function ValueInput({
         onChange={(e) => onChange({ ...value, dateValue: e.target.value })}
         required
         disabled={disabled}
+        error={Boolean(error)}
         helperText={
-          value.datePrecision === 'MONTH'
-            ? 'Bei Genauigkeit „Monat" zählt nur Monat und Jahr des Datums.'
-            : value.datePrecision === 'YEAR'
-              ? 'Bei Genauigkeit „Jahr" zählt nur das Jahr des Datums.'
-              : undefined
+          error
+            ? error
+            : value.datePrecision === 'MONTH'
+              ? 'Bei Genauigkeit „Monat" zählt nur Monat und Jahr des Datums.'
+              : value.datePrecision === 'YEAR'
+                ? 'Bei Genauigkeit „Jahr" zählt nur das Jahr des Datums.'
+                : undefined
         }
         sx={{ flexGrow: 1 }}
       />

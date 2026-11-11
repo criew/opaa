@@ -408,7 +408,7 @@ describe('OwnExternalAccessTokensSection', () => {
       'opaa_pat_new1_geheimer_wert_nur_dieses_eine_mal',
     )
 
-    await user.click(within(valueDialog).getByRole('button', { name: 'Kopiert, schließen' }))
+    await user.click(within(valueDialog).getByRole('button', { name: 'Schließen' }))
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Token erzeugt' })).not.toBeInTheDocument(),
     )

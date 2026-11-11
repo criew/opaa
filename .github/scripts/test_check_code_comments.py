@@ -1,7 +1,7 @@
 """Self-check for check_code_comments.sh: each rule catches its form in every checked tree, and the
-forms the rule allows (an upstream reference, an HTML entity, the spike package, a string outside a
-comment or docstring, a test's regression guard) pass. The TypeScript cases cover line, block,
-trailing and JSX comments under frontend/src and the frontend configuration files."""
+forms the rule allows (an upstream reference, an HTML entity, a line naming a spike, a string
+outside a comment or docstring, a test's regression guard) pass. The TypeScript cases cover line,
+block, trailing and JSX comments under frontend/src and the frontend configuration files."""
 
 import shutil
 import subprocess
@@ -78,11 +78,6 @@ def test_rejected_comment_fails(repo: Path, comment: str, kind: str) -> None:
     result = run(repo)
     assert result.returncode == 1
     assert kind in result.stdout
-
-
-def test_spike_package_is_exempt(repo: Path) -> None:
-    write(repo, "backend/src/main/java/io/opaa/query/spike/Spike.java", java("The spike tool (#1789)."))
-    assert run(repo).returncode == 0
 
 
 def test_openapi_description_and_yaml_comment_are_checked(repo: Path) -> None:

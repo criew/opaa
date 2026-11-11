@@ -1,9 +1,6 @@
 import { Link as RouterLink } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
-import Skeleton from '@mui/material/Skeleton'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -17,10 +14,12 @@ import type { ExternalAccessLibraryResponse } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
 import { formatDate } from './tokenLabels'
-import { ListEmptyState } from '@/shared/ui/list/AdminList'
 import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import { releaseEndingLabel } from './externalToolsState'
 import { fontSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface ReleasedLibrariesSectionProps {
   /** null while loading. */
@@ -77,22 +76,17 @@ export default function ReleasedLibrariesSection({
       description="Jede Freigabe ist befristet und erlischt von selbst; setzen und erneuern kann sie nur, wer die Bibliothek verwaltet - in der Bibliothek unter „Freigaben“."
     >
       {error ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={onRetry}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
+        <LoadError
+          message="Die freigegebenen Bibliotheken konnten nicht geladen werden."
+          detail={error}
+          onRetry={onRetry}
+        />
       ) : libraries === null ? (
-        <Skeleton variant="rounded" height={96} />
+        <LoadingState count={2} />
       ) : libraries.length === 0 ? (
-        <ListEmptyState
-          title="Derzeit ist keine Bibliothek freigegeben."
-          hint="Externe KI-Werkzeuge erreichen erst Bibliotheken, die deren Verwaltende freigegeben haben."
+        <EmptyState
+          framed
+          message="Noch keine freigegebenen Bibliotheken. Externe KI-Werkzeuge erreichen erst Bibliotheken, die deren Verwaltende freigegeben haben."
         />
       ) : isDesktop ? (
         <TableContainer>

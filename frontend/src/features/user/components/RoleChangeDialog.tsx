@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
@@ -21,6 +16,7 @@ import {
   localUserErrorMessage,
 } from './localUserLabels'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface RoleChangeDialogProps {
   /** The account whose role is being changed; `null` keeps the dialog closed. */
@@ -46,7 +42,12 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
   const name = account?.displayName ?? account?.email ?? ''
 
   async function save(afterConfirmation = false) {
-    if (!account || selected === account.systemRole) return
+    if (!account) return
+    // nothing changed: there is nothing to save, the dialog just closes
+    if (selected === account.systemRole) {
+      onClose()
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -73,68 +74,55 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
 
   return (
     <>
-      <Dialog
+      <FormDialog
         open={open}
-        onClose={saving ? undefined : onClose}
-        aria-labelledby="role-change-title"
-        maxWidth="xs"
-        fullWidth
+        titleId="role-change-title"
+        title={`Rolle von „${name}“ ändern`}
+        submitLabel="Speichern"
+        onSubmit={() => void save()}
+        onClose={onClose}
+        busy={saving}
+        busyAnnouncement="Die Rolle wird gespeichert"
       >
-        <DialogTitle id="role-change-title">Rolle von „{name}“ ändern</DialogTitle>
-        <DialogContent>
-          {account && (
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
-              Konto bei {accountOriginLabel(account)}
-              {account.email ? ` · ${account.email}` : ''}. Die Rolle gilt für die ganze Anwendung;
-              Rechte an Räumen und Bibliotheken werden dort vergeben.
-            </Typography>
-          )}
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          <Box>
-            <FormField
-              id="role-change-role"
-              label="Rolle"
-              select
-              fullWidth
-              size="small"
-              value={selected}
-              onChange={(e) => setRole(e.target.value as SystemRole)}
-              disabled={saving}
-            >
-              {SYSTEM_ROLES.map((entry) => (
-                <MenuItem key={entry} value={entry}>
-                  {SYSTEM_ROLE_LABEL[entry]}
-                </MenuItem>
-              ))}
-            </FormField>
-          </Box>
-          {selected === 'AUDITOR' && account?.systemRole !== 'AUDITOR' && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Die Rolle {SYSTEM_ROLE_LABEL.AUDITOR} vergibt die Systemverwaltung nicht allein: Sie
-              wird beantragt und erst wirksam, wenn eine Person der Revision bestätigt. Ein lokales
-              Konto verliert dabei sein Passwort; den Link für ein neues erhält die bestätigende
-              Person der Revision und übergibt ihn – nicht die Systemverwaltung und nicht per
-              E-Mail.
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={saving}>
-            Abbrechen
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void save()}
-            disabled={saving || !account || selected === account.systemRole}
+        {account && (
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+            Konto bei {accountOriginLabel(account)}
+            {account.email ? ` · ${account.email}` : ''}. Die Rolle gilt für die ganze Anwendung;
+            Rechte an Räumen und Bibliotheken werden dort vergeben.
+          </Typography>
+        )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Box>
+          <FormField
+            id="role-change-role"
+            label="Rolle"
+            select
+            fullWidth
+            size="small"
+            value={selected}
+            onChange={(e) => setRole(e.target.value as SystemRole)}
+            disabled={saving}
           >
-            Speichern
-          </Button>
-        </DialogActions>
-      </Dialog>
+            {SYSTEM_ROLES.map((entry) => (
+              <MenuItem key={entry} value={entry}>
+                {SYSTEM_ROLE_LABEL[entry]}
+              </MenuItem>
+            ))}
+          </FormField>
+        </Box>
+        {selected === 'AUDITOR' && account?.systemRole !== 'AUDITOR' && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Die Rolle {SYSTEM_ROLE_LABEL.AUDITOR} vergibt die Systemverwaltung nicht allein: Sie
+            wird beantragt und erst wirksam, wenn eine Person der Revision bestätigt. Ein lokales
+            Konto verliert dabei sein Passwort; den Link für ein neues erhält die bestätigende
+            Person der Revision und übergibt ihn – nicht die Systemverwaltung und nicht per E-Mail.
+          </Alert>
+        )}
+      </FormDialog>
       {gate.dialog}
     </>
   )

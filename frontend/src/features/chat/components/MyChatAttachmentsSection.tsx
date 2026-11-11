@@ -2,10 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
@@ -25,6 +21,7 @@ import {
 } from '../api/chatAttachmentApi'
 import { fontSize, iconSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 const UPLOAD_ROLES = new Set(['EDITOR', 'MANAGER', 'OWNER'])
 
@@ -60,6 +57,7 @@ function CopyToLibraryDialog({
   const [libraryId, setLibraryId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [libraryMissing, setLibraryMissing] = useState(false)
   const targets = useMemo(
     () =>
       libraries.filter(
@@ -75,11 +73,16 @@ function CopyToLibraryDialog({
   const close = () => {
     setLibraryId('')
     setError(null)
+    setLibraryMissing(false)
     onClose()
   }
 
   const copy = async () => {
-    if (!attachment || !libraryId) return
+    if (!attachment) return
+    if (!libraryId) {
+      setLibraryMissing(true)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -95,46 +98,51 @@ function CopyToLibraryDialog({
   }
 
   return (
-    <Dialog open={attachment !== null} onClose={close} fullWidth maxWidth="xs">
-      <DialogTitle>In Bibliothek übernehmen</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
-          Eine Kopie von „{attachment?.fileName}“ wird in der Bibliothek indexiert und folgt danach
-          deren Rechten und Fristen. Der Anhang im Chat bleibt unverändert.
+    <FormDialog
+      open={attachment !== null}
+      title="In Bibliothek übernehmen"
+      submitLabel="Übernehmen"
+      onSubmit={() => void copy()}
+      onClose={close}
+      busy={busy}
+      busyAnnouncement="Wird übernommen"
+      hideSubmit={targets.length === 0}
+    >
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+        Eine Kopie von „{attachment?.fileName}“ wird in der Bibliothek indexiert und folgt danach
+        deren Rechten und Fristen. Der Anhang im Chat bleibt unverändert.
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {targets.length === 0 ? (
+        <Typography sx={{ fontSize: fontSize.text }}>
+          Sie können in keine Upload-Bibliothek Dokumente hochladen.
         </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {targets.length === 0 ? (
-          <Typography sx={{ fontSize: fontSize.text }}>
-            Sie können in keine Upload-Bibliothek Dokumente hochladen.
-          </Typography>
-        ) : (
-          <FormField
-            select
-            fullWidth
-            size="small"
-            label="Bibliothek"
-            value={libraryId}
-            onChange={(e) => setLibraryId(e.target.value)}
-          >
-            {targets.map((library) => (
-              <MenuItem key={library.id} value={library.id}>
-                {library.name}
-              </MenuItem>
-            ))}
-          </FormField>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close}>Abbrechen</Button>
-        <Button variant="contained" disabled={!libraryId || busy} onClick={() => void copy()}>
-          Übernehmen
-        </Button>
-      </DialogActions>
-    </Dialog>
+      ) : (
+        <FormField
+          select
+          fullWidth
+          size="small"
+          label="Bibliothek"
+          value={libraryId}
+          onChange={(e) => {
+            setLibraryId(e.target.value)
+            setLibraryMissing(false)
+          }}
+          error={libraryMissing}
+          helperText={libraryMissing ? 'Bitte eine Bibliothek auswählen.' : undefined}
+        >
+          {targets.map((library) => (
+            <MenuItem key={library.id} value={library.id}>
+              {library.name}
+            </MenuItem>
+          ))}
+        </FormField>
+      )}
+    </FormDialog>
   )
 }
 

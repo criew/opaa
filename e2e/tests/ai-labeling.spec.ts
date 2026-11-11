@@ -70,11 +70,11 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
   }) => {
     await startFreshChat(page)
 
-    // two places: the prominent notice in the empty chat and the permanent line under the input
+    // once per surface: the empty chat shows it in its middle, not again under the input
     const notices = page.getByRole('note', { name: NOTICE_NAME })
-    await expect(notices).toHaveCount(2)
-    await expect(notices.first()).toContainText(STANDARD_NOTICE)
-    await expect(notices.last()).toContainText(STANDARD_NOTICE)
+    await expect(notices).toHaveCount(1)
+    await expect(notices).toContainText(STANDARD_NOTICE)
+    await expect(page.getByTestId('ai-notice')).toBeVisible()
   })
 
   test('Antwort trägt das Kennzeichen „KI-erzeugt“ mit zugänglichem Namen', async ({

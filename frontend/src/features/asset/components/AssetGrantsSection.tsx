@@ -47,6 +47,9 @@ import {
 } from './assetLabels'
 import { fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -417,11 +420,6 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
       }
     >
       {showForm && <Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>{form}</Box>}
-      {loadError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {loadError}
-        </Alert>
-      )}
       {rowError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRowError(null)}>
           {rowError}
@@ -455,14 +453,16 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
         </Stack>
       )}
 
-      {isLoading ? (
-        <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
-          Berechtigungen werden geladen …
-        </Typography>
+      {loadError ? (
+        <LoadError
+          message="Die Berechtigungen konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void loadGrants(assetType, assetId)}
+        />
+      ) : isLoading ? (
+        <LoadingState shape="lines" count={3} />
       ) : listed.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
-          Noch keine Freigaben.
-        </Typography>
+        <EmptyState message="Noch keine Freigaben." />
       ) : (
         <Box
           component="ul"
@@ -470,12 +470,15 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
           sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
         >
           {matching.length === 0 && (
-            <Typography
-              component="li"
-              sx={{ py: 1.25, color: 'text.secondary', fontSize: fontSize.text }}
-            >
-              Keine Freigabe entspricht dieser Suche.
-            </Typography>
+            <Box component="li" sx={{ py: 1.25 }}>
+              <EmptyState
+                kind="noMatch"
+                onReset={() => {
+                  setQuery('')
+                  setKind('ALL')
+                }}
+              />
+            </Box>
           )}
           {shownGrants.map((grant) => {
             const expired = isExpired(grant.expiresAt)

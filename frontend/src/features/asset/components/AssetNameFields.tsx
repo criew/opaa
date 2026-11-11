@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import Box from '@mui/material/Box'
 import FormField from '@/shared/ui/form/FormField'
 
@@ -6,6 +7,10 @@ interface AssetNameFieldsProps {
   idPrefix: string
   name: string
   onNameChange: (name: string) => void
+  /** A missing name, said at the field (guidelines 5.15). */
+  nameError?: string | null
+  /** Takes the focus when the name is missing. */
+  nameInputRef?: Ref<HTMLInputElement>
   description: string
   onDescriptionChange: (description: string) => void
   namePlaceholder: string
@@ -16,6 +21,8 @@ export default function AssetNameFields({
   idPrefix,
   name,
   onNameChange,
+  nameError = null,
+  nameInputRef,
   description,
   onDescriptionChange,
   namePlaceholder,
@@ -31,6 +38,9 @@ export default function AssetNameFields({
           onChange={(e) => onNameChange(e.target.value)}
           placeholder={namePlaceholder}
           fullWidth
+          inputRef={nameInputRef}
+          error={nameError !== null}
+          helperText={nameError ?? undefined}
           slotProps={{ htmlInput: { maxLength: 255 } }}
         />
       </Box>

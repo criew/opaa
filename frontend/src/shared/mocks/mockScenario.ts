@@ -9,10 +9,13 @@ import { delay } from 'msw'
  * - `small`: one to three entries in every listing and selection
  * - `scale`: hundreds of entries, deep folder trees and 80-120 character names
  * - `empty`: listings answer with zero entries
- * - `slow`: listings and connection tests answer after three seconds; the chat answer starts
- *   after two seconds and arrives word by word, an agent's steps (question "@test …") one by one
+ * - `slow`: every read and connection test answers after three seconds; the chat answer starts
+ *   after two seconds and arrives word by word, an agent's steps one by one
  * - `failed`: listings fail (HTTP 403/502), connection tests report a refused sign-in
  * - `partial`: listings are incomplete, connection tests fail for some scopes
+ *
+ * `empty`, `slow` and `failed` reach every topic through the scenario handler in `app/mocks`;
+ * topics with own fixtures for a scenario answer first. `small`, `scale` and `partial` are per topic.
  */
 export const MOCK_SCENARIOS = [
   'default',

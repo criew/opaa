@@ -32,14 +32,12 @@ describe('lazy pages', () => {
 
     // The area navigation stays; only the content waits.
     expect(screen.getByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'Seite wird geladen' })).toBeInTheDocument()
+    expect(screen.getByText('Wird geladen')).toBeInTheDocument()
 
     resolve({ default: () => <div>Gruppen-Inhalt</div> })
 
     expect(await screen.findByText('Gruppen-Inhalt')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('progressbar', { name: 'Seite wird geladen' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Wird geladen')).not.toBeInTheDocument()
   })
 
   it('resolves with the loaded module', async () => {
@@ -65,6 +63,6 @@ describe('lazy pages', () => {
     renderAreaWith(<Page />)
     await new Promise((r) => setTimeout(r, 50))
 
-    expect(screen.getByRole('progressbar', { name: 'Seite wird geladen' })).toBeInTheDocument()
+    expect(screen.getByText('Wird geladen')).toBeInTheDocument()
   })
 })

@@ -21,6 +21,9 @@ import PathLabel from '../sourceCore/PathLabel'
 import { SummaryValue } from './SummaryRow'
 import { TEXT_LINK } from './rowStyles'
 import { fontSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Up to this many flat entries stand as checkboxes in the row; more go through the dialog. */
 const INLINE_MAX = 7
@@ -151,20 +154,23 @@ export default function ScopePicker({
       const detail = plainMessage(current.error)
       body = (
         <Box>
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.primary' }}>
-            {deniedWords.test(current.error)
-              ? `Kein Zugriff auf die ${plural}.`
-              : `${plural} ließen sich nicht laden.`}
-          </Typography>
-          {detail && (
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              {detail}
-            </Typography>
+          {deniedWords.test(current.error) ? (
+            <>
+              <EmptyState kind="noAccess" message={`Kein Zugriff auf die ${plural}.`} />
+              {detail && (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {detail}
+                </Typography>
+              )}
+            </>
+          ) : (
+            <LoadError
+              message={`${plural} konnten nicht geladen werden.`}
+              detail={detail}
+              onRetry={() => setAttempt((n) => n + 1)}
+            />
           )}
-          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-            <TextLink onClick={() => setAttempt((n) => n + 1)}>Erneut laden</TextLink>
-            {manualLink}
-          </Box>
+          {manualLink && <Box sx={{ mt: 0.5 }}>{manualLink}</Box>}
         </Box>
       )
     } else if (wantsList && entries.length === 0 && current?.result?.complete) {
@@ -234,11 +240,7 @@ export default function ScopePicker({
       )
     }
   } else {
-    body = showLoading ? (
-      <Typography role="status" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-        {plural} werden geladen …
-      </Typography>
-    ) : null
+    body = showLoading ? <LoadingState shape="lines" count={3} /> : null
   }
 
   return (

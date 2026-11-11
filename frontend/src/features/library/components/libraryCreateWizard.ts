@@ -1,32 +1,27 @@
 import type { SourceTypeKey } from '@/shared/api/types'
+import { STEP_MASTER_DATA, STEP_REVIEW, type WizardSteps } from '@/shared/ui/wizard/wizardSteps'
 import { readConsentIntent, type SourceConsentIntent } from './sourceConsent'
 import { sourceRegistration } from './sources/registry'
 
 /**
- * The wizard's steps, one word each; the heading of a step says more. The last step shows every
- * answer for a check before the library is created. An upload library has no source step.
+ * The wizard's steps, one word each (guidelines 5.15): the choice of type, the master data, the
+ * source, the sharing and a last check of every answer before the library is created. An upload
+ * library has no source step, a private one no sharing step: only its owner ever reads it.
  */
 export const STEP_SOURCE_TYPE = 'Quellart'
 export const STEP_SOURCE_SETUP = 'Quelle'
-export const STEP_NAME = 'Name'
 export const STEP_SHARING = 'Freigaben'
-export const STEP_REVIEW = 'Prüfen'
+export { STEP_MASTER_DATA, STEP_REVIEW }
 
-/** A private library has no sharing step: only its owner ever reads it. */
-export function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
-  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING, STEP_REVIEW]
+export function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): WizardSteps {
+  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_MASTER_DATA, STEP_SHARING, STEP_REVIEW]
   return privateLibrary
-    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_REVIEW]
-    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING, STEP_REVIEW]
+    ? [STEP_SOURCE_TYPE, STEP_MASTER_DATA, STEP_SOURCE_SETUP, STEP_REVIEW]
+    : [STEP_SOURCE_TYPE, STEP_MASTER_DATA, STEP_SOURCE_SETUP, STEP_SHARING, STEP_REVIEW]
 }
 
-export const stepHeadings: Record<string, string> = {
-  [STEP_SOURCE_TYPE]: 'Woher kommt das Wissen?',
-  [STEP_SOURCE_SETUP]: 'Quelle einrichten',
-  [STEP_NAME]: 'Name & Beschreibung',
-  [STEP_SHARING]: 'Freigaben',
-  [STEP_REVIEW]: 'Prüfen',
-}
+/** Where the wizard resumes after the consent at the provider: the source step of a connector. */
+export const SOURCE_SETUP_INDEX = stepsFor(false, false).indexOf(STEP_SOURCE_SETUP)
 
 export const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'
 export const NOTHING_CREATABLE =

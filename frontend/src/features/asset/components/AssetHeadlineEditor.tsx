@@ -1,16 +1,12 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import FormField from '@/shared/ui/form/FormField'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 export interface AssetHeadlineProps {
   /** Prefix of the field ids, unique per page. */
@@ -102,6 +98,7 @@ export function EditHeadlineDialog({
   const [draft, setDraft] = useState({ name, description: description ?? '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nameMissing, setNameMissing] = useState(false)
 
   const focusOnMount = useCallback((node: HTMLInputElement | null) => {
     node?.focus()
@@ -116,6 +113,7 @@ export function EditHeadlineDialog({
   function handleEnter() {
     setDraft({ name, description: description ?? '' })
     setError(null)
+    setNameMissing(false)
   }
 
   function handleClose() {
@@ -123,9 +121,11 @@ export function EditHeadlineDialog({
     onClose()
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (!draft.name.trim()) return
+  async function submit() {
+    if (!draft.name.trim()) {
+      setNameMissing(true)
+      return
+    }
     setError(null)
     setSaving(true)
     try {
@@ -139,62 +139,57 @@ export function EditHeadlineDialog({
   }
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
+      title={editLabel}
+      submitLabel="Speichern"
+      onSubmit={() => void submit()}
       onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      slotProps={{ transition: { onEnter: handleEnter } }}
+      busy={saving}
+      busyAnnouncement="Wird gespeichert"
+      onEnter={handleEnter}
     >
-      <DialogTitle>{editLabel}</DialogTitle>
-      <Box component="form" onSubmit={(event: FormEvent) => void submit(event)}>
-        <DialogContent>
-          {error && (
-            <Alert
-              severity="error"
-              ref={focusErrorOnMount}
-              tabIndex={-1}
-              sx={{ mb: 1.5 }}
-              onClose={() => setError(null)}
-            >
-              {error}
-            </Alert>
-          )}
-          <Box sx={{ mb: 1.5 }}>
-            <FormField
-              label={nameLabel}
-              id={`${idPrefix}-name`}
-              size="small"
-              fullWidth
-              inputRef={focusOnMount}
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              slotProps={{ htmlInput: { maxLength: 255 } }}
-            />
-          </Box>
-          <Box>
-            <FormField
-              label="Beschreibung"
-              optional
-              id={`${idPrefix}-description`}
-              size="small"
-              fullWidth
-              multiline
-              value={draft.description}
-              onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-              slotProps={{ htmlInput: { maxLength: 2000 } }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} disabled={saving}>
-            Abbrechen
-          </Button>
-          <Button type="submit" variant="contained" disabled={saving || !draft.name.trim()}>
-            {saving ? 'Wird gespeichert …' : 'Speichern'}
-          </Button>
-        </DialogActions>
+      {error && (
+        <Alert
+          severity="error"
+          ref={focusErrorOnMount}
+          tabIndex={-1}
+          sx={{ mb: 1.5 }}
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
+      <Box sx={{ mb: 1.5 }}>
+        <FormField
+          label={nameLabel}
+          id={`${idPrefix}-name`}
+          size="small"
+          fullWidth
+          inputRef={focusOnMount}
+          value={draft.name}
+          onChange={(e) => {
+            setDraft({ ...draft, name: e.target.value })
+            setNameMissing(false)
+          }}
+          error={nameMissing}
+          helperText={nameMissing ? 'Bitte einen Namen angeben.' : undefined}
+          slotProps={{ htmlInput: { maxLength: 255 } }}
+        />
       </Box>
-    </Dialog>
+      <Box>
+        <FormField
+          label="Beschreibung"
+          optional
+          id={`${idPrefix}-description`}
+          size="small"
+          fullWidth
+          multiline
+          value={draft.description}
+          onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+          slotProps={{ htmlInput: { maxLength: 2000 } }}
+        />
+      </Box>
+    </FormDialog>
   )
 }

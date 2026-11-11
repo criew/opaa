@@ -1,11 +1,6 @@
 import { useId, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
@@ -26,6 +21,7 @@ import {
   TOOL_CAPABILITY_LABELS,
   toolCapabilityBasisLine,
 } from './toolCapability'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface ToolCapabilityDialogProps {
   model: LlmModelResponse
@@ -58,6 +54,7 @@ export default function ToolCapabilityDialog({
   const [measurementRun, setMeasurementRun] = useState(stored.measurementRun ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [runError, setRunError] = useState(false)
   const titleId = useId()
   const choiceId = useId()
   const basisId = useId()
@@ -86,6 +83,15 @@ export default function ToolCapabilityDialog({
   }
 
   async function save() {
+    if (runMissing) {
+      setRunError(true)
+      return
+    }
+    // nothing changed: there is nothing to save, the dialog just closes
+    if (unchanged) {
+      onClose()
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -100,121 +106,120 @@ export default function ToolCapabilityDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth aria-labelledby={titleId}>
-      <DialogTitle id={titleId}>Werkzeugfähigkeit von „{model.displayName}“</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
-          Die Angabe gilt für diesen Endpunkt und diese Laufzeit geprüft:{' '}
-          <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
-            {model.modelIdentifier}
-          </Box>{' '}
-          an{' '}
-          <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
-            {model.baseUrl}
-          </Box>
-          . Ändern sich Basis-Adresse oder Modell-Kennung, ist sie wieder ungeprüft.
+    <FormDialog
+      open={open}
+      titleId={titleId}
+      title={`Werkzeugfähigkeit von „${model.displayName}“`}
+      submitLabel={replacesMeasured ? 'Ersetzen' : 'Speichern'}
+      onSubmit={() => void save()}
+      onClose={onClose}
+      busy={saving}
+      busyAnnouncement="Wird gespeichert"
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
+        Die Angabe gilt für diesen Endpunkt und diese Laufzeit geprüft:{' '}
+        <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
+          {model.modelIdentifier}
+        </Box>{' '}
+        an{' '}
+        <Box component="span" sx={{ fontFamily: fontFamily.mono, overflowWrap: 'anywhere' }}>
+          {model.baseUrl}
+        </Box>
+        . Ändern sich Basis-Adresse oder Modell-Kennung, ist sie wieder ungeprüft.
+      </Typography>
+      {current && (
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
+          Bisher: {TOOL_CAPABILITY_LABELS[model.toolCapability.value]}, {current}
         </Typography>
-        {current && (
-          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
-            Bisher: {TOOL_CAPABILITY_LABELS[model.toolCapability.value]}, {current}
-          </Typography>
-        )}
-        <FormControl>
-          <FormLabel id={choiceId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
-            Ruft das Modell Werkzeuge zuverlässig auf?
+      )}
+      <FormControl>
+        <FormLabel id={choiceId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
+          Ruft das Modell Werkzeuge zuverlässig auf?
+        </FormLabel>
+        <RadioGroup
+          aria-labelledby={choiceId}
+          value={value}
+          onChange={(e) => chooseValue(e.target.value as ToolCapability)}
+        >
+          {ORDER.map((key) => (
+            <FormControlLabel
+              key={key}
+              value={key}
+              control={<Radio size="small" />}
+              sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
+              label={
+                <Box>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                    {TOOL_CAPABILITY_LABELS[key]}
+                  </Typography>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+                    {TOOL_CAPABILITY_HINTS[key]}
+                  </Typography>
+                </Box>
+              }
+            />
+          ))}
+        </RadioGroup>
+      </FormControl>
+      {value !== 'UNVERIFIED' && (
+        <FormControl sx={{ display: 'block', mt: 1.5 }}>
+          <FormLabel id={basisId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
+            Grundlage
           </FormLabel>
           <RadioGroup
-            aria-labelledby={choiceId}
-            value={value}
-            onChange={(e) => chooseValue(e.target.value as ToolCapability)}
+            row
+            aria-labelledby={basisId}
+            value={basis}
+            onChange={(e) => setBasis(e.target.value as ToolCapabilityBasis)}
           >
-            {ORDER.map((key) => (
-              <FormControlLabel
-                key={key}
-                value={key}
-                control={<Radio size="small" />}
-                sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
-                label={
-                  <Box>
-                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
-                      {TOOL_CAPABILITY_LABELS[key]}
-                    </Typography>
-                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                      {TOOL_CAPABILITY_HINTS[key]}
-                    </Typography>
-                  </Box>
-                }
-              />
-            ))}
+            <FormControlLabel
+              value="MEASURED"
+              control={<Radio size="small" />}
+              label={<Typography sx={{ fontSize: fontSize.text }}>Gemessen</Typography>}
+            />
+            <FormControlLabel
+              value="MANUAL"
+              control={<Radio size="small" />}
+              label={<Typography sx={{ fontSize: fontSize.text }}>Manuell gesetzt</Typography>}
+            />
           </RadioGroup>
+          {basis === 'MEASURED' && (
+            <FormField
+              label="Messlauf"
+              required
+              fullWidth
+              size="small"
+              value={measurementRun}
+              onChange={(e) => {
+                setMeasurementRun(e.target.value)
+                setRunError(false)
+              }}
+              slotProps={{ htmlInput: { maxLength: MEASUREMENT_RUN_MAX_LENGTH } }}
+              error={runError && runMissing}
+              helperText={
+                runError && runMissing
+                  ? 'Bitte den Messlauf angeben, auf dem die gemessene Angabe beruht.'
+                  : 'Kennung des Messlaufs aus dem Kopf des Berichts tool-calling.md.'
+              }
+              sx={{ mt: 1 }}
+            />
+          )}
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
+            Die Angabe trägt das heutige Datum. Wer sie ändert, steht im Protokoll, nicht am Modell.
+          </Typography>
         </FormControl>
-        {value !== 'UNVERIFIED' && (
-          <FormControl sx={{ display: 'block', mt: 1.5 }}>
-            <FormLabel id={basisId} sx={{ fontSize: fontSize.text, mb: 0.5 }}>
-              Grundlage
-            </FormLabel>
-            <RadioGroup
-              row
-              aria-labelledby={basisId}
-              value={basis}
-              onChange={(e) => setBasis(e.target.value as ToolCapabilityBasis)}
-            >
-              <FormControlLabel
-                value="MEASURED"
-                control={<Radio size="small" />}
-                label={<Typography sx={{ fontSize: fontSize.text }}>Gemessen</Typography>}
-              />
-              <FormControlLabel
-                value="MANUAL"
-                control={<Radio size="small" />}
-                label={<Typography sx={{ fontSize: fontSize.text }}>Manuell gesetzt</Typography>}
-              />
-            </RadioGroup>
-            {basis === 'MEASURED' && (
-              <FormField
-                label="Messlauf"
-                required
-                fullWidth
-                size="small"
-                value={measurementRun}
-                onChange={(e) => setMeasurementRun(e.target.value)}
-                slotProps={{ htmlInput: { maxLength: MEASUREMENT_RUN_MAX_LENGTH } }}
-                helperText="Kennung des Messlaufs aus dem Kopf des Berichts tool-calling.md."
-                sx={{ mt: 1 }}
-              />
-            )}
-            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
-              Die Angabe trägt das heutige Datum. Wer sie ändert, steht im Protokoll, nicht am
-              Modell.
-            </Typography>
-          </FormControl>
-        )}
-        {replacesMeasured && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            Die bisherige Angabe ist gemessen ({current}). Speichern ersetzt sie; der Messlauf steht
-            danach nur noch im Protokoll.
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button
-          variant="contained"
-          onClick={() => void save()}
-          disabled={saving || unchanged || runMissing}
-        >
-          {saving
-            ? 'Wird gespeichert …'
-            : replacesMeasured
-              ? 'Gemessene Angabe ersetzen'
-              : 'Speichern'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      )}
+      {replacesMeasured && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Die bisherige Angabe ist gemessen ({current}). „Ersetzen“ überschreibt sie; der Messlauf
+          steht danach nur noch im Protokoll.
+        </Alert>
+      )}
+    </FormDialog>
   )
 }

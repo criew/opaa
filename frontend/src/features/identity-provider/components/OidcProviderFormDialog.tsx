@@ -2,10 +2,6 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
@@ -16,6 +12,8 @@ import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import SectionHead from '@/shared/ui/SectionHead'
 import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 
 export const ISSUER_HELP_TEXT =
   'Die Issuer-URI, wie der Anbieter sie in seinen Tokens prägt (bei Keycloak die Realm-Adresse). ' +
@@ -157,6 +155,10 @@ export default function OidcProviderFormDialog({
   }
 
   async function handleTest() {
+    if (draft.issuerUri.trim() === '') {
+      setTestResult({ success: false, message: 'Bitte zuerst die Issuer-URI angeben.' })
+      return
+    }
     setTestResult(null)
     setTesting(true)
     try {
@@ -212,205 +214,204 @@ export default function OidcProviderFormDialog({
   const noRoleValues = draft.systemAdminRole.trim() === '' && draft.auditorRole.trim() === ''
   const rolesClaimSet = draft.rolesClaim.trim() !== ''
 
-  const title = provider ? `„${provider.displayName}“ bearbeiten` : 'Identitätsanbieter anlegen'
+  const title = provider ? `„${provider.displayName}“ bearbeiten` : 'Neuer Anbieter'
 
   return (
     <>
-      <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 0.5 }}>{title}</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5 }}>
-            Öffentlicher Client mit PKCE – ein Secret gibt es nicht zu hinterlegen. Änderungen
-            wirken ohne Neustart.
-          </Typography>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          {rolesConfirmationOpen && (
-            // a live region (MUI's default role="alert"): announced without a focus move, and the
-            // confirming button takes the focus so the answer is one keystroke away
-            <Alert
-              severity="warning"
-              sx={{ mb: 2 }}
-              action={
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    onClick={() => setRolesConfirmationOpen(false)}
-                    disabled={submitting}
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button
-                    // eslint-disable-next-line jsx-a11y-x/no-autofocus
-                    autoFocus
-                    size="small"
-                    variant="contained"
-                    onClick={() => void save()}
-                    disabled={submitting}
-                  >
-                    Rollen-Claim setzen
-                  </Button>
-                </Stack>
-              }
-            >
-              {ROLES_CLAIM_CONFIRMATION}
-              {noRoleValues ? ` ${ROLES_CLAIM_NO_VALUES_WARNING}` : ''}
-            </Alert>
-          )}
-
-          <Box component="section" aria-labelledby="oidc-form-connection-title">
-            <SectionHead id="oidc-form-connection-title" component="h3">
-              Verbindung
-            </SectionHead>
-            <Stack spacing={2}>
-              <FormField
-                // eslint-disable-next-line jsx-a11y-x/no-autofocus
-                autoFocus
-                label="Anzeigename"
-                required
-                value={draft.displayName}
-                onChange={(e) => update('displayName', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 120 } }}
-                helperText="So heißt der Anbieter auf der Anmeldeseite."
-                fullWidth
-                size="small"
-              />
-              <FormField
-                label="Issuer-URI"
-                required
-                value={draft.issuerUri}
-                onChange={(e) => update('issuerUri', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 500 } }}
-                helperText={ISSUER_HELP_TEXT}
-                fullWidth
-                size="small"
-              />
-              {provider && draft.issuerUri.trim() !== provider.issuerUri && (
-                <Alert severity="info">{ISSUER_CHANGE_HINT}</Alert>
-              )}
-              <FormField
-                label="Client-ID"
-                required
-                value={draft.clientId}
-                onChange={(e) => update('clientId', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-                helperText="Der beim Anbieter angelegte öffentliche Client (ohne Secret, mit PKCE)."
-                fullWidth
-                size="small"
-              />
-              <FormField
-                label="JWK-Set-Adresse"
-                optional
-                value={draft.jwkSetUri}
-                onChange={(e) => update('jwkSetUri', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 500 } }}
-                helperText={JWK_SET_HELP_TEXT}
-                fullWidth
-                size="small"
-              />
-              {testResult && (
-                <Alert severity={testResult.success ? 'success' : 'error'}>
-                  {testResult.message}
-                </Alert>
-              )}
-            </Stack>
-          </Box>
-
-          <Box component="section" aria-labelledby="oidc-form-claims-title" sx={{ mt: 4 }}>
-            <SectionHead id="oidc-form-claims-title" component="h3">
-              Claim-Zuordnung
-            </SectionHead>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
-              Aus welchen Token-Claims OPAA E-Mail, Anzeigename und optional Rollen und Gruppen
-              liest. Pfade in Punktnotation (z. B. <code>realm_access.roles</code>).
-            </Typography>
-            <Stack spacing={2}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <FormField
-                  label="E-Mail-Claim"
-                  value={draft.emailClaim}
-                  onChange={(e) => update('emailClaim', e.target.value)}
-                  slotProps={{ htmlInput: { maxLength: 100 } }}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-                <FormField
-                  label="Anzeigename-Claim"
-                  value={draft.displayNameClaim}
-                  onChange={(e) => update('displayNameClaim', e.target.value)}
-                  slotProps={{ htmlInput: { maxLength: 100 } }}
-                  helperText="Rückfall: preferred_username"
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-              </Stack>
-              <FormField
-                label="Rollen-Claim"
-                optional
-                value={draft.rolesClaim}
-                onChange={(e) => update('rolesClaim', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 200 } }}
-                helperText="Leer lassen: Rollen werden in OPAA verwaltet. Gesetzt: der Anbieter ist für SYSTEM_ADMIN und AUDITOR führend."
-                fullWidth
-                size="small"
-              />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <FormField
-                  label="Rollenwert für SYSTEM_ADMIN"
-                  value={draft.systemAdminRole}
-                  onChange={(e) => update('systemAdminRole', e.target.value)}
-                  slotProps={{ htmlInput: { maxLength: 255 } }}
-                  disabled={!rolesClaimSet}
-                  helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-                <FormField
-                  label="Rollenwert für AUDITOR"
-                  value={draft.auditorRole}
-                  onChange={(e) => update('auditorRole', e.target.value)}
-                  slotProps={{ htmlInput: { maxLength: 255 } }}
-                  disabled={!rolesClaimSet}
-                  helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-              </Stack>
-              <FormField
-                label="Gruppen-Claim"
-                optional
-                value={draft.groupsClaim}
-                onChange={(e) => update('groupsClaim', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 200 } }}
-                helperText="Leer lassen: keine Gruppen aus dem Token. Gesetzt: die Gruppennamen des Tokens werden bei jeder Anmeldung zu Gruppen dieses Anbieters."
-                fullWidth
-                size="small"
-              />
-            </Stack>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
+      <FormDialog
+        open={open}
+        title={title}
+        submitLabel={provider ? 'Speichern' : 'Anlegen'}
+        onSubmit={handleSubmit}
+        onClose={onClose}
+        busy={submitting}
+        busyAnnouncement="Der Anbieter wird gespeichert"
+        hideSubmit={rolesConfirmationOpen}
+        secondaryAction={
+          <BusyButton
+            variant="outlined"
             startIcon={<NetworkCheckOutlinedIcon />}
             onClick={() => void handleTest()}
-            disabled={testing || draft.issuerUri.trim() === ''}
-            sx={{ mr: 'auto' }}
+            busy={testing}
+            busyAnnouncement="Verbindung wird getestet"
           >
-            {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-          </Button>
-          <Button onClick={onClose} disabled={submitting}>
-            Abbrechen
-          </Button>
-          {!rolesConfirmationOpen && (
-            <Button variant="contained" onClick={handleSubmit} disabled={submitting || !isValid}>
-              {submitting ? 'Wird gespeichert …' : provider ? 'Speichern' : 'Anlegen'}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+            Verbindung testen
+          </BusyButton>
+        }
+      >
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5 }}>
+          Öffentlicher Client mit PKCE – ein Secret gibt es nicht zu hinterlegen. Änderungen wirken
+          ohne Neustart.
+        </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {rolesConfirmationOpen && (
+          // a live region (MUI's default role="alert"): announced without a focus move, and the
+          // confirming button takes the focus so the answer is one keystroke away
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            action={
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  onClick={() => setRolesConfirmationOpen(false)}
+                  disabled={submitting}
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  // eslint-disable-next-line jsx-a11y-x/no-autofocus
+                  autoFocus
+                  size="small"
+                  variant="contained"
+                  onClick={() => void save()}
+                  disabled={submitting}
+                >
+                  Rollen-Claim setzen
+                </Button>
+              </Stack>
+            }
+          >
+            {ROLES_CLAIM_CONFIRMATION}
+            {noRoleValues ? ` ${ROLES_CLAIM_NO_VALUES_WARNING}` : ''}
+          </Alert>
+        )}
+
+        <Box component="section" aria-labelledby="oidc-form-connection-title">
+          <SectionHead id="oidc-form-connection-title" component="h3">
+            Verbindung
+          </SectionHead>
+          <Stack spacing={2}>
+            <FormField
+              // eslint-disable-next-line jsx-a11y-x/no-autofocus
+              autoFocus
+              label="Anzeigename"
+              required
+              value={draft.displayName}
+              onChange={(e) => update('displayName', e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 120 } }}
+              helperText="So heißt der Anbieter auf der Anmeldeseite."
+              fullWidth
+              size="small"
+            />
+            <FormField
+              label="Issuer-URI"
+              required
+              value={draft.issuerUri}
+              onChange={(e) => update('issuerUri', e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 500 } }}
+              helperText={ISSUER_HELP_TEXT}
+              fullWidth
+              size="small"
+            />
+            {provider && draft.issuerUri.trim() !== provider.issuerUri && (
+              <Alert severity="info">{ISSUER_CHANGE_HINT}</Alert>
+            )}
+            <FormField
+              label="Client-ID"
+              required
+              value={draft.clientId}
+              onChange={(e) => update('clientId', e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 255 } }}
+              helperText="Der beim Anbieter angelegte öffentliche Client (ohne Secret, mit PKCE)."
+              fullWidth
+              size="small"
+            />
+            <FormField
+              label="JWK-Set-Adresse"
+              optional
+              value={draft.jwkSetUri}
+              onChange={(e) => update('jwkSetUri', e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 500 } }}
+              helperText={JWK_SET_HELP_TEXT}
+              fullWidth
+              size="small"
+            />
+            {testResult && (
+              <Alert severity={testResult.success ? 'success' : 'error'}>
+                {testResult.message}
+              </Alert>
+            )}
+          </Stack>
+        </Box>
+
+        <Box component="section" aria-labelledby="oidc-form-claims-title" sx={{ mt: 4 }}>
+          <SectionHead id="oidc-form-claims-title" component="h3">
+            Claim-Zuordnung
+          </SectionHead>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+            Aus welchen Token-Claims OPAA E-Mail, Anzeigename und optional Rollen und Gruppen liest.
+            Pfade in Punktnotation (z. B. <code>realm_access.roles</code>).
+          </Typography>
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <FormField
+                label="E-Mail-Claim"
+                value={draft.emailClaim}
+                onChange={(e) => update('emailClaim', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              <FormField
+                label="Anzeigename-Claim"
+                value={draft.displayNameClaim}
+                onChange={(e) => update('displayNameClaim', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+                helperText="Rückfall: preferred_username"
+                size="small"
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+            <FormField
+              label="Rollen-Claim"
+              optional
+              value={draft.rolesClaim}
+              onChange={(e) => update('rolesClaim', e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 200 } }}
+              helperText="Leer lassen: Rollen werden in OPAA verwaltet. Gesetzt: der Anbieter ist für SYSTEM_ADMIN und AUDITOR führend."
+              fullWidth
+              size="small"
+            />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <FormField
+                label="Rollenwert für SYSTEM_ADMIN"
+                value={draft.systemAdminRole}
+                onChange={(e) => update('systemAdminRole', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 255 } }}
+                disabled={!rolesClaimSet}
+                helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              <FormField
+                label="Rollenwert für AUDITOR"
+                value={draft.auditorRole}
+                onChange={(e) => update('auditorRole', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 255 } }}
+                disabled={!rolesClaimSet}
+                helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+            <FormField
+              label="Gruppen-Claim"
+              optional
+              value={draft.groupsClaim}
+              onChange={(e) => update('groupsClaim', e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 200 } }}
+              helperText="Leer lassen: keine Gruppen aus dem Token. Gesetzt: die Gruppennamen des Tokens werden bei jeder Anmeldung zu Gruppen dieses Anbieters."
+              fullWidth
+              size="small"
+            />
+          </Stack>
+        </Box>
+      </FormDialog>
       {gate.dialog}
     </>
   )

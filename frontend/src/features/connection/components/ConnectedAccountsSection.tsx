@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
@@ -32,6 +30,8 @@ import ConnectAccountDialog, { type ConnectTarget } from './ConnectAccountDialog
 import { accountStateLabel, secretFormLabel } from './connectedAccountLabels'
 import { fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** How far ahead of its end a consent is flagged, as the notification warns. */
 const EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000
@@ -384,30 +384,14 @@ export default function ConnectedAccountsSection() {
         description="Ihre eigenen Zugangsdaten für einen Zugang, etwa ein App-Passwort. OPAA nutzt sie nur für Ihre privaten Bibliotheken; ob Sie ein Konto verbinden, entscheiden Sie selbst."
       >
         {error && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={() => void load()}>
-                Erneut laden
-              </Button>
-            }
-          >
-            {error}
-          </Alert>
+          <LoadError
+            message="Verbundene Konten konnten nicht geladen werden."
+            detail={error}
+            onRetry={() => void load()}
+          />
         )}
         {overview === null ? (
-          !error && (
-            <Box aria-busy="true">
-              <Typography
-                role="status"
-                sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1 }}
-              >
-                Verbundene Konten werden geladen …
-              </Typography>
-              <Skeleton variant="rounded" height={120} />
-            </Box>
-          )
+          !error && <LoadingState shape="rows" count={2} />
         ) : overview.accounts.length === 0 ? (
           <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Sie haben kein Konto verbunden. Ein verbundenes Konto braucht nur, wer Inhalte aus einem

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -15,6 +14,8 @@ import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
 import { assetThisAccusative, assetThisGenitive } from '../../../shared/assetTypes'
 import { fontSize } from '@/shared/theme/tokens'
 import { formatDate } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 type AssetTarget = { kind: 'asset'; assetType: AssetType; assetId: string }
 type SpaceTarget = { kind: 'space'; spaceId: string; userId?: string }
@@ -154,6 +155,9 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     target.kind === 'asset'
       ? `asset:${target.assetType}:${target.assetId}`
       : `space:${target.spaceId}:${target.userId ?? 'self'}`
+  // A retry after a failed load asks again for the same object under a new key.
+  const [attempt, setAttempt] = useState(0)
+  const requestKey = `${key}#${attempt}`
   // One state instead of four: as long as the response does not belong to the requested object, the
   // view is still loading - so the loading state needs no setState in the effect body.
   const [answer, setAnswer] = useState<{
@@ -168,12 +172,12 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     let active = true
     void loadDerivation(props)
       .then((response) => {
-        if (active) setAnswer({ key, ...response, error: null })
+        if (active) setAnswer({ key: requestKey, ...response, error: null })
       })
       .catch((err) => {
         if (!active) return
         setAnswer({
-          key,
+          key: requestKey,
           paths: [],
           role: null,
           withheld: false,
@@ -186,13 +190,19 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     // The key condenses the requested object; the object literal itself changes its identity
     // on every render and would otherwise trigger an endless loop of requests.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }, [requestKey])
 
-  if (answer?.key !== key) {
-    return <Typography sx={{ color: 'text.secondary' }}>Herleitung wird geladen …</Typography>
+  if (answer?.key !== requestKey) {
+    return <LoadingState shape="lines" count={2} />
   }
   if (answer.error) {
-    return <Alert severity="error">{answer.error}</Alert>
+    return (
+      <LoadError
+        message="Die Herleitung konnte nicht geladen werden."
+        detail={answer.error}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
+    )
   }
 
   const { withheld } = answer

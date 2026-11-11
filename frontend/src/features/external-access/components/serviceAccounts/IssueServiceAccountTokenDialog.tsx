@@ -1,21 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedServiceAccountTokenResponse } from '@/shared/api/types'
 import { copyOnce } from '@/shared/utils/copyOnce'
 import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { connectionsAdminRoute } from '@/shared/routes'
 import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
 import { getExternalAccessSettings } from '../../api/externalAccessApi'
 import { createServiceAccountToken } from '../../api/serviceAccountApi'
@@ -27,6 +20,8 @@ import {
 } from '../tokenLabels'
 import { useErrorTitle } from './serviceAccountHooks'
 import { VALUE_ONCE_HINT, formatDate } from './serviceAccountLabels'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import SecretDialog from '@/shared/ui/dialog/SecretDialog'
 
 export const CONFIRM_PURPOSE =
   'Ein Token eines Dienstkontos wirkt über diese Sitzung hinaus. Bevor Sie es ausstellen, ' +
@@ -40,11 +35,9 @@ interface IssueServiceAccountTokenDialogProps {
   onIssued: () => void
   /** Title of the form step; „Erstes Token ausstellen“ right after creating the account. */
   title?: string
-  /** Label of the quiet way out of the form step. */
-  cancelLabel?: string
 }
 
-/** The value, once: mono on a hairline, with „Kopieren“ and the address of the channel. */
+/** The value, once: mono on a hairline, with the address of the channel. */
 export function TokenValue({ created }: { created: CreatedServiceAccountTokenResponse }) {
   const url = `${window.location.origin}/mcp`
   return (
@@ -65,16 +58,6 @@ export function TokenValue({ created }: { created: CreatedServiceAccountTokenRes
         }}
       >
         {created.token}
-      </Box>
-      <Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<ContentCopyOutlinedIcon />}
-          onClick={() => void copyOnce(created.token, 'Der Tokenwert')}
-        >
-          Kopieren
-        </Button>
       </Box>
       <Alert severity="warning">{VALUE_ONCE_HINT}</Alert>
       <Box
@@ -111,7 +94,6 @@ function TokenDialog({
   onClose,
   onIssued,
   title = 'Token ausstellen',
-  cancelLabel = 'Abbrechen',
 }: IssueServiceAccountTokenDialogProps) {
   const [name, setName] = useState('')
   const [expiry, setExpiry] = useState('')
@@ -133,11 +115,6 @@ function TokenDialog({
       })
       .catch(() => setExpiry(toDateInputValue(maxExpiryDate(90))))
   }, [])
-
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    await issue(false)
-  }
 
   /**
    * Issuing needs a recent sign-in: a refusal opens the confirmation, which repeats the issue
@@ -174,78 +151,61 @@ function TokenDialog({
 
   if (created) {
     return (
-      <Dialog open fullWidth maxWidth="sm" aria-labelledby="sa-token-value-title">
-        <DialogTitle id="sa-token-value-title">Token für {account.name}</DialogTitle>
-        <DialogContent>
-          <TokenValue created={created} />
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={onClose}>
-            Kopiert, schließen
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <SecretDialog
+        titleId="sa-token-value-title"
+        title={`Token für ${account.name}`}
+        onCopy={() => void copyOnce(created.token, 'Der Tokenwert')}
+        onClose={onClose}
+      >
+        <TokenValue created={created} />
+      </SecretDialog>
     )
   }
 
   return (
-    <Dialog
-      open
-      onClose={() => !saving && onClose()}
-      fullWidth
-      maxWidth="sm"
-      aria-labelledby="sa-token-title"
-    >
-      <form noValidate onSubmit={(event) => void submit(event)}>
-        <DialogTitle id="sa-token-title">{title}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ mt: 1 }}>
-            {formError && <Alert severity="error">{formError}</Alert>}
-            <Typography sx={{ fontSize: fontSize.text }}>Für „{account.name}“</Typography>
-            <FormField
-              label="Name"
-              placeholder="Produktion"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              inputRef={nameRef}
-              error={Boolean(errors.name)}
-              helperText={errors.name}
-              size="small"
-              fullWidth
-            />
-            <FormField
-              label="Läuft ab"
-              type="date"
-              value={expiry}
-              onChange={(event) => setExpiry(event.target.value)}
-              inputRef={expiryRef}
-              error={Boolean(errors.expiry)}
-              helperText={errors.expiry ?? `höchstens ${maxDays} Tage`}
-              size="small"
-              sx={{ maxWidth: 240 }}
-              slotProps={{
-                htmlInput: {
-                  min: toDateInputValue(earliestExpiryDate()),
-                  max: toDateInputValue(maxExpiryDate(maxDays)),
-                },
-              }}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="text" onClick={onClose} disabled={saving}>
-            {cancelLabel}
-          </Button>
-          <BusyButton
-            type="submit"
-            variant="contained"
-            busy={saving}
-            busyAnnouncement="Token wird ausgestellt"
-          >
-            Ausstellen
-          </BusyButton>
-        </DialogActions>
-      </form>
+    <>
+      <FormDialog
+        titleId="sa-token-title"
+        title={title}
+        submitLabel="Ausstellen"
+        onSubmit={() => void issue(false)}
+        onClose={onClose}
+        busy={saving}
+        busyAnnouncement="Token wird ausgestellt"
+      >
+        <Stack spacing={2.5} sx={{ mt: 1 }}>
+          {formError && <Alert severity="error">{formError}</Alert>}
+          <Typography sx={{ fontSize: fontSize.text }}>Für „{account.name}“</Typography>
+          <FormField
+            label="Name"
+            placeholder="Produktion"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            inputRef={nameRef}
+            error={Boolean(errors.name)}
+            helperText={errors.name}
+            size="small"
+            fullWidth
+          />
+          <FormField
+            label="Läuft ab"
+            type="date"
+            value={expiry}
+            onChange={(event) => setExpiry(event.target.value)}
+            inputRef={expiryRef}
+            error={Boolean(errors.expiry)}
+            helperText={errors.expiry ?? `höchstens ${maxDays} Tage`}
+            size="small"
+            sx={{ maxWidth: 240 }}
+            slotProps={{
+              htmlInput: {
+                min: toDateInputValue(earliestExpiryDate()),
+                max: toDateInputValue(maxExpiryDate(maxDays)),
+              },
+            }}
+          />
+        </Stack>
+      </FormDialog>
       <RecentLoginDialog
         open={confirming}
         purpose={CONFIRM_PURPOSE}
@@ -256,6 +216,6 @@ function TokenDialog({
         onClose={() => setConfirming(false)}
         returnTo={`${connectionsAdminRoute('service-accounts')}?account=${account.id}`}
       />
-    </Dialog>
+    </>
   )
 }

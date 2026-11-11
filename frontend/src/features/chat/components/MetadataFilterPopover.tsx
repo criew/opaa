@@ -3,7 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import CircularProgress from '@mui/material/CircularProgress'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import Popover from '@mui/material/Popover'
@@ -25,6 +24,7 @@ import {
 } from '../stores/metadataFilterOptionsStore'
 import { fillLevelText, notOfferedText } from './metadataFilterText'
 import { fontSize } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface MetadataFilterPopoverProps {
   /** The scope the next question would search - the options are loaded for exactly this scope. */
@@ -246,11 +246,7 @@ export default function MetadataFilterPopover({
           Der Filter gilt für jede Frage dieses Chats. Ein Dokument ohne Angabe im gefilterten Feld
           bleibt gefunden und wird als „ohne Angabe“ gekennzeichnet.
         </Typography>
-        {isLoading && !optionsCurrent && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={20} aria-label="Filteroptionen werden geladen" />
-          </Box>
-        )}
+        {isLoading && !optionsCurrent && <LoadingState shape="lines" count={4} />}
         {error && (
           <Alert severity="error" sx={{ mb: 1 }}>
             {error}

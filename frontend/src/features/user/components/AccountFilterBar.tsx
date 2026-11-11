@@ -75,7 +75,12 @@ export default function AccountFilterBar() {
   // of the admin API for nothing. The timer is cleared on every change, so only the last one fires.
   useEffect(() => {
     if (search === filters.query) return
-    const timer = setTimeout(() => void setFilters({ query: search }), SEARCH_DEBOUNCE_MS)
+    // Once committed the store holds the query; dropping the typed copy keeps a later reset of the
+    // filters from bringing the old text back.
+    const timer = setTimeout(() => {
+      setTyped(null)
+      void setFilters({ query: search })
+    }, SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [search, filters.query, setFilters])
 
@@ -100,7 +105,7 @@ export default function AccountFilterBar() {
           onChange={(e) => setTyped({ value: e.target.value, basedOn: filters.query })}
           placeholder="Name oder E-Mail-Adresse suchen …"
           type="search"
-          slotProps={{ htmlInput: { 'aria-label': 'Konten suchen' } }}
+          slotProps={{ htmlInput: { 'aria-label': 'Konten suchen', 'data-list-search': '' } }}
         />
       </Box>
       <FormField

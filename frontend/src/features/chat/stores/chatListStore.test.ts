@@ -226,10 +226,13 @@ describe('chatListStore', () => {
     expect(chats?.some((chat) => chat.id === 'chat-personal-1')).toBe(false)
   })
 
-  it('sets an error when loading fails', async () => {
+  // A failed load and a failed action are told apart: only the load replaces the list.
+  it('reports a failed load in loadError, apart from the error of an action', async () => {
+    useChatListStore.setState({ loadError: null, error: null })
     await useChatListStore.getState().loadChats('space-unknown')
 
-    expect(useChatListStore.getState().error).toBeTruthy()
+    expect(useChatListStore.getState().loadError).toBeTruthy()
+    expect(useChatListStore.getState().error).toBeNull()
   })
 
   // Found while systematically checking the resettableStores registry for further

@@ -70,7 +70,7 @@ async function runAdmin(page, job, ctx) {
       await clickButton(page, /^Ausstellen$/, { wait: 900 })
       if (await firstVisible(page.getByTestId('service-account-token-value'))) await ctx.shoot('token-value')
       else ctx.notFound('token-value', 'value not shown')
-      await clickButton(page, /^Kopiert, schließen$/)
+      await clickButton(page, /^Schließen$/)
     } else ctx.notFound('token-value', 'no issue action')
   }
 

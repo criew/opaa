@@ -4,13 +4,11 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import FormField from '@/shared/ui/form/FormField'
 import FormFieldRow from '@/shared/ui/form/FormFieldRow'
 import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import type {
   MailEncryption,
   MailSendResultResponse,
@@ -34,6 +32,8 @@ import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 import { MAIL_CONFIRM_PURPOSE } from './mailRecentLogin'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Mirrors `MailSettingsService.PASSWORD_MASK`: sending it back means „unverändert". */
 const PASSWORD_MASK = '***'
@@ -102,16 +102,16 @@ export default function MailServerSection() {
   }, [settings])
 
   if (isLoading && !form) {
-    return (
-      <Box aria-busy="true">
-        <span style={visuallyHidden}>Die E-Mail-Einstellungen werden geladen …</span>
-        <Skeleton variant="rounded" height={120} sx={{ mb: 2.5 }} />
-        <Skeleton variant="rounded" height={420} />
-      </Box>
-    )
+    return <LoadingState shape="detail" count={8} />
   }
   if (!form || !settings) {
-    return error ? <Alert severity="error">{error}</Alert> : null
+    return error ? (
+      <LoadError
+        message="Die E-Mail-Einstellungen konnten nicht geladen werden."
+        detail={error}
+        onRetry={() => void loadSettings()}
+      />
+    ) : null
   }
 
   // Local, non-null bindings so the handlers below need no assertions.

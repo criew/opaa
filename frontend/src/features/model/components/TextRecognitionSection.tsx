@@ -41,6 +41,8 @@ import {
   type TextRecognitionTestView,
 } from './textRecognitionStages'
 import { fontSize, formWidth } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** How long after a save the state is read again; the probe runs on the server meanwhile. */
 const RECHECK_DELAY_MS = 3000
@@ -71,6 +73,7 @@ const STAGE_STATE: Record<TestStageState, { tone: StatusTone; word: string }> = 
 export default function TextRecognitionSection() {
   const [settings, setSettings] = useState<TextRecognitionModelSettingsResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [enabled, setEnabled] = useState(false)
   const [connectionType, setConnectionType] =
     useState<TextRecognitionConnectionType>('DOCLING_SERVE')
@@ -105,7 +108,7 @@ export default function TextRecognitionSection() {
     return () => {
       current = false
     }
-  }, [])
+  }, [attempt])
 
   useEffect(() => {
     if (!checking) return
@@ -184,14 +187,19 @@ export default function TextRecognitionSection() {
     }
   }
 
-  if (loadError) return <Alert severity="error">{loadError}</Alert>
-  if (!settings) {
+  if (loadError) {
     return (
-      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-        Einstellungen werden geladen …
-      </Typography>
+      <LoadError
+        message="Die Einstellungen konnten nicht geladen werden."
+        detail={loadError}
+        onRetry={() => {
+          setLoadError(null)
+          setAttempt((n) => n + 1)
+        }}
+      />
     )
   }
+  if (!settings) return <LoadingState shape="lines" count={4} />
 
   if (!settings.textRecognitionAvailable) {
     return (

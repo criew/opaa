@@ -214,7 +214,7 @@ export async function createActiveAccount(
 ): Promise<void> {
   await openAccountList(adminPage);
   await adminPage.getByRole("button", { name: "Konto anlegen" }).click();
-  const dialog = adminPage.getByRole("dialog", { name: "Lokales Konto anlegen" });
+  const dialog = adminPage.getByRole("dialog", { name: "Konto anlegen" });
   await expect(dialog).toBeVisible();
   await dialog.locator("#user-form-email").fill(email);
   await dialog.locator("#user-form-display-name").fill(displayName);

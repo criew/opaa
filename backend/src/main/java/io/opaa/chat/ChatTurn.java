@@ -25,6 +25,7 @@ public final class ChatTurn {
   private final AnswerEvidence evidence;
   private final AgentRunRecord agentRun;
   private final List<ChatAttachment> attachments;
+  private final Integer currentAgentRevision;
 
   public ChatTurn(
       UUID id,
@@ -69,7 +70,18 @@ public final class ChatTurn {
       Instant createdAt,
       AnswerEvidence evidence,
       AgentRunRecord agentRun) {
-    this(id, chatId, role, content, sources, usedPrompt, createdAt, evidence, agentRun, List.of());
+    this(
+        id,
+        chatId,
+        role,
+        content,
+        sources,
+        usedPrompt,
+        createdAt,
+        evidence,
+        agentRun,
+        List.of(),
+        null);
   }
 
   private ChatTurn(
@@ -82,7 +94,9 @@ public final class ChatTurn {
       Instant createdAt,
       AnswerEvidence evidence,
       AgentRunRecord agentRun,
-      List<ChatAttachment> attachments) {
+      List<ChatAttachment> attachments,
+      Integer currentAgentRevision) {
+    this.currentAgentRevision = currentAgentRevision;
     this.attachments = attachments == null ? List.of() : List.copyOf(attachments);
     this.evidence = evidence;
     this.agentRun = agentRun;
@@ -145,6 +159,43 @@ public final class ChatTurn {
       return this;
     }
     return new ChatTurn(
-        id, chatId, role, content, sources, usedPrompt, createdAt, evidence, agentRun, attachments);
+        id,
+        chatId,
+        role,
+        content,
+        sources,
+        usedPrompt,
+        createdAt,
+        evidence,
+        agentRun,
+        attachments,
+        currentAgentRevision);
+  }
+
+  /**
+   * The revision the stamped agent has now, {@code null} when the turn has no stamp or the person
+   * may no longer read the agent. Not persisted: looked up whenever the chat is loaded.
+   */
+  public Integer getCurrentAgentRevision() {
+    return currentAgentRevision;
+  }
+
+  /** This turn with the stamped agent's current revision ({@code null}: unknown). */
+  public ChatTurn withCurrentAgentRevision(Integer revision) {
+    if (revision == null) {
+      return this;
+    }
+    return new ChatTurn(
+        id,
+        chatId,
+        role,
+        content,
+        sources,
+        usedPrompt,
+        createdAt,
+        evidence,
+        agentRun,
+        attachments,
+        revision);
   }
 }

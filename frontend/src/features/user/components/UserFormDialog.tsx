@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormLabel from '@mui/material/FormLabel'
@@ -39,6 +34,7 @@ import {
   toDateInputValue,
 } from './localUserLabels'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 export const CREATED_REASON_HELP =
   'Dienstlicher Anlass des Kontos und Grund der Befristung, höchstens 200 Zeichen. Die Person kann ' +
@@ -163,11 +159,20 @@ export default function UserFormDialog({
   const roleOptions = isBootstrap
     ? SYSTEM_ROLES.filter((role) => role === 'SYSTEM_ADMIN' || role === user?.systemRole)
     : SYSTEM_ROLES
-  const isValid =
-    draft.displayName.trim() !== '' &&
-    draft.createdReason.trim() !== '' &&
-    (isEdit || draft.email.trim() !== '') &&
-    (draft.noExpiry || draft.expiresAt !== '')
+
+  /** What is still missing, keyed like the server's field errors. */
+  function missingFields(): Record<string, string> {
+    const missing: Record<string, string> = {}
+    if (!isEdit && draft.email.trim() === '') missing.email = 'Bitte die E-Mail-Adresse angeben.'
+    if (draft.displayName.trim() === '') missing.displayName = 'Bitte den Anzeigenamen angeben.'
+    if (!draft.noExpiry && draft.expiresAt === '') {
+      missing.expiresAt = 'Bitte ein Ablaufdatum angeben oder „Kein Ablaufdatum“ wählen.'
+    }
+    if (draft.createdReason.trim() === '') {
+      missing.createdReason = 'Bitte den Anlagegrund angeben.'
+    }
+    return missing
+  }
 
   function update(patch: Partial<UserDraft>) {
     setDraft((current) => ({ ...current, ...patch }))
@@ -175,7 +180,9 @@ export default function UserFormDialog({
 
   async function submit(afterConfirmation = false) {
     setError(null)
-    setFieldErrors({})
+    const missing = missingFields()
+    setFieldErrors(missing)
+    if (Object.keys(missing).length > 0) return
     setSubmitting(true)
     try {
       if (isEdit) {
@@ -241,157 +248,141 @@ export default function UserFormDialog({
 
   return (
     <>
-      <Dialog
+      <FormDialog
         open={open}
-        fullWidth
-        maxWidth="sm"
+        titleId="user-form-title"
+        title={isEdit ? `„${user.displayName}“ bearbeiten` : 'Konto anlegen'}
+        submitLabel={isEdit ? 'Speichern' : 'Anlegen'}
+        onSubmit={() => void submit()}
         onClose={onClose}
-        aria-labelledby="user-form-title"
+        busy={submitting}
+        busyAnnouncement={isEdit ? 'Das Konto wird gespeichert' : 'Das Konto wird angelegt'}
       >
-        <DialogTitle id="user-form-title">
-          {isEdit ? `„${user.displayName}“ bearbeiten` : 'Lokales Konto anlegen'}
-        </DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
-          <Stack spacing={2}>
-            <Box>
-              <FormField
-                label="E-Mail-Adresse (Kennung)"
-                id="user-form-email"
-                fullWidth
-                size="small"
-                type="email"
-                required
-                value={draft.email}
-                onChange={(e) => update({ email: e.target.value })}
-                error={Boolean(fieldErrors.email)}
-                helperText={fieldErrors.email}
-              />
-            </Box>
-            <Box>
-              <FormField
-                label="Anzeigename"
-                id="user-form-display-name"
-                fullWidth
-                size="small"
-                required
-                value={draft.displayName}
-                onChange={(e) => update({ displayName: e.target.value })}
-                error={Boolean(fieldErrors.displayName)}
-                helperText={fieldErrors.displayName}
-              />
-            </Box>
-            <Box>
-              <FormField
-                label="Rolle"
-                id="user-form-role"
-                select
-                fullWidth
-                size="small"
-                value={draft.systemRole}
-                disabled={roleLocked}
-                onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
-                error={Boolean(fieldErrors.systemRole)}
-                helperText={
-                  fieldErrors.systemRole ?? (isBootstrap ? BOOTSTRAP_ROLE_HINT : undefined)
-                }
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        <Stack spacing={2}>
+          <Box>
+            <FormField
+              label="E-Mail-Adresse (Kennung)"
+              id="user-form-email"
+              fullWidth
+              size="small"
+              type="email"
+              required
+              value={draft.email}
+              onChange={(e) => update({ email: e.target.value })}
+              error={Boolean(fieldErrors.email)}
+              helperText={fieldErrors.email}
+            />
+          </Box>
+          <Box>
+            <FormField
+              label="Anzeigename"
+              id="user-form-display-name"
+              fullWidth
+              size="small"
+              required
+              value={draft.displayName}
+              onChange={(e) => update({ displayName: e.target.value })}
+              error={Boolean(fieldErrors.displayName)}
+              helperText={fieldErrors.displayName}
+            />
+          </Box>
+          <Box>
+            <FormField
+              label="Rolle"
+              id="user-form-role"
+              select
+              fullWidth
+              size="small"
+              value={draft.systemRole}
+              disabled={roleLocked}
+              onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
+              error={Boolean(fieldErrors.systemRole)}
+              helperText={fieldErrors.systemRole ?? (isBootstrap ? BOOTSTRAP_ROLE_HINT : undefined)}
+            >
+              {roleOptions.map((role) => (
+                <MenuItem key={role} value={role}>
+                  {SYSTEM_ROLE_LABEL[role]}
+                </MenuItem>
+              ))}
+            </FormField>
+          </Box>
+          <Box>
+            <FormField
+              label="Ablaufdatum"
+              id="user-form-expires-at"
+              fullWidth
+              size="small"
+              type="date"
+              disabled={draft.noExpiry || isBootstrap}
+              value={draft.expiresAt}
+              onChange={(e) => update({ expiresAt: e.target.value })}
+              error={Boolean(fieldErrors.expiresAt)}
+              helperText={fieldErrors.expiresAt ?? (isSelf ? SELF_EXPIRY_HINT : undefined)}
+              slotProps={isSelf ? { htmlInput: { min: todayInputValue() } } : undefined}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={draft.noExpiry}
+                  disabled={isBootstrap && !user?.expiresAt}
+                  onChange={(e) => update({ noExpiry: e.target.checked })}
+                />
+              }
+              label="Kein Ablaufdatum"
+            />
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+              {draft.noExpiry
+                ? isBootstrap
+                  ? NO_EXPIRY_HELP_BOOTSTRAP
+                  : NO_EXPIRY_HELP
+                : EXPIRY_CONSEQUENCE}
+            </Typography>
+          </Box>
+          <Box>
+            <FormField
+              label="Anlagegrund"
+              id="user-form-created-reason"
+              fullWidth
+              size="small"
+              required
+              multiline
+              slotProps={{ htmlInput: { maxLength: 200 } }}
+              value={draft.createdReason}
+              onChange={(e) => update({ createdReason: e.target.value })}
+              error={Boolean(fieldErrors.createdReason)}
+              helperText={fieldErrors.createdReason ?? CREATED_REASON_HELP}
+            />
+          </Box>
+          {isEdit && <LocalUserChatCleanupSection user={user} />}
+          {!isEdit && (
+            <FormControl>
+              <FormLabel id="user-form-mode-label" sx={{ fontSize: fontSize.meta, mb: '5px' }}>
+                Zugang einrichten
+              </FormLabel>
+              <RadioGroup
+                aria-labelledby="user-form-mode-label"
+                value={draft.mode}
+                onChange={(e) => update({ mode: e.target.value as LocalUserCreationMode })}
               >
-                {roleOptions.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {SYSTEM_ROLE_LABEL[role]}
-                  </MenuItem>
-                ))}
-              </FormField>
-            </Box>
-            <Box>
-              <FormField
-                label="Ablaufdatum"
-                id="user-form-expires-at"
-                fullWidth
-                size="small"
-                type="date"
-                disabled={draft.noExpiry || isBootstrap}
-                value={draft.expiresAt}
-                onChange={(e) => update({ expiresAt: e.target.value })}
-                error={Boolean(fieldErrors.expiresAt)}
-                helperText={fieldErrors.expiresAt ?? (isSelf ? SELF_EXPIRY_HINT : undefined)}
-                slotProps={isSelf ? { htmlInput: { min: todayInputValue() } } : undefined}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={draft.noExpiry}
-                    disabled={isBootstrap && !user?.expiresAt}
-                    onChange={(e) => update({ noExpiry: e.target.checked })}
+                {(Object.keys(MODE_LABEL) as LocalUserCreationMode[]).map((mode) => (
+                  <FormControlLabel
+                    key={mode}
+                    value={mode}
+                    control={<Radio size="small" />}
+                    slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
+                    label={MODE_LABEL[mode]}
                   />
-                }
-                label="Kein Ablaufdatum"
-              />
-              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-                {draft.noExpiry
-                  ? isBootstrap
-                    ? NO_EXPIRY_HELP_BOOTSTRAP
-                    : NO_EXPIRY_HELP
-                  : EXPIRY_CONSEQUENCE}
-              </Typography>
-            </Box>
-            <Box>
-              <FormField
-                label="Anlagegrund"
-                id="user-form-created-reason"
-                fullWidth
-                size="small"
-                required
-                multiline
-                slotProps={{ htmlInput: { maxLength: 200 } }}
-                value={draft.createdReason}
-                onChange={(e) => update({ createdReason: e.target.value })}
-                error={Boolean(fieldErrors.createdReason)}
-                helperText={fieldErrors.createdReason ?? CREATED_REASON_HELP}
-              />
-            </Box>
-            {isEdit && <LocalUserChatCleanupSection user={user} />}
-            {!isEdit && (
-              <FormControl>
-                <FormLabel id="user-form-mode-label" sx={{ fontSize: fontSize.meta, mb: '5px' }}>
-                  Zugang einrichten
-                </FormLabel>
-                <RadioGroup
-                  aria-labelledby="user-form-mode-label"
-                  value={draft.mode}
-                  onChange={(e) => update({ mode: e.target.value as LocalUserCreationMode })}
-                >
-                  {(Object.keys(MODE_LABEL) as LocalUserCreationMode[]).map((mode) => (
-                    <FormControlLabel
-                      key={mode}
-                      value={mode}
-                      control={<Radio size="small" />}
-                      slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
-                      label={MODE_LABEL[mode]}
-                    />
-                  ))}
-                </RadioGroup>
-              </FormControl>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={submitting}>
-            Abbrechen
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void submit()}
-            disabled={!isValid || submitting}
-          >
-            {isEdit ? 'Speichern' : 'Anlegen'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                ))}
+              </RadioGroup>
+            </FormControl>
+          )}
+        </Stack>
+      </FormDialog>
       {gate.dialog}
     </>
   )

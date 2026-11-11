@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-11
 
 ## Kontext
 
@@ -89,7 +89,7 @@ unter der sie wieder vorgelegt wird; tritt sie ein, wird die Zeile zum Issue und
 | `io.opaa.msgraph` liegt in foundation und hat einen Nutzer (SharePoint) | Konnektoren kennen einander nicht; ein zweiter Graph-Konnektor (Exchange) könnte den Client sonst nur kopieren; das Paket kennt nur `sourceaccess`, `outbound`, `security` und hat einen eigenen Strukturtest (ADR-0047, Entscheidung 1) | der Exchange-Konnektor verworfen wird; dann zurück in den SharePoint-Konnektor |
 | `diagnosticaccess` liegt im Modul workspace, ohne Bezug zu `space` und `revision` | Es braucht knowledge und läge fachlich bei rights; rights liegt unter knowledge, ein Umzug erzeugte einen Zyklus. workspace ist das niedrigste Modul über knowledge | ein zweites Paket mit demselben Zuschnitt (Diagnose über Rechte und Bestand) entsteht; dann eigenes Modul |
 | Der Verzeichnis-Konnektor ist ein Keycloak-Sonderfall (`requireKeycloak`, geschlossenes Enum, Keycloak-Spalten) | Ein SPI ohne zweite Implementierung ist Konzept ohne Nutzen (ADR-0036, Entscheidung 3) | ein zweiter Verzeichnistyp beauftragt wird |
-| Zwei Tool-Kataloge (`McpToolCatalog` und der Tool-Loop-Spike) beschreiben dieselbe Suche | Der Spike liegt hinter einem Flag; sein Schicksal ist nicht entschieden | über den Spike entschieden ist; dann löschen oder Tool-SPI |
+| Zwei Tool-Kataloge (`McpToolCatalog` für externe KI-Werkzeuge und `ToolRegistry` der Werkzeugschleife) beschreiben dieselbe Suche | Getrennte Aufrufer mit eigenem Zugang und eigenen Grenzen (ADR-0035, ADR-0070); ein gemeinsames Tool-SPI hätte zwei Nutzer mit verschiedenen Verträgen | ein dritter Katalog entsteht oder ein Werkzeug über Suche und Dokumentabruf hinaus in beiden angeboten werden soll; dann Tool-SPI |
 | Entities stempeln `createdAt`/`updatedAt` mit `Instant.now()` statt über die `Clock` | Entities haben keine Injektion; die Stempel sind keine fachlichen Fristen (`backend/AGENTS.md`, „Zeit“) | ein Test einen deterministischen Entity-Stempel braucht |
 | Flache Wurzelpakete mit vielen Klassen (account, metadata, permission, auth, library, chat, llm) | Kein Sicherheitsproblem; dort gibt es kein zweites Anliegen, das eine Paketgrenze bräuchte | ein großer Umbau in einem dieser Pakete ansteht oder ein zweites Anliegen eine Paketregel braucht (Muster: `indexing.spi`/`run`) |
 | `interval(Object)`-Parser in drei Dateiablage-Konnektoren | der nächste Dateiablage-Konnektor nimmt ihn in den Kern | der nächste Dateiablage-Konnektor entsteht |

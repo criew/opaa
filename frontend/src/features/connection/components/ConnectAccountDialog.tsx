@@ -1,16 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { ConnectedAccount, PersonalSecretForm } from '@/shared/api/types'
 import { ConnectAccountError, connectMyAccount } from '../api/connectedAccountApi'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
   connectErrorMessage,
   needsUsername,
@@ -18,6 +12,7 @@ import {
   secretFormLabel,
 } from './connectedAccountLabels'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 export interface ConnectTarget {
   profileId: string
@@ -50,6 +45,8 @@ export default function ConnectAccountDialog({
   const [secret, setSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Set by a submit with missing input; the fields then say what is missing.
+  const [attempted, setAttempted] = useState(false)
   const errorRef = useRef<HTMLDivElement>(null)
   const titleId = `connect-account-title-${target.profileId}`
 
@@ -57,11 +54,15 @@ export default function ConnectAccountDialog({
     if (error) errorRef.current?.focus()
   }, [error])
 
-  const canSubmit = secret !== '' && (!withUsername || username.trim() !== '')
+  const usernameMissing = withUsername && username.trim() === ''
+  const secretMissing = secret === ''
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !canSubmit) return
+  async function handleSubmit() {
+    if (usernameMissing || secretMissing) {
+      setAttempted(true)
+      return
+    }
+    setAttempted(false)
     setBusy(true)
     setError(null)
     const value = secret
@@ -84,71 +85,61 @@ export default function ConnectAccountDialog({
   }
 
   return (
-    <Dialog
-      open
-      fullWidth
-      maxWidth="sm"
-      onClose={busy ? undefined : onClose}
-      aria-labelledby={titleId}
+    <FormDialog
+      titleId={titleId}
+      title={`${target.reconnect ? 'Konto neu verbinden' : 'Konto verbinden'}: ${target.name}`}
+      submitLabel="Verbinden"
+      onSubmit={() => void handleSubmit()}
+      onClose={onClose}
+      busy={busy}
+      busyAnnouncement="Anmeldung wird geprüft"
     >
-      <form onSubmit={(event) => void handleSubmit(event)} noValidate>
-        <DialogTitle id={titleId}>
-          {target.reconnect ? 'Konto neu verbinden' : 'Konto verbinden'}: {target.name}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2}>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              Geben Sie Ihre eigenen Zugangsdaten für diesen Zugang ein (
-              {secretFormLabel(target.secretForm)}). OPAA prüft die Anmeldung beim Anbieter, bevor
-              es sie verschlüsselt speichert.
-            </Typography>
-            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
-              Wer was sieht: Kontonamen und Inhalte Ihrer privaten Bibliotheken sehen nur Sie. Die
-              Systemverwaltung sieht nur gerundete Anzahlen; Verbinden und Trennen stehen unter
-              einem Pseudonym im Verbindungsprotokoll der Revision.
-            </Typography>
-            {error && (
-              <Alert severity="error" role="alert" tabIndex={-1} ref={errorRef}>
-                {error}
-              </Alert>
-            )}
-            {withUsername && (
-              <FormField
-                label="Benutzername"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                autoComplete="off"
-                required
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-              />
-            )}
-            <FormField
-              label={secretFieldLabel(target.secretForm)}
-              type="password"
-              value={secret}
-              onChange={(event) => setSecret(event.target.value)}
-              autoComplete="new-password"
-              required
-              helperText="Wird nach dem Absenden aus dem Feld gelöscht und nie wieder angezeigt."
-              slotProps={{ htmlInput: { maxLength: 4096 } }}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={busy}>
-            Abbrechen
-          </Button>
-          <BusyButton
-            type="submit"
-            variant="contained"
-            busy={busy}
-            busyAnnouncement="Anmeldung wird geprüft"
-            disabled={!canSubmit && !busy}
-          >
-            {target.reconnect ? 'Neu verbinden' : 'Verbinden'}
-          </BusyButton>
-        </DialogActions>
-      </form>
-    </Dialog>
+      <Stack spacing={2}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Geben Sie Ihre eigenen Zugangsdaten für diesen Zugang ein (
+          {secretFormLabel(target.secretForm)}). OPAA prüft die Anmeldung beim Anbieter, bevor es
+          sie verschlüsselt speichert.
+        </Typography>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Wer was sieht: Kontonamen und Inhalte Ihrer privaten Bibliotheken sehen nur Sie. Die
+          Systemverwaltung sieht nur gerundete Anzahlen; Verbinden und Trennen stehen unter einem
+          Pseudonym im Verbindungsprotokoll der Revision.
+        </Typography>
+        {error && (
+          <Alert severity="error" role="alert" tabIndex={-1} ref={errorRef}>
+            {error}
+          </Alert>
+        )}
+        {withUsername && (
+          <FormField
+            label="Benutzername"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="off"
+            required
+            error={attempted && usernameMissing}
+            helperText={
+              attempted && usernameMissing ? 'Bitte den Benutzernamen angeben.' : undefined
+            }
+            slotProps={{ htmlInput: { maxLength: 255 } }}
+          />
+        )}
+        <FormField
+          label={secretFieldLabel(target.secretForm)}
+          type="password"
+          value={secret}
+          onChange={(event) => setSecret(event.target.value)}
+          autoComplete="new-password"
+          required
+          error={attempted && secretMissing}
+          helperText={
+            attempted && secretMissing
+              ? 'Bitte ausfüllen. Wird nach dem Absenden aus dem Feld gelöscht und nie wieder angezeigt.'
+              : 'Wird nach dem Absenden aus dem Feld gelöscht und nie wieder angezeigt.'
+          }
+          slotProps={{ htmlInput: { maxLength: 4096 } }}
+        />
+      </Stack>
+    </FormDialog>
   )
 }

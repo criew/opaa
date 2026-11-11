@@ -25,6 +25,7 @@ export type SearchedLibrary = components['schemas']['SearchedLibrary']
 export type AnswerEvidence = components['schemas']['AnswerEvidence']
 export type AgentRun = components['schemas']['AgentRun']
 export type AgentRunStep = components['schemas']['AgentRunStep']
+export type AgentRunStamp = components['schemas']['AgentRunStamp']
 export type AgentRunStreamStep = components['schemas']['AgentRunStreamStep']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 

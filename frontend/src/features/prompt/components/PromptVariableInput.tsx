@@ -17,6 +17,8 @@ interface PromptVariableInputProps {
   required?: boolean
   /** Offers "no value" in a selection - for a default, not for a required answer. */
   allowEmpty?: boolean
+  /** What is missing or wrong, shown under the field after a submit. */
+  error?: string
 }
 
 /**
@@ -31,6 +33,7 @@ export default function PromptVariableInput({
   label,
   required = false,
   allowEmpty = true,
+  error,
 }: PromptVariableInputProps) {
   const field = {
     size: 'small',
@@ -40,6 +43,8 @@ export default function PromptVariableInput({
       : { label }),
     value,
     required,
+    error: error !== undefined,
+    helperText: error,
   } as const
   if (variable.type === 'SELECT') {
     return (

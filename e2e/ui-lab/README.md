@@ -188,7 +188,8 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
   (`opaa.mockSlowMs` = 10 min); so zeigen alle Schemata und Breiten denselben Ladezustand.
   `record-flows.mjs` behält die 3 s.
 - `metrics.jsonl`, eine Zeile je Screenshot: `appliedScheme` (tatsächlich dargestelltes Schema),
-  `overflowX`, `docHeight`, `clippedText`, `disabledSubmits`, `alertCount`/`alertSeverities`,
+  `overflowX`, `docHeight`, `clippedText`, `disabledSubmits` (davon in Dialogen:
+  `disabledDialogSubmits`), `alertCount`/`alertSeverities`,
   `invalidFields`, `focusable`, `fontSizes`, `colors`, `words`, `uiWords`, `helpTexts`,
   `helpTextsPerForm`, `helpTextMaxLines`, `budgetViolations`, `headings`, `axe` (hell: WCAG 2.0–2.2
   A/AA und best-practice mit `target-size`; dunkel: nur `color-contrast`; je Kontrastbefund Farben
@@ -208,7 +209,7 @@ cd e2e && node ui-lab/calibrate.mjs
 Misst `calibration/good.html` und `calibration/bad.html` genau so wie `capture.mjs` und bricht
 mit Exit-Code 1 ab, wenn ein Ergebnis von der Erwartung abweicht: die gute Seite ohne
 Budgetüberschreitung in beiden Schemata, hell ohne axe-Befund, dunkel ohne Kontrastbefund, die schlechte mit Kontrastbefund in beiden
-Schemata, mit `label`, `button-name` und `target-size` und über allen drei Zählbudgets. Eine
+Schemata, mit `label`, `button-name` und `target-size` und über allen vier Zählbudgets. Eine
 Gegenprobe misst die gute Seite auf dem verworfenen Weg, mit Umschalten des Schemas in der
 Sitzung: Die Theme-Übergänge sind dann noch nicht abgeschlossen, und axe meldet Kontrastfehler,
 die es im direkt geladenen Schema nicht gibt.

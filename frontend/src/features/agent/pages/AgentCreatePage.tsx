@@ -1,57 +1,62 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import PageHeading from '@/shared/ui/a11y/PageHeading'
 import FormField from '@/shared/ui/form/FormField'
-import { AssetOwnerFields } from '@/features/asset'
+import WizardLayout from '@/shared/ui/wizard/WizardLayout'
+import WizardReview from '@/shared/ui/wizard/WizardReview'
+import { useFieldError } from '@/shared/ui/wizard/useFieldError'
+import { STEP_MASTER_DATA, STEP_REVIEW } from '@/shared/ui/wizard/wizardSteps'
+import {
+  AssetOwnerFields,
+  AssetRightsFields,
+  applyPendingGrantsAfterCreation,
+  sharingReview,
+  type PendingGrant,
+} from '@/features/asset'
 import { useMyGroups } from '@/features/principal'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { CATALOG_ROUTE, agentRoute } from '@/shared/routes'
-import { contentWidth, fontSize } from '@/shared/theme/tokens'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 import { useAgentStore } from '../stores/agentStore'
-import ErrorSummary, { type SummaryEntry } from '@/shared/ui/feedback/ErrorSummary'
 import { fieldMessages } from '../components/fieldMessages'
 import { NAME_MAX, NAME_PLACEHOLDER, PURPOSE_HELP, PURPOSE_MAX } from '../components/agentTexts'
 
 const ID = 'agent-create'
+const STEPS = [STEP_MASTER_DATA, 'Freigaben', STEP_REVIEW] as const
+const STEP_SHARING = 1
 
 /**
- * Creating an agent: name, purpose and owner, nothing else. The agent starts empty - no
- * instruction, no library, searching and reading as tools - and is set up on its detail page.
- * Without the right the page explains that and offers no form.
+ * The creation wizard of an agent: Stammdaten (name and purpose), Freigaben (owner and rights),
+ * Prüfen. The agent starts empty - no instruction, no library, searching and reading as tools -
+ * and is set up on its detail page.
  */
 export default function AgentCreatePage() {
   const navigate = useNavigate()
   const create = useAgentStore((s) => s.createAgent)
   const { isMissing } = useMyCapabilities()
   const myGroups = useMyGroups()
-  const summaryRef = useRef<HTMLDivElement>(null)
 
+  const [activeStep, setActiveStep] = useState(0)
+  const [returnToReview, setReturnToReview] = useState(false)
   const [name, setName] = useState('')
+  const nameCheck = useFieldError('Name fehlt')
   const [purpose, setPurpose] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'name' | 'ownerId', string>>>({})
+  const groupCheck = useFieldError('Gruppe fehlt')
+  const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  if (isMissing('CREATE_AGENT')) {
-    return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
-        <PageHeading title="Neuer Agent" gutterBottom />
-        <Alert severity="info">{capabilityMissingMessage('CREATE_AGENT')}</Alert>
-      </Box>
-    )
-  }
-
-  const isDirty = name.trim() !== '' || purpose.trim() !== ''
+  const missingCapability = isMissing('CREATE_AGENT')
+    ? capabilityMissingMessage('CREATE_AGENT')
+    : null
+  const isDirty = name.trim() !== '' || purpose.trim() !== '' || pendingGrants.length > 0
 
   async function handleCancel() {
     if (isDirty) {
@@ -66,26 +71,28 @@ export default function AgentCreatePage() {
     navigate(CATALOG_ROUTE)
   }
 
-  function showErrors(errors: Partial<Record<'name' | 'ownerId', string>>) {
-    setFieldErrors(errors)
-    // The summary renders with this state; it takes the focus once it is there.
-    requestAnimationFrame(() => summaryRef.current?.focus())
-  }
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    const errors: Partial<Record<'name' | 'ownerId', string>> = {}
-    if (name.trim() === '') errors.name = 'Geben Sie dem Agenten einen Namen.'
-    if (ownerType === 'GROUP' && !selectedGroup) {
-      errors.ownerId = 'Wählen Sie die Gruppe, der der Agent gehören soll.'
-    }
-    if (Object.keys(errors).length > 0) {
-      showErrors(errors)
+  function handleNext() {
+    if (activeStep === 0 && !nameCheck.check(name.trim() !== '')) return
+    if (
+      activeStep === STEP_SHARING &&
+      !groupCheck.check(ownerType !== 'GROUP' || selectedGroup !== null)
+    ) {
       return
     }
-    setFieldErrors({})
+    setActiveStep((step) => (returnToReview ? STEPS.length - 1 : step + 1))
+    setReturnToReview(false)
+  }
+
+  function changeAt(step: number) {
+    setReturnToReview(true)
     setError(null)
+    setActiveStep(step)
+  }
+
+  async function handleCreate() {
+    if (submitting) return
     setSubmitting(true)
+    setError(null)
     try {
       const id = await create({
         name: name.trim(),
@@ -93,69 +100,74 @@ export default function AgentCreatePage() {
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
       })
+      await applyPendingGrantsAfterCreation('AGENT', id, pendingGrants)
+      notify(`„${name.trim()}“ wurde angelegt.`, 'success')
       navigate(agentRoute(id))
     } catch (err) {
+      // A refused field takes the server's word to its step and field; anything else stays here.
       const fromServer = fieldMessages(apiFieldErrors(err))
-      if (fromServer.name || fromServer.ownerId) {
-        showErrors({ name: fromServer.name, ownerId: fromServer.ownerId })
+      if (fromServer.name) {
+        setActiveStep(0)
+        nameCheck.fail(fromServer.name)
+      } else if (fromServer.ownerId) {
+        setActiveStep(STEP_SHARING)
+        groupCheck.fail(fromServer.ownerId)
       } else {
         setError(err instanceof Error ? err.message : 'Der Agent konnte nicht angelegt werden.')
       }
+      setReturnToReview(true)
       setSubmitting(false)
     }
   }
 
-  const summary: SummaryEntry[] = []
-  if (fieldErrors.name) {
-    summary.push({
-      text: `Name: ${fieldErrors.name}`,
-      onJump: () => document.getElementById(`${ID}-name`)?.focus(),
-    })
-  }
-  if (fieldErrors.ownerId) {
-    summary.push({
-      text: `Eigentümer: ${fieldErrors.ownerId}`,
-      onJump: () =>
-        (
-          document.querySelector<HTMLElement>('input[aria-label="Gruppe"]') ??
-          document.querySelector<HTMLElement>(`[aria-labelledby="${ID}-owner-label"] input`)
-        )?.focus(),
-    })
-  }
-
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box component="form" noValidate onSubmit={handleSubmit} sx={{ maxWidth: 640 }}>
-        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
-          Neuer Katalogeintrag
-        </Typography>
-        <PageHeading title="Neuer Agent" />
-        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 1, mb: 3 }}>
-          Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen
-          darf, und mit den Werkzeugen Suchen und Lesen. Auftrag, Wissen und Ablauf richten Sie
-          danach auf seiner Seite ein.
-        </Typography>
-
-        <ErrorSummary ref={summaryRef} entries={summary} idPrefix={ID} />
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+    <WizardLayout
+      object="Neuer Agent"
+      steps={STEPS}
+      activeStep={activeStep}
+      failed={nameCheck.error !== null || groupCheck.error !== null}
+      createBlockedBy={missingCapability}
+      error={error}
+      footerNote={
+        activeStep === STEP_SHARING && pendingGrants.length > 0
+          ? pendingGrants.length === 1
+            ? '1 Freigabe vorgemerkt'
+            : `${pendingGrants.length} Freigaben vorgemerkt`
+          : null
+      }
+      footerSeparated={activeStep !== STEPS.length - 1}
+      submitting={submitting}
+      createAnnouncement="Agent wird angelegt"
+      onCancel={() => void handleCancel()}
+      onBack={() => {
+        setReturnToReview(false)
+        setActiveStep((step) => step - 1)
+      }}
+      onNext={handleNext}
+      onCreate={() => void handleCreate()}
+    >
+      {activeStep === 0 && (
+        <>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen
+            darf, und mit den Werkzeugen Suchen und Lesen. Auftrag, Wissen und Ablauf richten Sie
+            danach auf seiner Seite ein.
+          </Typography>
           <Box>
             <FormField
               label="Name"
               id={`${ID}-name`}
-              size="small"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                nameCheck.clear()
+                setName(e.target.value)
+              }}
               placeholder={NAME_PLACEHOLDER}
               fullWidth
               required
-              error={Boolean(fieldErrors.name)}
-              helperText={fieldErrors.name}
+              inputRef={nameCheck.ref}
+              error={nameCheck.error !== null}
+              helperText={nameCheck.error}
               slotProps={{ htmlInput: { maxLength: NAME_MAX } }}
             />
           </Box>
@@ -164,7 +176,6 @@ export default function AgentCreatePage() {
               label="Zweck"
               optional
               id={`${ID}-purpose`}
-              size="small"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
               multiline
@@ -173,36 +184,47 @@ export default function AgentCreatePage() {
               slotProps={{ htmlInput: { maxLength: PURPOSE_MAX } }}
             />
           </Box>
+        </>
+      )}
+      {activeStep === STEP_SHARING && (
+        <>
           <AssetOwnerFields
             idPrefix={ID}
             assetType="AGENT"
             ownerType={ownerType}
-            onOwnerTypeChange={setOwnerType}
+            onOwnerTypeChange={(next) => {
+              groupCheck.clear()
+              setOwnerType(next)
+            }}
             myGroups={myGroups}
             selectedGroup={selectedGroup}
-            onSelectedGroupChange={setSelectedGroup}
+            onSelectedGroupChange={(group) => {
+              groupCheck.clear()
+              setSelectedGroup(group)
+            }}
+            groupError={groupCheck.error}
+            groupInputRef={groupCheck.ref}
           />
-        </Box>
-
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 1.5,
-            mt: 4,
-            pt: 2,
-            borderTop: 1,
-            borderColor: 'divider',
-          }}
-        >
-          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
-            Abbrechen
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          <Button type="submit" variant="contained" disabled={submitting}>
-            {submitting ? 'Wird angelegt …' : 'Agent anlegen'}
-          </Button>
-        </Box>
-      </Box>
-    </Box>
+          <AssetRightsFields
+            pendingGrants={pendingGrants}
+            onPendingGrantsChange={setPendingGrants}
+          />
+        </>
+      )}
+      {activeStep === STEPS.length - 1 && (
+        <WizardReview
+          entries={[
+            { label: 'Name', value: name.trim(), onChange: () => changeAt(0) },
+            { label: 'Zweck', value: purpose.trim(), onChange: () => changeAt(0) },
+            ...sharingReview({
+              ownerType,
+              selectedGroup,
+              pendingGrants,
+              onChangeSharing: () => changeAt(STEP_SHARING),
+            }),
+          ]}
+        />
+      )}
+    </WizardLayout>
   )
 }

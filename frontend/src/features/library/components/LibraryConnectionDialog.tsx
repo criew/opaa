@@ -1,10 +1,5 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
@@ -32,6 +27,7 @@ import {
   sourceConnectionOf,
 } from './sourceCore/sourceConnection'
 import { fontFamily } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 /** What the dialog reads of the stored library. */
 export interface ConnectableLibrary {
@@ -95,6 +91,7 @@ export default function LibraryConnectionDialog({
   const [enteredAddress, setEnteredAddress] = useState<Record<string, string>>({})
   const [probe, setProbe] = useState<Probe | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [choiceMissing, setChoiceMissing] = useState(false)
   const [testing, setTesting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -109,6 +106,7 @@ export default function LibraryConnectionDialog({
   const token = JSON.stringify({ choice, address })
   const visible = probe?.token === token ? probe : null
   const busy = testing || submitting
+  const failed = visible !== null && !passed(visible)
 
   function close() {
     if (!busy) onClose()
@@ -173,134 +171,124 @@ export default function LibraryConnectionDialog({
   }
 
   async function handleConnect() {
+    if (failed) {
+      await connect(visible)
+      return
+    }
+    if (choice === null) {
+      setChoiceMissing(true)
+      return
+    }
+    // the address field names the reason itself; the dialog moves the focus there
+    if (!addressFits) return
     const checked = visible ?? (await test())
     if (passed(checked)) await connect(checked)
   }
 
-  const failed = visible !== null && !passed(visible)
-
   return (
-    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
-      <DialogTitle>{current ? 'Zugang wechseln' : 'Zugang zuordnen'}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <Typography variant="body2">
-            Die Adresse der Bibliothek muss unter der Server-Adresse des gewählten Zugangs liegen;
-            eine Adresse unter dem bisherigen Zugang wandert mit.{' '}
-            {privateLibrary
-              ? 'Angeboten werden nur Zugänge, auf denen Sie ein verbundenes Konto haben; über dieses meldet sich die Bibliothek an.'
-              : 'Wechselt dabei der Server, werden die hinterlegten Zugangsdaten verworfen und müssen neu eingetragen werden.'}{' '}
-            Vor dem Speichern prüft OPAA die Verbindung über den gewählten Zugang.
+    <FormDialog
+      open={open}
+      title={current ? 'Zugang wechseln' : 'Zugang zuordnen'}
+      submitLabel={failed ? 'Trotzdem zuordnen' : 'Zuordnen'}
+      onSubmit={() => void handleConnect()}
+      onClose={close}
+      busy={busy}
+      busyAnnouncement={testing ? 'Verbindung wird geprüft' : 'Zugang wird zugeordnet'}
+    >
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        <Typography variant="body2">
+          Die Adresse der Bibliothek muss unter der Server-Adresse des gewählten Zugangs liegen;
+          eine Adresse unter dem bisherigen Zugang wandert mit.{' '}
+          {privateLibrary
+            ? 'Angeboten werden nur Zugänge, auf denen Sie ein verbundenes Konto haben; über dieses meldet sich die Bibliothek an.'
+            : 'Wechselt dabei der Server, werden die hinterlegten Zugangsdaten verworfen und müssen neu eingetragen werden.'}{' '}
+          Vor dem Speichern prüft OPAA die Verbindung über den gewählten Zugang.
+        </Typography>
+        {error && <Alert severity="error">{error}</Alert>}
+        <ConnectionProfileSelect
+          descriptor={descriptor}
+          state={state}
+          value={choice}
+          onChange={(value) => {
+            setChosen(value)
+            setError(null)
+            setChoiceMissing(false)
+          }}
+          error={choiceMissing ? 'Bitte einen Zugang auswählen.' : undefined}
+          offerOwnAddress={false}
+          excludeProfileId={current?.id}
+          onlyOwnAccounts={privateLibrary}
+          showSingle
+          idPrefix="library-connection"
+        />
+        {next && !repair && (
+          <Typography variant="body2" data-testid="library-connection-address">
+            Adresse nach dem Zuordnen: <code>{address}</code>
           </Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-          <ConnectionProfileSelect
-            descriptor={descriptor}
-            state={state}
-            value={choice}
-            onChange={(value) => {
-              setChosen(value)
-              setError(null)
-            }}
-            offerOwnAddress={false}
-            excludeProfileId={current?.id}
-            onlyOwnAccounts={privateLibrary}
-            showSingle
-            idPrefix="library-connection"
-          />
-          {next && !repair && (
-            <Typography variant="body2" data-testid="library-connection-address">
-              Adresse nach dem Zuordnen: <code>{address}</code>
-            </Typography>
-          )}
-          {next && repair && (
-            <>
-              <Alert severity="info">
-                Die bisherige Adresse
-                {library.sourceUrl ? (
-                  <>
-                    {' '}
-                    <code>{library.sourceUrl}</code>
-                  </>
-                ) : null}{' '}
-                liegt nicht unter dem Zugang „{next.name}“. Tragen Sie die Adresse ein, unter der
-                die Bibliothek künftig liest.
-              </Alert>
-              <FormField
-                label="Neue Adresse"
-                size="small"
-                fullWidth
-                value={address}
-                onChange={(e) =>
-                  setEnteredAddress((prev) => ({ ...prev, [next.profileId]: e.target.value }))
-                }
-                error={!addressFits}
-                helperText={
-                  addressFits
-                    ? `Liegt unter der Server-Adresse des Zugangs: ${next.serverUrl}`
-                    : `Muss unter der Server-Adresse des Zugangs liegen: ${next.serverUrl}`
-                }
-                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
-              />
-            </>
-          )}
-          {next && (
-            <BusyButton
-              variant="outlined"
-              onClick={() => void test()}
-              disabled={!addressFits || submitting}
-              busy={testing}
-              busyAnnouncement="Verbindung wird geprüft"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              {testing ? 'Verbindung wird geprüft …' : 'Verbindung prüfen'}
-            </BusyButton>
-          )}
-          {visible?.result && (
-            <Alert
-              severity={passed(visible) ? 'success' : 'warning'}
-              data-testid="library-connection-test"
-            >
-              {visible.result.message}
+        )}
+        {next && repair && (
+          <>
+            <Alert severity="info">
+              Die bisherige Adresse
+              {library.sourceUrl ? (
+                <>
+                  {' '}
+                  <code>{library.sourceUrl}</code>
+                </>
+              ) : null}{' '}
+              liegt nicht unter dem Zugang „{next.name}“. Tragen Sie die Adresse ein, unter der die
+              Bibliothek künftig liest.
             </Alert>
-          )}
-          {visible?.error && (
-            <Alert severity="error" data-testid="library-connection-test">
-              {visible.error}
-            </Alert>
-          )}
-          {failed && (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Die Prüfung ist nicht gelungen. Zuordnen lässt sich die Bibliothek trotzdem; sie läuft
-              dann erst, wenn die Verbindung steht.
-            </Typography>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close} disabled={busy}>
-          Abbrechen
-        </Button>
-        {failed ? (
+            <FormField
+              label="Neue Adresse"
+              size="small"
+              fullWidth
+              value={address}
+              onChange={(e) =>
+                setEnteredAddress((prev) => ({ ...prev, [next.profileId]: e.target.value }))
+              }
+              error={!addressFits}
+              helperText={
+                addressFits
+                  ? `Liegt unter der Server-Adresse des Zugangs: ${next.serverUrl}`
+                  : `Muss unter der Server-Adresse des Zugangs liegen: ${next.serverUrl}`
+              }
+              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
+            />
+          </>
+        )}
+        {next && (
           <BusyButton
-            variant="contained"
-            onClick={() => void connect(visible)}
-            busy={submitting}
-            busyAnnouncement="Zugang wird zugeordnet"
+            variant="outlined"
+            onClick={() => void test()}
+            disabled={!addressFits || submitting}
+            busy={testing}
+            busyAnnouncement="Verbindung wird geprüft"
+            sx={{ alignSelf: 'flex-start' }}
           >
-            {submitting ? 'Wird zugeordnet …' : 'Trotzdem zuordnen'}
-          </BusyButton>
-        ) : (
-          <BusyButton
-            variant="contained"
-            onClick={() => void handleConnect()}
-            disabled={choice === null || !addressFits}
-            busy={busy}
-            busyAnnouncement={testing ? 'Verbindung wird geprüft' : 'Zugang wird zugeordnet'}
-          >
-            {submitting ? 'Wird zugeordnet …' : 'Prüfen und zuordnen'}
+            {testing ? 'Verbindung wird geprüft …' : 'Verbindung prüfen'}
           </BusyButton>
         )}
-      </DialogActions>
-    </Dialog>
+        {visible?.result && (
+          <Alert
+            severity={passed(visible) ? 'success' : 'warning'}
+            data-testid="library-connection-test"
+          >
+            {visible.result.message}
+          </Alert>
+        )}
+        {visible?.error && (
+          <Alert severity="error" data-testid="library-connection-test">
+            {visible.error}
+          </Alert>
+        )}
+        {failed && (
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Die Prüfung ist nicht gelungen. Zuordnen lässt sich die Bibliothek trotzdem; sie läuft
+            dann erst, wenn die Verbindung steht.
+          </Typography>
+        )}
+      </Stack>
+    </FormDialog>
   )
 }

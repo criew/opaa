@@ -1,1 +1,1 @@
-export { default as IndexingSnackbar } from './components/IndexingSnackbar'
+// Public interface of the search-admin theme; no other theme depends on it.

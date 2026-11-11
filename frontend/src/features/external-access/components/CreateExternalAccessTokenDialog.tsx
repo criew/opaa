@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormHelperText from '@mui/material/FormHelperText'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
@@ -40,6 +34,8 @@ import {
   toDateInputValue,
 } from './tokenLabels'
 import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface CreateExternalAccessTokenDialogProps {
   /** The installation's maximum lifetime; it is also the default of the expiry date. */
@@ -262,9 +258,16 @@ export default function CreateExternalAccessTokenDialog({
       : releaseEndsBeforeExpiry(libraries ?? [], selected, expiryInstantOf(expiresOn, latest))
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="create-token-title">
-      <DialogTitle id="create-token-title">Token erzeugen</DialogTitle>
-      <DialogContent>
+    <>
+      <FormDialog
+        titleId="create-token-title"
+        title="Token erzeugen"
+        submitLabel="Erzeugen"
+        onSubmit={() => void handleSubmit()}
+        onClose={onClose}
+        busy={isSaving}
+        busyAnnouncement="Das Token wird erzeugt"
+      >
         {afterProviderSignIn && !error && (
           <Alert severity="info" sx={{ mb: 2 }}>
             {SIGN_IN_CONFIRMED_HINT}
@@ -297,7 +300,9 @@ export default function CreateExternalAccessTokenDialog({
               Bibliotheken
             </Typography>
             {libraries === null ? (
-              <Skeleton variant="rounded" height={96} sx={{ mt: 1 }} />
+              <Box sx={{ mt: 1 }}>
+                <LoadingState count={2} />
+              </Box>
             ) : hasLibraries ? (
               <>
                 <Box sx={{ mt: 1, mb: 1.5 }}>
@@ -400,13 +405,7 @@ export default function CreateExternalAccessTokenDialog({
             <Typography sx={{ fontSize: fontSize.text }}>{DISCLOSURE_HINT}</Typography>
           </Alert>
         </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button variant="contained" onClick={() => void handleSubmit()} disabled={isSaving}>
-          Erzeugen
-        </Button>
-      </DialogActions>
+      </FormDialog>
       <RecentLoginDialog
         open={confirming}
         purpose={CONFIRM_PURPOSE}
@@ -417,6 +416,6 @@ export default function CreateExternalAccessTokenDialog({
         onClose={() => setConfirming(false)}
         returnTo={OWN_TOKENS_ROUTE}
       />
-    </Dialog>
+    </>
   )
 }

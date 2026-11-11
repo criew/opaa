@@ -9,6 +9,7 @@ import type { ChatSummary } from '@/shared/api/types'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '@/features/space'
 import { useUiStore } from '@/shared/stores/uiStore'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 
 const mockNavigate = vi.fn()
 let currentPathname = '/spaces/space-personal'
@@ -40,7 +41,7 @@ describe('ChatList', () => {
     server.use(http.get('/api/v1/spaces/:spaceId/chats', () => HttpResponse.json([])))
     renderWithProviders(<ChatList spaceId="space-phoenix" />)
 
-    expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
+    expect(await screen.findByText('Noch keine aktiven Chats in diesem Space.')).toBeInTheDocument()
   })
 
   // "Neu" must not eagerly persist an empty chat - it only navigates to
@@ -98,8 +99,15 @@ describe('ChatList', () => {
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
 
-  // A failed delete must surface to the user, not reject silently (unhandled rejection).
+  /** The messages of the notices raised so far. */
+  function notices() {
+    return useNotificationStore.getState().queue.map((entry) => entry.message)
+  }
+
+  // A failed delete must surface to the user, not reject silently (unhandled rejection) - as a
+  // notice of the action, never as a load error of the list.
   it('shows an error and keeps the chat when deletion fails on the server', async () => {
+    useNotificationStore.getState().reset()
     server.use(
       http.delete('/api/v1/chats/:chatId', () => {
         return HttpResponse.json({ error: 'Löschen fehlgeschlagen' }, { status: 500 })
@@ -113,12 +121,14 @@ describe('ChatList', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, '„Architektur des Projekts“ löschen?', 'Löschen')
 
-    expect(await screen.findByText('Löschen fehlgeschlagen')).toBeInTheDocument()
+    await waitFor(() => expect(notices()).toContain('Löschen fehlgeschlagen'))
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
+    expect(screen.queryByText('Chats konnten nicht geladen werden.')).not.toBeInTheDocument()
   })
 
   // Same for a failed rename.
   it('shows an error and keeps the old title when renaming fails on the server', async () => {
+    useNotificationStore.getState().reset()
     server.use(
       http.patch('/api/v1/chats/:chatId', () => {
         return HttpResponse.json({ error: 'Umbenennen fehlgeschlagen' }, { status: 500 })
@@ -134,7 +144,7 @@ describe('ChatList', () => {
     await user.clear(field)
     await user.type(field, 'Neuer Titel{Enter}')
 
-    expect(await screen.findByText('Umbenennen fehlgeschlagen')).toBeInTheDocument()
+    await waitFor(() => expect(notices()).toContain('Umbenennen fehlgeschlagen'))
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
 
@@ -394,6 +404,8 @@ describe('ChatList ordering', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
+    // Reported as a popup only: the chat overview must not show it a second time.
+    expect(useChatListStore.getState().error).toBeNull()
   })
 
   it('opens the chat search with an empty term and no links below the list', async () => {

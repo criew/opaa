@@ -2,16 +2,13 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import FormField from '@/shared/ui/form/FormField'
 import { updateLibraryMetadataField } from '../../api/libraryMetadataApi'
 import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 /**
  * Label and Wirkstellen of an existing field. Type, key and value list stay -
@@ -43,6 +40,8 @@ export default function EditFieldDialog({
   const noEffect = !filter && !contextPrefix
 
   async function submit() {
+    // the warning in the form says why nothing is saved
+    if (noEffect) return
     try {
       await updateLibraryMetadataField(libraryId, field.fieldKey, {
         label,
@@ -56,54 +55,52 @@ export default function EditFieldDialog({
   }
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Metadatenfeld bearbeiten</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <FormField
-            size="small"
-            label="Feldname"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-          <FormControlLabel
-            control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
-            label="Wirkt im Filter"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={contextPrefix}
-                onChange={(e) => setContextPrefix(e.target.checked)}
-              />
-            }
-            label="Wirkt im Kontextpräfix"
-          />
-          {noEffect && (
-            <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken.
-            </Alert>
-          )}
-          {contextPrefix !== field.contextPrefix && (
-            <ChangeImpactNotice
-              libraryId={libraryId}
-              fieldKey={field.fieldKey}
-              change={contextPrefix ? 'CONTEXT_PREFIX_ENABLED' : 'CONTEXT_PREFIX_DISABLED'}
-            />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        {onDelete && (
-          <Button color="error" onClick={onDelete} sx={{ mr: 'auto' }}>
+    <FormDialog
+      title={`„${field.label}“ bearbeiten`}
+      submitLabel="Speichern"
+      onSubmit={() => void submit()}
+      onClose={onClose}
+      secondaryAction={
+        onDelete && (
+          <Button variant="outlined" color="error" onClick={onDelete}>
             Feld löschen
           </Button>
+        )
+      }
+    >
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        <FormField
+          size="small"
+          label="Feldname"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+        <FormControlLabel
+          control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
+          label="Wirkt im Filter"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={contextPrefix}
+              onChange={(e) => setContextPrefix(e.target.checked)}
+            />
+          }
+          label="Wirkt im Kontextpräfix"
+        />
+        {noEffect && (
+          <Alert severity="warning">
+            Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken.
+          </Alert>
         )}
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+        {contextPrefix !== field.contextPrefix && (
+          <ChangeImpactNotice
+            libraryId={libraryId}
+            fieldKey={field.fieldKey}
+            change={contextPrefix ? 'CONTEXT_PREFIX_ENABLED' : 'CONTEXT_PREFIX_DISABLED'}
+          />
+        )}
+      </Stack>
+    </FormDialog>
   )
 }

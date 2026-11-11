@@ -32,6 +32,8 @@ interface GroupFormFieldsProps {
   /** Name and description exist only for an internal group; a provider group has the switch only. */
   isInternal?: boolean
   autoFocusName?: boolean
+  /** Shown at the name field, e.g. when „Anlegen“ found it empty. */
+  nameError?: string
 }
 
 /**
@@ -46,6 +48,7 @@ export default function GroupFormFields({
   canProtect,
   isInternal = true,
   autoFocusName = false,
+  nameError,
 }: GroupFormFieldsProps) {
   const set = (patch: Partial<GroupFormValues>) => onChange({ ...values, ...patch })
 
@@ -65,6 +68,8 @@ export default function GroupFormFields({
               size="small"
               value={values.name}
               onChange={(e) => set({ name: e.target.value })}
+              error={Boolean(nameError)}
+              helperText={nameError}
               slotProps={{ htmlInput: { maxLength: 255 } }}
             />
           </Box>
