@@ -3,11 +3,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import {
   S3_PROVIDERS,
   S3_PROVIDER_LABELS,
@@ -40,12 +39,12 @@ export function S3ConnectionFields({
   return (
     <Stack spacing={2}>
       <Box sx={{ maxWidth: 320 }}>
-        <FieldLabel id={`${fieldId('provider')}-label`}>Anbieter</FieldLabel>
-        <Select
+        <FormField
+          select
+          label="Anbieter"
           id={fieldId('provider')}
           size="small"
           fullWidth
-          labelId={`${fieldId('provider')}-label`}
           value={values.provider}
           onChange={(e) => onChange(s3ProviderTemplate(e.target.value as S3Provider))}
         >
@@ -54,7 +53,7 @@ export function S3ConnectionFields({
               {S3_PROVIDER_LABELS[provider]}
             </MenuItem>
           ))}
-        </Select>
+        </FormField>
       </Box>
       <SetupTextField
         id={fieldId('sourceUrl')}

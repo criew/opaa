@@ -4,7 +4,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
@@ -108,7 +108,7 @@ export default function RealtimeTranscriptionFields({
             {errors.protocol && <FormHelperText error>{errors.protocol}</FormHelperText>}
           </Stack>
           {preset?.external && <Alert severity="warning">{REALTIME_TEXTS.externalService}</Alert>}
-          <TextField
+          <FormField
             id={`${idPrefix}-url`}
             label={REALTIME_TEXTS.urlLabel}
             required
@@ -120,7 +120,7 @@ export default function RealtimeTranscriptionFields({
             fullWidth
             disabled={disabled}
           />
-          <TextField
+          <FormField
             id={`${idPrefix}-model`}
             label={REALTIME_TEXTS.modelLabel}
             required

@@ -22,7 +22,7 @@ import {
   sharesOrigin,
   type BatchPrefill,
 } from '@/shared/ui/transcription/realtimeTranscription'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
   TRANSCRIPTION_TEXTS,
@@ -265,7 +265,9 @@ export default function TranscriptionModelStep({
           {live && (
             <>
               <Box>
-                <FieldLabel id={`${id}-live-protocol`}>{REALTIME_TEXTS.protocolLabel}</FieldLabel>
+                <FormFieldLabel id={`${id}-live-protocol`}>
+                  {REALTIME_TEXTS.protocolLabel}
+                </FormFieldLabel>
                 <ChoiceTileGroup<RealtimeTranscriptionProtocol>
                   aria-labelledby={`${id}-live-protocol`}
                   tiles={REALTIME_PROTOCOL_PRESETS.map((option) => ({

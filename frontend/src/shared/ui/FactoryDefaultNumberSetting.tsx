@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from './form/FormField'
+import { formWidth } from '../theme/tokens'
 import Typography from '@mui/material/Typography'
 import { apiFieldErrors } from '../api/apiErrorDetails'
 import { confirmAction } from '../stores/confirmStore'
@@ -114,13 +115,8 @@ export default function FactoryDefaultNumberSetting({
 
   return (
     <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-      <Box
-        component="form"
-        onSubmit={(event) => void handleSubmit(event)}
-        noValidate
-        sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
-      >
-        <TextField
+      <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
+        <FormField
           label={label}
           size="small"
           value={draft}
@@ -133,19 +129,21 @@ export default function FactoryDefaultNumberSetting({
             parsed === null ? rangeError : (saveError ?? `Von ${format(min)} bis ${format(max)}.`)
           }
           slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-          sx={{ width: 280 }}
+          numeric
+          sx={{ maxWidth: formWidth.column }}
+          action={
+            <BusyButton
+              type="submit"
+              variant="outlined"
+              size="small"
+              busy={busy}
+              busyAnnouncement="Wird gespeichert"
+              disabled={!changed && !busy}
+            >
+              Speichern
+            </BusyButton>
+          }
         />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          size="small"
-          busy={busy}
-          busyAnnouncement="Wird gespeichert"
-          disabled={!changed && !busy}
-          sx={{ mt: 0.25 }}
-        >
-          Speichern
-        </BusyButton>
       </Box>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         {overridden

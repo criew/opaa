@@ -407,6 +407,12 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             },
           },
         },
+        // Helper text and error start at the field's left edge, under its label (guidelines 5.2).
+        MuiFormHelperText: {
+          styleOverrides: {
+            root: { marginLeft: 0, marginRight: 0 },
+          },
+        },
         MuiToggleButton: {
           styleOverrides: {
             // Same heights as buttons: 36 px, compact 32 px around a 20 px line and a 1 px border.

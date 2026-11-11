@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncPendingPlanResponse } from '@/shared/api/types'
 import { ageSinceLabel } from '@/features/principal'
@@ -55,7 +55,7 @@ export default function PendingPlanSection({
       </Typography>
       <DirectorySyncReportView report={plan.report} showOutcome={false} />
 
-      <TextField
+      <FormField
         size="small"
         fullWidth
         required

@@ -13,7 +13,7 @@ import AuthNotice from '../components/AuthNotice'
 import NewPasswordField from '../components/NewPasswordField'
 import PasswordField from '../components/PasswordField'
 import SectionEyebrow from '../components/SectionEyebrow'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
@@ -191,7 +191,7 @@ export default function VerifyEmailPage() {
         </Typography>
         <Stack spacing={2}>
           <Box>
-            <FieldLabel htmlFor="verify-email-display-name">Name</FieldLabel>
+            <FormFieldLabel htmlFor="verify-email-display-name">Name</FormFieldLabel>
             <TextField
               id="verify-email-display-name"
               inputRef={displayNameRef}

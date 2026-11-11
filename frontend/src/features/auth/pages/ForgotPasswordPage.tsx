@@ -11,7 +11,7 @@ import AuthLayout from '../components/AuthLayout'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
 import SectionEyebrow from '../components/SectionEyebrow'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
@@ -134,7 +134,7 @@ export default function ForgotPasswordPage() {
         </Typography>
         <Stack spacing={2}>
           <Box>
-            <FieldLabel htmlFor="forgot-password-email">E-Mail-Adresse</FieldLabel>
+            <FormFieldLabel htmlFor="forgot-password-email">E-Mail-Adresse</FormFieldLabel>
             <TextField
               id="forgot-password-email"
               inputRef={emailRef}

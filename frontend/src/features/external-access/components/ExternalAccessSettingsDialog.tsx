@@ -5,7 +5,7 @@ import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   ExternalAccessSettingsResponse,
@@ -289,7 +289,7 @@ function SettingsForm({
             Was in einer Nacht nicht geht, geht in neunzig Tagen.
           </Typography>
           <Stack spacing={2.5}>
-            <TextField
+            <FormField
               label="Zugangstokens höchstens gültig (Tage)"
               type="number"
               size="small"
@@ -297,9 +297,8 @@ function SettingsForm({
               onChange={(event) => update({ tokenMaxLifetimeDays: event.target.value })}
               error={Boolean(fieldMessages.tokenMaxLifetimeDays)}
               helperText={fieldMessages.tokenMaxLifetimeDays ?? 'Zwischen 1 und 365 Tagen.'}
-              sx={{ maxWidth: 340 }}
             />
-            <TextField
+            <FormField
               label="Anfragen je Token und Stunde"
               type="number"
               size="small"
@@ -307,9 +306,8 @@ function SettingsForm({
               onChange={(event) => update({ tokenRateLimitPerHour: event.target.value })}
               error={Boolean(fieldMessages.tokenRateLimitPerHour)}
               helperText={fieldMessages.tokenRateLimitPerHour}
-              sx={{ maxWidth: 340 }}
             />
-            <TextField
+            <FormField
               label="Abflussalarm ab (Abrufe je Stunde)"
               type="number"
               size="small"
@@ -320,9 +318,8 @@ function SettingsForm({
                 fieldMessages.massRetrievalAlertThreshold ??
                 'Die Überschreitung meldet sich der Systemverwaltung; ein Nachweisprotokoll entsteht daraus nicht.'
               }
-              sx={{ maxWidth: 340 }}
             />
-            <TextField
+            <FormField
               label="Netzbereiche"
               value={draft.allowedCidrs}
               onChange={(event) => update({ allowedCidrs: event.target.value })}
@@ -332,7 +329,6 @@ function SettingsForm({
                 'Eine Netzangabe je Zeile (z. B. 10.0.0.0/8). Voreinstellung ist das Hausnetz. Eine leere Liste schließt den Zugriff für jede Adresse. Geprüft wird die über die Trusted-Proxy-Auflösung ermittelte Adresse (OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS).'
               }
               multiline
-              minRows={3}
               fullWidth
             />
           </Stack>
@@ -347,7 +343,7 @@ function SettingsForm({
             Freigabe einer Bibliothek zuletzt gesetzt hat. 0 schaltet die Erinnerung ab; die
             Freigabe erlischt trotzdem, nur unangekündigt.
           </Typography>
-          <TextField
+          <FormField
             label="Erinnerung vor Ablauf (Tage)"
             type="number"
             size="small"
@@ -364,7 +360,6 @@ function SettingsForm({
                   ? `Gespeichert, wirkt aber nur als ${daysLabel(settings.maxReleaseReminderLeadDays)}: einen Tag unter der längsten Befristung.`
                   : `Eigener Wert (Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}). Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`)
             }
-            sx={{ maxWidth: 340 }}
           />
           {draft.releaseReminderLeadDays !== null && (
             <Button size="small" sx={{ mt: 1 }} onClick={() => void resetReminderLead()}>
@@ -382,14 +377,13 @@ function SettingsForm({
             erkennt, welche Fragen hierher gehören. Seine Änderung ändert keine Reichweite und wird
             nicht protokolliert.
           </Typography>
-          <TextField
+          <FormField
             label="Einleitungstext"
             value={draft.serverInstructions}
             onChange={(event) => update({ serverInstructions: event.target.value })}
             error={Boolean(fieldMessages.serverInstructions)}
             helperText={fieldMessages.serverInstructions ?? 'Höchstens 4000 Zeichen.'}
             multiline
-            minRows={4}
             fullWidth
           />
           <Button

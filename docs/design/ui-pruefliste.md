@@ -175,6 +175,13 @@ zwei Einträgen.
     schon steht, behält seine Position, wenn eine Antwort, ein Titel oder ein Ergebnis eintrifft
     ([guidelines.md](./guidelines.md), 5.8). – Video im Szenario `slow`
 
+52. **Formularfelder aus einem Baustein:** Beschriftung oberhalb, kein schwebendes Label, kein
+    Sternchen, „(optional)“ an optionalen Feldern, Hilfetext bündig mit der Feldkante;
+    Such- und Filterfelder ohne sichtbare Beschriftung; Einstellungsformulare einspaltig in
+    640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
+    ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
+    `FormField.test.tsx` und `fieldHeight.test.tsx`
+
 ## Pflege
 
 Ein neuer Punkt bekommt die nächste freie Nummer; ein gestrichener behält seine Nummer mit dem

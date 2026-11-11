@@ -4,14 +4,13 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -326,9 +325,9 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
               <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
             </RadioGroup>
           </FormControl>
-          <TextField
+          <FormField
             label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
-            placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
+            helperText={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
             size="small"
@@ -363,31 +362,29 @@ export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSe
         </Link>
       </Typography>
 
-      <FormControl size="small">
-        <InputLabel id="grant-role-label">Rolle</InputLabel>
-        <Select
-          labelId="grant-role-label"
-          label="Rolle"
-          value={role}
-          onChange={(e) => setRole(e.target.value as AssetRole)}
-        >
-          {rolesFor(subject.type).map((option) => (
-            <MenuItem key={option} value={option}>
-              {assetRoleLabel(option)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FormField
+        select
+        label="Rolle"
+        size="small"
+        value={role}
+        onChange={(e) => setRole(e.target.value as AssetRole)}
+      >
+        {rolesFor(subject.type).map((option) => (
+          <MenuItem key={option} value={option}>
+            {assetRoleLabel(option)}
+          </MenuItem>
+        ))}
+      </FormField>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         {assetRoleDescription(role, assetType)}
       </Typography>
 
-      <TextField
-        label="Befristung (optional)"
+      <FormField
+        label="Befristung"
+        optional
         type="date"
         value={expiryInput}
         onChange={(e) => setExpiryInput(e.target.value)}
-        slotProps={{ inputLabel: { shrink: true } }}
         size="small"
         sx={{ maxWidth: 220 }}
       />
