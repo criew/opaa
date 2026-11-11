@@ -27,7 +27,7 @@ Mehr als Sie selbst lesen dürfen, liest er nie.
 
 **Gut zu wissen zur Auswahl:**
 
-- Der Agent gilt nur für die eine Frage. Für die nächste wählen Sie ihn erneut.
+- Der Agent gilt nur für die eine Frage. Für die nächste wählen Sie ihn erneut; nur nach einer Rückfrage oder einem Plan ist er für Ihre Antwort schon gewählt.
 - Mit `/` setzen Sie zusätzlich einen Prompt ein: Der Prompt liefert den Text, der Agent bearbeitet
   ihn ([Prompts verwenden](prompts-verwenden.md)).
 - Ein Klick auf das Kreuz im Chip nimmt den Agenten wieder ab; die Frage läuft dann wie gewohnt.
@@ -66,6 +66,7 @@ Suche über Ihre Chats gehen sie nicht ein.
   Gefundenen, und die Antwort trägt den Vermerk „nicht geprüft“.
 - **Rückfrage:** Braucht der Agent eine Angabe von Ihnen, endet der Lauf mit seiner Frage.
   Antworten Sie in einer neuen Nachricht; der Agent beginnt dann einen neuen Lauf.
+- **Plan:** Hat der Agent einen Planschritt, endet der erste Lauf mit seinem Plan. „Bestätigen“ oder „Ändern“ startet den Lauf, der ihn abarbeitet ([Recherche nutzen](recherche-nutzen.md)).
 - **Mehrere Läufe:** Gleichzeitig können Sie nur begrenzt viele Agentenläufe laufen haben, etwa in
   mehreren Chats. Ist die Grenze erreicht, warten Sie, bis einer davon fertig ist.
 
