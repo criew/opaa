@@ -63,7 +63,9 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 - [ ] Jedes fokussierbare Element zeigt den Fokusring des Designsystems
       ([Guidelines 4.4](./guidelines.md)) — in beiden Farbschemata deutlich sichtbar und nicht von
       einem Behälter mit `overflow: hidden` abgeschnitten.
-- [ ] Fokus wird nie per `outline: none` ohne gleichwertigen Ersatz unterdrückt.
+- [ ] Fokus wird nie per `outline: none` ohne gleichwertigen Ersatz unterdrückt. Einzige
+      Ausnahme sind Überschriften und Bereiche, die nur das Programm fokussiert (`tabIndex={-1}`,
+      [Guidelines 4.4](./guidelines.md)): Sie sind kein Bedienelement.
 - [ ] _WCAG 2.2, Ziel — 2.4.11 Fokus nicht verdeckt:_ Ein fokussiertes Element wird nie ganz von
       eigenen Ebenen verdeckt (feste Kopf- und Fußleisten, Popup-Benachrichtigungen, Cookie- oder
       Hinweisleisten). Prüfung: im Tastatur-Durchgang (3.2) bis ans Seitenende tabben, bei

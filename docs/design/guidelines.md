@@ -331,6 +331,15 @@ Warum so:
   positioniert und wird ohne Versatz breiter; der Eingaberahmen des Chats legt das zweite Pixel
   als inneren Schatten an (`focusFrameStyle`).
 
+**Ausnahme: Überschriften, die nur das Programm fokussiert.** Seitentitel (`PageHeading`) und
+Schritttitel eines Assistenten tragen `tabIndex={-1}` und erhalten den Fokus beim Ankommen und
+nach „Weiter“, damit ein Screenreader die neue Seite ansagt. Sie sind kein Bedienelement, man
+erreicht sie nicht mit Tab, und sie zeigen deshalb keinen Ring; der Fokus selbst bleibt. Die Regel
+steht global im Theme (`h1`–`h6` mit `tabindex="-1"`); geprüft in
+`frontend/src/shared/theme/programmaticFocus.test.tsx`. Ein Akkordeon nennt die Ebene seiner
+Überschrift ausdrücklich (`slotProps.heading`, unter dem Seitentitel `h2`), weil MUI sonst `h3`
+setzt und eine Ebene überspringt (`frontend/src/shared/ui/ariaSource.test.ts`).
+
 Umsetzung: `focusVisible` im MUI-Theme und `*:focus-visible` für alle übrigen Elemente
 (`frontend/src/shared/theme/theme.ts`), Werte in `tokens.ts`; Nachweis gegen alle Flächenrollen in
 `frontend/src/shared/theme/focusRing.contrast.test.ts`. Prüfung:
@@ -649,9 +658,17 @@ diese Regeln um:
    steht im Info-Symbol daneben. Was nicht passt, wandert in die Einzelheiten der Zeile oder auf
    die Detailseite (Beispiel: Indexstatus zeigt fünf Spalten, die Indexstände stehen in den
    Einzelheiten).
-7. **Zellen brechen nicht um.** Namen werden gekürzt und tragen den vollen Text als Tooltip
-   (`ListText`); Badges einzeilig, höchstens zwei je Zelle. Mehrere Zustände derselben Art werden
-   ein Badge („Zugang und Quellart gesperrt“).
+7. **Zellen brechen nicht um, und nichts wird stumm abgeschnitten.** Namen werden gekürzt und
+   tragen den vollen Text als Tooltip (`ListText`); Badges einzeilig, höchstens zwei je Zelle.
+   Mehrere Zustände derselben Art werden ein Badge („Zugang und Quellart gesperrt“). Auch ein
+   Zustandswort (`StateDot`) und ein Badge (`MetaBadge`) enden in einer zu schmalen Spalte mit
+   „…“ und Tooltip. Ausnahme ist eine Spalte für ein Ergebnis oder eine Meldung (`wrap`, etwa
+   „Letzter Lauf“ und „Handlungsbedarf“): Dort bricht das Zustandswort unter seinem Punkt um, die
+   Erläuterung darunter bleibt einzeilig. Die Spaltenbreiten sind so gewählt, dass bei 1280 px
+   Namen und Zustandswörter der Beispieldaten ganz stehen; was zuerst weicht, ist eine Nebenangabe
+   wie der Server eines Zugangs. Ein Monogramm oder Symbol vor dem Namen steht in der führenden
+   Spalte (`leading`), nicht im Link der Zeile, sonst passt dessen sichtbarer Text nicht mehr zu
+   seinem Namen (WCAG 2.5.3).
 8. **Filterzeile:** Suche links, danach Auswahlfelder; ein Schalter nur für ein einzelnes Ja/Nein.
 
 Die Zählbudgets `tableColumns` und `rowPrimaryButtons` der
@@ -856,12 +873,16 @@ Die Bestätigung bleibt das Overlay aus 5.10.
    und schließt weder über Escape noch über einen Klick daneben. Alle anderen Dialoge schließen
    Escape und ein Klick daneben weiterhin (bei Änderungen nach Rückfrage, 5.10), außer während die
    Handlung läuft.
-5. **Breite.** 600 px für Formulare und einfache Ansichten, 900 px nur für einen Editor mit
+5. **Startfokus.** Ein Formulardialog öffnet mit dem Fokus im ersten Feld (auch einem Suchfeld
+   über dem Inhalt, bei Optionsfeldern auf dem gewählten), nicht auf dem Dialog selbst; ein Feld,
+   das der Inhalt mit `autoFocus` wählt, behält ihn. Eine Bestätigung (`tone`) und ein Dialog ohne
+   Feld behalten ihn auf „Abbrechen" bzw. dem Dialog.
+6. **Breite.** 600 px für Formulare und einfache Ansichten, 900 px nur für einen Editor mit
    Vorschau, eine Dokumentvorschau oder eine Liste (`width="editor"`). 444 px bleibt der
    Bestätigung vorbehalten – dem Overlay aus 5.10 und der Bestätigung, die erst ihre Folgen lädt
    (`width="confirm"` mit `tone`). Unter 600 px Bildschirmbreite füllt jeder Dialog den Bildschirm.
-6. **Keine Trennlinien** an Titel und Fußzeile, auch nicht über `dividers`.
-7. **Dialog oder Seitenpanel.** Anlegen und Bearbeiten geschehen im Dialog. Ein Seitenpanel
+7. **Keine Trennlinien** an Titel und Fußzeile, auch nicht über `dividers`.
+8. **Dialog oder Seitenpanel.** Anlegen und Bearbeiten geschehen im Dialog. Ein Seitenpanel
    (`SidePanel`) steht nur, wenn die Liste dahinter beim Arbeiten gebraucht wird – zum Vergleichen
    oder um mehrere Einträge nacheinander zu ändern: Anlegerechte, Zugang und Quellart in
    „Verbindungen". Es folgt denselben Regeln: Der Titel nennt das Objekt, eine Ansicht schließt
@@ -914,7 +935,9 @@ Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteine
    Hinweis mit „Erneut laden“ an der Stelle des Inhalts. Die Ursache des Servers darf folgen, wo
    sie mehr sagt. Nie roter Fließtext, nie zusammen mit einem Leertext: „fehlgeschlagen“ und „leer“
    sind nicht zu verwechseln. Nach „Erneut laden“ steht der Fokus auf dem Inhaltsbereich. Ist
-   schon Inhalt geladen, bleibt er stehen; ein Fehler beim Nachladen erscheint unter ihm.
+   schon Inhalt geladen, bleibt er stehen; ein Fehler beim Nachladen erscheint unter ihm. In
+   einer schmalen Spalte wie der Seitenleiste steht der Hinweis dicht (`LoadError dense`): nur der
+   Satz, ohne Symbol und ohne Ursache des Servers, „Erneut laden“ darunter statt daneben.
 7. **„Erneut laden“ nach einem Ladefehler, „Erneut versuchen“ nach einer fehlgeschlagenen
    Aktion** (Speichern, Senden, Hochladen). „Neu laden“ gibt es nicht; die Fehlerseite der
    Anwendung bietet „Seite neu laden“.
