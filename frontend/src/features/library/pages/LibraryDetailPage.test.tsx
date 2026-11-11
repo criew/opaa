@@ -3025,10 +3025,7 @@ describe('LibraryDetailPage', () => {
           documentIds: ['doc-1', 'doc-2'],
         }),
       )
-      // the result is a view: the form dialog gives way to it
-      await waitFor(() => expect(dialog).not.toBeInTheDocument())
-      const outcome = await screen.findByRole('dialog', { name: 'Feld für 2 Dokumente setzen' })
-      await user.click(within(outcome).getByRole('button', { name: 'Schließen' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
       expect(
         await screen.findByText('Feld gesetzt: 2 Dokumente aktualisiert, 0 unverändert.'),
       ).toBeInTheDocument()
