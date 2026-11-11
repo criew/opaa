@@ -86,7 +86,7 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       direction="row"
       spacing={0.5}
       component="span"
-      sx={{ alignItems: 'center', display: 'inline-flex', minWidth: 0 }}
+      sx={{ alignItems: 'center', display: 'inline-flex', minWidth: 0, maxWidth: '100%' }}
     >
       {hint && (
         <WarningAmberIcon
@@ -96,7 +96,14 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       )}
       <Typography
         component="span"
-        sx={{ fontSize: fontSize.text, color: 'text.secondary', fontWeight: hint ? 500 : 400 }}
+        sx={{
+          fontSize: fontSize.text,
+          color: 'text.secondary',
+          fontWeight: hint ? 500 : 400,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
       >
         {providerStateText(account)}
       </Typography>

@@ -7,7 +7,12 @@ import { fontFamily, fontSize } from '../../theme/tokens'
  */
 export const adminTableSx = {
   tableLayout: 'fixed',
-  '& th': { fontFamily: fontFamily.mono, fontSize: fontSize.label, letterSpacing: '0.08em' },
+  '& th': {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.label,
+    letterSpacing: '0.08em',
+    whiteSpace: 'nowrap',
+  },
   '& td': {
     fontSize: fontSize.text,
     py: 1.25,
@@ -16,6 +21,8 @@ export const adminTableSx = {
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
   },
+  // Selected through the table like the rule above, so it outweighs it.
+  '& td[data-wrap]': { whiteSpace: 'normal', overflowWrap: 'anywhere' },
 } as const
 
 /** One row of the narrow layout: a list entry, not a card - the same language as the table. */

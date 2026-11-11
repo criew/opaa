@@ -78,6 +78,23 @@ describe('AdminList', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(ROWS.length + 1)
   })
 
+  it('keeps cells and heads on one line, but lets a `wrap` column break', () => {
+    stubViewport(true)
+    renderList({
+      columns: [
+        ...COLUMNS,
+        { id: 'result', head: 'Letzter Lauf', wrap: true, cell: () => 'Wartet auf Bestätigung' },
+      ],
+    })
+
+    const table = screen.getByRole('table', { name: 'Einträge' })
+    const name = within(table).getByText('Alpha').closest('td') as HTMLElement
+    const result = within(table).getAllByText('Wartet auf Bestätigung')[0].closest('td')!
+    expect(getComputedStyle(within(table).getByText('Letzter Lauf')).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(name).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(result).whiteSpace).toBe('normal')
+  })
+
   it('renders the same rows as a card list on a narrow viewport', () => {
     stubViewport(false)
     renderList()
