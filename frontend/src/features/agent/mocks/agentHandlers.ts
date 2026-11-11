@@ -64,6 +64,7 @@ function mockDirectory(): AgentDirectoryResponse {
         description: agent.description,
         instruction: agent.instruction ?? '',
         libraryNames: agent.libraries.map((library) => library.name),
+        allReadableLibraries: agent.libraries.length === 0,
         toolNames: agent.toolNames,
         planStep: agent.planStep,
         limits: agent.limits,

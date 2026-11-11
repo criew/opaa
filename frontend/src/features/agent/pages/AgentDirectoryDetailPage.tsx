@@ -36,6 +36,12 @@ function listOrMissing(values: string[], whenEmpty: string = MISSING_VALUE): str
   return values.length > 0 ? values.join(', ') : whenEmpty
 }
 
+/** No assignment searches what the asker may read; an assignment whose libraries are gone, nothing. */
+function libraryText(agent: AgentDirectoryEntry): string {
+  if (agent.allReadableLibraries) return 'Alle Bibliotheken, die die fragende Person lesen darf'
+  return listOrMissing(agent.libraryNames, 'keine (zugeordnete Bibliothek gelöscht)')
+}
+
 function lockText(locked: boolean, since?: string | null): string {
   return locked ? `Gesperrt seit ${formatDate(since)}` : 'Nicht gesperrt'
 }
@@ -48,12 +54,7 @@ function AgentDetail({ agent }: { agent: AgentDirectoryEntry }) {
         <Field label="Anweisung">{agent.instruction || MISSING_VALUE}</Field>
       </DetailSection>
       <DetailSection title="Wissen und Werkzeuge">
-        <Field label="Bibliotheken">
-          {listOrMissing(
-            agent.libraryNames,
-            'Alle Bibliotheken, die die fragende Person lesen darf',
-          )}
-        </Field>
+        <Field label="Bibliotheken">{libraryText(agent)}</Field>
         <Field label="Werkzeuge">{listOrMissing(agent.toolNames.map(toolLabel))}</Field>
         <Field label="Vorlagen">{listOrMissing(agent.templateNames)}</Field>
       </DetailSection>
@@ -111,7 +112,7 @@ export default function AgentDirectoryDetailPage() {
 
   if (problem === 'FORBIDDEN' || problem === 'UNAVAILABLE') {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Agentenverzeichnis" gutterBottom />
         <Alert severity="info">
           {problem === 'FORBIDDEN' ? FORBIDDEN_NOTICE : UNAVAILABLE_NOTICE}
@@ -127,7 +128,7 @@ export default function AgentDirectoryDetailPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.notice }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         {back}
         {problem === 'FAILED' ? (
           <LoadError

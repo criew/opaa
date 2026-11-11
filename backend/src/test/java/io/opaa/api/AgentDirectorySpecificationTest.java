@@ -60,7 +60,13 @@ class AgentDirectorySpecificationTest {
 
     assertThat(properties)
         .as("the counter-check: the walk reaches the fields the directory does carry")
-        .contains("instruction", "libraryNames", "toolNames", "responsibility", "lockedSince");
+        .contains(
+            "instruction",
+            "libraryNames",
+            "allReadableLibraries",
+            "toolNames",
+            "responsibility",
+            "lockedSince");
     assertThat(properties)
         .as("no usage figure, no person, no lock reason")
         .noneMatch(name -> FORBIDDEN.stream().anyMatch(word -> name.toLowerCase().contains(word)));

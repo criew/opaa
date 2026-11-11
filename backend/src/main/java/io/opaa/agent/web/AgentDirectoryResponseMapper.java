@@ -28,6 +28,7 @@ final class AgentDirectoryResponseMapper {
         .description(agent.description())
         .instruction(agent.instruction() == null ? "" : agent.instruction())
         .libraryNames(agent.libraryNames())
+        .allReadableLibraries(agent.allReadableLibraries())
         .toolNames(agent.toolNames())
         .planStep(agent.planStep())
         .limits(

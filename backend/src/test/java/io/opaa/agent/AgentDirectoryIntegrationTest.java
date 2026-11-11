@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -158,6 +159,83 @@ class AgentDirectoryIntegrationTest {
   }
 
   @Test
+  void anAgentWhoseLibrariesAreAllGoneSearchesNothingInsteadOfEverything() {
+    UUID deleted = libraryOf("Gelöschtes Wissen");
+    UUID orphaned = agentOf("Verwaist");
+    agentService.update(
+        orphaned,
+        new AgentUpdate(
+            "Verwaist",
+            null,
+            new AgentConfiguration(
+                "",
+                Set.of(deleted),
+                AgentTools.DEFAULT,
+                AgentPlanStep.OFF,
+                AgentLimits.INSTALLATION)),
+        admin());
+    agentOf("Offen");
+    libraryFixtures.removeLibraries(deleted);
+    libraries.remove(deleted);
+
+    AgentDirectory directory = directoryService.read(admin());
+    String csv = new String(directoryService.exportCsv(admin()).content(), StandardCharsets.UTF_8);
+
+    assertThat(directory.agents())
+        .extracting(AgentEntry::name, AgentEntry::libraryNames, AgentEntry::allReadableLibraries)
+        .containsExactly(
+            Tuple.tuple("Offen", List.of(), true), Tuple.tuple("Verwaist", List.of(), false));
+    assertThat(csv)
+        .contains("\"Verwaist\";\"\";\"\";\"" + AgentDirectoryCsv.ASSIGNED_LIBRARIES_DELETED)
+        .contains("\"Offen\";\"\";\"\";\"" + AgentDirectoryCsv.ALL_READABLE_LIBRARIES);
+  }
+
+  @Test
+  void aLibraryOrTemplateOfAnotherOrganizationNeverAppears() {
+    UUID own = libraryOf("Eigenes Wissen");
+    UUID foreignLibrary =
+        libraryService
+            .createLibrary(
+                LibraryCreationBuilder.libraryCreation("Fremdes Wissen", SourceType.UPLOAD).build(),
+                foreignAdmin())
+            .library()
+            .getId();
+    libraries.add(foreignLibrary);
+    UUID ownTemplate = templateOf("Eigene Vorlage");
+    UUID foreignTemplate = templateOf(foreignAdmin(), "Fremde Vorlage");
+    UUID agent = agentOf("Grenzgänger");
+    agentService.update(
+        agent,
+        new AgentUpdate(
+            "Grenzgänger",
+            null,
+            new AgentConfiguration(
+                "",
+                Set.of(own),
+                AgentTools.DEFAULT,
+                AgentPlanStep.OFF,
+                AgentLimits.INSTALLATION,
+                Set.of(ownTemplate))),
+        admin());
+    // Smuggled past the service, which would refuse them: only the reading side is under test.
+    jdbc.update(
+        "INSERT INTO agent_libraries (agent_id, library_id) VALUES (?, ?)", agent, foreignLibrary);
+    jdbc.update(
+        "INSERT INTO agent_templates (agent_id, template_id) VALUES (?, ?)",
+        agent,
+        foreignTemplate);
+
+    AgentDirectory directory = directoryService.read(admin());
+
+    AgentEntry entry = directory.agents().getFirst();
+    assertThat(entry.libraryNames()).containsExactly("Eigenes Wissen");
+    assertThat(entry.templateNames()).containsExactly("Eigene Vorlage");
+    assertThat(directory.templates())
+        .extracting(AgentDirectory.TemplateEntry::name)
+        .containsExactly("Eigene Vorlage");
+  }
+
+  @Test
   void aLockShowsSinceWhenButNeverWhy() {
     UUID agent = agentOf("Gesperrt");
     agentService.lock(agent, "Vertraulicher Grund", admin());
@@ -266,6 +344,10 @@ class AgentDirectoryIntegrationTest {
   }
 
   private UUID templateOf(String name) {
+    return templateOf(admin(), name);
+  }
+
+  private UUID templateOf(CurrentUser caller, String name) {
     return templateService
         .create(
             new DocumentTemplateCreation(
@@ -275,7 +357,7 @@ class AgentDirectoryIntegrationTest {
                 null,
                 TestDocx.upload("vorlage.docx", TestDocx.withParagraphs("{{ titel }}")),
                 ResponsibleUnit.ofFunction("Referat Z3")),
-            admin())
+            caller)
         .template()
         .getId();
   }

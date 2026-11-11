@@ -54,6 +54,20 @@ final class AgentDirectoryCsv {
 
   private AgentDirectoryCsv() {}
 
+  static final String ALL_READABLE_LIBRARIES =
+      "Alle Bibliotheken, die die fragende Person lesen darf";
+  static final String ASSIGNED_LIBRARIES_DELETED = "keine (zugeordnete Bibliothek gelöscht)";
+
+  /** All readable only without any assignment; an assignment whose libraries are gone is none. */
+  static String libraries(AgentEntry agent) {
+    if (agent.allReadableLibraries()) {
+      return ALL_READABLE_LIBRARIES;
+    }
+    return agent.libraryNames().isEmpty()
+        ? ASSIGNED_LIBRARIES_DELETED
+        : String.join(LIST_SEPARATOR, agent.libraryNames());
+  }
+
   static byte[] render(AgentDirectory directory, ZoneId zone) {
     StringBuilder out = new StringBuilder("﻿");
     line(out, HEADER);
@@ -65,9 +79,7 @@ final class AgentDirectoryCsv {
               agent.name(),
               nullToEmpty(agent.description()),
               nullToEmpty(agent.instruction()),
-              agent.libraryNames().isEmpty()
-                  ? "Alle Bibliotheken, die die fragende Person lesen darf"
-                  : String.join(LIST_SEPARATOR, agent.libraryNames()),
+              libraries(agent),
               String.join(
                   LIST_SEPARATOR,
                   agent.toolNames().stream()

@@ -2,7 +2,11 @@ package io.opaa.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.agent.AgentDirectory.AgentEntry;
 import io.opaa.agent.AgentDirectory.Responsibility;
+import io.opaa.api.types.AgentPlanStep;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /** Cells, limits and the responsible unit as the CSV export writes them. */
@@ -35,5 +39,32 @@ class AgentDirectoryCsvTest {
         .isEqualTo("fehlt");
     assertThat(AgentDirectoryCsv.responsibility(new Responsibility("Alt", null, true)))
         .isEqualTo("Alt (fehlt)");
+  }
+
+  @Test
+  void anAssignmentWhoseLibrariesAreGoneIsNoneAndNeverAllReadable() {
+    assertThat(AgentDirectoryCsv.libraries(agent(List.of(), true)))
+        .isEqualTo("Alle Bibliotheken, die die fragende Person lesen darf");
+    assertThat(AgentDirectoryCsv.libraries(agent(List.of(), false)))
+        .isEqualTo("keine (zugeordnete Bibliothek gelöscht)");
+    assertThat(AgentDirectoryCsv.libraries(agent(List.of("A", "B"), false))).isEqualTo("A, B");
+  }
+
+  private static AgentEntry agent(List<String> libraryNames, boolean allReadableLibraries) {
+    return new AgentEntry(
+        UUID.randomUUID(),
+        "Agent",
+        null,
+        "",
+        libraryNames,
+        allReadableLibraries,
+        List.of(),
+        AgentPlanStep.OFF,
+        AgentLimits.INSTALLATION,
+        List.of(),
+        1,
+        false,
+        new Responsibility(null, null, true),
+        null);
   }
 }

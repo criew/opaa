@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { renderWithProviders, setMockAuthState } from '@/test/test-utils'
 import { mockMyCapabilities } from '@/features/capability/mocks/capabilityFixtures'
@@ -64,6 +65,47 @@ describe('Agentenverzeichnis', () => {
     expect(screen.getByText('Anweisung')).toBeVisible()
     expect(screen.queryByRole('button', { name: /Speichern|Bearbeiten|Sperren/ })).toBeNull()
     expect(counter.reads).toBe(1)
+  })
+
+  it('tells an assignment whose libraries are all gone from no assignment at all', async () => {
+    const entry = {
+      id: 'agent-orphaned',
+      name: 'Verwaist',
+      description: null,
+      instruction: '',
+      libraryNames: [],
+      allReadableLibraries: false,
+      toolNames: [],
+      planStep: 'OFF',
+      limits: {},
+      templateNames: [],
+      revision: 1,
+      delivered: false,
+      responsibility: { function: 'Referat Z3', missing: false },
+      locked: false,
+      lockedSince: null,
+    }
+    server.use(
+      http.get('/api/v1/agent-directory', () =>
+        HttpResponse.json({
+          agents: [
+            entry,
+            { ...entry, id: 'agent-open', name: 'Offen', allReadableLibraries: true },
+          ],
+          templatesIncluded: false,
+          templates: [],
+        }),
+      ),
+    )
+    const orphaned = renderAt('/agent-directory/agents/agent-orphaned')
+    expect(await screen.findByText('keine (zugeordnete Bibliothek gelöscht)')).toBeVisible()
+    orphaned.unmount()
+
+    useAgentDirectoryStore.getState().reset()
+    renderAt('/agent-directory/agents/agent-open')
+    expect(
+      await screen.findByText('Alle Bibliotheken, die die fragende Person lesen darf'),
+    ).toBeVisible()
   })
 
   it('shows neither owner nor usage', async () => {

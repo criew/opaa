@@ -91,6 +91,9 @@ class AgentDirectoryAssembler {
                       agent.getDescription(),
                       agent.getInstruction(),
                       namesOf(agent.getLibraryIds(), libraryNames),
+                      // On the raw ids: a deleted library narrows the run to nothing, never
+                      // widens it to everything readable (AgentToolLoop#scope).
+                      agent.getLibraryIds().isEmpty(),
                       AgentTools.ASSIGNABLE.stream()
                           .filter(agent.getToolNames()::contains)
                           .toList(),

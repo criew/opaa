@@ -27,6 +27,9 @@ public record AgentDirectory(
    * One agent.
    *
    * @param libraryNames the assigned libraries that still exist, by name
+   * @param allReadableLibraries whether no library is assigned at all, so the agent searches what
+   *     the asking person may read; {@code false} with empty {@code libraryNames} means every
+   *     assigned library is gone and the agent searches nothing
    * @param templateNames the assigned templates that still exist, by name
    * @param lockedSince {@code null} while the agent is not locked
    */
@@ -36,6 +39,7 @@ public record AgentDirectory(
       String description,
       String instruction,
       List<String> libraryNames,
+      boolean allReadableLibraries,
       List<String> toolNames,
       AgentPlanStep planStep,
       AgentLimits limits,

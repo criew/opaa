@@ -691,6 +691,7 @@ components:
         - name
         - instruction
         - libraryNames
+        - allReadableLibraries
         - toolNames
         - planStep
         - limits
@@ -716,9 +717,14 @@ components:
           type: array
           description: >
             The names of the assigned libraries that still exist, by name; never their content.
-            Empty means the agent searches whatever the calling person may read.
+            Empty with allReadableLibraries false means every assigned library was deleted and
+            the agent searches nothing.
           items:
             type: string
+        allReadableLibraries:
+          type: boolean
+          description: >
+            The agent has no library assigned and searches whatever the calling person may read.
         toolNames:
           type: array
           items:

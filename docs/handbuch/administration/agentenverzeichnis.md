@@ -3,7 +3,7 @@
 **Ziel:** Die Personalvertretung sieht, welche Agenten und Vorlagen es gibt und was sie tun, und hat eine Liste für die Anlage einer Dienstvereinbarung.
 {: .kopf }
 
-**Wer:** Recht „Agentenverzeichnis einsehen“, „Administration → Agentenverzeichnis“ oder „Verzeichnis“ in der linken Leiste
+**Wer:** Systemverwaltung oder Recht „Agentenverzeichnis einsehen“, „Administration → Agentenverzeichnis“ oder „Verzeichnis“ in der linken Leiste
 {: .kopf }
 
 Das Verzeichnis beschreibt **Objekte, nicht Personen**. Es nennt jeden Agenten und jede Vorlage
@@ -13,7 +13,7 @@ Agenten wie oft nutzt, steht nicht darin.
 | Je Agent | Je Vorlage |
 |---|---|
 | Name, Zweck und Anweisung | Name und Zweck |
-| Namen der zugeordneten Bibliotheken, nicht ihr Inhalt | Dateiname und Platzhalter |
+| Namen der zugeordneten Bibliotheken, nicht ihr Inhalt; „Alle Bibliotheken, die die fragende Person lesen darf“ ohne Zuordnung, „keine (zugeordnete Bibliothek gelöscht)“, wenn alle zugeordneten gelöscht sind | Dateiname und Platzhalter |
 | Werkzeuge, Beginn (sofort oder mit Plan) und Grenzen | |
 | Namen der zugeordneten Vorlagen | |
 | verantwortliche Stelle, Fassung, gesperrt seit | verantwortliche Stelle, Fassung, gesperrt seit |
