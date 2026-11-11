@@ -55,6 +55,10 @@ Messlauf am 11.11.2026 mit Claude Haiku 4.5 (`claude-haiku-4-5`) als Chat-Modell
 Embedding-Modell, lokales OPAA vom Stand `main` 8b36fb06 mit frischer Datenbank und den
 Startgrenzen. Drei Durchgänge je Fall; die Tabelle nennt die Spanne.
 
+Seit diesem Messlauf liest „Recherche“ bis zu 150 000 Zeichen (Systemgrenze 200 000), und die
+Anweisung verlangt Teilfragen, je eigene Suche und eine Zitiermarke hinter jeder Aussage. Ein
+neuer Messlauf zeigt, ob das die Lücken unten schließt.
+
 | Fall | Laufdauer (Plan) | Laufdauer (Ausführung) | Werkzeugaufrufe | Suchen | Endzustand |
 |---|---|---|---|---|---|
 | `rech-001` | 6,3–6,8 s | 26,2–29,3 s | 4–7 | 2–4 | 3 × `LIMIT_VOLUME` |

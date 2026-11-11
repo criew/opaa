@@ -234,7 +234,11 @@ class AgentServiceIntegrationTest {
                 "Berichtshilfe",
                 null,
                 new AgentConfiguration(
-                    "", Set.of(), AgentTools.DEFAULT, AgentPlanStep.OFF, AgentLimits.INSTALLATION)),
+                    "",
+                    Set.of(),
+                    AgentTools.DEFAULT,
+                    AgentPlanStep.OFF,
+                    AgentService.DEFAULT_LIMITS)),
             creator());
     assertThat(unchanged.agent().getTemplateIds()).containsExactlyInAnyOrder(own, hidden);
     assertThat(unchanged.agent().getRevision()).isEqualTo(revision);
@@ -295,7 +299,7 @@ class AgentServiceIntegrationTest {
                 Set.of(),
                 AgentTools.DEFAULT,
                 AgentPlanStep.OFF,
-                AgentLimits.INSTALLATION)),
+                AgentService.DEFAULT_LIMITS)),
         creator());
 
     assertThat(agentService.get(agent, admin()).instructionReadable()).isFalse();
@@ -344,7 +348,7 @@ class AgentServiceIntegrationTest {
                     Set.of(),
                     AgentTools.DEFAULT,
                     AgentPlanStep.CONFIRM,
-                    AgentLimits.INSTALLATION)),
+                    AgentService.DEFAULT_LIMITS)),
             creator());
     agentService.update(
         agent,
@@ -425,7 +429,7 @@ class AgentServiceIntegrationTest {
                 Set.of(),
                 AgentTools.DEFAULT,
                 AgentPlanStep.OFF,
-                AgentLimits.INSTALLATION)),
+                AgentService.DEFAULT_LIMITS)),
         creator());
     int revision = agentService.get(agent, creator()).agent().getRevision();
 
@@ -477,7 +481,7 @@ class AgentServiceIntegrationTest {
             Set.of(),
             AgentTools.DEFAULT,
             AgentPlanStep.OFF,
-            AgentLimits.INSTALLATION,
+            AgentService.DEFAULT_LIMITS,
             templateIds));
   }
 
@@ -504,7 +508,7 @@ class AgentServiceIntegrationTest {
         "Recherchehilfe",
         null,
         new AgentConfiguration(
-            "", libraryIds, AgentTools.DEFAULT, AgentPlanStep.OFF, AgentLimits.INSTALLATION));
+            "", libraryIds, AgentTools.DEFAULT, AgentPlanStep.OFF, AgentService.DEFAULT_LIMITS));
   }
 
   private void grantCreateAgent(UUID userId) {

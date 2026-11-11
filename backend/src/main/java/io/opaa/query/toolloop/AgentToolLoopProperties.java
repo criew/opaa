@@ -34,7 +34,7 @@ public record AgentToolLoopProperties(
     @DefaultValue("12") int maxToolCalls,
     @DefaultValue("8") int maxSearchCalls,
     @DefaultValue("240s") @NoDataImpact("wall-clock limit of a run") Duration maxDuration,
-    @DefaultValue("60000") int maxCollectedChars,
+    @DefaultValue("200000") int maxCollectedChars,
     @DefaultValue("2") int workspaceCapacity,
     @DefaultValue("1") int workspaceCapacityPerPerson,
     @DefaultValue("60s") @NoDataImpact("lifetime of a workspace reservation after the run limit")

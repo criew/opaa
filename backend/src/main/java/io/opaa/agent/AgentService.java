@@ -76,9 +76,11 @@ public class AgentService {
 
   /**
    * The limits a new agent starts with, below the installation's limits so a delivered agent like
-   * "Recherche" can go further; the owner may change them within those limits.
+   * "Recherche" can go further; the owner may change them within those limits. Equal to the limits
+   * a run takes for an agent without values of its own ({@code
+   * io.opaa.query.toolloop.AgentLimits#DEFAULT}).
    */
-  static final AgentLimits DEFAULT_LIMITS = new AgentLimits(5, 3, 120, null);
+  static final AgentLimits DEFAULT_LIMITS = new AgentLimits(5, 3, 120, 60_000);
 
   /** The code a run of a locked agent is refused with. */
   public static final String LOCKED_CODE = "AGENT_LOCKED";

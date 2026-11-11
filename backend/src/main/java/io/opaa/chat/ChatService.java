@@ -486,6 +486,19 @@ public class ChatService {
   }
 
   /**
+   * The agent run kept with the assistant answer before the latest one, if that answer has one;
+   * together with {@link #latestAgentRun} it shows two plans in a row.
+   */
+  @Transactional(readOnly = true)
+  public Optional<AgentRunRecord> previousAgentRun(UUID chatId) {
+    return chatMessageRepository.findByChatIdOrderBySequenceDesc(chatId, Limit.of(4)).stream()
+        .filter(message -> message.getRole() == ChatRole.ASSISTANT)
+        .skip(1)
+        .findFirst()
+        .map(message -> parseAgentRun(message.getAgentRun()));
+  }
+
+  /**
    * The search scope for a query run in this chat: the space's associated knowledge libraries are a
    * hard boundary. With {@code useKnowledge} on (@Space-Wissen) the scope is associated ∩ readable;
    * with it off, the sticky @-references ∩ associated ∩ readable. A space without an associated
