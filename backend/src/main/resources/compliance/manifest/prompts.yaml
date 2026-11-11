@@ -61,7 +61,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "43dce1d532586fb77e72148259de41ce73e42e1e9a2a1103f463a97be9d942f4"
+    sha256: "9c601b2bf6f31a13843da35c79722d27b4f6e3dc9876e867122e38396533aeea"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten
