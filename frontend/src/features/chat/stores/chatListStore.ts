@@ -39,6 +39,11 @@ interface ChatListState {
   loadError: string | null
   /** Why the last action on the list failed; loads report in `loadError` instead. */
   error: string | null
+  /**
+   * Returns the action error and clears it: for callers that report it as a popup, so the same
+   * error does not stand on the chat overview as well.
+   */
+  takeError: () => string | null
   loadChats: (spaceId: string) => Promise<void>
   /** Returns null (and sets `error`) when creation fails, instead of throwing - callers must
    * handle the null case explicitly rather than relying on a rejected promise. */
@@ -145,6 +150,11 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
   isLoading: false,
   loadError: null,
   error: null,
+  takeError: () => {
+    const { error } = get()
+    if (error !== null) set({ error: null })
+    return error
+  },
   archiveBySpaceId: {},
   isLoadingArchive: false,
   revealedRecent: { spaceId: null, count: RECENT_PAGE_SIZE },

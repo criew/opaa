@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha } from '@mui/material/styles'
@@ -10,6 +9,7 @@ import type { ChatMessage, LiveAgentRun } from '../types/chat'
 import type { AgentRun } from '@/shared/api/types'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { AiNotice } from './AiNotice'
+import ChatStatusLine from './ChatStatusLine'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
 import ProvisionalAnswer, {
@@ -221,20 +221,12 @@ export default function MessageList({
           )
         })}
 
-        {/* One status from "Denkt nach …" to the end of the answer: its text changes with each
-            step of an agent and once the first part arrives, which a screen reader announces; a
-            region inserted with its text would not be. */}
         {isLoading && (
-          <Box
-            role="status"
-            aria-live="polite"
-            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: streaming ? 1 : 2 }}
-          >
-            <CircularProgress size={streaming ? 16 : 20} aria-hidden />
-            <Typography variant="body2" noWrap sx={{ color: 'text.secondary', minWidth: 0 }}>
-              {runStatus(streamingRun) ?? (streaming ? PROVISIONAL_ANSWER_LABEL : THINKING_STATUS)}
-            </Typography>
-          </Box>
+          <ChatStatusLine
+            text={
+              runStatus(streamingRun) ?? (streaming ? PROVISIONAL_ANSWER_LABEL : THINKING_STATUS)
+            }
+          />
         )}
         {/* The steps so far stay readable at the reader's pace below the status line; they are no
             live region, the status line announces each one. Once the run ended they move under

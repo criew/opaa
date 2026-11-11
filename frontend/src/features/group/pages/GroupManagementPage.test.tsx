@@ -271,6 +271,20 @@ describe('GroupManagementPage', () => {
     expect(screen.getAllByRole('button', { name: 'Gruppe anlegen' })).toHaveLength(2)
   })
 
+  it('puts the focus into the search field after "Filter zurücksetzen"', async () => {
+    serve([])
+    renderPage()
+    const user = userEvent.setup()
+    await screen.findByText('Noch keine Gruppen.')
+
+    const search = screen.getByRole('searchbox', { name: 'Gruppen suchen' })
+    await user.type(search, 'xyz')
+    await user.click(await screen.findByRole('button', { name: 'Filter zurücksetzen' }))
+
+    expect(search).toHaveFocus()
+    await waitFor(() => expect(search).toHaveValue(''))
+  })
+
   it('filters by origin and sorts on the server', async () => {
     serve([adHocGroup, orgUnitGroup])
     renderPage()

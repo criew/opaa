@@ -31,16 +31,11 @@ const BAUSTEINE = '/src/shared/ui/states/'
 /** Sign-in and installation stand before any application frame; no rule of 5.7 applies there. */
 const VOR_DER_ANWENDUNG = ['/features/auth/', '/features/installation/', '/app/ProtectedRoute.tsx']
 
-const CHAT_STATUSZEILE = '/features/chat/components/ChatStatusLine.tsx'
-
 /**
  * The one named exception inside the application, and only from the spinner rule: the status line
- * of the running chat answer shows a spinner with a short visible sentence about a process. Until
- * that file exists, the spinner still lives in MessageList, which is exempt only for that time.
+ * of the running chat answer shows a spinner with a short visible sentence about a process.
  */
-const SPINNER_AUSNAHMEN = Object.keys(QUELLEN).some((pfad) => pfad.endsWith(CHAT_STATUSZEILE))
-  ? [CHAT_STATUSZEILE]
-  : [CHAT_STATUSZEILE, '/features/chat/components/MessageList.tsx']
+const SPINNER_AUSNAHMEN = ['/features/chat/components/ChatStatusLine.tsx']
 
 const imGeltungsbereich = (pfad: string) =>
   !pfad.includes(BAUSTEINE) && !VOR_DER_ANWENDUNG.some((ausnahme) => pfad.includes(ausnahme))
