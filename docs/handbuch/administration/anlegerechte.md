@@ -19,6 +19,10 @@ es an eine Person, eine Gruppe oder an „Alle Konten“.
 | Agenten anlegen | niemand außer der Systemverwaltung; nur sichtbar, wenn [Agenten eingeschaltet](agenten.md) sind |
 | Vorlagen anlegen | ab Werk niemand außer der Systemverwaltung; nur sichtbar, solange [Vorlagen](vorlagen.md) eingeschaltet sind |
 
+Auf derselben Seite steht ein Recht, das nichts anlegt: „Agentenverzeichnis einsehen“, ab Werk
+niemand außer der Systemverwaltung. Es öffnet eine Beschreibung aller Agenten und Vorlagen, kein
+Wissen ([Agentenverzeichnis einsehen](agentenverzeichnis.md)).
+
 1. In der Zeile des Rechts „Ändern“.
 2. Bei Konnektorbibliotheken zuerst die Quellart oder den Zugang wählen.
 3. Antwort wählen: „Alle Konten“, „Nur bestimmte Gruppen und Personen“ oder „Nur die
