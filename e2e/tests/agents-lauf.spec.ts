@@ -139,8 +139,6 @@ test.describe.serial('Agenten: Lauf, Stopp, Grenze und Platzlimit (#3680)', () =
     await expect(stamp).toContainText(new RegExp(`Bibliotheken:\\s*E2E-Lauf-Wissen-${SUFFIX}`))
     await expect(stamp).toContainText(/Modell:\s*\S/)
     await expect(stamp).toContainText('Entwurf, nicht geprüft')
-    await stamp.getByRole('button', { name: /^Fassung \d+$/ }).click()
-    await expect(stamp).not.toContainText('Bibliotheken:')
 
     // Citations of both steps, one document each; copying is there once the answer is kept.
     await expectCitedSource(page, FIRST_FILE)

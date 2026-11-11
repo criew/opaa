@@ -59,7 +59,7 @@ async function askAgent(page: Page, name: string, question: string): Promise<voi
   await input.pressSequentially('@')
   await page
     .getByRole('group', { name: 'Agenten' })
-    .getByRole('option', { name: new RegExp(`^Agent ${name}`) })
+    .getByRole('option', { name: new RegExp(`^${name}`) })
     .click()
   await expect(page.getByTestId('chosen-agent-chip')).toHaveText(`Agent: ${name}`)
   await input.fill(question)

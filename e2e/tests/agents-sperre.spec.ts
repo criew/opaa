@@ -39,7 +39,7 @@ async function expectInMentionMenu(page: Page, present: boolean): Promise<void> 
   const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
   await input.pressSequentially('@')
   await expect(page.getByRole('option').first()).toBeVisible()
-  const agent = page.getByRole('option', { name: /^Agent / })
+  const agent = page.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })
   if (present) {
     await expect(agent).toHaveCount(1)
   } else {

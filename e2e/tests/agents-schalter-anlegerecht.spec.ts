@@ -70,7 +70,7 @@ test.describe.serial('Agenten: Schalter und Anlegerecht (#3680)', () => {
     // The menu is open (it offers the knowledge chips) but names no agents.
     await expect(page.getByRole('option').first()).toBeVisible()
     await expect(page.getByRole('group', { name: 'Agenten' })).toHaveCount(0)
-    await expect(page.getByRole('option', { name: /^Agent / })).toHaveCount(0)
+    await expect(page.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })).toHaveCount(0)
     await input.clear()
 
     await openNewCatalogEntry(page)

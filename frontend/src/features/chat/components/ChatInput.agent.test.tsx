@@ -55,7 +55,7 @@ describe('ChatInput: choosing an agent', () => {
     const agents = await screen.findByRole('group', { name: 'Agenten' })
     const knowledge = screen.getByRole('group', { name: 'Wissen' })
     expect(
-      within(agents).getByRole('option', { name: 'Agent Recherche, ersetzt den Suchbereich' }),
+      within(agents).getByRole('option', { name: /^Recherche\s*Agent · ersetzt den Suchbereich$/ }),
     ).toBeInTheDocument()
     expect(within(knowledge).getByRole('option', { name: /@Space-Wissen/ })).toBeInTheDocument()
     expect(within(knowledge).queryByRole('option', { name: /Recherche/ })).not.toBeInTheDocument()
@@ -67,7 +67,7 @@ describe('ChatInput: choosing an agent', () => {
     const { onSend, input } = renderInput()
 
     await user.type(input, '@Rech')
-    await user.click(await screen.findByRole('option', { name: /^Agent Recherche/ }))
+    await user.click(await screen.findByRole('option', { name: /^Recherche/ }))
 
     const chip = screen.getByTestId('chosen-agent-chip')
     expect(chip).toHaveTextContent('Agent: Recherche')
@@ -92,7 +92,7 @@ describe('ChatInput: choosing an agent', () => {
     const input = screen.getByRole('combobox')
 
     await user.type(input, '@Rech')
-    await user.click(await screen.findByRole('option', { name: /^Agent Recherche/ }))
+    await user.click(await screen.findByRole('option', { name: /^Recherche/ }))
     await user.type(input, 'Erste Frage{Enter}')
 
     await waitFor(() => expect(input).toHaveValue('Erste Frage'))
@@ -110,7 +110,7 @@ describe('ChatInput: choosing an agent', () => {
     const { onSend, input } = renderInput()
 
     await user.type(input, '@Rech')
-    await user.click(await screen.findByRole('option', { name: /^Agent Recherche/ }))
+    await user.click(await screen.findByRole('option', { name: /^Recherche/ }))
     await user.click(within(screen.getByTestId('chosen-agent-chip')).getByTestId('CancelIcon'))
     await user.type(input, 'Frage{Enter}')
 

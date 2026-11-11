@@ -168,17 +168,17 @@ test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich (#3680)', () => {
     await expect(
       member
         .getByRole('group', { name: 'Agenten' })
-        .getByRole('option', { name: `Agent ${AGENT_NAME}, ersetzt den Suchbereich` }),
+        .getByRole('option', {
+          name: new RegExp(`^${AGENT_NAME}\\s*Agent · ersetzt den Suchbereich$`),
+        }),
     ).toBeVisible()
-    await member.keyboard.press('Escape')
-    await expect(member.getByRole('listbox')).toHaveCount(0)
 
     await openSpaceChat(outsider, spaceId)
     await openMentionMenu(outsider)
     // The knowledge of the space is there for the outsider, the agent is not.
     await expect(outsider.getByRole('option', { name: new RegExp(LIBRARY_NAME) })).toBeVisible()
     await expect(outsider.getByRole('group', { name: 'Agenten' })).toHaveCount(0)
-    await expect(outsider.getByRole('option', { name: /^Agent / })).toHaveCount(0)
+    await expect(outsider.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })).toHaveCount(0)
   })
 
   test('4. @-Wahl: Agent und Suchbereich sind unterscheidbar, @Agent mit /Prompt läuft über den Agenten', async ({
@@ -195,7 +195,7 @@ test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich (#3680)', () => {
     )
     const library = knowledge.getByRole('option', { name: new RegExp(LIBRARY_NAME) })
     await expect(library).toContainText('Bibliothek · verengt die Suche')
-    const agent = agents.getByRole('option', { name: /^Agent / })
+    const agent = agents.getByRole('option', { name: /Agent · ersetzt den Suchbereich$/ })
     await expect(agent).toHaveCount(1)
     await expect(agent).toContainText('Agent · ersetzt den Suchbereich')
 

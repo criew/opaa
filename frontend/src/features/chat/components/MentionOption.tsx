@@ -41,9 +41,6 @@ export default function MentionOption({
       id={optionId}
       role="option"
       aria-selected={highlighted}
-      aria-label={
-        suggestion.kind === 'agent' ? `Agent ${name}, ersetzt den Suchbereich` : undefined
-      }
       selected={highlighted}
       onMouseDown={(e) => e.preventDefault()}
       onMouseEnter={onHighlight}

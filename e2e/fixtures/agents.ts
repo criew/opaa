@@ -277,7 +277,7 @@ export async function chooseAgent(page: Page, name: string): Promise<void> {
   await input.pressSequentially('@')
   await page
     .getByRole('group', { name: 'Agenten' })
-    .getByRole('option', { name: new RegExp(`^Agent ${escapeForRegExp(name)}`) })
+    .getByRole('option', { name: new RegExp(`^${escapeForRegExp(name)}`) })
     .click()
   await expect(page.getByTestId('chosen-agent-chip')).toHaveText(`Agent: ${name}`)
 }
