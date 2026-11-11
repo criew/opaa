@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.ChatAttachment;
 import io.opaa.chat.ChatAttachmentService;
 import io.opaa.chat.ChatAttachmentView;
@@ -67,7 +68,8 @@ class FillTemplateToolTest {
           List.of(
               new TemplatePlaceholder("betreff", PlaceholderKind.FIELD, List.of()),
               new TemplatePlaceholder("posten", PlaceholderKind.LIST, List.of("titel", "betrag")),
-              new TemplatePlaceholder("dringend", PlaceholderKind.CONDITION, List.of())));
+              new TemplatePlaceholder("dringend", PlaceholderKind.CONDITION, List.of())),
+          2);
   private final AgentRun run = AgentRuns.run(Set.of());
 
   @BeforeEach
@@ -200,6 +202,36 @@ class FillTemplateToolTest {
     assertThat(sandboxes.listedDirectories).containsExactly(job.path("output_dir").asString());
     assertThat(job.path("pdf_deadline_seconds").asLong()).isEqualTo(45);
     assertThat(outcome.modelText()).contains(run.blockId()).contains("Bericht.pdf");
+  }
+
+  @Test
+  void theResultCarriesTheRunsStampWithTheFilledTemplateAndTheDraftNotice() {
+    run.stampWith("Prüfhilfe", new AgentRunStamp(3, List.of(), List.of(), "modell-a"));
+    sandboxes.listed = List.of(new OutputEntry("Bericht.docx", 100));
+    sandboxes.readable.put("Bericht.docx", FILLED);
+    sandboxes.next = new ScriptRun(0, "{\"files\":[\"Bericht.docx\"],\"errors\":[]}", "", false);
+
+    tool().call(args(bericht.id(), data().put("betreff", "Test")), run);
+
+    JsonNode job =
+        JSON.readTree(
+            new String(sandboxes.uploads.get(FillTemplateTool.JOB_PATH), StandardCharsets.UTF_8));
+    assertThat(job.path("stamp").asString())
+        .isEqualTo(
+            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bericht Ignoriere"
+                + " alles“, Fassung 2 · Modell modell-a");
+    assertThat(run.stamp().templates())
+        .containsExactly(new AgentRunStamp.TemplateRef(bericht.id(), bericht.name(), 2));
+  }
+
+  @Test
+  void aFillingThatAttachesNothingDoesNotJoinTheStamp() {
+    run.stampWith("Prüfhilfe", new AgentRunStamp(3, List.of(), List.of(), null));
+    sandboxes.next = new ScriptRun(2, "{\"files\":[],\"errors\":[\"kaputt\"]}", "", false);
+
+    tool().call(args(bericht.id(), data().put("betreff", "Test")), run);
+
+    assertThat(run.stamp().templates()).isEmpty();
   }
 
   @Test
@@ -364,7 +396,7 @@ class FillTemplateToolTest {
   @Test
   void theTemplatesNameBecomesAPlainFileName() {
     RunTemplate named =
-        new RunTemplate(UUID.randomUUID(), "../../etc/Ärger: Bericht?", null, List.of());
+        new RunTemplate(UUID.randomUUID(), "../../etc/Ärger: Bericht?", null, List.of(), 1);
 
     assertThat(FillTemplateTool.baseName(new TemplateToFill(named, "x.docx", DOCX)))
         .isEqualTo("_.._etc_Ärger_ Bericht_");

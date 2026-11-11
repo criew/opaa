@@ -147,6 +147,7 @@ export default function AgentDetailPage() {
             <>
               <MetaBadge>{assetRoleLabel(agent.myRole)}</MetaBadge>
               {agent.delivered && <MetaBadge>Mitgeliefert</MetaBadge>}
+              <MetaBadge>{`Fassung ${agent.revision}`}</MetaBadge>
             </>
           }
           administrative={administrative}

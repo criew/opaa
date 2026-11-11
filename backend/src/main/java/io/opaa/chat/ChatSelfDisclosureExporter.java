@@ -397,14 +397,16 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
 
   /**
    * The steps of the agent run that gave an answer, one line each: tool, sub-question and hit
-   * count; {@code null} for an answer without an agent run.
+   * count, followed by one line with its version stamp when it has one; {@code null} for an answer
+   * without an agent run.
    */
   static List<String> agentRunOf(String agentRun) {
     if (agentRun == null || agentRun.isBlank()) {
       return null;
     }
     List<String> lines = new ArrayList<>();
-    for (JsonNode step : EVIDENCE_JSON.readTree(agentRun).path("steps")) {
+    JsonNode run = EVIDENCE_JSON.readTree(agentRun);
+    for (JsonNode step : run.path("steps")) {
       StringBuilder line = new StringBuilder(step.path("tool").asString(""));
       String detail = step.path("detail").asString("");
       if (!detail.isBlank()) {
@@ -415,7 +417,43 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       }
       lines.add(line.toString());
     }
+    JsonNode stamp = run.path("stamp");
+    if (stamp.isObject()) {
+      lines.add(stampLine(run.path("agentName").asString(""), stamp));
+    }
     return lines;
+  }
+
+  /** The stamp as the answer shows it: agent and revision, libraries, templates and model. */
+  private static String stampLine(String agentName, JsonNode stamp) {
+    StringBuilder line =
+        new StringBuilder("Fassungsstempel: Agent „")
+            .append(agentName)
+            .append("“, Fassung ")
+            .append(stamp.path("agentRevision").asInt());
+    List<String> libraries = new ArrayList<>();
+    stamp.path("libraries").forEach(library -> libraries.add(library.path("name").asString("")));
+    if (!libraries.isEmpty()) {
+      line.append("; Bibliotheken: ").append(String.join(", ", libraries));
+    }
+    List<String> templates = new ArrayList<>();
+    stamp
+        .path("templates")
+        .forEach(
+            template ->
+                templates.add(
+                    "„"
+                        + template.path("name").asString("")
+                        + "“, Fassung "
+                        + template.path("revision").asInt()));
+    if (!templates.isEmpty()) {
+      line.append("; Vorlagen: ").append(String.join("; ", templates));
+    }
+    String model = stamp.path("model").asString("");
+    if (!model.isBlank()) {
+      line.append("; Modell: ").append(model);
+    }
+    return line.toString();
   }
 
   /**

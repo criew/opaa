@@ -1,0 +1,32 @@
+# Agentenergebnis prüfen
+
+**Ziel:** Sie wissen, womit eine Agentenantwort entstanden ist, und behandeln sie als Entwurf.
+{: .kopf }
+
+1. Unter der Antwort eines Agenten steht „Entwurf“ und daneben die Fassung des Agenten, etwa
+   Fassung 3. Welcher Agent geantwortet hat, steht als „Agent: Name“ an Ihrer Frage
+   ([Agenten verwenden](agenten-verwenden.md)).
+2. Die Zeile anklicken: Darunter stehen die Bibliotheken, in denen der Agent suchen konnte, die
+   ausgefüllten Vorlagen mit ihrer Fassung und das Modell, jeweils mit dem Namen zum Zeitpunkt der
+   Antwort.
+3. Steht dort „mit Fassung 3 erstellt, aktuell Fassung 5“, wurde der Agent seitdem geändert. Eine
+   neue Frage beantwortet er mit der aktuellen Fassung; die Fassung steht auf seiner Seite im
+   Katalog.
+
+**Entwurf, nicht geprüft:** Jede Antwort eines Agenten ist eine Vorlage für Ihre Bearbeitung, kein
+geprüftes Arbeitsergebnis. Prüfen Sie Inhalt und [Belege](belege-pruefen.md), bevor Sie sie
+weitergeben. Eine gewöhnliche Antwort ohne Agent trägt weder Stempel noch Entwurfskennzeichnung.
+
+Ein Agent bekommt eine neue Fassung, sobald jemand Auftrag, Wissen, Werkzeuge, Ablauf oder Grenzen
+ändert ([Agent anlegen](agent-anlegen.md)); ein neuer Name oder Zweck allein ist keine. Eine
+Vorlage bekommt eine neue Fassung, sobald jemand ihre Datei ersetzt
+([Vorlage anlegen](vorlage-anlegen.md)).
+
+**Gut zu wissen:**
+
+- An der Antwort sehen den Stempel nur Sie; er bleibt so lange wie der Chat.
+- Dürfen Sie den Agenten nicht mehr sehen, fehlt nur der Vergleich mit der aktuellen Fassung.
+- Eine Word-Datei oder ein PDF aus einer Vorlage trägt den Stempel in jeder Fußzeile und in den
+  Dokumenteigenschaften, mit Agent, Vorlage, Bibliotheken und Modell; er geht beim Weitergeben mit
+  ([Vorlage anlegen](vorlage-anlegen.md)). Dateien, die ein Agent mit eigenem Code erzeugt, tragen
+  ihn nur an der Antwort, an der sie hängen.

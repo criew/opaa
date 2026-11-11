@@ -101,6 +101,25 @@ class ChatPdfRendererTest {
   }
 
   @Test
+  void anAgentAnswerShowsItsDraftNoticeUnderTheText() throws IOException {
+    ChatTranscript transcript =
+        new ChatTranscript(
+            "Test",
+            AT,
+            List.of(),
+            List.of(
+                new ChatTranscript.Entry(
+                    ChatRole.ASSISTANT,
+                    AT,
+                    "Ein Monat.",
+                    List.of(),
+                    "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3")));
+
+    assertThat(text(transcript))
+        .containsSubsequence("Ein Monat.", "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3");
+  }
+
+  @Test
   void anOverLongWordIsCutIntoLinesThatFitTheWidth() throws IOException {
     List<String> lines = renderer.wrap("a".repeat(500) + " Ende", helvetica, 10, 200);
 

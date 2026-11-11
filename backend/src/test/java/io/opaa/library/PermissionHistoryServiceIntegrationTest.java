@@ -1078,6 +1078,7 @@ class PermissionHistoryServiceIntegrationTest {
           "AssetOwnerNames",
           "AgentService",
           "AgentChoice",
+          "AgentCurrentRevisions",
           "PromptService",
           "AssetShellService",
           "SpaceAccessPolicy",

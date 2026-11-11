@@ -233,6 +233,7 @@ public class DocumentTemplateService {
     Admitted admitted = admit(upload, caller.organizationId());
     return writes.execute(
         status -> {
+          repository.lockById(templateId);
           DocumentTemplate template = load(templateId, caller);
           AssetRole role =
               authorization.requireRole(

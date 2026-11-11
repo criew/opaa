@@ -279,7 +279,12 @@ export default function DocumentTemplateDetailPage() {
           name={template.name}
           description={template.description}
           isPublic={template.reach.allAccounts}
-          badges={<MetaBadge>{assetRoleLabel(template.myRole)}</MetaBadge>}
+          badges={
+            <>
+              <MetaBadge>{assetRoleLabel(template.myRole)}</MetaBadge>
+              <MetaBadge>{`Fassung ${template.revision}`}</MetaBadge>
+            </>
+          }
           administrative={administrative}
           headline={{
             idPrefix: 'document-template-detail',

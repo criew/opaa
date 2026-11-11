@@ -22,8 +22,8 @@ import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackageRelationship;
-import org.apache.poi.openxml4j.opc.PackageRelationshipTypes;
 import org.apache.poi.openxml4j.opc.PackageRelationshipCollection;
+import org.apache.poi.openxml4j.opc.PackageRelationshipTypes;
 import org.apache.poi.openxml4j.opc.TargetMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -234,8 +234,8 @@ public class DocxActiveContent {
   }
 
   /**
-   * The part the package's {@code officeDocument} relationship names is the main part, whatever
-   * its name; there is exactly one, and it is a Word document or a Word template.
+   * The part the package's {@code officeDocument} relationship names is the main part, whatever its
+   * name; there is exactly one, and it is a Word document or a Word template.
    */
   private static void requireAdmittedMainPart(OPCPackage pkg) throws IOException {
     PackageRelationshipCollection main =

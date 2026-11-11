@@ -28,9 +28,17 @@ public interface RunTemplates {
   Optional<TemplateToFill> forFilling(
       UUID templateId, UUID organizationId, UUID userId, Set<UUID> assigned);
 
-  /** A template as a run offers it to the model. */
+  /**
+   * A template as a run offers it to the model.
+   *
+   * @param revision the file's revision ("Fassung") that a filling stamps into its result.
+   */
   record RunTemplate(
-      UUID id, String name, String description, List<TemplatePlaceholder> placeholders) {
+      UUID id,
+      String name,
+      String description,
+      List<TemplatePlaceholder> placeholders,
+      int revision) {
 
     public RunTemplate {
       placeholders = List.copyOf(placeholders);
