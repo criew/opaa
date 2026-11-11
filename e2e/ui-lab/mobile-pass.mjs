@@ -161,6 +161,7 @@ function measureInPage() {
 
 function violations(m, width) {
   const found = []
+  if (m.loadError) return [`loadError ${m.loadError}`]
   if (m.overflowX > 0) found.push(`overflowX ${m.overflowX}px`)
   if (m.cutOff.length) found.push(`cutOff ${JSON.stringify(m.cutOff)}`)
   if (width === PHONE_WIDTH) {
@@ -236,8 +237,15 @@ async function main() {
         const target = queue.shift()
         if (seen.has(target)) continue
         seen.add(target)
-        const phone = await visit(context, opts.base, profile, target, PHONE_WIDTH, shotDir)
-        const reflow = await visit(context, opts.base, profile, target, REFLOW_WIDTH, null)
+        // A page that does not load is a finding of its own, not the end of the pass.
+        const safeVisit = (width, dir) =>
+          visit(context, opts.base, profile, target, width, dir).catch((error) => ({
+            profile, path: target, url: target, width, contentTop: null, overflowX: 0, tables: [],
+            wrappedLabels: [], cutOff: [], tabs: [], createButton: null, dialog: null,
+            loadError: String(error.message ?? error).split('\n')[0],
+          }))
+        const phone = await safeVisit(PHONE_WIDTH, shotDir)
+        const reflow = await safeVisit(REFLOW_WIDTH, null)
         for (const tab of phone.tabs) if (!seen.has(tab) && !opts.only) queue.push(tab)
         for (const m of [phone, reflow]) {
           m.violations = violations(m, m.width)
@@ -258,7 +266,7 @@ async function main() {
   const tops = phones.map((r) => r.contentTop).filter((t) => t !== null)
   const failed = results.filter((r) => r.violations.length)
   console.log(
-    `\n${phones.length} pages at ${PHONE_WIDTH} px, content top ${Math.min(...tops)}-${Math.max(...tops)} px` +
+    `\n${phones.length} pages at ${PHONE_WIDTH} px, content top ${tops.length ? `${Math.min(...tops)}-${Math.max(...tops)} px` : 'not measured'}` +
       ` (limit ${CONTENT_TOP_MAX}); ${failed.length} measurements with findings`,
   )
   if (opts.out) {
