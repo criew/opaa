@@ -42,7 +42,7 @@ describe('ChatInput: inserting a prompt', () => {
   function renderInput() {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    return { onSend, input: screen.getByRole('combobox') }
+    return { onSend, input: screen.getByRole('textbox') }
   }
 
   it('/zusam suggests /zusammenfassung, asks for the Stichtag and sends only on Enter', async () => {
@@ -232,7 +232,7 @@ describe('ChatInput: inserting a prompt', () => {
     expect(screen.queryByRole('listbox', { name: 'Prompts' })).not.toBeInTheDocument()
     await user.type(input, 'z')
     expect(screen.queryByRole('listbox', { name: 'Prompts' })).not.toBeInTheDocument()
-    expect(input).toHaveAttribute('aria-expanded', 'false')
+    expect(input).not.toHaveAttribute('aria-controls')
   })
 
   // Enter on an open '/' selection never sends the '/' text as a question - with no match, while
@@ -327,7 +327,7 @@ describe('ChatInput: inserting a prompt', () => {
     const user = userEvent.setup()
     const onSend = vi.fn().mockResolvedValue({ restoreDraft: 'Fasse als Vermerk zusammen.' })
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByRole('combobox')
+    const input = screen.getByRole('textbox')
 
     await user.type(input, '/vermerk')
     await screen.findByRole('option', { name: /\/vermerk/ })

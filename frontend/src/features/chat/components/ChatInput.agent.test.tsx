@@ -43,7 +43,7 @@ describe('ChatInput: choosing an agent', () => {
   function renderInput() {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
-    return { onSend, input: screen.getByRole('combobox') }
+    return { onSend, input: screen.getByRole('textbox') }
   }
 
   it('lists agents under their own heading, set apart from knowledge', async () => {
@@ -89,7 +89,7 @@ describe('ChatInput: choosing an agent', () => {
       .mockResolvedValueOnce({ restoreDraft: 'Erste Frage', keepAgent: true })
       .mockResolvedValueOnce({ restoreDraft: 'Zweite Frage', keepAgent: false })
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByRole('combobox')
+    const input = screen.getByRole('textbox')
 
     await user.type(input, '@Rech')
     await user.click(await screen.findByRole('option', { name: /^Recherche/ }))
@@ -143,7 +143,7 @@ describe('ChatInput: choosing an agent', () => {
     const onSend = vi.fn()
     const followUp = { key: 'answer-1', agent: { id: 'agent-recherche', name: 'Recherche' } }
     const { rerender } = render(<ChatInput onSend={onSend} followUpAgent={followUp} />)
-    const input = screen.getByRole('combobox')
+    const input = screen.getByRole('textbox')
 
     expect(await screen.findByTestId('chosen-agent-chip')).toHaveTextContent('Agent: Recherche')
     await user.type(input, 'Nur 2026, bitte.{Enter}')

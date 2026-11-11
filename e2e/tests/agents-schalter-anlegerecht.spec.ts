@@ -65,7 +65,7 @@ test.describe.serial('Agenten: Schalter und Anlegerecht', () => {
     authenticatedPage: page,
   }) => {
     await startFreshChat(page)
-    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
     await input.pressSequentially('@')
     // The menu is open (it offers the knowledge chips) but names no agents.
     await expect(page.getByRole('option').first()).toBeVisible()

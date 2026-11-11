@@ -288,7 +288,7 @@ export function answers(page: Page): Locator {
 export async function chooseAgent(page: Page, name: string): Promise<void> {
   const chip = page.getByTestId('chosen-agent-chip')
   if ((await chip.count()) > 0 && (await chip.textContent()) === `Agent: ${name}`) return
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.pressSequentially('@')
   await page
     .getByRole('group', { name: 'Agenten' })
@@ -300,7 +300,7 @@ export async function chooseAgent(page: Page, name: string): Promise<void> {
 /** Wählt den Agenten `name` per `@` und sendet `question` an ihn. */
 export async function askAgent(page: Page, name: string, question: string): Promise<void> {
   await chooseAgent(page, name)
-  await page.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(question)
+  await page.getByRole('textbox', { name: 'Nachricht eingeben' }).fill(question)
   await page.getByRole('button', { name: 'Senden' }).click()
 }
 

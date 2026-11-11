@@ -163,7 +163,7 @@ test.describe.serial("Agenten: Planbestätigung und Agentenverzeichnis", () => {
       `Agent: ${agentName}`,
     );
     await expect(
-      page.getByRole("combobox", { name: "Nachricht eingeben" }),
+      page.getByRole("textbox", { name: "Nachricht eingeben" }),
     ).toBeFocused();
   });
 

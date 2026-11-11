@@ -70,7 +70,7 @@ describe('ChatInput attachments', () => {
 
     await user.upload(screen.getByTestId('chat-attachment-input'), [pdf('Vertrag.pdf')])
     expect(await screen.findByRole('button', { name: /Anhang Vertrag\.pdf/ })).toBeVisible()
-    await user.type(screen.getByRole('combobox'), 'Welche Frist gilt?{Enter}')
+    await user.type(screen.getByRole('textbox'), 'Welche Frist gilt?{Enter}')
 
     expect(api.uploadChatAttachment).toHaveBeenCalledWith('space-1', expect.any(File))
     expect(onSend).toHaveBeenCalledWith('Welche Frist gilt?', undefined, [
@@ -88,7 +88,7 @@ describe('ChatInput attachments', () => {
     render(<ChatInput onSend={vi.fn()} />)
 
     await user.upload(screen.getByTestId('chat-attachment-input'), [pdf('Scan.pdf')])
-    await user.type(screen.getByRole('combobox'), 'Was steht drin?')
+    await user.type(screen.getByRole('textbox'), 'Was steht drin?')
     expect(await screen.findByRole('button', { name: /Scan\.pdf, wird gelesen/ })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Senden' })).toBeDisabled()
 
@@ -107,7 +107,7 @@ describe('ChatInput attachments', () => {
     render(<ChatInput onSend={vi.fn()} />)
 
     await user.upload(screen.getByTestId('chat-attachment-input'), [pdf('Bild.pdf')])
-    await user.type(screen.getByRole('combobox'), 'Frage')
+    await user.type(screen.getByRole('textbox'), 'Frage')
     const chip = await screen.findByRole('button', { name: /keinen lesbaren Text/ })
     expect(screen.getByRole('button', { name: 'Senden' })).toBeDisabled()
 
@@ -120,7 +120,7 @@ describe('ChatInput attachments', () => {
   it('takes files dropped onto the input', async () => {
     render(<ChatInput onSend={vi.fn()} />)
 
-    fireEvent.drop(screen.getByRole('combobox'), {
+    fireEvent.drop(screen.getByRole('textbox'), {
       dataTransfer: { files: [pdf('Anlage.pdf')], types: ['Files'] },
     })
 
@@ -168,10 +168,10 @@ describe('ChatInput attachments', () => {
 
     await user.upload(screen.getByTestId('chat-attachment-input'), [pdf('Vertrag.pdf')])
     await screen.findByRole('button', { name: /Anhang Vertrag\.pdf/ })
-    await user.type(screen.getByRole('combobox'), 'Welche Frist gilt?{Enter}')
+    await user.type(screen.getByRole('textbox'), 'Welche Frist gilt?{Enter}')
 
     expect(await screen.findByRole('button', { name: /Anhang Vertrag\.pdf/ })).toBeVisible()
-    expect(screen.getByRole('combobox')).toHaveValue('Welche Frist gilt?')
+    expect(screen.getByRole('textbox')).toHaveValue('Welche Frist gilt?')
   })
 
   it('offers no attachments with the feature switched off', () => {

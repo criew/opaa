@@ -105,7 +105,7 @@ async function seedLibrary(
 /** Asks one question scoped to `libraryName` and opens the drawer of its answer. */
 async function openEvidenceOfAnswer(page: Page, libraryName: string): Promise<Locator> {
   await startFreshChat(page)
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
   await askQuestion(page, `Was regelt die Dienstanweisung? (${Date.now()})`)

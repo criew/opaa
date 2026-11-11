@@ -45,12 +45,12 @@ const PROMPT_TEXT = 'Nenne alle Bearbeitungsfristen aus den Dienstanweisungen.'
 
 async function openSpaceChat(page: Page, spaceId: string): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
-  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
 }
 
 /** Opens the `@` menu once its first entries are there. */
 async function openMentionMenu(page: Page): Promise<void> {
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.pressSequentially('@')
   await expect(page.getByRole('option').first()).toBeVisible()
 }
@@ -210,7 +210,7 @@ test.describe.serial('Agenten: Teilen, @-Wahl und Suchbereich', () => {
     await expect(
       page.getByRole('button', { name: `Bibliotheksreferenz ${LIBRARY_NAME} entfernen` }),
     ).toBeVisible()
-    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
     await expect(input).toHaveValue('')
 
     // /Prompt puts the prompt's text in; the agent works on it.

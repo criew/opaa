@@ -832,7 +832,7 @@ describe('ChatPage', () => {
         id: 'agent-recherche',
         name: 'Recherche',
       })
-      expect(screen.getByRole('combobox')).toHaveFocus()
+      expect(screen.getByRole('textbox')).toHaveFocus()
       act(() => useChatStore.setState({ isLoading: true }))
       expect(screen.queryByRole('group', { name: 'Plan von Recherche' })).not.toBeInTheDocument()
     })
@@ -850,7 +850,7 @@ describe('ChatPage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Ändern' }))
 
       expect(await screen.findByTestId('chosen-agent-chip')).toHaveTextContent('Agent: Recherche')
-      expect(screen.getByRole('combobox')).toHaveFocus()
+      expect(screen.getByRole('textbox')).toHaveFocus()
     })
 
     it('shows no plan buttons when the agent is no longer offered', async () => {

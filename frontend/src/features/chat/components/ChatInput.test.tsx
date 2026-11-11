@@ -88,7 +88,7 @@ const dienstanweisungen: LibraryListResponse = {
  * repeats it; the field's name stays "Nachricht eingeben".
  */
 async function expectPrefixHint(hint: string) {
-  const input = screen.getByRole('combobox')
+  const input = screen.getByRole('textbox')
   await waitFor(() =>
     expect(input.getAttribute('placeholder')?.replaceAll('\u00a0', ' ')).toBe(
       `Nachricht eingeben … ${hint}`,
@@ -164,7 +164,7 @@ describe('ChatInput', () => {
       stubFieldWidth(300)
       render(<ChatInput onSend={vi.fn()} />)
 
-      const input = screen.getByRole('combobox')
+      const input = screen.getByRole('textbox')
       await waitFor(() =>
         expect(input).toHaveAttribute('placeholder', '@\u00a0Quellen, /\u00a0Aktionen'),
       )

@@ -186,7 +186,7 @@ export async function askAboutScan(
   typingDelay = 0,
 ): Promise<Locator> {
   await startFreshChat(page)
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   if (typingDelay > 0) {
     await input.pressSequentially(`@${libraryName}`, { delay: typingDelay })
   } else {

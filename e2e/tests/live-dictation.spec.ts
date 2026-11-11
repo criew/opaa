@@ -100,7 +100,7 @@ test.describe.serial('Live-Diktat', () => {
     await expect(page.getByTestId('dictation-field')).toBeVisible()
     await page.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }).click()
 
-    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
     await expect(input).toHaveValue(LIVE_TRANSCRIPT)
     await expect(interim).toHaveCount(0)
     expect((await liveSessions()).done).toBe(before.done + 1)
@@ -117,7 +117,7 @@ test.describe.serial('Live-Diktat', () => {
     await expect.poll(async () => (await liveSessions()).dropped).toBe(before.dropped + 1)
     await page.getByRole('button', { name: 'Fertig, Text ins Eingabefeld' }).click()
 
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toHaveValue(
       BATCH_TRANSCRIPT,
     )
     await expect(page.getByText(/Aufnahme konnte nicht|Aufnahme wurde unterbrochen/)).toHaveCount(0)
