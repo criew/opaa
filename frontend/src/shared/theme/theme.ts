@@ -259,6 +259,9 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               backgroundColor: roles.bg1,
             },
             '*:focus-visible': focusRingStyle(accent),
+            // A heading only a script focuses (page title, wizard step) is no control: it takes
+            // the focus for the screen reader's announcement and shows no ring (guidelines 4.4).
+            ':is(h1, h2, h3, h4, h5, h6)[tabindex="-1"]:focus': { outline: 'none' },
             // Motion collapses to state changes; smooth scrolling becomes instant (guidelines 4.5).
             '@media (prefers-reduced-motion: reduce)': {
               '*, *::before, *::after': {
