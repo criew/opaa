@@ -6,7 +6,9 @@
 **Wer:** Systemverwaltung, „Administration → Vorlagen“
 {: .kopf }
 
-Ab Werk sind Vorlagen aus: Der Katalog zeigt keine, und niemand kann eine anlegen.
+Ab Werk sind Vorlagen aus: Der Katalog zeigt keine, und niemand kann eine anlegen. Ausfüllen kann
+eine Vorlage nur ein Agent mit dem Werkzeug „Vorlage ausfüllen“ ([Agenten einschalten](agenten.md)),
+und das nur, wenn der Betrieb die [Sandbox](../betrieb/sandbox.md) eingerichtet hat.
 
 1. Unter „Administration → Vorlagen“ den Schalter „Vorlagen anbieten“ einschalten. Die Änderung
    gilt sofort auf allen Instanzen, ohne Neustart.
