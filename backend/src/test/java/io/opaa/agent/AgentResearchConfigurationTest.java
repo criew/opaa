@@ -35,6 +35,17 @@ class AgentResearchConfigurationTest {
   }
 
   @Test
+  void aSelfMadeAgentsDefaultLimitsEqualWhatARunTakesForAnAgentWithoutValues() {
+    io.opaa.query.toolloop.AgentLimits run = io.opaa.query.toolloop.AgentLimits.DEFAULT;
+    AgentLimits own = AgentService.DEFAULT_LIMITS;
+
+    assertThat(own.maxToolCalls()).isEqualTo(run.maxToolCalls());
+    assertThat(own.maxSearchCalls()).isEqualTo(run.maxSearchCalls());
+    assertThat(own.maxDurationSeconds()).isEqualTo((int) run.maxDuration().toSeconds());
+    assertThat(own.maxCollectedChars()).isEqualTo(run.maxCollectedChars());
+  }
+
+  @Test
   void itsInstructionCoversEverySubAspectAndSetsACitationMarkerOnEveryStatement() {
     assertThat(research.instruction())
         .contains("Teilfrage")

@@ -73,7 +73,11 @@ final class AgentPrompt {
       BESTÄTIGTER PLAN (verbindlich):
       - Deine letzte Antwort im Gesprächsverlauf ist ein Plan. Die neue Nachricht der Person \
       bestätigt oder ändert ihn.
-      - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.
+      - Arbeite den Plan mit den Änderungen der Person jetzt ab und lege keinen neuen Plan vor.""";
+
+  /** Added to {@link #CONFIRMED_PLAN} when the run is offered {@code search_knowledge}. */
+  static final String CONFIRMED_PLAN_SEARCH =
+      """
       - Beginne sofort mit search_knowledge; eine Antwort ohne Suche ist keine Antwort.""";
 
   /** Added to the fixed rules of the run that answers a question back of a plan's working run. */
@@ -111,10 +115,28 @@ final class AgentPrompt {
       String spaceInstruction,
       List<String> notePoints,
       PlanPhase phase) {
+    return systemText(blockId, agentInstruction, spaceInstruction, notePoints, phase, false);
+  }
+
+  /**
+   * As above; {@code searchOffered} adds the instruction to start searching to a confirmed plan.
+   */
+  static String systemText(
+      String blockId,
+      String agentInstruction,
+      String spaceInstruction,
+      List<String> notePoints,
+      PlanPhase phase,
+      boolean searchOffered) {
     StringBuilder text = new StringBuilder(FIXED_RULES.formatted(blockId));
     switch (phase) {
       case PLAN -> text.append("\n\n").append(PLAN_RULES);
-      case CONFIRMED -> text.append("\n\n").append(CONFIRMED_PLAN);
+      case CONFIRMED -> {
+        text.append("\n\n").append(CONFIRMED_PLAN);
+        if (searchOffered) {
+          text.append('\n').append(CONFIRMED_PLAN_SEARCH);
+        }
+      }
       case RESUMED -> text.append("\n\n").append(RESUMED_PLAN);
       case NONE -> {}
     }

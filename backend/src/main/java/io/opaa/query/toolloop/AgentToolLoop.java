@@ -386,13 +386,17 @@ class AgentToolLoop implements AgentTurnHandler {
             .toolCallbackResolver(
                 name -> AgentToolCallback.unknown(reminder, objectMapper, metrics, clock))
             .build();
+    boolean searchOffered =
+        callbacks.stream()
+            .anyMatch(c -> ToolNames.SEARCH_KNOWLEDGE.equals(c.getToolDefinition().name()));
     String system =
         AgentPrompt.systemText(
             run.blockId(),
             spec.instruction(),
             turn.spaceInstruction(),
             notes(turn.notePoints()),
-            phase);
+            phase,
+            searchOffered);
     Map<String, Object> toolContext = Map.of(AgentToolCallback.RUN_KEY, run);
 
     List<Message> history = new ArrayList<>(chatMemory.get(turn.conversationKey()));
@@ -434,9 +438,11 @@ class AgentToolLoop implements AgentTurnHandler {
 
     // A run that works a confirmed plan off but answers without a single tool call has put a new
     // plan to the person instead of researching: it ends as a plan again, so it can be confirmed.
+    // Only once in a row and only when it could search, so a confirmation never loops.
     boolean replannedWithoutWork =
         phase == AgentPrompt.PlanPhase.CONFIRMED
-            && !callbacks.isEmpty()
+            && searchOffered
+            && !followsReplan(spec, turn.chat())
             && run.toolCalls() == 0
             && run.question() == null
             && run.limitReached() == null;
@@ -540,6 +546,19 @@ class AgentToolLoop implements AgentTurnHandler {
         evidence,
         generatedFiles,
         record);
+  }
+
+  /**
+   * Whether the plan to be confirmed is itself the result of a downgrade: a plan run never follows
+   * a plan run.
+   */
+  private boolean followsReplan(AgentRunSpec spec, Chat chat) {
+    return chatService
+        .previousAgentRun(chat.getId())
+        .filter(run -> spec.agentId().equals(run.agentId()))
+        .map(AgentRunRecord::endState)
+        .filter(state -> state == EndState.PLAN)
+        .isPresent();
   }
 
   /**

@@ -1106,6 +1106,7 @@ class AgentToolLoopTest {
     assertThat(toolNamesOf(first)).contains(ToolNames.SEARCH_KNOWLEDGE);
     assertThat(first.getInstructions().get(0).getText())
         .contains(AgentPrompt.CONFIRMED_PLAN)
+        .contains(AgentPrompt.CONFIRMED_PLAN_SEARCH)
         .doesNotContain(AgentPrompt.PLAN_RULES);
     assertThat(first.getInstructions()).extracting(Message::getText).contains("1. Regeln suchen");
     // the citations of the working run are checked like every other run's: the invented one is
@@ -1143,6 +1144,45 @@ class AgentToolLoopTest {
     assertThat(result.evidence()).isNull();
     assertThat(runs("builtin", "plan")).isEqualTo(1.0);
     assertThat(runs("builtin", "completed")).isZero();
+  }
+
+  @Test
+  void aSecondPlanInARowIsNotDowngradedAgainSoAConfirmationNeverLoops() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
+    when(chatService.previousAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("1. Noch ein Plan"));
+
+    assertThat(loop().handle(turn()).agentRun().endState()).isEqualTo(EndState.COMPLETED);
+  }
+
+  @Test
+  void withoutSearchKnowledgeAConfirmedRunIsNeitherToldToSearchNorDowngraded() {
+    planning(true);
+    switchedOn = Set.of(ToolNames.ASK_USER);
+    when(chatService.latestAgentRun(chat.getId()))
+        .thenReturn(
+            Optional.of(
+                new AgentRunRecord(
+                    UUID.randomUUID(), EndState.PLAN, List.of(), agentId, "Recherche")));
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer("Antwort ohne Suche."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel).call(prompts.capture());
+    assertThat(prompts.getValue().getInstructions().get(0).getText())
+        .contains(AgentPrompt.CONFIRMED_PLAN)
+        .doesNotContain(AgentPrompt.CONFIRMED_PLAN_SEARCH);
   }
 
   @Test

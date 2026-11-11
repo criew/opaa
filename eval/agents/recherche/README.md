@@ -43,8 +43,8 @@ Korpus ist `eval/corpus/verwaltung`; die erwarteten Dokumente stehen je Fall in 
 
 ## Messwerte
 
-**Noch nicht gemessen.** Die Grenzen von „Recherche“ (12 Werkzeugaufrufe, 8 Suchen, 240 Sekunden)
-und die Systemgrenzen sind Startwerte, die Stufen von `OPAA_METRICS_SLO_AGENT` bis 300 Sekunden
+**Noch nicht gemessen.** Die Grenzen von „Recherche“ (12 Werkzeugaufrufe, 8 Suchen, 240 Sekunden,
+150 000 Zeichen Lesemenge) und die Systemgrenzen (Lesemenge 200 000 Zeichen) sind Startwerte, die Stufen von `OPAA_METRICS_SLO_AGENT` bis 300 Sekunden
 ebenfalls. Die Werte aus dem ersten Messlauf kommen hierher und stellen dann die Grenzen und Stufen
 nach; vorher steht hier keine Zahl.
 

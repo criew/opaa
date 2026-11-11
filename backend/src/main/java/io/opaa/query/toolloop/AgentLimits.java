@@ -24,7 +24,7 @@ public record AgentLimits(
    * agent saved without limits keeps its behaviour whatever the system maximum is, and only an
    * explicit value (a delivered agent's, an owner's) goes above it, up to the system limit.
    */
-  static final AgentLimits DEFAULT = new AgentLimits(5, 3, Duration.ofSeconds(120), 60_000);
+  public static final AgentLimits DEFAULT = new AgentLimits(5, 3, Duration.ofSeconds(120), 60_000);
 
   /**
    * The limits that apply: each component of {@code requested} that is set, otherwise the default

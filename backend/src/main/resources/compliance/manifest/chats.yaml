@@ -452,7 +452,8 @@ settings:
       nur die eingeschalteten, das Ausfüllen von Vorlagen nur mit zugeordneter Vorlage), Plan zur
       Bestätigung, keine feste Bibliothek (ein Lauf liest, was die fragende Person lesen darf),
       verantwortliche Stelle die Systemverwaltung, Grenzen über denen eines neu angelegten Agenten
-      (5 Werkzeugaufrufe, 3 Suchen, 120 Sekunden, 60000 Zeichen) und innerhalb der Grenzen der Installation
+      (5 Werkzeugaufrufe, 3 Suchen, 120 Sekunden, 60000 Zeichen) und innerhalb der Grenzen der
+      Installation
     bearings: [VISIBILITY, DATA_FLOW]
     notes:
       - >-
