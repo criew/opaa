@@ -88,7 +88,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
     const forced = uniqueAddress("peter.wendt");
     await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
-    const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
+    const dialog = admin.getByRole("dialog", { name: "Konto anlegen" });
     await dialog.locator("#user-form-email").fill(forced);
     await dialog.locator("#user-form-display-name").fill("Peter Wendt");
     await dialog.locator("#user-form-created-reason").fill("Zuarbeit Haushaltsplanung");
@@ -100,7 +100,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
 
     // The open form of the dialog is its own state worth checking - it carries the only mandatory
     // free-text field of the administration and a radio group with a long option label.
-    await expectNoSeriousA11yViolations(admin, "Dialog „Lokales Konto anlegen“");
+    await expectNoSeriousA11yViolations(admin, "Dialog „Konto anlegen“");
 
     await dialog.getByRole("button", { name: "Anlegen" }).click();
     const handover = admin.getByRole("dialog", { name: /^Neues Passwort für / });
@@ -137,7 +137,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
     await clearMailbox();
     await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
-    const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
+    const dialog = admin.getByRole("dialog", { name: "Konto anlegen" });
     await dialog.locator("#user-form-email").fill(invited);
     await dialog.locator("#user-form-display-name").fill("Sabine Krause");
     await dialog.locator("#user-form-created-reason").fill("Amtsleitung Sekretariat");

@@ -39,7 +39,7 @@ leerer Ausgabe kurz warten und wiederholen.
 ## 3. Im Browser einrichten
 
 1. `http://localhost:3000` öffnen. Der Einrichtungs-Assistent erscheint.
-2. Token eingeben, erstes Konto anlegen, Anmeldeverfahren „Nur lokale Konten“.
+2. Token eingeben, erstes Konto anlegen, im Schritt „Identitätsanbieter“ „Nur lokale Konten“ wählen.
 3. **Chat-Modell:** Anbieter wählen, API-Schlüssel eintragen, Modell aus der Liste wählen.
 4. **Embedding-Modell:** ebenso. Ohne Embedding-Modell findet die Suche nichts.
 5. Den Rest überspringen; alles lässt sich später unter „Administration“ nachholen.

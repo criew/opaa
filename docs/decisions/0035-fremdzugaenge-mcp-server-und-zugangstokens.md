@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-05 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -55,7 +55,9 @@ Betriebsdokumentation neben die übrigen Folgen der Rotation. Der Klartext ist g
 sichtbar; das Präfix dient der Wiedererkennung und für Geheimnis-Scanner und erscheint **nicht** in
 Anwendungs- oder Proxy-Logs (es ergäbe mit Zeitstempel und Netzadresse die Abfragehistorie, die das
 Nachweisprotokoll ausschließt). Ausstellung, Ablauf und Sofortwiderruf folgen derselben Prüfkette
-wie die lokalen Tokens, in eigener Ablage. Die Netzbeschränkung gehört dem Kanal
+wie die lokalen Tokens, in eigener Ablage. Ein Konto hält höchstens
+`opaa.external-access.max-active-tokens-per-account` gültige Tokens (Vorgabe 10); gezählt wird unter
+einer Sperre je Konto, damit zwei gleichzeitige Ausstellungen die Grenze nicht beide unterlaufen. Die Netzbeschränkung gehört dem Kanal
 (`ExternalAccessNetworkPolicy`, Vorgabe Hausnetz), nicht dem Token: Eine CIDR je Token wäre ein
 Anwesenheitsmerkmal (Dienststelle gegen Heimarbeit).
 
@@ -91,9 +93,7 @@ erloschene Freigabe entzieht die Bibliothek allen Tokens sofort und lebt in best
 wieder auf. Eine Bibliothek im Zustand „Nachfolge offen" ist vom Weiten der Freigabe gesperrt
 (`LibraryExternalAccessService` prüft `requireAssetReachNotFrozen`, ADR-0036, Entscheidung 6);
 Zurücknehmen und Verkürzen bleiben möglich.
-Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken deckelt dieses Merkmal **nicht**
-(Maintainer-Festlegung in #797 vom 21.09.2026: sie gilt allein der Freigabe an „Alle Konten");
-der Schutz gegen „eingespeist, dann über den Fremdzugang breit erreichbar" liegt in Befristung und
+Der Schutz gegen „eingespeist, dann über den Fremdzugang breit erreichbar" liegt in Befristung und
 MANAGER-Schranke.
 
 ### 5. Genau ein Zugriffsweg auf die Daten — und die Prüfung geschieht je Werkzeugaufruf
@@ -107,8 +107,9 @@ eingefroren; der Rechtefilter sitzt in der Suche, nicht davor. Abgesichert durch
 Tests, die jeden Faktor einzeln entziehen. Seit ADR-0039 lautet die Gleichheitszusage: **Beide Kanäle
 laufen über denselben Suchweg mit derselben Rechteprüfung; was sie durchsuchen, bestimmt im Chat die
 Zuordnung des Space, im Fremdzugang die Auswahl des Tokens** — der Fremdzugang bleibt bewusst ohne
-Space. Der Kanal erbt die Last des vollen Suchwegs je Aufruf, daher das Kontingent je Token
-(`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher jeder Instanz, die den Wert
+Space. Der Kanal erbt die Last des vollen Suchwegs je Aufruf, daher das Kontingent je Token und
+in gleicher Größe je Person über alle ihre Tokens, damit weitere Tokens kein weiteres Kontingent
+bringen (`ExternalAccessQuota`, gleitende Stundenfenster im Arbeitsspeicher jeder Instanz, die den Wert
 der Einstellung durch die lebenden Instanzen teilt; auf den REST-Lesewegen zählt ein Tokenaufruf
 dazu gegen die Grenzen je Token und je Person (alle ihre Tokens) und die Gesamtgrenze der Suche,
 nicht gegen die seiner Netzadresse, weil hinter einem gemeinsamen Ausgang sonst ein Skript alle

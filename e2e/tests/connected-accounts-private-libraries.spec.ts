@@ -3,6 +3,7 @@ import {
   askQuestion,
   expectCitedSource,
   expectNoCatalogMatch,
+  nameNewLibrary,
   openNewLibraryWizard,
   searchLibraries,
 } from '../fixtures/chat'
@@ -100,7 +101,7 @@ async function openSourceTab(page: Page): Promise<void> {
 /** Fragt im Chat des geteilten Space mit @-Referenz auf die private Bibliothek. */
 async function askInSharedSpace(page: Page, withReference = true): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
-  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
   if (withReference) await referenceLibrary(page, LIBRARY_NAME)
   await askQuestion(page, `Was steht im Aktenvermerk ${runId} zur Fristverlängerung?`)
 }
@@ -169,9 +170,8 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Nextcloud/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
-    ).toBeVisible()
+    await nameNewLibrary(page, LIBRARY_NAME)
+    await expect(page.getByRole('heading', { level: 2, name: 'Quelle', exact: true })).toBeVisible()
 
     // Der private Weg steht als eigene Wahl in der Liste der Zugänge, nie vorgewählt.
     const own = page
@@ -196,21 +196,18 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
       page.getByRole('status').filter({ hasText: 'Anmeldung angenommen' }),
     ).toBeVisible({ timeout: 15_000 })
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    // Der Schritt „Name“ sagt, wer die Bibliothek sieht.
+    // Der Schritt „Freigaben“ entfällt: Eine private Bibliothek wird nicht geteilt; nach der
+    // Quelle folgt gleich „Prüfen“, und dort steht, wer die Bibliothek sieht.
+    await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeAttached()
     await expect(page.getByTestId('library-create-private-note')).toContainText(
       'Nur Sie sehen diese Bibliothek.',
     )
-    await page.getByLabel('Name', { exact: true }).fill(LIBRARY_NAME)
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    // Der Schritt „Freigaben“ entfällt: Eine private Bibliothek wird nicht geteilt; nach dem Namen
-    // folgt gleich „Prüfen“.
-    await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeAttached()
     await expect(page.getByText('Freigaben', { exact: true })).toHaveCount(0)
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+      page.getByRole('button', { name: 'Anlegen', exact: true }).click(),
     ])
     libraryId = libraryIdFromCurrentUrl(page)
 

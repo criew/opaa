@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
 durch [ADR-0040](0040-google-drive-konnektor.md), [ADR-0041](0041-verbindungen-als-eigenes-modul.md) und [ADR-0045](0045-gemeinsamer-datei-abgleich.md) bis [ADR-0047](0047-sharepoint-konnektor.md)
 · ersetzt Entscheidung 1 von [ADR-0017](0017-quellentypmodell-indizierung.md), den Nachtrag #1131 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md), die Entscheidungen 1, 2 und 4 von
@@ -116,7 +116,7 @@ Abgeschlossen: zuerst die interne Umstellung bei unveränderter API (#1986), dan
   des Assistenten kommen aus `GET /source-types`; ein dem Frontend unbekannter Typ erscheint unter seinem
   Anzeigenamen, nicht wählbar. Nach dem Typ verzweigt das Frontend sonst nur auf `UPLOAD`.
 - **Uploads sind eine eigene Fähigkeit** (`uploads`), nicht „kein Lauf"; sie entscheidet Anlegerecht,
-  Upload-Annahme, Freigabe-Obergrenze und Löschsperre. Nur `UPLOAD` darf sie tragen; die Registry prüft
+  Upload-Annahme und Löschsperre. Nur `UPLOAD` darf sie tragen; die Registry prüft
   das beim Start.
 - **Gleiche Antwortzeit am Push-Eingang:** Jede Anfrage läuft durch die Prüfung jedes registrierten
   Push-Eingangs, alle fremden gegen einen Platzhalter (`PushIntakeHandler#rejectForeign`); unbekannte

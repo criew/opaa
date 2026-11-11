@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DownloadIcon from '@mui/icons-material/Download'
@@ -41,14 +40,10 @@ export default function DownloadOriginalButton({
         <IconButton
           size={size}
           aria-label="Original herunterladen"
-          disabled={busy}
+          loading={busy}
           onClick={() => void download()}
         >
-          {busy ? (
-            <CircularProgress size={18} aria-label="Original wird geladen" />
-          ) : (
-            <DownloadIcon fontSize="small" />
-          )}
+          <DownloadIcon fontSize="small" />
         </IconButton>
       </span>
     </Tooltip>

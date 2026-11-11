@@ -44,6 +44,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.observability.RequestIds;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.test.MutableClock;
 import io.opaa.test.SourceTypes;
@@ -355,6 +356,24 @@ class IndexingRunTemplateTest {
         .recordRunMetrics(jobId, new IndexingRunCost(12, 1, 500L, 1, 0, 0, false, 0L));
     order.verify(jobService).completeJob(jobId, 1, 0, 1, 2);
     verify(jobService, never()).failJob(any(), any());
+  }
+
+  @Test
+  void theBodyLogsWithTheRunIdInTheMdcAndTheThreadIsLeftWithoutIt() {
+    AtomicReference<String> inBody = new AtomicReference<>();
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          inBody.set(org.slf4j.MDC.get(RequestIds.INDEXING_RUN_MDC_KEY));
+          return ListingOutcome.complete();
+        });
+
+    assertThat(inBody.get()).isEqualTo(jobId.toString());
+    assertThat(org.slf4j.MDC.get(RequestIds.INDEXING_RUN_MDC_KEY)).isNull();
   }
 
   // --- failure translation -----------------------------------------------------------------

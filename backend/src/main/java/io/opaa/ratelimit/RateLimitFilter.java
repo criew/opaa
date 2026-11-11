@@ -3,6 +3,7 @@ package io.opaa.ratelimit;
 import io.opaa.common.LogText;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.observability.RequestIds;
 import io.opaa.ratelimit.RateLimitService.Decision;
 import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.FilterChain;
@@ -17,7 +18,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -80,7 +80,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Behind the sign-in: a request that is not authenticated, or refused by the budget per account
      * behind the chain, gives back its client and global token; one authenticated by an access
      * token ({@link OwnQuotaAuthentication}) its client token; one a later limit refused ({@link
-     * RateLimitAuthentication#markRefusedByLaterLimit}) its global token. Rationale: ADR-0033, 9.
+     * RateLimitAuthentication#markRefusedByLaterLimit}) or by its operation before any work ({@link
+     * RefusedBeforeWork}) its global token. Rationale: ADR-0033, 9.
      */
     AUTHENTICATED,
 
@@ -117,8 +118,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * AuthenticatedRequestMarkerFilter} - whatever address the request came from.
    *
    * @param name the stable label of the rule in logs and metrics
-   * @param method the HTTP method the rule applies to, or {@code null} for every method; a request
-   *     with another method is matched against the rules after it
+   * @param method the HTTP method the rule applies to, several separated by {@code |}, or {@code
+   *     null} for every method; a request with another method is matched against the rules after it
    */
   public record Rule(
       String name,
@@ -185,7 +186,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
       String method) {
 
     boolean appliesTo(HttpServletRequest request) {
-      return method == null || method.equalsIgnoreCase(request.getMethod());
+      if (method == null) {
+        return true;
+      }
+      for (String one : method.split("\\|")) {
+        if (one.equalsIgnoreCase(request.getMethod())) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 
@@ -416,7 +425,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             rule.perClient().release(admission.key(), admission.keyGrant());
           }
           if (RateLimitAuthentication.isMarked(
-              request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)) {
+                  request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)
+              || RateLimitAuthentication.isMarked(request, RefusedBeforeWork.ATTRIBUTE)) {
             releaseGlobal(admission);
           }
         }
@@ -499,11 +509,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
       throws IOException {
     response.setStatus(status.value());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    var body =
-        Map.of(
-            "error", message,
-            "status", status.value(),
-            "timestamp", Instant.now(clock).toString());
-    jsonMapper.writeValue(response.getOutputStream(), body);
+    jsonMapper.writeValue(
+        response.getOutputStream(),
+        RequestIds.errorResponse(message, status.value(), Instant.now(clock)));
   }
 }

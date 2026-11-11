@@ -23,10 +23,12 @@ jederzeit auch lokal ausführen (unten).
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Basis-Image des OCR-Images (`ocr/Dockerfile`), Version und Digest gemeinsam, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `dockerfile` | `ci` |
+| Images der Sandbox: Sandbox-Dienst (`docker-compose.sandbox.yml`), execd (`sandbox/config.toml`, eigener Regex-Manager) und Basis-Image (`sandbox/Dockerfile`), Version und Digest gemeinsam, dazu die Python-Pakete des Images mit Hashes (`sandbox/requirements.txt`), ohne Auto-Merge (siehe [Sandbox-Images](#sandbox-images)) | `docker-compose`, `custom.regex`, `dockerfile`, `pip_requirements` | `ci` |
+| Python-Pakete, die das OCR-Image im Basis-Image ersetzt (`ocr/requirements-overrides.txt`), mit Hashes, ohne Auto-Merge (siehe [OCR-Image](#ocr-image)) | `pip_requirements` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
-| pytest und PyYAML der CI-Jobs `ci-scripts`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`), die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`), des Seeds im axe-Lauf (`.github/requirements-seed.txt`), MkDocs mit Material für die Handbuch-Website (`.github/requirements-docs.txt`); jede Datei listet alle Pakete samt Abhängigkeiten mit `--hash`, Renovate erneuert die Hashes beim Bump, jeder Job installiert mit `--require-hashes`. Ohne Auto-Merge, weil `ci-scripts`, `seed-script` und Datenwirkung keine Required Checks sind; die Website baut im Required Check `changes`, ein Bump wartet trotzdem auf alle | `pip_requirements` | `ci` |
+| pytest und PyYAML aller Jobs mit `.github/requirements-ci.txt` (`ci-scripts`, `seed-script`, Datenwirkung, ZAP-Baseline, Abhängigkeitsgraph), die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`), des Seeds im axe-Lauf (`.github/requirements-seed.txt`), MkDocs mit Material für die Handbuch-Website (`.github/requirements-docs.txt`); jede Datei listet alle Pakete samt Abhängigkeiten mit `--hash`, Renovate erneuert die Hashes beim Bump, jeder Job installiert mit `--require-hashes` und nur aus Wheels (`--only-binary=:all:`), damit kein sdist-Bau ungeprüfte Build-Abhängigkeiten nachlädt; Jobs mit `requirements-ci.txt` oder `requirements-docs.txt` laufen deshalb auf Python 3.14, weil die gepinnte PyYAML-Version kein cp315-Wheel hat; eine Regel hält genau diese Schritte (`python-version` `3.14`) unter 3.15, bis es eines gibt. Ohne Auto-Merge, weil `ci-scripts`, `seed-script`, ZAP-Baseline und Abhängigkeitsgraph keine Required Checks sind und der Required Check Datenwirkung (`check`) Renovate-PRs überspringt; die Website baut im Required Check `changes`, ein Bump wartet trotzdem auf alle | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)), das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) und das ZAP-Image in `zap-baseline.yml` (`ZAP_IMAGE`, ebenso; nur Release-Tags `X.Y.Z`, ohne Auto-Merge, weil der Digest die Scan-Regeln festlegt, eine neue ZAP-Version also neue Befunde bringen kann, und der Scan kein Required Check ist) | `custom.regex` | `ci` |
 
@@ -99,6 +101,42 @@ Der Schritt „Modell-Prüfsummen gegen Herkunft abgleichen“ prüft danach jed
 Hugging-Face-API am eingetragenen Commit oder gegen die Prüfsummen des rapidocr-Pakets
 ([sbom.md](sbom.md#ocr-image)); der Rauchtest prüft die Texterkennung ohne Netz. Erst wenn beides
 grün ist, wird gemergt.
+
+## Sandbox-Images
+
+Das Compose-Overlay der Sandbox (`docker-compose.sandbox.yml`) startet `opensandbox/server`, der
+den Docker-Socket des Hosts hält; dieser startet `opensandbox/execd` (`execd_image` in
+`sandbox/config.toml`) und das Sandbox-Image aus `sandbox/Dockerfile`, in denen fremder Code
+läuft. Alle drei sind auf Version und Index-Digest festgelegt. Die Regel für `docker-compose.sandbox.yml` und
+`sandbox/**` in `renovate.json5` hält beides fest (`pinDigests: true`), wartet drei Tage und mergt
+nie automatisch: Keine Pflichtprüfung startet den Stapel. Ein neuer Digest bei gleicher Version
+wartet auf Freigabe in der Abhängigkeits-Übersicht. Dienst und execd gehören zur selben
+OpenSandbox-Version und kommen in einem PR (`groupName: 'OpenSandbox'`); als Version zählen nur
+die Tags `release-X.Y.Z`, keine Vorabversionen, `staging-…`-Builds oder die alten `v0.…`-Tags.
+
+`sandbox/config.toml` liest kein regulärer Manager, sondern ein eigener Regex-Manager. Sein
+Ausdruck lässt den Digest offen und seine Ersetzungsvorlage schreibt ihn mit; fehlt der Digest in
+der Datei, schlägt Renovate ihn deshalb selbst als Pin-PR vor.
+
+Die Python-Pakete des Sandbox-Images stehen samt allen Abhängigkeiten in `sandbox/requirements.txt`,
+jedes mit dem sha256 jedes Wheels, das CPython 3.13 auf `linux/amd64` und `linux/arm64` (glibc)
+installiert; das Dockerfile installiert mit `--require-hashes` und nur aus Wheels. Dieselbe Regel
+gilt (drei Tage, kein Auto-Merge). Hebt ein Update eine Abhängigkeit an, die ein anderes Paket
+anders verlangt, scheitert der Bau des Images im Scan des PRs.
+
+`.github/scripts/test_sandbox_image_pins.py` prüft, dass Compose-Datei, Dockerfile,
+`requirements.txt` und Regeln zusammenpassen und der Ausdruck die execd-Zeile trifft.
+
+Vor dem Merge eines Updates den Stapel mit dem Overlay starten und einmal `run_code` ausführen
+lassen ([Sandbox für Agenten](handbuch/betrieb/sandbox.md)). Das Sandbox-Image baut und scannt
+`cve-scan.yml` im PR mit ([cve-scanning.md](cve-scanning.md)).
+
+Bringt das Basis-Image ein Python-Paket mit bekannter Schwachstelle mit und gibt es noch keine
+docling-serve-Version mit der Fix-Version, ersetzt `ocr/Dockerfile` das Paket im Bau durch die
+Version aus `ocr/requirements-overrides.txt` (mit Hashes, ohne Abhängigkeiten); `pip check` im Bau
+scheitert, wenn der Tausch eine Anforderung der Umgebung bricht. Renovate pflegt die Datei wie die
+übrigen Requirements, ohne Auto-Merge. Ein Eintrag entfällt, sobald das Basis-Image die
+Fix-Version selbst mitbringt.
 
 ## Sicherheits-PRs und Lockfile-Pflege
 

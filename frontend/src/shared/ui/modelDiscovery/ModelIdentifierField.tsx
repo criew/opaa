@@ -1,12 +1,10 @@
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import ListSubheader from '@mui/material/ListSubheader'
-import TextField from '@mui/material/TextField'
+import FormField from '../form/FormField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel } from '@/shared/api/types'
 import { fontFamily } from '@/shared/theme/tokens'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import {
   describeModel,
   embeddingSuitable,
@@ -14,6 +12,8 @@ import {
   transcriptionSuitable,
   type DiscoveryPurpose,
 } from './modelDiscovery'
+import { fontSize } from '../../theme/tokens'
+import LoadingState from '../states/LoadingState'
 
 const LABEL = 'Modell-Kennung'
 
@@ -70,10 +70,7 @@ interface ModelIdentifierFieldProps {
   onSelect: (model: DiscoveredLlmModel) => void
   /** The role the model is chosen for; `chat` by default. */
   purpose?: DiscoveryPurpose
-  /** The input's id; needed with `labelAbove`. */
   id?: string
-  /** The assistants' label above the field (guidelines 5.2) instead of MUI's floating one. */
-  labelAbove?: boolean
   /** The field error, shown below the field instead of the hint. */
   error?: string
 }
@@ -95,7 +92,6 @@ export default function ModelIdentifierField({
   onSelect,
   purpose = 'chat',
   id,
-  labelAbove = false,
   error,
 }: ModelIdentifierFieldProps) {
   const role = ROLES[purpose]
@@ -121,7 +117,7 @@ export default function ModelIdentifierField({
         option.identifier === (typeof selected === 'string' ? selected : selected.identifier)
       }
       loading={loading}
-      loadingText="Modelle werden abgerufen …"
+      loadingText={<LoadingState shape="lines" count={2} />}
       value={value}
       inputValue={value}
       onInputChange={(_event, next, reason) => {
@@ -155,12 +151,19 @@ export default function ModelIdentifierField({
           <Box component="li" key={key} {...optionProps}>
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                sx={{ fontFamily: fontFamily.mono, fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}
+                sx={{
+                  fontFamily: fontFamily.mono,
+                  fontSize: fontSize.text,
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
               >
                 {model.identifier}
               </Typography>
               {facts.length > 0 && (
-                <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>
+                <Typography
+                  sx={{ fontSize: fontSize.meta, color: 'text.secondary', lineHeight: 1.4 }}
+                >
                   {facts.join(' · ')}
                 </Typography>
               )}
@@ -169,10 +172,10 @@ export default function ModelIdentifierField({
         )
       }}
       renderInput={(params) => (
-        <TextField
+        <FormField
           {...params}
-          label={labelAbove ? undefined : LABEL}
-          required={!labelAbove}
+          label={LABEL}
+          required
           placeholder={
             models.length > 0 ? 'Modell suchen oder Kennung eintragen' : `z. B. ${role.example}`
           }
@@ -180,8 +183,6 @@ export default function ModelIdentifierField({
           helperText={error ?? hint}
           slotProps={{
             ...params.slotProps,
-            // With the label above, hint and error start on the field's left edge like the label.
-            formHelperText: labelAbove ? { sx: { mx: 0 } } : undefined,
             htmlInput: {
               ...params.slotProps.htmlInput,
               spellCheck: false,
@@ -189,12 +190,7 @@ export default function ModelIdentifierField({
             },
             input: {
               ...params.slotProps.input,
-              endAdornment: (
-                <>
-                  {loading && <CircularProgress color="inherit" size={16} aria-hidden />}
-                  {params.slotProps.input.endAdornment}
-                </>
-              ),
+              endAdornment: params.slotProps.input.endAdornment,
             },
           }}
         />
@@ -204,11 +200,5 @@ export default function ModelIdentifierField({
     />
   )
 
-  if (!labelAbove) return field
-  return (
-    <Box>
-      <FieldLabel htmlFor={id}>{LABEL}</FieldLabel>
-      {field}
-    </Box>
-  )
+  return field
 }

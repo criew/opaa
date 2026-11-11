@@ -7,7 +7,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
 import io.opaa.instance.CurrentInstance;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Path;
 import java.util.List;
@@ -147,12 +147,24 @@ class InstallationStartup implements SmartLifecycle {
     return false;
   }
 
+  /**
+   * Whether the installation offers the step; a part of one it does not offer is logged as ignored.
+   */
+  private boolean offered(InstallationStep step) {
+    boolean offered = installation.offers(step);
+    if (!offered) {
+      log.info(
+          "The answer file names {}, which this installation does not offer; it is ignored", step);
+    }
+    return offered;
+  }
+
   /** Applies the answer file; a refusal is logged with step and reason and leaves it pending. */
   boolean applyAnswerFile() {
     Path file = Path.of(properties.answerFile());
     try {
       AnswerFile answers = AnswerFile.read(file, json);
-      if (installation.applyAnswersAtStartup(answers.steps())) {
+      if (installation.applyAnswersAtStartup(answers.steps(this::offered))) {
         log.info("Installation completed from the answer file {}", file);
       } else {
         log.info("The installation was completed by another instance; {} is ignored", file);

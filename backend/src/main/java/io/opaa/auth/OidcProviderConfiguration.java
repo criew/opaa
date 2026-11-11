@@ -1,6 +1,8 @@
 package io.opaa.auth;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.instance.InvalidationBus;
+import io.opaa.observability.AuthMetrics;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,13 +22,15 @@ public class OidcProviderConfiguration {
   }
 
   @Bean
-  OidcDiscoveryClient oidcDiscoveryClient(OidcAddressPolicy addressPolicy) {
-    return new OidcDiscoveryClient(addressPolicy);
+  OidcDiscoveryClient oidcDiscoveryClient(
+      OidcAddressPolicy addressPolicy, MeterRegistry meterRegistry) {
+    return new OidcDiscoveryClient(addressPolicy, meterRegistry);
   }
 
   @Bean
-  OidcJwtDecoderFactory oidcJwtDecoderFactory(OidcDiscoveryClient discoveryClient) {
-    return new NimbusOidcJwtDecoderFactory(discoveryClient);
+  OidcJwtDecoderFactory oidcJwtDecoderFactory(
+      OidcDiscoveryClient discoveryClient, MeterRegistry meterRegistry) {
+    return new NimbusOidcJwtDecoderFactory(discoveryClient, meterRegistry);
   }
 
   @Bean
@@ -35,8 +39,10 @@ public class OidcProviderConfiguration {
       OidcJwtDecoderFactory decoderFactory,
       OidcAddressPolicy addressPolicy,
       Clock clock,
-      InvalidationBus bus) {
-    return new OidcProviderRegistry(repository, decoderFactory, addressPolicy, clock, bus);
+      InvalidationBus bus,
+      AuthMetrics authMetrics) {
+    return new OidcProviderRegistry(
+        repository, decoderFactory, addressPolicy, clock, bus, authMetrics);
   }
 
   @Bean

@@ -65,6 +65,8 @@ import tools.jackson.databind.ObjectMapper;
 @OpaaMockedDocumentServiceIntegrationTest
 class ChatServiceIntegrationTest {
 
+  private static final UUID TEMPLATE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000c1");
+
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
   @Autowired private ChatExportService chatExportService;
@@ -497,6 +499,70 @@ class ChatServiceIntegrationTest {
     ChatConversation detail = chatService.getChat(chat.getId(), author);
     assertThat(detail.getMessages().get(0).getEvidence()).isNull();
     assertThat(detail.getMessages().get(1).getEvidence()).isEqualTo(evidence);
+  }
+
+  /**
+   * An agent run's steps stay with the answer's message in the history (ADR-0070, Bestand a) and
+   * nowhere else: not in the conversation window of later questions, not in the title and not in
+   * the chat's full-text search.
+   */
+  @Test
+  void theStepsOfAnAgentRunAreShownInTheHistoryButReachNoPromptTitleOrSearch() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    List<Prompt> titlePrompts = new java.util.concurrent.CopyOnWriteArrayList<>();
+    doAnswer(
+            call -> {
+              titlePrompts.add(call.getArgument(0));
+              return new ChatResponse(
+                  List.of(new Generation(new AssistantMessage("Kündigungsfrist"))));
+            })
+        .when(chatModel)
+        .call(any(Prompt.class));
+    AgentRunRecord run =
+        new AgentRunRecord(
+            UUID.randomUUID(),
+            AgentRunRecord.EndState.COMPLETED,
+            List.of(
+                new AgentRunRecord.Step(
+                    "search_knowledge",
+                    "Dienstvereinbarung Rufbereitschaft",
+                    2,
+                    AgentRunRecord.StepStatus.DONE)));
+
+    chatService.appendTurn(
+        chat,
+        "Wie lang ist die Kündigungsfrist?",
+        null,
+        "Sie beträgt drei Monate.",
+        List.of(),
+        null,
+        List.of(),
+        List.of(),
+        run);
+
+    ChatConversation detail = chatService.getChat(chat.getId(), author);
+    assertThat(detail.getMessages().get(1).getAgentRun()).isEqualTo(run);
+    assertThat(detail.getMessages().get(1).getContent()).isEqualTo("Sie beträgt drei Monate.");
+    assertThat(chatService.historyAsSpringAiMessages(chat.getId(), 10))
+        .extracting(Message::getText)
+        .containsExactly("Wie lang ist die Kündigungsfrist?", "Sie beträgt drei Monate.");
+    await().atMost(5, TimeUnit.SECONDS).until(() -> !titlePrompts.isEmpty());
+    assertThat(titlePrompts.getFirst().getContents())
+        .doesNotContain("Dienstvereinbarung")
+        .doesNotContain("Rufbereitschaft");
+    await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(chatService.getChat(chat.getId(), author).getTitle())
+                    .isEqualTo("Kündigungsfrist"));
+    assertThat(chatService.searchChats(spaceId, author, "Dienstvereinbarung", null, null).matches())
+        .isEmpty();
+    assertThat(chatService.searchChats(spaceId, author, "Rufbereitschaft", null, null).matches())
+        .isEmpty();
+    assertThat(chatService.searchChats(spaceId, author, "Monate", null, null).matches()).hasSize(1);
   }
 
   @Test
@@ -1037,6 +1103,107 @@ class ChatServiceIntegrationTest {
     assertThat(parsed).hasSize(1);
     assertThat(parsed.getFirst().getFileName()).isEqualTo("anfrage.eml");
     assertThat(parsed.getFirst().getCited()).isTrue();
+  }
+
+  /**
+   * Two answers of one agent with a change in between: each keeps the revision it was made with,
+   * and both show the revision the agent has now - only to a person who may still read it.
+   */
+  @Test
+  void eachAgentAnswerKeepsItsStampAndShowsTheAgentsCurrentRevision() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    UUID library = createLibrary(author);
+    UUID agent = createAgentReadableBy(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    jdbcTemplate.update("UPDATE agent_settings SET enabled = true WHERE id = 1");
+    try {
+      chatService.appendTurn(
+          chat,
+          "Erste Frage?",
+          null,
+          "Erste Antwort.",
+          List.of(),
+          null,
+          List.of(),
+          List.of(),
+          agentRecord(agent, 1, library));
+      jdbcTemplate.update("UPDATE agents SET revision = 2 WHERE id = ?", agent);
+      chatService.appendTurn(
+          chat,
+          "Zweite Frage?",
+          null,
+          "Zweite Antwort.",
+          List.of(),
+          null,
+          List.of(),
+          List.of(),
+          agentRecord(agent, 2, library));
+      chatService.appendTurn(chat, "Ohne Agent?", "Gewöhnliche Antwort.", List.of());
+
+      List<ChatTurn> answers =
+          chatService.getChat(chat.getId(), author).getMessages().stream()
+              .filter(turn -> turn.getRole() == ChatRole.ASSISTANT)
+              .toList();
+
+      AgentRunStamp first = answers.get(0).getAgentRun().stamp();
+      assertThat(answers.get(0).getAgentRun().agentId()).isEqualTo(agent);
+      assertThat(answers.get(0).getAgentRun().agentName()).isEqualTo("Prüfhilfe");
+      assertThat(first.agentRevision()).isEqualTo(1);
+      assertThat(first.libraries())
+          .containsExactly(new SearchedLibraryRef(library, "Testbibliothek"));
+      assertThat(first.templates())
+          .containsExactly(new AgentRunStamp.TemplateRef(TEMPLATE_ID, "Bescheid", 3));
+      assertThat(first.model()).isEqualTo("modell-a");
+      assertThat(answers.get(0).getCurrentAgentRevision()).isEqualTo(2);
+      assertThat(answers.get(1).getAgentRun().stamp().agentRevision()).isEqualTo(2);
+      assertThat(answers.get(1).getCurrentAgentRevision()).isEqualTo(2);
+      // regression guard: an ordinary answer stays without agent run, stamp or revision
+      assertThat(answers.get(2).getAgentRun()).isNull();
+      assertThat(answers.get(2).getCurrentAgentRevision()).isNull();
+
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", agent);
+      assertThat(chatService.getChat(chat.getId(), author).getMessages())
+          .allSatisfy(turn -> assertThat(turn.getCurrentAgentRevision()).isNull());
+    } finally {
+      jdbcTemplate.update("UPDATE agent_settings SET enabled = false WHERE id = 1");
+    }
+  }
+
+  private static AgentRunRecord agentRecord(UUID agent, int revision, UUID library) {
+    return new AgentRunRecord(
+        UUID.randomUUID(),
+        AgentRunRecord.EndState.COMPLETED,
+        List.of(),
+        agent,
+        "Prüfhilfe",
+        new AgentRunStamp(
+            revision,
+            List.of(new SearchedLibraryRef(library, "Testbibliothek")),
+            List.of(new AgentRunStamp.TemplateRef(TEMPLATE_ID, "Bescheid", 3)),
+            "modell-a"));
+  }
+
+  /** An agent of organization A that {@code readerId} may read by an explicit grant. */
+  private UUID createAgentReadableBy(UUID readerId) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id) VALUES (?, 'AGENT', ?, 'Prüfhilfe', 'USER', ?)"
+            + " RETURNING id, organization_id) INSERT INTO agents (id, organization_id)"
+            + " SELECT id, organization_id FROM shell",
+        id,
+        organizationA,
+        readerId);
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at)"
+            + " VALUES (?, 'AGENT', ?, ?, 'USER', ?, 'VIEWER', now(), now())",
+        UUID.randomUUID(),
+        id,
+        organizationA,
+        readerId);
+    return id;
   }
 
   private void associateLibrary(UUID spaceId, UUID libraryId, UUID createdByUserId) {

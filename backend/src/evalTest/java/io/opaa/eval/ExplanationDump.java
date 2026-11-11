@@ -29,6 +29,10 @@ import tools.jackson.databind.json.JsonMapper;
  * a fresh store with new UUIDs, so only with index-independent keys are two dumps of the same code
  * file-identical - which is what {@code diff -r} of two dump directories proves for a
  * behaviour-neutral refactoring.
+ *
+ * <p>Stage durations go into a separate {@code <case-id>.durations.json} next to it: they vary
+ * between two runs of the same code, so they stay out of the file a neutrality diff compares
+ * ({@code diff -r -x '*.durations.json'}).
  */
 public final class ExplanationDump {
 
@@ -90,7 +94,10 @@ public final class ExplanationDump {
     return directory != null;
   }
 
-  /** Writes {@code <dir>/<caseId>.json}, overwriting an earlier file of the same case. */
+  /**
+   * Writes {@code <dir>/<caseId>.json} and {@code <dir>/<caseId>.durations.json}, overwriting
+   * earlier files of the same case.
+   */
   public void write(String caseId, RetrievalExplanation explanation) {
     if (!enabled()) {
       return;
@@ -102,6 +109,12 @@ public final class ExplanationDump {
           MAPPER
               .writerWithDefaultPrettyPrinter()
               .writeValueAsString(normalize(caseId, explanation, keys)),
+          StandardCharsets.UTF_8);
+      Files.writeString(
+          directory.resolve(caseId + ".durations.json"),
+          MAPPER
+              .writerWithDefaultPrettyPrinter()
+              .writeValueAsString(durations(caseId, explanation)),
           StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new UncheckedIOException("explanation dump for case " + caseId + " failed", e);
@@ -131,6 +144,21 @@ public final class ExplanationDump {
       entry.put("outgoingCount", stage.outgoingCount());
       entry.put("verdicts", verdicts);
       entry.put("notes", stage.notes());
+      stages.add(entry);
+    }
+    Map<String, Object> root = new LinkedHashMap<>();
+    root.put("caseId", caseId);
+    root.put("stages", stages);
+    return root;
+  }
+
+  /** Per stage its name and measured duration in milliseconds, {@code null} where none ran. */
+  static Map<String, Object> durations(String caseId, RetrievalExplanation explanation) {
+    List<Map<String, Object>> stages = new ArrayList<>(explanation.stages().size());
+    for (StageExplanation stage : explanation.stages()) {
+      Map<String, Object> entry = new LinkedHashMap<>();
+      entry.put("stage", stage.stage().name());
+      entry.put("durationMs", stage.durationMs());
       stages.add(entry);
     }
     Map<String, Object> root = new LinkedHashMap<>();

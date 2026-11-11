@@ -12,8 +12,6 @@ import io.opaa.retrieval.RetrievalStage;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;
-import io.opaa.retrieval.search.FullTextSearchStage;
-import io.opaa.retrieval.search.VectorSearchStage;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.ai.vectorstore.filter.Filter;
@@ -22,7 +20,7 @@ import org.springframework.stereotype.Component;
 /**
  * The {@link RetrievalStageName#METADATA_FILTER} stage (ADR-0024): translates {@link
  * RetrievalContext#metadataFilter()} once into the vector-path expression and hands both forms on
- * in the state, so {@link VectorSearchStage} and {@link FullTextSearchStage} apply the identical
+ * in the state, so {@code VectorSearchStage} and {@code FullTextSearchStage} apply the identical
  * condition inside their queries. It touches nothing {@link SearchScopeStage} established: the
  * permission filter stays the outer condition.
  *

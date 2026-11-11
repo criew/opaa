@@ -7,7 +7,7 @@ import {
 } from '../../utils/smbSource'
 import { smbSetup } from '../setup/connectors/smbSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const smbSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.SMB,
@@ -32,20 +32,6 @@ export const smbSource: SourceRegistration = {
         sourceUrl: values.sourceUrl.trim(),
         sourceCredentials: smbCredentialsOf(values),
         sourceSettings: { folders: folders.length === 0 ? ['/'] : folders },
-      }
-    },
-    nameFromSource: (values: SmbSourceValues) => {
-      const folders = smbFoldersOf(values)
-      if (folders.length === 1 && folders[0] !== '/') {
-        const segments = folders[0].split('/').filter(Boolean)
-        return segments[segments.length - 1] ?? ''
-      }
-      const share = /^(?:smb:\/\/|\\\\)[^/\\]+[/\\]([^/\\]+)/i.exec(values.sourceUrl.trim())?.[1]
-      if (!share) return ''
-      try {
-        return decodeURIComponent(share)
-      } catch {
-        return share
       }
     },
     scopeNoteId: 'smb-sharing-consequence',

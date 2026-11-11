@@ -1,13 +1,14 @@
 package io.opaa.config;
 
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.llm.EmbeddingModelSettingsRepository;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelRepository;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelTargetValidationProperties;
-import io.opaa.llm.RerankModelSettingsRepository;
-import io.opaa.llm.TranscriptionModelSettingsRepository;
+import io.opaa.llm.embedding.EmbeddingModelSettingsRepository;
+import io.opaa.llm.rerank.RerankModelSettingsRepository;
+import io.opaa.llm.transcription.RealtimeTranscriptionEndpoint;
+import io.opaa.llm.transcription.TranscriptionModelSettingsRepository;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -96,7 +97,16 @@ class ModelAllowlistStartupWarning {
         .ifPresent(row -> stored.add(new StoredEndpoint("rerank model", row.getBaseUrl())));
     transcriptionModel
         .findStored()
-        .ifPresent(row -> stored.add(new StoredEndpoint("transcription model", row.getBaseUrl())));
+        .ifPresent(
+            row -> {
+              stored.add(new StoredEndpoint("transcription model", row.getBaseUrl()));
+              if (row.getRealtimeUrl() != null) {
+                stored.add(
+                    new StoredEndpoint(
+                        "live transcription",
+                        RealtimeTranscriptionEndpoint.httpEquivalent(row.getRealtimeUrl())));
+              }
+            });
     return stored;
   }
 

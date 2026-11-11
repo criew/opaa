@@ -16,6 +16,12 @@ es an eine Person, eine Gruppe oder an „Alle Konten“.
 | Konnektorbibliotheken anlegen | je Quellart und je Zugang: Dateisystem, Webverzeichnis, RSS-Feed, Confluence und S3 für Alle Konten; jede weitere Quellart und jeder neue Zugang nur die Systemverwaltung |
 | Interne Gruppen anlegen | niemand außer der Systemverwaltung |
 | Prompt-Bibliotheken anlegen | Alle Konten |
+| Agenten anlegen | niemand außer der Systemverwaltung; nur sichtbar, wenn [Agenten eingeschaltet](agenten.md) sind |
+| Vorlagen anlegen | ab Werk niemand außer der Systemverwaltung; nur sichtbar, solange [Vorlagen](vorlagen.md) eingeschaltet sind |
+
+Auf derselben Seite steht ein Recht, das nichts anlegt: „Agentenverzeichnis einsehen“, ab Werk
+niemand außer der Systemverwaltung. Es öffnet eine Beschreibung aller Agenten und Vorlagen, kein
+Wissen ([Agentenverzeichnis einsehen](agentenverzeichnis.md)).
 
 1. In der Zeile des Rechts „Ändern“.
 2. Bei Konnektorbibliotheken zuerst die Quellart oder den Zugang wählen.
@@ -30,13 +36,12 @@ vorher und nachher. Ein Entzug wirkt sofort; bestehende Spaces und Bibliotheken 
 **Konnektorbibliotheken** sind der erste Kandidat für eine Einschränkung: Sie erreichen Server und
 hinterlegte Zugangsdaten. Die Freigabe eines Zugangs öffnet keinen zweiten derselben Quellart, und
 die Freigabe einer Quellart keinen ihrer Zugänge. Gebraucht wird sie für alles, was ein neues Ziel
-öffnet: anlegen, einem anderen Zugang zuordnen, vom Zugang lösen, die Adresse auf einen anderen
+öffnet: anlegen, einem anderen Zugang zuordnen, die Zuordnung zum Zugang entfernen, die Adresse auf einen anderen
 Server stellen. Läufe stoppt sie nicht; das tut nur die Sperre ([Zugänge einrichten](zugaenge.md)).
 
-**Freigabe-Obergrenze.** Eine neue Konnektorbibliothek darf ab Werk an „Alle Konten“ freigegeben
-werden. Die Systemverwaltung kann das je Bibliothek im Reiter „Freigaben“ unter „Freigabe an alle
-Konten erlaubt“ entziehen; eine bestehende Freigabe an alle endet dann sofort, Rechte an Personen
-und Gruppen bleiben. Wer das nicht nach jeder Neuanlage prüfen will, schränkt das Anlegerecht ein.
+**Freigabe an „Alle Konten“.** Wer eine Bibliothek anlegt, darf sie auch an „Alle Konten“
+freigeben. Soll eine Quelle nicht hausweit sichtbar werden, schränken Sie das Anlegerecht für ihre
+Quellart oder ihren Zugang ein. Eine eigene Grenze je Bibliothek gibt es nicht.
 
 **Gut zu wissen:**
 

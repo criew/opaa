@@ -67,24 +67,37 @@ function saveCapture() {
 }
 
 function row(name: string) {
-  return screen.getByRole('row', { name: new RegExp(`^${name}`) })
+  return screen.getByRole('region', { name })
+}
+
+/** Each setting is a value row: „Ändern“ opens its field. */
+async function openField(user: ReturnType<typeof userEvent.setup>, name: string, label: string) {
+  await user.click(await screen.findByRole('button', { name: `${name} ändern` }))
+  return screen.getByLabelText(label)
 }
 
 describe('ConnectionLifecycleSection', () => {
   it('names each value in force, its bounds and whether it is the factory default', async () => {
     serve([inactivity, deletion, warning])
+    const user = userEvent.setup()
     renderWithProviders(<ConnectionLifecycleSection />)
 
-    await screen.findByRole('table', { name: 'Schwellen und Fristen der Verbindungen' })
-    expect(screen.getByLabelText('Inaktivitätsschwelle in Tagen')).toHaveValue('90')
-    expect(screen.getByLabelText('Löschfrist privater Bibliotheken in Tagen')).toHaveValue('14')
-    expect(screen.getByLabelText('Warnschwelle abgelaufener Konten')).toHaveValue('10')
-    expect(within(row('Inaktivitätsschwelle')).getByText('Werkseinstellung')).toBeInTheDocument()
+    await screen.findByRole('group', { name: 'Schwellen und Fristen der Verbindungen' })
+    expect(
+      within(row('Inaktivitätsschwelle')).getByText('90 Tage · Werkseinstellung'),
+    ).toBeInTheDocument()
     expect(
       within(row('Löschfrist privater Bibliotheken')).getByText(
-        'Eigener Wert (Werkseinstellung: 30)',
+        '14 Tage · eigener Wert (Werkseinstellung: 30)',
       ),
     ).toBeInTheDocument()
+    expect(
+      within(row('Warnschwelle abgelaufener Konten')).getByText('10 · Werkseinstellung'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+    expect(
+      await openField(user, 'Inaktivitätsschwelle', 'Inaktivitätsschwelle in Tagen'),
+    ).toHaveValue('90')
     expect(within(row('Inaktivitätsschwelle')).getByText('30 bis 365 Tage')).toBeInTheDocument()
   })
 
@@ -94,22 +107,22 @@ describe('ConnectionLifecycleSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionLifecycleSection />)
 
-    const field = await screen.findByLabelText('Inaktivitätsschwelle in Tagen')
+    const field = await openField(user, 'Inaktivitätsschwelle', 'Inaktivitätsschwelle in Tagen')
     await user.clear(field)
     await user.type(field, '120')
-    await user.click(screen.getByRole('button', { name: 'Inaktivitätsschwelle speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const question = 'Inaktivitätsschwelle auf 120 ändern?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Revisionsprotokoll/,
     )
-    await answerConfirm(user, question, 'Wert ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() =>
       expect(sent).toEqual([{ setting: 'INACTIVITY_THRESHOLD_DAYS', body: { value: 120 } }]),
     )
     expect(
-      await within(row('Inaktivitätsschwelle')).findByText('Eigener Wert (Werkseinstellung: 90)'),
+      await within(row('Inaktivitätsschwelle')).findByText(/eigener Wert \(Werkseinstellung: 90\)/),
     ).toBeInTheDocument()
   })
 
@@ -127,7 +140,7 @@ describe('ConnectionLifecycleSection', () => {
     await answerConfirm(
       user,
       'Löschfrist privater Bibliotheken auf die Werkseinstellung von 30 zurücksetzen?',
-      'Werkseinstellung wiederherstellen',
+      'Zurücksetzen',
     )
 
     await waitFor(() =>
@@ -141,15 +154,20 @@ describe('ConnectionLifecycleSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionLifecycleSection />)
 
-    const field = await screen.findByLabelText('Löschfrist privater Bibliotheken in Tagen')
+    const field = await openField(
+      user,
+      'Löschfrist privater Bibliotheken',
+      'Löschfrist privater Bibliotheken in Tagen',
+    )
     await user.clear(field)
     await user.type(field, '7')
-    await user.click(
-      screen.getByRole('button', { name: 'Löschfrist privater Bibliotheken speichern' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     expect(
       await screen.findByRole('dialog', { name: 'Löschfrist privater Bibliotheken auf 7 ändern?' }),
     ).toHaveTextContent(/früher als bisher/)
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    // the declined question leaves the row open; the way back to the default stands in the closed row
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
 
     await user.click(
@@ -213,7 +231,7 @@ describe('ConnectionLifecycleSection', () => {
     expect(sent).toEqual([])
 
     await user.click(screen.getByRole('button', { name: 'Angezeigten Wert festlegen' }))
-    await answerConfirm(user, question, 'Wert festlegen')
+    await answerConfirm(user, question, 'Festlegen')
     await waitFor(() =>
       expect(sent).toEqual([{ setting: 'PRIVATE_LIBRARY_DELETION_DAYS', body: { value: 30 } }]),
     )
@@ -225,12 +243,14 @@ describe('ConnectionLifecycleSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionLifecycleSection />)
 
-    const field = await screen.findByLabelText('Löschfrist privater Bibliotheken in Tagen')
+    const field = await openField(
+      user,
+      'Löschfrist privater Bibliotheken',
+      'Löschfrist privater Bibliotheken in Tagen',
+    )
     await user.clear(field)
     await user.type(field, '60')
-    await user.click(
-      screen.getByRole('button', { name: 'Löschfrist privater Bibliotheken speichern' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(
       await screen.findByRole('dialog', {
@@ -246,15 +266,21 @@ describe('ConnectionLifecycleSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionLifecycleSection />)
 
-    const field = await screen.findByLabelText('Löschfrist privater Bibliotheken in Tagen')
+    const field = await openField(
+      user,
+      'Löschfrist privater Bibliotheken',
+      'Löschfrist privater Bibliotheken in Tagen',
+    )
     await user.clear(field)
     await user.type(field, '91')
 
     expect(screen.getByText('Bitte eine ganze Zahl von 1 bis 90 eingeben.')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Löschfrist privater Bibliotheken speichern' }),
-    ).toBeDisabled()
+    const save = screen.getByRole('button', { name: 'Speichern' })
+    expect(save).toBeEnabled()
+    await user.click(save)
     expect(sent).toEqual([])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(field).toBeInvalid()
   })
 
   it('warns when the warning threshold lies below the minimum group size', async () => {

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import ValueRow from '@/shared/ui/ValueRow'
 import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -17,6 +18,8 @@ import {
   getLibraryMetadataQuality,
   updateLibraryMetadataExtractionSettings,
 } from '../../api/libraryMetadataApi'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 interface MetadataExtractionSettingsSectionProps {
   libraryId: string
@@ -71,6 +74,10 @@ export default function MetadataExtractionSettingsSection({
       })
       setSettings(updated)
       setError(null)
+      notify(
+        `Extraktion: modellgestützt ${updated.modelExtractionEnabled ? 'an' : 'aus'}, freie Schlagworte ${updated.keywordsEnabled ? 'an' : 'aus'}.`,
+        'success',
+      )
       loadQuality()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Einstellung konnte nicht gespeichert werden')
@@ -111,7 +118,7 @@ export default function MetadataExtractionSettingsSection({
           <>
             {`Modellgestützt ${onOff(settings.modelExtractionEnabled)} · Freie Schlagworte ${onOff(settings.keywordsEnabled)}`}
             {!model && (
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                 Kein Chat-Modell aktiv
               </Typography>
             )}
@@ -155,7 +162,7 @@ export default function MetadataExtractionSettingsSection({
                 Technische Angaben
               </TextAction>
               {showStats && (
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                   {model && `Modell ${model.modelIdentifier} über ${model.baseUrl} · `}
                   Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
                   (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
@@ -173,7 +180,7 @@ export default function MetadataExtractionSettingsSection({
 
 /** „120 von 214 gefüllt (56 %)“ - said positively, the share only where it is partial. */
 function fillLabel(filled: number, total: number): string {
-  const count = (value: number) => value.toLocaleString('de-DE')
+  const count = (value: number) => formatNumber(value)
   if (filled === total) return `alle ${count(total)} gefüllt`
   if (filled === 0) return `0 von ${count(total)} gefüllt`
   return `${count(filled)} von ${count(total)} gefüllt (${Math.round((filled / total) * 100)} %)`
@@ -211,7 +218,7 @@ function SwitchRow({
         borderColor: 'divider',
       }}
     >
-      <Typography sx={{ flexGrow: 1, minWidth: 0, fontSize: 14, fontWeight: 600 }}>
+      <Typography sx={{ flexGrow: 1, minWidth: 0, fontSize: fontSize.text, fontWeight: 600 }}>
         {label}
       </Typography>
       <Switch
@@ -273,14 +280,14 @@ export function MetadataFillSection({
               py: 1,
               borderBottom: 1,
               borderColor: 'divider',
-              fontSize: 13.5,
+              fontSize: fontSize.text,
             }}
           >
             <Box
               component="span"
               sx={{
                 fontWeight: 600,
-                fontSize: 15,
+                fontSize: fontSize.title,
                 minWidth: 0,
                 hyphens: 'auto',
                 overflowWrap: 'break-word',

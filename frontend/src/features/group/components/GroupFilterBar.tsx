@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import type { GroupState } from '@/shared/api/types'
 import { useOidcProviderStore } from '@/features/identity-provider'
 import { useGroupAdminListStore, type GroupFilters } from '../stores/groupAdminListStore'
@@ -49,7 +50,12 @@ export default function GroupFilterBar() {
 
   useEffect(() => {
     if (search === filters.query) return
-    const timer = setTimeout(() => void setFilters({ query: search }), SEARCH_DEBOUNCE_MS)
+    // Once committed the store holds the query; dropping the typed copy keeps a later reset of the
+    // filters from bringing the old text back.
+    const timer = setTimeout(() => {
+      setTyped(null)
+      void setFilters({ query: search })
+    }, SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [search, filters.query, setFilters])
 
@@ -74,14 +80,15 @@ export default function GroupFilterBar() {
           onChange={(e) => setTyped({ value: e.target.value, basedOn: filters.query })}
           placeholder="Name, Beschreibung oder Pfad suchen …"
           type="search"
-          slotProps={{ htmlInput: { 'aria-label': 'Gruppen suchen' } }}
+          slotProps={{ htmlInput: { 'aria-label': 'Gruppen suchen', 'data-list-search': '' } }}
         />
       </Box>
-      <TextField
+      <FormField
         size="small"
         select
         sx={selectSx}
         label="Herkunft"
+        hideLabel
         value={originValue(filters)}
         onChange={(e) => update(originPatch(e.target.value))}
       >
@@ -94,12 +101,13 @@ export default function GroupFilterBar() {
             {provider.enabled ? '' : ' (deaktiviert)'}
           </MenuItem>
         ))}
-      </TextField>
-      <TextField
+      </FormField>
+      <FormField
         size="small"
         select
         sx={selectSx}
         label="Zustand"
+        hideLabel
         value={filters.state ?? 'ALL'}
         onChange={(e) =>
           update({ state: e.target.value === 'ALL' ? null : (e.target.value as GroupState) })
@@ -111,7 +119,7 @@ export default function GroupFilterBar() {
             {GROUP_STATE_LABEL[state]}
           </MenuItem>
         ))}
-      </TextField>
+      </FormField>
     </Stack>
   )
 }

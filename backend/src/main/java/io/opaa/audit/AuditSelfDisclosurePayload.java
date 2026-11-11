@@ -130,8 +130,17 @@ final class AuditSelfDisclosurePayload {
         PRIVATE_LIBRARY_ERASED);
     put(keys, Set.of("name"), PROMPT_LIBRARY_CREATED);
     put(keys, Set.of("name", "promptsRemoved"), PROMPT_LIBRARY_DELETED);
+    put(keys, Set.of("name"), AGENT_CREATED, AGENT_DELETED);
+    put(keys, Set.of("changedFields"), AGENT_CHANGED);
+    put(keys, Set.of("responsibleGroupId", "responsibleFunction"), ASSET_RESPONSIBILITY_CHANGED);
+    put(keys, Set.of("cause"), ASSET_LOCKED, ASSET_UNLOCKED);
+    put(keys, Set.of("enabled", "enabledTools"), AGENT_SETTINGS_CHANGED);
+    put(keys, Set.of("form"), AGENT_DIRECTORY_ACCESSED);
     put(keys, Set.of("name"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields"), PROMPT_LIBRARY_CHANGED, PROMPT_CHANGED);
+    put(keys, Set.of("name"), DOCUMENT_TEMPLATE_CREATED, DOCUMENT_TEMPLATE_DELETED);
+    put(keys, Set.of("changedFields"), DOCUMENT_TEMPLATE_CHANGED);
+    put(keys, Set.of("enabled"), DOCUMENT_TEMPLATE_SETTINGS_CHANGED);
     put(keys, Set.of("provider"), GROUP_CREATED);
     put(keys, Set.of("changedFields"), GROUP_CHANGED);
     put(keys, Set.of("name", "memberCount"), GROUP_DELETED);
@@ -201,6 +210,10 @@ final class AuditSelfDisclosurePayload {
         CONNECTION_LOG_RETENTION_CHANGED);
     put(
         keys,
+        Set.of("sandboxLogRetentionDays", "stepLogRetentionDays"),
+        AGENT_RUN_LOG_RETENTION_CHANGED);
+    put(
+        keys,
         Set.of("archiveAfterDays", "deleteAfterDays", "overridden"),
         CHAT_AUTO_CLEANUP_PERIODS_CHANGED);
     put(
@@ -213,6 +226,7 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("ownQuotaBytes", "quotaBytes"), SHARED_LIBRARY_QUOTA_CHANGED);
     put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);
     put(keys, Set.of("agingThresholdMonths", "overridden"), SUCCESSION_AGING_THRESHOLD_CHANGED);
+    put(keys, Set.of("responsibleLockDays", "overridden"), RESPONSIBILITY_LOCK_PERIOD_CHANGED);
     put(
         keys,
         Set.of("changeThresholdPercent", "overridden"),
@@ -251,6 +265,10 @@ final class AuditSelfDisclosurePayload {
         INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
         UPLOAD_ORPHAN_ORIGINALS_DELETED,
         MALWARE_DETECTED);
+    put(
+        keys,
+        Set.of("enabled", "port", "timeoutSeconds", "onUnavailable"),
+        MALWARE_SCAN_SETTINGS_CHANGED);
     put(keys, Set.of(), EMBEDDING_REINDEX_STARTED, EMBEDDING_REINDEX_CANCELLED);
     put(keys, Set.of("status"), EMBEDDING_REINDEX_COMPLETED);
     put(

@@ -78,7 +78,7 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
    * cap - its owner chooses every single document anyway.
    */
   @Test
-  void anUploadLibraryCarriesNoSourceConfigurationNoScheduleAndNoShareCap() throws SQLException {
+  void anUploadLibraryCarriesNoSourceConfigurationAndNoSchedule() throws SQLException {
     UUID upload = insertLibrary();
     String where = " WHERE id = '" + upload + "'";
 
@@ -90,22 +90,6 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
         "UPDATE knowledge_libraries SET schedule_enabled = true, schedule_cron = '0 0 * * * *'"
             + where,
         "chk_knowledge_libraries_schedule");
-    assertRejected(
-        "UPDATE knowledge_libraries SET all_accounts_grant_allowed = false" + where,
-        "chk_knowledge_libraries_share_cap_upload_unrestricted");
-  }
-
-  /** The share cap of a connector library is unrestrictive until an administrator lowers it. */
-  @Test
-  void aConnectorLibraryStartsUnrestrictedAndMayBeCapped() throws SQLException {
-    UUID library = insertLibrary("RSS_FEED", "https://example.org/feed.xml");
-
-    assertThat(booleanOf(libraryColumn("all_accounts_grant_allowed", library))).isTrue();
-    execute(
-        "UPDATE knowledge_libraries SET all_accounts_grant_allowed = false"
-            + " WHERE id = '"
-            + library
-            + "'");
   }
 
   /**
@@ -510,6 +494,60 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
   // ---------------------------------------------------------------------------------------------
   // Model catalogue
   // ---------------------------------------------------------------------------------------------
+
+  /**
+   * A chat model starts UNVERIFIED without basis, date or measurement run, and the database refuses
+   * a statement whose basis does not fit its value.
+   */
+  @Test
+  void aModelStartsUnverifiedAndOnlyAStatementWhoseBasisFitsItsValueIsStored() throws SQLException {
+    execute("UPDATE llm_models SET active = false");
+    UUID model = UUID.randomUUID();
+    execute(
+        "INSERT INTO llm_models (id, display_name, base_url, model_identifier, active) VALUES ("
+            + quoted(model)
+            + ", 'Ollama', 'http://ollama:11434/v1', 'qwen2.5:14b', true)");
+    String where = " WHERE id = " + quoted(model);
+    assertThat(stringOf("SELECT tool_capability FROM llm_models" + where)).isEqualTo("UNVERIFIED");
+    assertThat(
+            booleanOf(
+                "SELECT tool_capability_basis IS NULL AND tool_capability_assessed_at IS NULL"
+                    + " AND tool_capability_measurement_run IS NULL FROM llm_models"
+                    + where))
+        .isTrue();
+
+    assertRejected(
+        "UPDATE llm_models SET tool_capability = 'CAPABLE'" + where,
+        "chk_llm_models_tool_capability_statement");
+    assertRejected(
+        "UPDATE llm_models SET tool_capability = 'CAPABLE', tool_capability_basis = 'MEASURED',"
+            + " tool_capability_assessed_at = now()"
+            + where,
+        "chk_llm_models_tool_capability_statement");
+    assertRejected(
+        "UPDATE llm_models SET tool_capability = 'UNVERIFIED', tool_capability_basis = 'MANUAL'"
+            + where,
+        "chk_llm_models_tool_capability_statement");
+    assertRejected(
+        "UPDATE llm_models SET tool_capability = 'MAYBE'" + where,
+        "chk_llm_models_tool_capability");
+
+    execute(
+        "UPDATE llm_models SET tool_capability = 'NOT_CAPABLE', tool_capability_basis = 'MEASURED',"
+            + " tool_capability_assessed_at = now(), tool_capability_measurement_run = 'Lauf 1'"
+            + where);
+    execute(
+        "UPDATE llm_models SET tool_capability = 'CAPABLE', tool_capability_basis = 'MANUAL',"
+            + " tool_capability_measurement_run = NULL"
+            + where);
+    assertThat(stringOf("SELECT tool_capability FROM llm_models" + where)).isEqualTo("CAPABLE");
+  }
+
+  /** The first embedding model has generation 1, so the next one drawn is 2. */
+  @Test
+  void theEmbeddingGenerationSequenceStartsAfterTheFirstModel() throws SQLException {
+    assertThat(longOf("SELECT nextval('embedding_generation_seq')")).isEqualTo(2);
+  }
 
   @Test
   void llmModelSeedMarkerStartsEmptyAndAcceptsExactlyOneRow() throws SQLException {

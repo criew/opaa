@@ -78,7 +78,7 @@ const ATTACH: TourStep = {
 const DICTATE: TourStep = {
   id: 'dictate',
   title: 'Frage sprechen',
-  text: 'Mit dem Mikrofon sprechen Sie Ihre Frage, statt sie zu tippen. Der Text erscheint im Eingabefeld; abgeschickt wird erst, wenn Sie selbst auf „Senden“ klicken. Die Aufnahme wird nicht gespeichert.',
+  text: 'Mit dem Mikrofon sprechen Sie Ihre Frage, statt sie zu tippen. Mit dem Haken landet der Text im Eingabefeld, wo Sie ihn noch verbessern können; mit „Senden“ geht die Frage gleich ab. Die Aufnahme wird nicht gespeichert.',
   anchor: 'dictate',
   optional: true,
 }

@@ -7,6 +7,7 @@ import type { BrandingOverrides, SchemeRoles } from './tokens'
 import {
   blue,
   carbon,
+  controlHeight,
   darkRoles,
   focusRingOffsetPx,
   focusRingWidthPx,
@@ -38,9 +39,8 @@ declare module '@mui/material/styles' {
 
 export const CHAT_MAX_WIDTH = '896px'
 
-/** Guidelines 5.1: comfortable and compact control heights. */
-const CONTROL_HEIGHT = 34
-const CONTROL_HEIGHT_COMPACT = 28
+/** Line height of a field value and a button label: 20 px at the text step. */
+const CONTROL_LINE_PX = 20
 
 /** Guidelines 4.4/5.2: a framed input shows focus as its own outline at this width. */
 const FIELD_FOCUS_OUTLINE_PX = 2
@@ -173,76 +173,75 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           disabled: roles.fg3,
         },
       },
-      // The fine grid below is taken from the design guidelines - the app surface
-      // runs deliberately smaller and denser than the token scale's headline steps.
+      // Every variant sits on one of the six type steps (guidelines 3.2).
       typography: {
         fontFamily: fontFamily.sans,
         h1: {
-          fontSize: 27,
+          fontSize: fontSize.wizardTitle,
           fontWeight: fontWeight.semibold,
           lineHeight: lineHeight.tight,
           letterSpacing: letterSpacing.tight,
         },
         h2: {
-          fontSize: 26,
+          fontSize: fontSize.wizardTitle,
           fontWeight: fontWeight.semibold,
           lineHeight: lineHeight.tight,
           letterSpacing: letterSpacing.tight,
         },
         h3: {
-          fontSize: 20,
+          fontSize: fontSize.detailTitle,
           fontWeight: fontWeight.semibold,
           lineHeight: lineHeight.snug,
           letterSpacing: letterSpacing.tight,
         },
         h4: {
-          fontSize: 18,
+          fontSize: fontSize.title,
           fontWeight: fontWeight.semibold,
           lineHeight: lineHeight.snug,
         },
         h5: {
-          fontSize: 16,
+          fontSize: fontSize.title,
           fontWeight: fontWeight.semibold,
           lineHeight: lineHeight.snug,
         },
         h6: {
-          fontSize: 14.5,
+          fontSize: fontSize.title,
           fontWeight: fontWeight.semibold,
           lineHeight: lineHeight.snug,
         },
         body1: {
-          fontSize: 14.5,
+          fontSize: fontSize.text,
           lineHeight: 1.65,
           letterSpacing: letterSpacing.normal,
         },
         body2: {
-          fontSize: 13,
+          fontSize: fontSize.text,
           lineHeight: lineHeight.normal,
           letterSpacing: letterSpacing.normal,
         },
         subtitle1: {
-          fontSize: 14.5,
+          fontSize: fontSize.text,
           fontWeight: fontWeight.medium,
           lineHeight: lineHeight.snug,
         },
         subtitle2: {
-          fontSize: 13,
+          fontSize: fontSize.text,
           fontWeight: fontWeight.medium,
           lineHeight: lineHeight.snug,
         },
         caption: {
-          fontSize: 11,
+          fontSize: fontSize.meta,
           lineHeight: lineHeight.snug,
         },
         overline: {
-          fontSize: 9.5,
+          fontSize: fontSize.label,
           fontWeight: fontWeight.medium,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           lineHeight: lineHeight.snug,
         },
         button: {
-          fontSize: 13.5,
+          fontSize: fontSize.text,
           fontWeight: fontWeight.medium,
           textTransform: 'none',
           letterSpacing: letterSpacing.normal,
@@ -273,6 +272,9 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               backgroundColor: roles.bg1,
             },
             '*:focus-visible': focusRingStyle(accent),
+            // A heading only a script focuses (page title, wizard step) is no control: it takes
+            // the focus for the screen reader's announcement and shows no ring (guidelines 4.4).
+            ':is(h1, h2, h3, h4, h5, h6)[tabindex="-1"]:focus': { outline: 'none' },
             // Motion collapses to state changes; smooth scrolling becomes instant (guidelines 4.5).
             '@media (prefers-reduced-motion: reduce)': {
               '*, *::before, *::after': {
@@ -315,7 +317,10 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           styleOverrides: {
             root: {
               borderRadius: radius.sm,
-              minHeight: CONTROL_HEIGHT,
+              minHeight: controlHeight.regular,
+              paddingTop: 6,
+              paddingBottom: 6,
+              lineHeight: `${CONTROL_LINE_PX}px`,
               paddingLeft: 18,
               paddingRight: 18,
               variants: [
@@ -362,12 +367,28 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               ],
             },
             sizeSmall: {
-              minHeight: CONTROL_HEIGHT_COMPACT,
+              minHeight: controlHeight.compact,
+              fontSize: fontSize.text,
+              paddingTop: 4,
+              paddingBottom: 4,
             },
           },
         },
+        // One height for every single-line field, whatever its MUI size (guidelines 5.2):
+        // 8 px above and below a 20 px line, plus the 1 px outline drawn outside the box.
         MuiOutlinedInput: {
           styleOverrides: {
+            input: {
+              height: CONTROL_LINE_PX,
+              lineHeight: `${CONTROL_LINE_PX}px`,
+              paddingTop: (controlHeight.regular - CONTROL_LINE_PX) / 2,
+              paddingBottom: (controlHeight.regular - CONTROL_LINE_PX) / 2,
+            },
+            multiline: {
+              '& .MuiOutlinedInput-input': { height: 'auto', paddingTop: 0, paddingBottom: 0 },
+              paddingTop: (controlHeight.regular - CONTROL_LINE_PX) / 2,
+              paddingBottom: (controlHeight.regular - CONTROL_LINE_PX) / 2,
+            },
             root: {
               // Field recipe: fields sit on the page surface with a hairline shadow, not on
               // a grey fill; the dark scheme separates through one surface step instead.
@@ -402,6 +423,52 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             },
           },
         },
+        // Helper text and error start at the field's left edge, under its label (guidelines 5.2).
+        MuiFormHelperText: {
+          styleOverrides: {
+            root: { marginLeft: 0, marginRight: 0 },
+          },
+        },
+        MuiToggleButton: {
+          styleOverrides: {
+            // Same heights as buttons: 36 px, compact 32 px around a 20 px line and a 1 px border.
+            root: {
+              fontSize: fontSize.text,
+              lineHeight: `${CONTROL_LINE_PX}px`,
+              paddingTop: (controlHeight.regular - CONTROL_LINE_PX - 2) / 2,
+              paddingBottom: (controlHeight.regular - CONTROL_LINE_PX - 2) / 2,
+            },
+            sizeSmall: {
+              paddingTop: (controlHeight.compact - CONTROL_LINE_PX - 2) / 2,
+              paddingBottom: (controlHeight.compact - CONTROL_LINE_PX - 2) / 2,
+            },
+          },
+        },
+        MuiSelect: {
+          styleOverrides: {
+            select: { minHeight: CONTROL_LINE_PX, lineHeight: `${CONTROL_LINE_PX}px` },
+          },
+        },
+        MuiInputLabel: {
+          styleOverrides: {
+            outlined: {
+              '&:not(.MuiInputLabel-shrink)': {
+                transform: `translate(14px, ${(controlHeight.regular - CONTROL_LINE_PX) / 2}px) scale(1)`,
+              },
+            },
+          },
+        },
+        MuiAutocomplete: {
+          styleOverrides: {
+            inputRoot: {
+              '&.MuiOutlinedInput-root': { paddingTop: 0, paddingBottom: 0 },
+              '&.MuiOutlinedInput-root .MuiAutocomplete-input': {
+                paddingTop: (controlHeight.regular - CONTROL_LINE_PX) / 2,
+                paddingBottom: (controlHeight.regular - CONTROL_LINE_PX) / 2,
+              },
+            },
+          },
+        },
         MuiTableCell: {
           styleOverrides: {
             root: {
@@ -409,7 +476,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             },
             // Eyebrow-style column heads (guidelines 5.3).
             head: {
-              fontSize: fontSize.xs2,
+              fontSize: fontSize.label,
               fontWeight: fontWeight.medium,
               letterSpacing: letterSpacing.caps,
               textTransform: 'uppercase',
@@ -512,7 +579,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         MuiMenuItem: {
           styleOverrides: {
             root: {
-              fontSize: 13,
+              fontSize: fontSize.text,
               '&:hover': {
                 backgroundColor: roles.bg2,
               },
@@ -527,7 +594,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           styleOverrides: {
             root: {
               borderRadius: radius.pill,
-              fontSize: fontSize.xs,
+              fontSize: fontSize.meta,
               fontWeight: fontWeight.medium,
               variants: [
                 {
@@ -553,7 +620,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             tooltip: {
               backgroundColor: isDark ? carbon[700] : navy[700],
               color: isDark ? roles.fg1 : white,
-              fontSize: fontSize.xs,
+              fontSize: fontSize.meta,
               borderRadius: radius.sm,
             },
           },

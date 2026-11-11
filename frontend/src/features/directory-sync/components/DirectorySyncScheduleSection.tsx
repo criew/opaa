@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import { clockLabel, intervalLabel, nextRunOf, switchOnBlocker } from './directorySyncState'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 
 /** The bounds the backend enforces (OidcProviderService), and its default of six hours. */
 const MIN_INTERVAL_MINUTES = 5
@@ -29,7 +30,10 @@ interface ScheduleSectionProps {
   onSave: (enabled: boolean, intervalMinutes: number | null, savedInterval: boolean) => void
 }
 
-/** Whether the sync runs, and how often - the two settings of the provider row. */
+/**
+ * Whether the sync runs, and how often - the two settings of the provider row. The switch acts at
+ * once and sends the saved interval; the interval is a value row of its own.
+ */
 export default function DirectorySyncScheduleSection({
   provider,
   status,
@@ -56,14 +60,13 @@ export default function DirectorySyncScheduleSection({
           control={
             <Switch
               checked={enabled}
-              // Switching on sends the interval; an invalid one would silently fall back.
-              disabled={busy || (!enabled && (Boolean(blocker) || minutes === null))}
-              onChange={(event) => onSave(event.target.checked, minutes, false)}
+              disabled={busy || (!enabled && Boolean(blocker))}
+              onChange={(event) => onSave(event.target.checked, saved, false)}
             />
           }
           label="Abgleich eingeschaltet"
         />
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 0.5 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', ml: 0.5 }}>
           {switchHint}
         </Typography>
         {blocker && (
@@ -73,9 +76,19 @@ export default function DirectorySyncScheduleSection({
         )}
       </Box>
 
-      <Box>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-          <TextField
+      <SettingValueRow
+        title="Intervall"
+        headingLevel="h4"
+        value={intervalLabel(saved)}
+        canEdit={enabled}
+        onOpen={() => setIntervalValue(String(saved))}
+        onSave={async () => {
+          if (busy || minutes === null) return false
+          if (minutes !== saved) onSave(true, minutes, true)
+          return true
+        }}
+        editor={
+          <FormField
             size="small"
             label="Intervall in Minuten"
             value={interval}
@@ -87,27 +100,20 @@ export default function DirectorySyncScheduleSection({
                 : `${intervalLabel(minutes)} · ${MIN_INTERVAL_MINUTES} Minuten bis eine Woche`
             }
             slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-            sx={{ width: 240 }}
+            numeric
+            sx={{ maxWidth: formWidth.column }}
           />
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={busy || !enabled || minutes === null || minutes === saved}
-            onClick={() => onSave(true, minutes, true)}
-            sx={{ mt: 0.5 }}
-          >
-            Intervall speichern
-          </Button>
-        </Stack>
+        }
+      >
         {!enabled && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-            Das Intervall gilt ab dem Einschalten.
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+            Das Intervall lässt sich nach dem Einschalten ändern.
           </Typography>
         )}
-      </Box>
+      </SettingValueRow>
 
       {next.kind !== 'NONE' && (
-        <Typography sx={{ fontSize: 13 }}>
+        <Typography sx={{ fontSize: fontSize.text }}>
           Nächster Lauf:{' '}
           <strong>{next.kind === 'DUE' ? 'jetzt fällig' : clockLabel(next.at)}</strong>
         </Typography>

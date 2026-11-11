@@ -1,9 +1,9 @@
 # Installation
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell,
-Rerank-Modell, das Transkriptionsmodell der [Spracheingabe](modell-endpunkte.md#spracheingabe-einschalten), der
-Mailserver für den [E-Mail-Versand](../administration/e-mail.md) und das [Branding](../administration/branding.md). Bis dahin steht sie im
+der Systemverwaltung und Identitätsanbieter, dazu nach Wahl Chat-Modell, Einbettung,
+Reranking, das Transkriptionsmodell der [Spracheingabe](modell-endpunkte.md#spracheingabe-einschalten), die
+[Texterkennung](texterkennung.md) gescannter PDFs, der Virenscanner der [Virenprüfung](../administration/virenpruefung.md), der Mailserver für den [E-Mail-Versand](../administration/e-mail.md) und das [Branding](../administration/branding.md). Bis dahin steht sie im
 **Installationsmodus** und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
@@ -19,7 +19,7 @@ zugleich ([Mehrere Backend-Instanzen](mehrere-instanzen.md)).
 |---|---|---|
 | Installations-API | erreichbar, nur mit Installations-Token | `404`, auf jeder Instanz |
 | Anmeldekonfiguration und Branding der Oberfläche | erreichbar; meldet „Installation ausstehend" | wie immer |
-| Health, Readiness, Liveness | `UP`; mit Anmeldung zeigt `/actuator/health` die Komponente `installation` mit `pending: true` | `pending: false` |
+| Health, Readiness, Liveness | `UP`; die Metrik `opaa_installation_pending` (nächste Zeile) zeigt den Modus, ein Systemverwaltungskonto gibt es meist noch nicht | `UP` |
 | Metrik `opaa_installation_pending` | `1` | `0` |
 | jeder andere Aufruf | `503` mit dem Code `INSTALLATION_PENDING` | wie immer |
 
@@ -78,23 +78,29 @@ lehnt es ab.
 Jeder Aufruf trägt das Token als `Authorization: Bearer <Token>`. Jeder Schritt wird einzeln
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
 verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erstes Konto und
-Anmeldeverfahren; Chat-Modell, Embedding-Modell, Rerank-Modell, Transkriptionsmodell, E-Mail-Versand
-und Branding sind optional. Das Transkriptionsmodell gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
+Identitätsanbieter; Chat-Modell, Einbettung, Reranking, Spracheingabe, Texterkennung,
+Virenprüfung, E-Mail und Branding sind optional. Die Schritte heißen wie die Reiter und Einträge
+der Verwaltung, in denen ihre Werte später stehen. Den Schritt Spracheingabe gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
 nicht `false` ist: Sonst fehlt der Schritt in Assistent und API, und die Antwortdatei übergeht seinen
 Teil. Den Wert der Variable tragen alle Instanzen gleich: Schließt eine Instanz mit
 abgeschalteter Spracheingabe die Installation ab, verwirft sie einen gespeicherten Schritt
-Transkriptionsmodell.
+Spracheingabe. Die Texterkennung gibt es umgekehrt nur, solange der Betrieb sie mit
+`OPAA_OCR_ENABLED=true` freigibt ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)):
+Ohne die Freigabe fehlt der Schritt, Speichern, Prüfen und Überspringen antworten mit `400`, und die
+Antwortdatei übergeht ihren Teil. Auch diesen Wert tragen alle Instanzen gleich.
 
 | Schritt | Pflicht | Angaben | Prüfung | Später änderbar |
 |---|---|---|---|---|
 | Erstes Konto (`FIRST_ADMIN`) | ja | E-Mail-Adresse, Anzeigename, Passwort | zustellbar geformte Adresse, nicht `admin@opaa.local`; Passwortrichtlinie | Benutzerverwaltung |
-| Anmeldeverfahren (`SIGN_IN`) | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
-| Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
-| Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modell-endpunkte.md#modell-wechseln)) |
-| Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank- und Transkriptionsmodell](modell-endpunkte.md#rerank--und-transkriptionsmodell)) |
-| Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
-| E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../administration/e-mail.md)) |
-| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../administration/branding.md)) |
+| Identitätsanbieter (`SIGN_IN`) | ja | nur lokale Konten, oder zusätzlich ein Identitätsanbieter (OIDC): Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
+| Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, API-Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
+| Einbettung (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, API-Schlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modell-endpunkte.md#modell-wechseln)) |
+| Reranking (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, API-Schlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank- und Transkriptionsmodell](modell-endpunkte.md#rerank--und-transkriptionsmodell)) |
+| Spracheingabe (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, API-Schlüssel, Sprache; wahlweise Live-Transkript mit Live-Dienst, Live-Adresse, Live-Modell und Live-Schlüssel | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme; mit Live zusätzlich eine Live-Sitzung ohne Audio | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
+| Texterkennung (`TEXT_RECOGNITION_MODEL`) | nein | Anbindung docling-serve oder Vision-Modell, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung, API-Schlüssel | Adressprüfung der Modelle; der gestufte Verbindungstest wie unter Modelle → Texterkennung: Adresse, Anmeldung, Erkennung einer mitgelieferten Testseite | Modelle, Reiter „Texterkennung“ ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)) |
+| Virenprüfung (`MALWARE_SCAN`) | nein | Host des clamd-Dienstes, Zeitlimit, Verhalten bei Ausfall; Port fest `3310`, ein anderer später unter „Administration → Virenprüfung“ | Frage nach der Version des Dienstes, ohne Datei | Virenprüfung ([Virenprüfung einrichten](../administration/virenpruefung.md)) |
+| E-Mail (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../administration/e-mail.md)) |
+| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Allgemein & Branding ([Branding](../administration/branding.md)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -118,7 +124,7 @@ Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"
 weder gespeichert noch protokolliert. Was ohne Chat- oder Embedding-Modell geht und was nicht, steht
 unter [Ohne Modelle installiert](#ohne-modelle-installiert).
 
-Das Passwort des ersten Kontos speichert OPAA nur als Hash, Zugangsschlüssel und Passwort des
+Das Passwort des ersten Kontos speichert OPAA nur als Hash, API-Schlüssel und Passwort des
 Mailservers verschlüsselt mit `OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie
 gesetzt sind. Ein gespeicherter Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich
 bleibt (Schema, Host, Port, Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt
@@ -126,7 +132,7 @@ ihn. Ebenso geht ein gespeichertes Passwort des Mailservers nicht an einen ander
 Benutzernamen oder eine andere Verschlüsselung.
 
 **Adressprüfung der Modelle.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
-Adressen von Chat-, Embedding-, Rerank- und Transkriptionsmodell beim Speichern und unmittelbar vor
+Adressen von Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell beim Speichern und unmittelbar vor
 Verbindungstest, Probeeinbettung und Probe, auch eine Adresse, die die Modellverwaltung schon
 gespeichert hat: Adressen in internen, Loopback- oder Link-Local-Bereichen werden abgelehnt, ohne
 dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im Compose-Stapel, gibt der
@@ -158,15 +164,18 @@ erfolgreich geprüft ist, und genau einmal, auch wenn zwei Instanzen ihn zugleic
 Passwort: aus dem Assistenten ohne erzwungenen Wechsel, aus einer Antwortdatei mit Wechsel bei der
 ersten Anmeldung, solange `requirePasswordChange` nicht `false` ist. Er richtet das
 Anmeldeverfahren ein: Er schaltet in beiden Verfahren die
-[lokale Benutzerverwaltung](authentifizierung.md#lokale-benutzerverwaltung) ein, und ein OIDC-Anbieter
+[lokale Benutzerverwaltung](authentifizierung.md#lokale-benutzerverwaltung) ein, und ein Identitätsanbieter
 wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung,
 übernimmt ein geprüftes Rerank-Modell in die Modellverwaltung und schaltet das Reranking ein,
 schaltet mit einem geprüften Transkriptionsmodell die Spracheingabe ein wie die Modellverwaltung,
+trägt einen geprüften Dienst der Texterkennung ein und schaltet die Rolle ein,
+schaltet mit einem geprüften Virenscanner die Virenprüfung ein,
 übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
 Versand ein, übernimmt ein geprüftes Branding wie die Branding-Verwaltung und verwirft Token und
 Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an, ohne Rerank-Modell bleibt das
-Reranking aus, ohne Transkriptionsmodell die Spracheingabe; ist der E-Mail-Versand übersprungen,
+Reranking aus, ohne Transkriptionsmodell die Spracheingabe, ohne Texterkennung bleiben Scans
+ohne Textebene unauffindbar, ohne Virenprüfung werden Dateien ungeprüft gelesen; ist der E-Mail-Versand übersprungen,
 bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
 OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
@@ -178,7 +187,7 @@ auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein F
 wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
 [Administration](../administration/konten.md) ab. Jeder Schritt, jede Prüfung,
 jedes Überspringen, das Einschalten der lokalen Konten, die Übernahme des Rerank-Modells
-(„Rerank-Modell“) und der Abschluss stehen im Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.
+(„Rerank-Modell“) und der Texterkennung („Texterkennung“) und der Abschluss stehen im Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.
 
 ## Einrichtungs-Assistent im Browser
 
@@ -187,26 +196,30 @@ Solange die Installation aussteht, führt jede Adresse der Oberfläche zum Assis
 wie die API und braucht dasselbe [Installations-Token](#installations-token); ohne gültiges Token
 zeigt er keinen Schritt und keinen gespeicherten Wert.
 
-- **Schrittliste.** Links stehen die Schritte mit ihrem Zustand: „Geprüft“, „Prüfung fehlgeschlagen“
+- **Schrittliste.** Ab 900 px Breite stehen links die Schritte mit ihrem Zustand; darunter zeigt
+  die Liste nur Position und Namen des Schritts („Schritt 2 von 12 · Erstes Konto“) und klappt auf
+  Antippen auf. Die Zustände: „Geprüft“, „Prüfung fehlgeschlagen“
   (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
   „Offen“, ein optionaler Schritt ohne Angaben als „Nicht eingerichtet“. Pflichtschritte und
   optionale Schritte stehen in getrennten Gruppen; über dem Titel eines optionalen Schritts steht
-  „Optional · später unter …“ (bei Chat-, Embedding-, Rerank- und Transkriptionsmodell „Modelle“,
-  beim E-Mail-Versand
-  „E-Mail“, beim Branding „Branding“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Anmeldeverfahren.
+  „Optional · später unter …“ (bei Chat-Modell, Einbettung, Reranking, Spracheingabe und Texterkennung „Modelle“,
+  bei der Virenprüfung „Virenprüfung“, bei der E-Mail
+  „E-Mail“, beim Branding „Allgemein & Branding“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Identitätsanbieter.
+  Das „?“ daneben öffnet diese Seite. Die Fußzeile jedes Schritts steht rechts: „Zurück“,
+  „Überspringen“ und „Prüfen und weiter“.
   „Überspringen“ in einem schon gespeicherten Schritt verwirft dessen Angaben, auch nach einer
   fehlgeschlagenen Prüfung.
 - **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
   prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
   `https://`; alles Weitere prüft OPAA wie oben beschrieben.
 - **Modelle auswählen.** In den Modellschritten wählt man zuerst den Anbieter (Ollama, OpenAI, beim
-  Chat auch Anthropic, beim Transkriptionsmodell nur OpenAI, oder „Eigene Adresse“); die Vorlage trägt
-  die Basis-Adresse ein. Der Schritt Rerank-Modell hat keine Vorlage, weil keiner dieser Anbieter
+  Chat auch Anthropic, bei der Spracheingabe nur OpenAI, oder „Eigene Adresse“); die Vorlage trägt
+  die Basis-Adresse ein. Der Schritt Reranking hat keine Vorlage, weil keiner dieser Anbieter
   einen Rerank-Endpunkt bietet; er beginnt bei der Basis-Adresse, ohne den Pfad `/rerank`. Verlässt
   man Adresse oder API-Schlüssel und steht beides, wo nötig, ruft
   der Assistent die Modelle ab, die der Endpunkt anbietet, und bietet sie unter „Modell-Kennung“
   zur Auswahl an, bei Ollama mit Größe und Kontextlänge; ebenso beim Öffnen eines gespeicherten
-  Modellschritts. „Modelle abrufen“ wiederholt den Abruf. Es ist derselbe Abruf wie in der
+  Modellschritts. „Modelle abrufen“ wiederholt den Abruf und ist immer aktiv; fehlt die Adresse, steht der Grund am Feld. Es ist derselbe Abruf wie in der
   Modellverwaltung, mit derselben Adressprüfung, ohne Weiterleitungen und mit begrenzter
   Wartezeit. Liefert der Endpunkt keine Liste oder ist er nicht erreichbar, sagt der Assistent
   warum, und die Kennung wird von Hand eingetragen. Ein getippter Schlüssel geht nie von selbst an
@@ -214,40 +227,71 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Adresse von Hand sendet ihn erst „Modelle abrufen“ an die neue Adresse. Ein gespeicherter
   Schlüssel gilt nur für die gespeicherte Adresse. Meldet der Endpunkt mehr als 500 Modelle,
   zeigt die Auswahl die ersten 500 und sagt das. Je Instanz sind 30 Modellabrufe des Assistenten
-  in 10 Minuten möglich, für alle Clients zusammen. Die Prüfungen der vier Modellschritte haben
+  in 10 Minuten möglich, für alle Clients zusammen. Die Prüfungen der fünf Modellschritte haben
   ein eigenes, gemeinsames Budget; die Antwortdatei über die API zählt jedes Modell darin vorab als
   eine Prüfung, auch wenn sie danach abgelehnt wird.
-- **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
+- **Einbettung.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
-- **Rerank-Modell.** Die Prüfung ist dieselbe Probe wie „Verbindung testen“ unter „Modelle →
+- **Reranking.** Die Prüfung ist dieselbe Probe wie „Verbindung testen“ unter „Modelle →
   Reranking“; nach dem Abschluss steht das Modell dort, eingeschaltet. Nicht jeder Rerank-Dienst
   bietet eine Modellliste an; dann wird die Kennung von Hand eingetragen. Der Schritt hängt nicht von
   Chat- und Embedding-Modell ab und lässt sich auch prüfen und übernehmen, wenn beide übersprungen
   sind. Ohne Embedding-Modell gibt es keine Suche; das Reranking wirkt dann erst, wenn die
   Systemverwaltung eines festlegt.
-- **Transkriptionsmodell.** Der Schritt hat die Texte und die Sprachregel von „Modelle →
+- **Spracheingabe.** Der Schritt hat die Felder, Texte und die Sprachregel von „Modelle →
   Spracheingabe“; die Sprache steht auf `de`, leer erkennt das Modell sie selbst. „Prüfen und
   weiter“ fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Unter den Anbietern
   steht nur OpenAI als Cloud-Dienst; die Kachel und nach ihrer Wahl ein Hinweis sagen, dass
   Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen
   ([Externer Anbieter](modell-endpunkte.md#externer-anbieter)). Eine Bestätigung zur
   Mitbestimmung verlangt der Schritt nicht ([Spracheingabe und
-  Mitbestimmung](modell-endpunkte.md#spracheingabe-und-mitbestimmung)). Der Abschluss nennt, ob er die
-  Spracheingabe einschaltet.
-- **E-Mail-Versand.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
-  E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
-  senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Ein Satz
-  über der Schaltfläche sagt vor der Prüfung, was geschieht: ohne Adresse, dass nur die
-  Verbindung geprüft wird, mit Benutzername auch die Anmeldung; mit gültiger Adresse, wohin die
-  Testnachricht geht. Die Adresse wird nicht gespeichert. Fehlt `OPAA_PUBLIC_BASE_URL`, weist der Schritt wie die
+  Mitbestimmung](modell-endpunkte.md#spracheingabe-und-mitbestimmung)). Der Abschnitt
+  „Live-Transkript (optional)“ ist nicht angekreuzt; das Diktat bleibt immer verfügbar. Das
+  Auswahlkästchen „Live-Transkript einschalten“ zeigt den Text zusätzlich schon beim Sprechen
+  ([Live-Transkript](modell-endpunkte.md#live-transkript)). Dann wählt man den „Live-Dienst“ aus
+  einer festen Liste, „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“; die Wahl belegt
+  „Live-Adresse“ und „Live-Modell“ vor, beim eigenen Server ist der Host anzupassen. Sind
+  Basis-Adresse und Modell-Kennung des Diktats noch leer, belegt sie die Wahl ebenfalls vor
+  ([Nur ein Live-Dienst vorhanden?](modell-endpunkte.md#nur-ein-live-dienst-vorhanden)). Der
+  „Live-Schlüssel (optional)“ wird verschlüsselt gespeichert; ohne ihn geht der Schlüssel des
+  Transkriptionsmodells mit, aber nur an die gleiche Adresse bis zum Port (Schema, Host, Port).
+  OpenAI und Mistral verlangen einen Schlüssel: Liegt das Transkriptionsmodell anderswo, etwa auf
+  einem eigenen speaches, lehnt der Schritt sie ohne Live-Schlüssel ab. „Prüfen und weiter“ prüft danach auch den Live-Dienst mit einer
+  Sitzung ohne Audio.
+- **Texterkennung.** Der Schritt steht nur in der Liste, wenn der Betrieb `OPAA_OCR_ENABLED=true`
+  gesetzt hat, und hat die Anbindungen, Texte und Regeln von „Modelle → Texterkennung“. Zuerst
+  wählt man den Dienst: „Mitgelieferter Dienst“ ist vorgewählt und trägt `http://opaa-ocr:5001`
+  ein, die Adresse im Compose-Stapel; im Kubernetes-Betrieb heißt sie `http://<Release>-ocr:5001`,
+  wie `helm install` sie in seinen Hinweisen nennt ([Texterkennung](texterkennung.md#mitgelieferter-dienst-oder-eigener-endpunkt)).
+  „Eigener Endpunkt“ bietet docling-serve oder ein Vision-Modell (OpenAI-kompatibel) an, beim
+  Vision-Modell mit Modell-Kennung und dem Hinweis, dass Fundstellen nur auf ihrer Seite, nicht als
+  Rahmen erscheinen. Eine Modellliste ruft der Schritt nicht ab. Den Schlüssel des Dienstes trägt man
+  von Hand ein, denselben wie bei `OPAA_OCR_API_KEY` oder `ocr-api-key` im Secret; OPAA liest ihn
+  nicht von dort. „Prüfen und weiter“ lässt den Dienst die Testseite lesen, in den Stufen Adresse,
+  Anmeldung und Erkennung, und nennt bei einem Fehler die Stufe; die erste Umwandlung kann einige
+  Minuten dauern. OPAA wartet höchstens drei Minuten auf den Dienst, der Assistent etwas länger;
+  bricht er trotzdem ab, liest er den Stand neu und geht weiter, wenn die Prüfung inzwischen
+  gelungen ist, sonst sagt er, dass sie im Hintergrund weiterläuft.
+- **Virenprüfung.** OPAA bringt keinen Virenscanner mit; der Schritt bindet den clamd-Dienst an,
+  den der Betrieb bereitstellt. Er hat die Felder, Texte und Regeln von „Administration → Virenprüfung“,
+  aber kein Feld für den Port und nimmt `3310`; der Hilfetext am Host sagt das. Weil das Token allein schützt, soll der Schritt keine anderen Ports im
+  internen Netz abtasten können. Ein Dienst auf einem anderen Port wird nach der Installation dort
+  eingetragen. Die Prüfung fragt den Dienst nach seiner Version, ohne eine Datei zu senden; je
+  Instanz sind 30 Prüfungen in 10 Minuten möglich. Der Abschluss schaltet die Virenprüfung mit
+  dem geprüften Dienst ein.
+- **E-Mail.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
+  E-Mail“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
+  senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Das Feld
+  gibt es nur im Assistenten, weil es vor dem Abschluss kein Konto gibt, an das die Verwaltung
+  ihre Testnachricht schicken könnte; sein Hilfetext sagt, dass der Schritt ohne Adresse nur die
+  Verbindung prüft und nichts sendet. Die Adresse wird nicht gespeichert. Fehlt `OPAA_PUBLIC_BASE_URL`, weist der Schritt wie die
   Verwaltung darauf hin, dass Links in E-Mails unbrauchbar bleiben. Scheitert die Prüfung, lässt
   sich der Schritt korrigieren oder überspringen; „Überspringen“ verwirft die Angaben. Nach
-  erfolgreicher Prüfung steht beim Abschluss unter „E-Mail-Versand“ das Ergebnis, etwa
+  erfolgreicher Prüfung steht beim Abschluss in der Zeile „E-Mail“ das Ergebnis, etwa
   „Verbindung und Anmeldung beim Mailserver sind gelungen. Es wurde keine Testnachricht
   gesendet.“ (ohne Benutzername „Die Verbindung zum Mailserver ist gelungen. …“) oder „… Die
-  Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse. Der
-  Abschluss nennt außerdem, ob er den Versand und das Reranking einschaltet.
+  Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse.
 - **Branding.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration → Allgemein & Branding“,
   dazu dessen Kontrastwarnung der Akzentfarbe, die warnt, aber nicht sperrt, und die Vorschau von
   Produktname, Claim und Akzentfarbe im hellen und im dunklen Farbschema. Ein leeres Feld zeigt den
@@ -263,9 +307,11 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Nach Neuladen oder an einem anderen Rechner gibt man es erneut ein und landet beim ersten
   Schritt, dessen Prüfung aussteht (ein Pflichtschritt oder ein gespeicherter optionaler), sonst beim
   Abschluss.
-- **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
-  sind und jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist; bis dahin nennt die
-  Seite die offenen. Übersprungene Schritte stehen dort als „Nicht eingerichtet“. Danach führt „Zur
+- **Abschluss.** Die Übersicht zeigt jeden Schritt mit seinem Zustand; der Name eines Schritts
+  öffnet ihn. „Installation abschließen“ ist immer aktiv und schließt ab, wenn alle Pflichtschritte
+  geprüft sind und jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist; sonst nennt
+  ein Hinweis die offenen Schritte, und ihr Name führt hin. Ein geprüfter optionaler Schritt wird
+  mit dem Abschluss wirksam, übersprungene stehen als „Nicht eingerichtet“. Danach führt „Zur
   Anmeldung“ zur Anmeldeseite. Hat
   inzwischen jemand anders abgeschlossen, etwa über eine Antwortdatei, zeigt der Assistent
   „Bereits eingerichtet“.
@@ -314,6 +360,16 @@ Prüfungen, alles oder nichts.
     "apiKeyFile": null,
     "language": "de"
   },
+  "textRecognitionModel": {
+    "connectionType": "DOCLING_SERVE",
+    "baseUrl": "http://opaa-ocr:5001",
+    "apiKeyFile": "/run/secrets/opaa-ocr-api-key"
+  },
+  "malwareScan": {
+    "host": "clamav.stadt.example",
+    "timeoutSeconds": 30,
+    "onUnavailable": "REJECT"
+  },
   "mail": {
     "host": "smtp.stadt.example",
     "port": 587,
@@ -331,7 +387,7 @@ Prüfungen, alles oder nichts.
 ```
 
 - **Beim Start:** Zeigt `OPAA_INSTALLATION_ANSWER_FILE` auf die Datei und ist die Installation
-  offen, wendet der Start sie an. Passwort und Zugangsschlüssel stehen nie im Klartext darin,
+  offen, wendet der Start sie an. Passwort und API-Schlüssel stehen nie im Klartext darin,
   sondern als Pfad einer Datei (`passwordFile`, `apiKeyFile`), etwa aus einem Secret; `password`
   oder `apiKey` in der Datei lehnt der Start ab. Scheitert eine Prüfung, bleibt der
   Installationsmodus, und das Log nennt Schritt und Grund. Nach dem Abschluss wird die Datei
@@ -348,13 +404,17 @@ Prüfungen, alles oder nichts.
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten;
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
-- **Optionale Teile:** `chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`, `mail` und
-  `branding` sind optional. Fehlt ein Teil,
+- **Optionale Teile:** `chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`,
+  `textRecognitionModel`, `malwareScan`, `mail` und `branding` sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
   verworfen.
 - **Rerank-Modell:** Ohne den Abschnitt `rerankModel` bleibt das Reranking aus. Mit ihm prüft OPAA
   Adresse und Endpunkt wie im Assistenten, und der Abschluss schaltet das Reranking ein. Der
   Schlüssel steht als `apiKeyFile`; ohne ihn sendet OPAA keinen.
+- **Virenprüfung:** Ohne den Abschnitt `malwareScan` bleibt die Virenprüfung aus. Mit ihm fragt OPAA
+  den Dienst wie im Assistenten nach seiner Version, und der Abschluss schaltet die Prüfung ein.
+  `port` ist auch hier nur `3310`; ohne `timeoutSeconds` gelten 30 Sekunden, ohne `onUnavailable`
+  `REJECT`.
 - **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
   und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
   Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
@@ -363,6 +423,32 @@ Prüfungen, alles oder nichts.
   `language` gilt `de`, eine leere Sprache lässt das Modell sie erkennen. Ist die Spracheingabe mit
   `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, übergeht OPAA den Abschnitt und meldet das
   im Log, die Datei gilt trotzdem.
+- **Live-Transkript:** Der Unterabschnitt `transcriptionModel.realtime` schaltet es zusätzlich ein,
+  sonst bleibt es beim Diktat mit ganzer Aufnahme. `protocol` ist `OPENAI`, `VLLM` oder `MISTRAL`,
+  dazu `url` (`ws://` oder `wss://`) und `model`; der eigene Schlüssel steht als `apiKeyFile`. Ohne
+  ihn sendet OPAA den Schlüssel des Transkriptionsmodells, nur an die gleiche Adresse bis zum Port
+  (Schema, Host, Port); OpenAI und Mistral ohne einen dieser Schlüssel lehnt der Start ab. Beispiel:
+
+  ```json
+  "transcriptionModel": {
+    "baseUrl": "http://speaches:8000/v1",
+    "model": "Systran/faster-whisper-large-v3",
+    "language": "de",
+    "realtime": {
+      "protocol": "OPENAI",
+      "url": "wss://api.openai.com/v1/realtime?intent=transcription",
+      "model": "gpt-live-transcribe",
+      "apiKeyFile": "/run/secrets/opaa-live-api-key"
+    }
+  }
+  ```
+- **Texterkennung:** Ohne den Abschnitt `textRecognitionModel` bleibt die Texterkennung aus. Mit ihm
+  prüft OPAA Adresse und Dienst wie im Assistenten, mit dem gestuften Verbindungstest, und der
+  Abschluss trägt den Dienst ein und schaltet die Rolle ein. `connectionType` ist `DOCLING_SERVE`
+  (Vorgabe) oder `OPENAI_VISION`, dann mit `model`; der Schlüssel steht als `apiKeyFile`, derselbe
+  Wert wie beim Dienst. Ohne `OPAA_OCR_ENABLED=true` übergeht OPAA den Abschnitt, ohne seine
+  Schlüsseldatei zu lesen, und meldet das im Log; die Datei gilt trotzdem. Ebenso liest OPAA die
+  Schlüsseldatei eines übergangenen Abschnitts `transcriptionModel` nicht.
 - **Branding:** Ohne den Abschnitt `branding` gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
   wie die Branding-Verwaltung; jedes Feld ist optional (`productName`, `claim`, `aiNotice`,
   `primaryColor`), ein fehlendes oder leeres gilt als Standard. Bilder nimmt die Antwortdatei nicht
@@ -378,7 +464,7 @@ Prüfungen, alles oder nichts.
 | `503`, Code `INSTALLATION_PENDING` | Die Instanz ist nicht eingerichtet | Installation abschließen |
 | `401` „Das Installations-Token fehlt oder ist ungültig." | Token fehlt oder falsch | Token aus dem Log oder `OPAA_INSTALLATION_TOKEN` nehmen |
 | `400` am Feld Basis-Adresse „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`; im Assistenten dieselbe Meldung beim Modellabruf | die Modelladresse liegt in einem gesperrten Bereich, oder ihr Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`) | erst die Schreibweise des Hosts prüfen, dann Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` freigeben |
-| `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
+| `400` am Feld API-Schlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
 | `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
 | `400` am Feld Port „Im Assistenten sind die Ports 25, 465, 587 und 2525 zugelassen …“ | ein anderer Port ohne Eintrag mit genau diesem `host:port` | Port prüfen, oder `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` eintragen |
 | `400` am Feld Server, Absenderadresse, Passwort oder Testnachricht | Leer- oder Steuerzeichen im Server; mehr als ein Postfach in einer Adresse (`,` `;` `<` `>` `"`); `***` als Passwort, das in der Verwaltung „unverändert“ bedeutet | Eingabe korrigieren |
@@ -391,11 +477,15 @@ Prüfungen, alles oder nichts.
 | Prüfung „… Der Mailserver hat die Testnachricht nicht angenommen.“ | die Verbindung gelang, der Server lehnte die Nachricht ab, etwa den Absender oder den Empfänger | Absenderadresse und Empfänger prüfen; die Ursache nennt die WARN-Zeile „Installation test message refused“ |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MODEL_CHECK_LIMIT` „Zu viele Prüfungen der Modelle“: das Budget der Prüfungen der Modellschritte ist erschöpft, auch über die Antwortdatei der API; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MODEL_CHECK_LIMIT` „Zu viele Prüfungen der Modelle“: das Budget der Prüfungen der Modellschritte ist erschöpft, auch über die Antwortdatei der API; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft; mit dem Code `MALWARE_SCAN_CHECK_LIMIT` „Zu viele Prüfungen des Virenscanners“ ebenso für den Schritt Virenprüfung (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder optionale überspringen; die Meldung nennt sie |
 | `400` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
 | Prüfung des Rerank-Modells „Endpunkt oder Modell wurde nicht gefunden (HTTP 404) …“ | die Basis-Adresse enthält den Pfad `/rerank` schon, oder der Dienst kennt die Modell-Kennung nicht | Basis-Adresse ohne `/rerank` eintragen, Kennung prüfen, oder den Schritt überspringen und das Modell später unter „Modelle → Reranking“ eintragen |
 | `400` „Den Schritt TRANSCRIPTION_MODEL gibt es in dieser Installation nicht …“ | die Spracheingabe ist mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet | Schritt auslassen, oder die Variable entfernen und neu starten |
+| `400` „Den Schritt TEXT_RECOGNITION_MODEL gibt es in dieser Installation nicht …“ | die Texterkennung ist im Betrieb nicht freigegeben (`OPAA_OCR_ENABLED`) | Schritt auslassen, oder `OPAA_OCR_ENABLED=true` setzen und neu starten |
+| Prüfung der Texterkennung „Gescheitert an der Stufe „Adresse“: …“ | die Adresse ist gesperrt oder der Dienst nicht erreichbar, etwa weil `opaa-ocr:5001` nicht in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` steht oder der Dienst noch startet | Adresse und Freigabeliste prüfen, im Kubernetes-Betrieb `http://<Release>-ocr:5001` eintragen |
+| Prüfung der Texterkennung „Gescheitert an der Stufe „Anmeldung“: …“ | der Dienst lehnt den Schlüssel ab | denselben Schlüssel wie beim Dienst eintragen ([Schlüssel](texterkennung.md#schlüssel)) |
+| Prüfung der Texterkennung „Gescheitert an der Stufe „Erkennung“: …“ | der Dienst antwortet, liest die Testseite aber nicht: Engine oder Modelle fehlen, beim Vision-Modell eine falsche Modell-Kennung, oder die Umwandlung dauert zu lange | Dienst und Kennung prüfen ([Fehlerbilder der Texterkennung](texterkennung.md#fehlerbilder)) |
 | `400` am Feld Sprache „Die Sprache ist ein Kürzel aus zwei Buchstaben …“ | die Sprache des Transkriptionsmodells ist kein Kürzel nach ISO 639-1 | Kürzel wie `de` eintragen oder das Feld leeren |
 | Prüfung des Transkriptionsmodells „Endpunkt oder Modell wurde nicht gefunden (HTTP 404) …“ oder „Die Verbindung wurde vom Server abgelehnt.“ | der Dienst bietet `GET {Basis-Adresse}/models` nicht an, oder die Adresse enthält den Pfad `/audio/transcriptions` | Basis-Adresse ohne den Pfad eintragen, Dienst prüfen |
 | Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
@@ -410,7 +500,7 @@ Fehler im Log; Anmeldung, Konten, Spaces, Bibliotheken und die Verwaltung arbeit
 
 | Fehlt | Wirkung | Abhilfe |
 |---|---|---|
-| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modelle ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
+| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modell ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
 | Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit (der nächste Lauf nach dem Festlegen deckt sie ab). Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)) |
 
 Readiness und `/actuator/health` bleiben `UP`; die Health Groups `chat-model`, `embedding-model`
@@ -437,9 +527,10 @@ einer Warnung); startet eine mit anderem Wert, gilt das zuletzt gestartete.
 
 Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten; je
 Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen; höchstens 500
-Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank- und
-Transkriptionsmodell zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
+Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank-,
+Transkriptionsmodell und Texterkennung zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
 die API jedes Modell vorab als eine Prüfung zählt, auch wenn sie die Datei danach ablehnt; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und
-10 Testnachrichten in 10 Minuten, für alle Clients zusammen; die Antwortdatei beim Start zählt bei
+10 Testnachrichten in 10 Minuten, für alle Clients zusammen; im Schritt Virenprüfung je Instanz 30
+Prüfungen in 10 Minuten; die Antwortdatei beim Start zählt bei
 keinem dieser Budgets; ohne Eintrag in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25,
 465, 587 und 2525.

@@ -1,0 +1,788 @@
+# Topic "agents": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: agent
+    description: >
+      Agents: catalog entries that run the tool loop with their own instruction, libraries, tools,
+      plan step and limits (ADR-0070), and the installation-wide settings of agents. While the
+      installation switch for agents is off, every path under /api/v1/agents/{agentId} and the
+      list answer like an unknown address; the settings and the availability stay readable.
+paths:
+  /api/v1/agents:
+    get:
+      operationId: listAgents
+      tags: [agent]
+      summary: >
+        List the agents the caller may read - direct grant, grant to one of their groups, or
+        organization-wide release. A system administrator sees here only what the formula grants
+        them. A locked agent stays in this list; /api/v1/agents/available leaves it out.
+      responses:
+        "200":
+          description: The readable agents, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createAgent
+      tags: [agent]
+      summary: >
+        Create an empty agent, owned by the caller or by one of the caller's groups. Needs the
+        capability CREATE_AGENT, which is offered only while agents are switched on. The agent
+        starts without instruction and libraries (the caller's whole readable scope), with the
+        tools search_knowledge and read_document, without plan step and with the installation's
+        limits. Rights are then given through /api/v1/assets/AGENT/{assetId}/grants. The
+        responsible unit is required; without it the request is refused with a field error on
+        responsible.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentCreateRequest"
+      responses:
+        "201":
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The caller lacks the capability CREATE_AGENT (code CAPABILITY_REQUIRED), or the named
+            owner group is one the caller is not a member of.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/agents/availability:
+    get:
+      operationId: getAgentAvailability
+      tags: [agent]
+      summary: >
+        Whether agents are switched on right now, for every signed-in account. The interface asks
+        it to decide whether to offer agents at all; every agent path checks the switch itself.
+      responses:
+        "200":
+          description: The switch as it stands
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentAvailabilityResponse"
+
+  /api/v1/agents/available:
+    get:
+      operationId: listAvailableAgents
+      tags: [agent]
+      summary: >
+        The agents the caller can choose in a chat of the space: every agent that is associated
+        with the space and readable by the caller by the formula - nothing else. Ordered by name.
+        Empty while agents are switched off. Choosing one sends its id as agentId with the
+        question.
+      parameters:
+        - name: spaceId
+          in: query
+          required: true
+          description: The space of the chat; the caller must be a member of it.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The agents the caller may choose
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableAgent"
+        "404":
+          $ref: "#/components/responses/SpaceNotFound"
+
+  /api/v1/agents/{agentId}:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getAgent
+      tags: [agent]
+      summary: Get an agent (VIEWER or above; a system administrator counts as OWNER)
+      responses:
+        "200":
+          description: The agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateAgent
+      tags: [agent]
+      summary: >
+        Replace name, purpose and configuration (MANAGER or above). A library is accepted only if
+        the caller may read it; an assigned library the caller may not read stays assigned even
+        when the request leaves it out, because the caller cannot see it. Document templates follow
+        the same rule; a deleted template drops out, and while the switch "Vorlagen" is off the
+        assignment is kept as stored. A change of instruction, libraries, tools, templates, plan
+        step or limits counts the revision up; a new name or purpose alone does not. A caller
+        reaching the agent only through the system administration cannot
+        change the instruction; it is kept. A run takes the lower of an agent's limit and the installation's.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentUpdateRequest"
+      responses:
+        "200":
+          description: Agent updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteAgent
+      tags: [agent]
+      summary: Delete an agent (OWNER only) together with its grants and space associations.
+      responses:
+        "204":
+          description: Agent deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/agents/{agentId}/lock:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: lockAgent
+      tags: [agent]
+      summary: >
+        Lock this one agent (system admin only), naming a reason. A locked agent is not offered for
+        use and every run is refused with 409 and the code AGENT_LOCKED, on every instance from the
+        next call on; it stays manageable and is never deleted. Locking a locked agent replaces
+        cause and reason. Audited as ASSET_LOCKED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetLockRequest"
+      responses:
+        "200":
+          description: The agent's responsibility with the lock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponsibilityResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unlockAgent
+      tags: [agent]
+      summary: >
+        Lift the lock of this agent (system admin only), whatever its cause; an agent without lock
+        answers unchanged. A lock for a missing responsible unit comes back with the next run of
+        the check while the unit is still missing and the period is over. Audited as
+        ASSET_UNLOCKED.
+      responses:
+        "200":
+          description: The agent's responsibility without lock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponsibilityResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/agent-directory:
+    get:
+      operationId: getAgentDirectory
+      tags: [agent]
+      summary: >
+        The agent directory: every agent and, while the switch for document templates is on,
+        every document template of the caller's organization, readable or not, described by what
+        it is and does - purpose, instruction, the names of its libraries, tools, plan step,
+        limits, templates, responsible unit, revision and whether it is locked. Library contents,
+        owners, usage figures, the people using an object and the reason of a lock are not part
+        of it. Needs the capability VIEW_AGENT_DIRECTORY, which the system administration holds
+        implicitly. Every call, a refused one included, is audited as AGENT_DIRECTORY_ACCESSED
+        (form VIEW). While agents are switched off, answers like an unknown address.
+      responses:
+        "200":
+          description: The directory, agents and templates by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentDirectoryResponse"
+        "403":
+          description: >
+            The caller lacks the capability VIEW_AGENT_DIRECTORY (code CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/agent-directory/export:
+    get:
+      operationId: exportAgentDirectory
+      tags: [agent]
+      summary: >
+        The agent directory as a CSV file (UTF-8, semicolon-separated), one row per agent and per
+        document template with the fields of GET /api/v1/agent-directory - for the annex of a
+        service agreement. Same right and same answers as the directory; every call, a refused one
+        included, is audited as AGENT_DIRECTORY_ACCESSED (form CSV). Answered with
+        Content-Disposition: attachment.
+      responses:
+        "200":
+          description: The directory as a CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: >
+            The caller lacks the capability VIEW_AGENT_DIRECTORY (code CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/system/agents:
+    get:
+      operationId: getAgentSettings
+      tags: [agent]
+      summary: The installation-wide settings of agents (system admin only)
+      responses:
+        "200":
+          description: The settings and who changed them last
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateAgentSettings
+      tags: [agent]
+      summary: >
+        Replace the installation-wide settings of agents (system admin only). enabled is the
+        switch for agents, default off; it takes effect with the next call on every instance and
+        destroys no agent. enabledTools are the tools a run may be offered. Switching agents on
+        provisions the delivered agent "Recherche" for the caller's organization once. A change
+        is audited as AGENT_SETTINGS_CHANGED with before/after of the changed keys.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentSettingsUpdateRequest"
+      responses:
+        "200":
+          description: The stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  schemas:
+    AgentPlanStep:
+      type: string
+      description: >
+        Whether a run starts with a plan. OFF starts right away; CONFIRM ends the run with the plan,
+        and the confirmation starts a new run (ADR-0070, Entscheidung 1).
+      enum: ["OFF", CONFIRM]
+
+    AgentLimits:
+      type: object
+      description: >
+        The limits of one run; a missing or null value leaves the installation's limit in force.
+        Each value is at least 1 and at most the stated maximum; a run takes the lower of this
+        value and the installation's limit, so a higher value has no effect.
+      properties:
+        maxToolCalls:
+          type: integer
+          nullable: true
+          description: Tool calls per run, 1 to 1000.
+        maxSearchCalls:
+          type: integer
+          nullable: true
+          description: Calls of the search tool per run, 1 to 1000.
+        maxDurationSeconds:
+          type: integer
+          nullable: true
+          description: Wall-clock time of a run, in seconds, 1 to 86400.
+        maxCollectedChars:
+          type: integer
+          nullable: true
+          description: Characters of all tool results of a run, 1 to 10000000.
+
+    AgentLibrary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    AgentTemplate:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    AgentCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        responsible:
+          description: Required by the service; missing, it answers 400 with a field error.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ResponsibleUnitRequest"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Vergabeprüfung
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: The purpose, shown next to the agent in the chat.
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+          description: Defaults to USER (the creator) when omitted
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required when ownerType is GROUP (the caller must be a member of that group). Ignored
+            for ownerType USER, which always owns as the creator.
+
+    AgentUpdateRequest:
+      type: object
+      required: [name, instruction, libraryIds, toolNames, planStep, limits]
+      description: Replaces name, purpose and configuration as a whole.
+      properties:
+        responsible:
+          description: >
+            The responsible unit; null or absent keeps the stored one. A change is audited as
+            ASSET_RESPONSIBILITY_CHANGED.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ResponsibleUnitRequest"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        instruction:
+          type: string
+          maxLength: 8000
+          description: >
+            Appended to the fixed rules as a marked block, never replacing them (ADR-0070,
+            Entscheidung 5). May be empty.
+        libraryIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+          description: Empty narrows nothing - a run searches whatever the calling person may read.
+        toolNames:
+          type: array
+          items:
+            type: string
+          description: >
+            Any of search_knowledge, read_document, list_sources, run_code, ask_user,
+            fill_template. A run is offered only those the installation has switched on;
+            fill_template only while the agent has a template the calling person may read.
+        planStep:
+          $ref: "#/components/schemas/AgentPlanStep"
+        limits:
+          $ref: "#/components/schemas/AgentLimits"
+        templateIds:
+          type: array
+          maxItems: 20
+          nullable: true
+          items:
+            type: string
+            format: uuid
+          description: >
+            The document templates the agent fills its result into. Omitted or null keeps the
+            assignment as stored; a template is accepted only if the caller may read it, and an
+            assigned one the caller may not read stays.
+
+    AgentResponse:
+      type: object
+      required:
+        - id
+        - name
+        - instruction
+        - libraries
+        - hiddenLibraryCount
+        - templates
+        - hiddenTemplateCount
+        - toolNames
+        - planStep
+        - limits
+        - revision
+        - delivered
+        - ownerType
+        - ownerId
+        - reach
+        - myRole
+        - responsibility
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+          description: The purpose.
+        instruction:
+          type: string
+          nullable: true
+          description: >
+            Null when the caller reaches the agent only through the system administration: the
+            instruction is content, which management alone does not open.
+        libraries:
+          type: array
+          description: The assigned libraries the caller may read, by name.
+          items:
+            $ref: "#/components/schemas/AgentLibrary"
+        hiddenLibraryCount:
+          type: integer
+          description: >
+            Assigned libraries the caller may not read or that no longer exist - counted, never
+            named. A run never reads them for this caller.
+        templates:
+          type: array
+          description: The assigned document templates the caller may read, by name.
+          items:
+            $ref: "#/components/schemas/AgentTemplate"
+        hiddenTemplateCount:
+          type: integer
+          description: >
+            Assigned document templates the caller may not read - counted, never named. A run
+            never fills them for this caller.
+        toolNames:
+          type: array
+          items:
+            type: string
+        planStep:
+          $ref: "#/components/schemas/AgentPlanStep"
+        limits:
+          $ref: "#/components/schemas/AgentLimits"
+        revision:
+          type: integer
+          description: >
+            Counts up with every saved change of what a run uses - instruction, libraries, tools,
+            plan step, limits - (the "Fassung"); a new name or purpose alone does not.
+        delivered:
+          type: boolean
+          description: The installation delivered this agent ("Recherche"); it is changeable all the same.
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The owning user or group, whichever ownerType names.
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the owning person or group; null when it cannot be resolved or the
+            group is protected and the caller may not see its name (ADR-0036, Entscheidung 9).
+        reach:
+          $ref: "#/components/schemas/AssetReachResponse"
+        myRole:
+          description: >
+            The role the caller holds. In the list, the role of the formula (at least VIEWER); for
+            a single agent a system administrator counts as OWNER, as for every asset.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+        responsibility:
+          $ref: "#/components/schemas/AssetResponsibilityResponse"
+        succession:
+          description: >
+            Set while the agent has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AvailableAgent:
+      type: object
+      required: [id, name]
+      description: An agent offered in the chat's @ menu; deliberately without its configuration.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    AgentAvailabilityResponse:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+    AgentSettingsUpdateRequest:
+      type: object
+      required: [enabled, enabledTools]
+      properties:
+        enabled:
+          type: boolean
+          description: The installation-wide switch for agents.
+        enabledTools:
+          type: array
+          items:
+            type: string
+          description: The tools a run may be offered.
+
+    AgentSettingsResponse:
+      type: object
+      required: [enabled, enabledTools, availableTools, updatedAt]
+      properties:
+        enabled:
+          type: boolean
+        enabledTools:
+          type: array
+          items:
+            type: string
+        availableTools:
+          type: array
+          description: Every tool the installation knows, in display order.
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          nullable: true
+          description: >
+            Display name of who changed the settings last; null unless that person belongs to the
+            caller's organization.
+
+    AgentDirectoryResponse:
+      type: object
+      required: [agents, templatesIncluded, templates]
+      description: >
+        The agent directory of the organization. Describes objects, never people: no owner, no
+        usage figure, no list of users, no last use.
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentDirectoryEntry"
+        templatesIncluded:
+          type: boolean
+          description: >
+            Whether the switch for document templates is on; while it is off, templates is empty
+            and no agent names a template.
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentTemplateDirectoryEntry"
+
+    AgentDirectoryResponsibility:
+      type: object
+      required: [missing]
+      description: >
+        The responsible unit of a directory entry. A protected group the caller may not see by
+        name appears as "Geschützte Gruppe" (ADR-0036, Entscheidung 9).
+      properties:
+        groupName:
+          type: string
+          nullable: true
+        function:
+          type: string
+          nullable: true
+        missing:
+          type: boolean
+          description: Whether the responsibility is missing right now.
+
+    AgentDirectoryEntry:
+      type: object
+      required:
+        - id
+        - name
+        - instruction
+        - libraryNames
+        - allReadableLibraries
+        - toolNames
+        - planStep
+        - limits
+        - templateNames
+        - revision
+        - delivered
+        - responsibility
+        - locked
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+          description: The purpose.
+        instruction:
+          type: string
+          description: The instruction appended to the fixed rules; may be empty.
+        libraryNames:
+          type: array
+          description: >
+            The names of the assigned libraries that still exist and are not private, by name;
+            never their content. Empty with allReadableLibraries false means no assigned library
+            is visible here, as every one is deleted or private; the directory does not tell which.
+          items:
+            type: string
+        allReadableLibraries:
+          type: boolean
+          description: >
+            The agent has no library assigned and searches whatever the calling person may read.
+        toolNames:
+          type: array
+          items:
+            type: string
+        planStep:
+          $ref: "#/components/schemas/AgentPlanStep"
+        limits:
+          $ref: "#/components/schemas/AgentLimits"
+        templateNames:
+          type: array
+          description: The names of the assigned document templates, by name.
+          items:
+            type: string
+        revision:
+          type: integer
+          description: The "Fassung", as on the agent.
+        delivered:
+          type: boolean
+          description: The installation delivered this agent ("Recherche").
+        responsibility:
+          $ref: "#/components/schemas/AgentDirectoryResponsibility"
+        locked:
+          type: boolean
+        lockedSince:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the agent is locked; null while it is not.
+
+    DocumentTemplateDirectoryEntry:
+      type: object
+      required: [id, name, fileName, placeholderNames, revision, responsibility, locked]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+          description: The purpose.
+        fileName:
+          type: string
+        placeholderNames:
+          type: array
+          description: The placeholders of the file, in the order they first appear.
+          items:
+            type: string
+        revision:
+          type: integer
+          description: The "Fassung", as on the template.
+        responsibility:
+          $ref: "#/components/schemas/AgentDirectoryResponsibility"
+        locked:
+          type: boolean
+        lockedSince:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the template is locked; null while it is not.

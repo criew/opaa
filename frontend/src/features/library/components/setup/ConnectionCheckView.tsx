@@ -6,8 +6,9 @@ import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 import RemoveIcon from '@mui/icons-material/Remove'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
-import { plainMessage } from '../sourceKit/plainMessage'
+import { plainMessage } from '../sourceCore/plainMessage'
 import type { ConnectionCheck, StageState } from './connectionCheck'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 const STAGE_ICON: Record<StageState, { Icon: typeof CheckIcon; color: string }> = {
   ok: { Icon: CheckIcon, color: 'success.main' },
@@ -71,9 +72,14 @@ export default function ConnectionCheckView({
                   <Box
                     component="li"
                     key={stage.label}
-                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: 13 }}
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      fontSize: fontSize.text,
+                    }}
                   >
-                    <Icon aria-hidden sx={{ fontSize: 16, color }} />
+                    <Icon aria-hidden sx={{ fontSize: iconSize.sm, color }} />
                     <span>
                       {stage.label} {stage.text}
                     </span>
@@ -81,14 +87,17 @@ export default function ConnectionCheckView({
                 )
               })}
             </Box>
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
               {plainMessage(outcome.message)}
             </Typography>
             {unreadable.length > 0 && (
-              <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, fontSize: 13 }}>
+              <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, fontSize: fontSize.text }}>
                 {shown.map((name) => (
                   <li key={name}>
-                    <Typography component="span" sx={{ fontSize: 13, overflowWrap: 'anywhere' }}>
+                    <Typography
+                      component="span"
+                      sx={{ fontSize: fontSize.text, overflowWrap: 'anywhere' }}
+                    >
                       {name}
                     </Typography>
                   </li>

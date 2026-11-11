@@ -302,7 +302,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     await dialog.getByLabel('Anzeigename', { exact: false }).fill(KEY_MODEL_NAME)
     await dialog.getByLabel('Basis-Adresse', { exact: false }).fill(REACHABLE_BASE_URL)
     await dialog.getByLabel('Modell-Kennung', { exact: false }).fill(MODEL_IDENTIFIER)
-    await dialog.getByLabel('API-Schlüssel', { exact: false }).fill(TEST_API_KEY)
+    await dialog.getByLabel('API-Schlüssel (optional)', { exact: true }).fill(TEST_API_KEY)
 
     const [createResponse] = await Promise.all([
       page.waitForResponse(
@@ -333,11 +333,12 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     await expect(modelRow(page, KEY_MODEL_NAME).getByText('Schlüssel hinterlegt')).toBeVisible()
 
     const editDialog = await openEditDialog(page, KEY_MODEL_NAME)
-    await expect(editDialog.getByLabel('API-Schlüssel', { exact: false })).toHaveValue('')
+    // The stored key is named as set, never offered as a field or mirrored back.
+    await expect(editDialog.getByText('Gesetzt', { exact: true })).toBeVisible()
+    await expect(editDialog.getByRole('button', { name: 'API-Schlüssel ersetzen' })).toBeVisible()
+    await expect(editDialog.locator('input[type="password"]')).toHaveCount(0)
     await expect(
-      editDialog.getByRole('button', {
-        name: `Gespeicherten Schlüssel entfernen: ${KEY_MODEL_NAME}`,
-      }),
+      editDialog.getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }),
     ).toBeVisible()
   })
 })

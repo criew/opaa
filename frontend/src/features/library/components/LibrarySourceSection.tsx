@@ -20,10 +20,10 @@ import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import LibraryRunList, { type RunningProgress } from './LibraryRunList'
 import LibraryLiveUpdateRow from './LibraryLiveUpdateRow'
 import { formatDay, runWord } from './libraryState'
-import { unreadableScopeNames } from './scopeMarks'
+import { unreadableScopeNames } from './sourceCore/scopeMarks'
 import type { SourceSetupRowsMarks } from './setup/SourceSetupRows'
-import type { RowStatus } from './setup/setupTypes'
-import { scheduleFrequencyLabel } from './scheduleLabels'
+import type { RowStatus } from './sourceCore/setupTypes'
+import { scheduleFrequencyLabel } from './schedule/scheduleLabels'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
@@ -36,6 +36,7 @@ import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import { sourceRegistration } from './sources/registry'
 import { LIBRARY_QUOTA_EXHAUSTED_REMEDY, QUOTA_EXHAUSTED_REMEDY } from './privateLibrary'
 import ScopeConsequence from './sources/ScopeConsequence'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 const NO_RUNS: IndexingRunResponse[] = []
 const LIVE_UPDATE_TYPES = new Set<SourceTypeKey>(['CONFLUENCE', 'S3'])
@@ -335,11 +336,7 @@ export default function LibrarySourceSection({
                 </Typography>
                 {library.schedule?.nextRunAt && (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Nächster geplanter Lauf:{' '}
-                    {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
+                    Nächster geplanter Lauf: {formatDateTime(library.schedule.nextRunAt)}
                   </Typography>
                 )}
                 {library.lastScheduledRunsFailed && (

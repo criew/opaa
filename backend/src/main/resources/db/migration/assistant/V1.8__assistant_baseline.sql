@@ -34,7 +34,11 @@ END; $$;
 CREATE TABLE chat_cleanup_holds (
     user_id uuid NOT NULL,
     organization_id uuid NOT NULL,
-    held_at timestamp with time zone NOT NULL
+    held_at timestamp with time zone NOT NULL,
+    purpose character varying(40),
+    reason character varying(1000),
+    held_until timestamp with time zone,
+    CONSTRAINT chk_chat_cleanup_holds_purpose CHECK ((purpose IN ('AUTHORITY_OR_COURT_ORDER', 'SECURITY_INCIDENT_EVIDENCE', 'DATA_SUBJECT_REQUEST')))
 );
 
 CREATE TABLE chat_library_references (
@@ -60,6 +64,8 @@ CREATE TABLE chat_messages (
     content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('german'::regconfig, content)) STORED,
     used_prompt_id uuid,
     used_prompt_title character varying(255),
+    answer_evidence json,
+    agent_run json,
     CONSTRAINT chk_chat_messages_role CHECK ((role IN ('USER', 'ASSISTANT'))),
     CONSTRAINT chk_chat_messages_used_prompt CHECK ((((used_prompt_id IS NULL) AND (used_prompt_title IS NULL)) OR ((used_prompt_id IS NOT NULL) AND (used_prompt_title IS NOT NULL) AND ((role)::text = 'USER'::text))))
 );
@@ -241,3 +247,420 @@ ALTER TABLE ONLY prompts
     ADD CONSTRAINT fk_prompts_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES prompt_libraries(id, organization_id) ON DELETE CASCADE;
 
 INSERT INTO chat_locked_account_cleanup_state (id, counting_since) VALUES (1, clock_timestamp());
+
+-- Switch and period of the deletion of the chats of locked local accounts as the system
+-- administration set them; without the row the factory defaults in the code apply (ADR-0060,
+-- Entscheidung 1).
+CREATE TABLE locked_account_chat_cleanup_settings (
+    id integer NOT NULL,
+    enabled boolean NOT NULL,
+    delete_after_days integer NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT locked_account_chat_cleanup_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_locked_account_chat_cleanup_settings_singleton CHECK ((id = 1)),
+    CONSTRAINT chk_locked_account_chat_cleanup_settings_days CHECK (((delete_after_days >= 90) AND (delete_after_days <= 3650)))
+);
+
+-- A request to hold or to extend a hold, awaiting a second, different system administrator. It
+-- holds nothing by itself; at most one per account. Deleting either account drops it.
+CREATE TABLE chat_cleanup_hold_requests (
+    user_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    purpose varchar(40) NOT NULL,
+    reason varchar(1000) NOT NULL,
+    requested_by_user_id uuid NOT NULL,
+    requested_at timestamp with time zone NOT NULL,
+    CONSTRAINT chat_cleanup_hold_requests_pkey PRIMARY KEY (user_id),
+    CONSTRAINT chk_chat_cleanup_hold_requests_purpose CHECK (
+        (purpose IN ('AUTHORITY_OR_COURT_ORDER', 'SECURITY_INCIDENT_EVIDENCE', 'DATA_SUBJECT_REQUEST'))),
+    CONSTRAINT fk_chat_cleanup_hold_requests_user_organization FOREIGN KEY (user_id, organization_id)
+        REFERENCES users(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_chat_cleanup_hold_requests_requested_by FOREIGN KEY (requested_by_user_id, organization_id)
+        REFERENCES users(id, organization_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_chat_cleanup_hold_requests_requested_by
+    ON chat_cleanup_hold_requests (requested_by_user_id, organization_id);
+
+-- Documents attached to a chat question: uploaded into a space, owned by their uploader, bound to a
+-- chat with the first question that names them and deleted with that chat. One never bound is
+-- deleted after a day by ChatAttachmentCleanup.
+CREATE TABLE chat_attachments (
+    id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    space_id uuid NOT NULL,
+    author_id uuid NOT NULL,
+    chat_id uuid,
+    message_id uuid,
+    file_name character varying(255) NOT NULL,
+    content_type character varying(255),
+    size_bytes bigint NOT NULL,
+    original_locator character varying(1024),
+    status character varying(20) NOT NULL,
+    failure_reason character varying(500),
+    text_chars integer,
+    created_at timestamp with time zone NOT NULL,
+    processed_at timestamp with time zone,
+    CONSTRAINT chat_attachments_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_chat_attachments_status CHECK (status IN ('PROCESSING', 'READY', 'FAILED')),
+    CONSTRAINT chk_chat_attachments_message_needs_chat CHECK (message_id IS NULL OR chat_id IS NOT NULL),
+    CONSTRAINT fk_chat_attachments_space_organization FOREIGN KEY (space_id, organization_id)
+        REFERENCES spaces(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_chat_attachments_author_organization FOREIGN KEY (author_id, organization_id)
+        REFERENCES users(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_chat_attachments_chat_organization FOREIGN KEY (chat_id, organization_id)
+        REFERENCES chats(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_chat_attachments_message FOREIGN KEY (message_id)
+        REFERENCES chat_messages(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_chat_attachments_author ON chat_attachments (author_id, created_at);
+CREATE INDEX idx_chat_attachments_chat ON chat_attachments (chat_id);
+CREATE INDEX idx_chat_attachments_message ON chat_attachments (message_id);
+CREATE INDEX idx_chat_attachments_unbound ON chat_attachments (created_at) WHERE chat_id IS NULL;
+
+-- The text of an attachment as the format pipeline chunked it; the chunk metadata keeps Fundort and
+-- anchor for the citation.
+CREATE TABLE chat_attachment_chunks (
+    attachment_id uuid NOT NULL,
+    chunk_index integer NOT NULL,
+    content text NOT NULL,
+    metadata jsonb,
+    CONSTRAINT chat_attachment_chunks_pkey PRIMARY KEY (attachment_id, chunk_index),
+    CONSTRAINT fk_chat_attachment_chunks_attachment FOREIGN KEY (attachment_id)
+        REFERENCES chat_attachments(id) ON DELETE CASCADE
+);
+
+-- Backs the sum of size_bytes per organization that the organization quota of chat attachments
+-- checks on every upload while it is set.
+CREATE INDEX idx_chat_attachments_organization ON chat_attachments (organization_id) INCLUDE (size_bytes);
+
+-- Document templates: an asset type whose content is one DOCX file with placeholders. The shell row
+-- in assets carries name, owner and release level; document_templates the file's description and
+-- the placeholders read from it, document_template_files the bytes, loaded only for a download or
+-- a filling.
+CREATE TABLE document_templates (
+    id uuid NOT NULL,
+    asset_type character varying(30) DEFAULT 'DOCUMENT_TEMPLATE'::character varying NOT NULL,
+    organization_id uuid NOT NULL,
+    file_name character varying(255) NOT NULL,
+    size_bytes bigint NOT NULL,
+    sha256 character varying(64) NOT NULL,
+    placeholders jsonb DEFAULT '[]'::jsonb NOT NULL,
+    revision integer,
+    CONSTRAINT document_templates_pkey PRIMARY KEY (id),
+    CONSTRAINT uk_document_templates_id_organization UNIQUE (id, organization_id),
+    CONSTRAINT chk_document_templates_asset_type CHECK (((asset_type)::text = 'DOCUMENT_TEMPLATE'::text)),
+    CONSTRAINT chk_document_templates_size CHECK ((size_bytes > 0)),
+    CONSTRAINT chk_document_templates_placeholders_array CHECK ((jsonb_typeof(placeholders) = 'array'::text)),
+    CONSTRAINT fk_document_templates_asset FOREIGN KEY (id, asset_type, organization_id)
+        REFERENCES assets(id, asset_type, organization_id) ON DELETE CASCADE
+);
+
+CREATE TABLE document_template_files (
+    template_id uuid NOT NULL,
+    content bytea NOT NULL,
+    CONSTRAINT document_template_files_pkey PRIMARY KEY (template_id),
+    CONSTRAINT fk_document_template_files_template FOREIGN KEY (template_id)
+        REFERENCES document_templates(id) ON DELETE CASCADE
+);
+
+-- The installation switch "Vorlagen": one row at most, absent while the switch is as delivered
+-- (off). Read on every request without a cache, so a change holds on every instance at once.
+CREATE TABLE document_template_settings (
+    id integer NOT NULL,
+    enabled boolean NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    updated_by uuid,
+    CONSTRAINT document_template_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_document_template_settings_singleton CHECK ((id = 1))
+);
+
+-- The workspace in front of the agent loop (ADR-0070, Entscheidung 6). A request locks the one row
+-- of agent_workspace, counts the unexpired reservations and adds its own; the lock keeps two
+-- requests from overbooking under READ COMMITTED. A reservation expires by the database clock, so
+-- the place of a crashed instance frees itself. No person, no agent, no chat: only a run id that
+-- appears nowhere else but at the answer in the chat.
+CREATE TABLE agent_workspace (
+    id smallint PRIMARY KEY CHECK (id = 1)
+);
+
+INSERT INTO agent_workspace (id) VALUES (1);
+
+CREATE TABLE agent_run_reservations (
+    run_id uuid PRIMARY KEY,
+    expires_at timestamptz NOT NULL,
+    cancel_token_hash text,
+    cancel_requested_at timestamp with time zone,
+    user_id uuid
+);
+
+-- The step log of agent runs and the log of their sandboxes (ADR-0070, Entscheidung 4, Bestand b;
+-- ADR-0073): no account reference, no search text, no script or file content. Partitioned by day,
+-- owned by opaa_audit_owner like the diagnostic context log: the application account appends and
+-- reads; only opaa_agent_run_logs_maintain() creates the coming days and drops expired ones.
+
+CREATE TABLE agent_run_log_retention_settings (
+    id integer DEFAULT 1 NOT NULL,
+    step_log_retention_days integer NOT NULL,
+    sandbox_log_retention_days integer NOT NULL,
+    last_run_day date,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT agent_run_log_retention_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_agent_run_log_retention_singleton CHECK (id = 1),
+    CONSTRAINT chk_agent_step_log_retention_days
+        CHECK (step_log_retention_days >= 1 AND step_log_retention_days <= 30),
+    CONSTRAINT chk_agent_sandbox_log_retention_days
+        CHECK (sandbox_log_retention_days >= 1
+               AND sandbox_log_retention_days <= step_log_retention_days)
+);
+
+INSERT INTO agent_run_log_retention_settings
+    (id, step_log_retention_days, sandbox_log_retention_days, last_run_day, updated_at)
+VALUES (1, 7, 7, NULL, now());
+
+CREATE TABLE agent_step_log (
+    run_id uuid NOT NULL,
+    step_index integer NOT NULL,
+    recorded_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    organization_id uuid NOT NULL,
+    tool character varying(64) NOT NULL,
+    status character varying(30) NOT NULL,
+    hit_count integer,
+    duration_ms integer NOT NULL,
+    abort_reason character varying(30),
+    CONSTRAINT agent_step_log_pkey PRIMARY KEY (run_id, step_index, recorded_at),
+    CONSTRAINT chk_agent_step_log_step_index CHECK (step_index >= 0),
+    CONSTRAINT chk_agent_step_log_hit_count CHECK (hit_count IS NULL OR hit_count >= 0),
+    CONSTRAINT chk_agent_step_log_duration CHECK (duration_ms >= 0)
+)
+PARTITION BY RANGE (recorded_at);
+
+CREATE INDEX idx_agent_step_log_run ON agent_step_log (organization_id, run_id);
+
+CREATE TABLE agent_sandbox_log (
+    run_id uuid NOT NULL,
+    session_ref character varying(64) NOT NULL,
+    recorded_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    organization_id uuid NOT NULL,
+    tool character varying(64) NOT NULL,
+    status character varying(30) NOT NULL,
+    script_runs integer NOT NULL,
+    duration_ms bigint NOT NULL,
+    file_count integer NOT NULL,
+    file_bytes bigint NOT NULL,
+    abort_reason character varying(30),
+    CONSTRAINT agent_sandbox_log_pkey PRIMARY KEY (run_id, session_ref, recorded_at),
+    CONSTRAINT chk_agent_sandbox_log_counts
+        CHECK (script_runs >= 0 AND duration_ms >= 0 AND file_count >= 0 AND file_bytes >= 0)
+)
+PARTITION BY RANGE (recorded_at);
+
+CREATE INDEX idx_agent_sandbox_log_run ON agent_sandbox_log (organization_id, run_id);
+
+-- Creates the day partitions from yesterday through 30 days ahead and drops every day partition
+-- that ended at least the retention period ago; returns the names it dropped. No DEFAULT partition:
+-- a write outside the created days fails instead of escaping the deletion.
+CREATE FUNCTION opaa_agent_run_logs_maintain() RETURNS SETOF text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', '${flyway:defaultSchema}', 'pg_temp'
+    AS $_$ DECLARE
+  cfg RECORD;
+  today date := (now() AT TIME ZONE 'UTC')::date;
+  log_table text;
+  retention integer;
+  day date;
+  rec RECORD;
+  partition_day date;
+BEGIN
+  SELECT step_log_retention_days, sandbox_log_retention_days INTO cfg
+  FROM agent_run_log_retention_settings WHERE id = 1 FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'agent_run_log_retention_settings has no row with id=1 - refusing to skip the deletion';
+  END IF;
+
+  FOREACH log_table IN ARRAY ARRAY['agent_step_log', 'agent_sandbox_log'] LOOP
+    retention := CASE log_table
+      WHEN 'agent_step_log' THEN cfg.step_log_retention_days
+      ELSE cfg.sandbox_log_retention_days END;
+
+    FOR i IN -1..30 LOOP
+      day := today + i;
+      IF to_regclass(format('%I.%I', '${flyway:defaultSchema}',
+                            log_table || '_' || to_char(day, 'YYYYMMDD'))) IS NULL THEN
+        EXECUTE format(
+          'CREATE TABLE %s PARTITION OF %s FOR VALUES FROM (%L) TO (%L)',
+          format('%I.%I', '${flyway:defaultSchema}', log_table || '_' || to_char(day, 'YYYYMMDD')),
+          format('%I.%I', '${flyway:defaultSchema}', log_table),
+          (day::timestamp AT TIME ZONE 'UTC'), ((day + 1)::timestamp AT TIME ZONE 'UTC'));
+      END IF;
+    END LOOP;
+
+    FOR rec IN
+      SELECT inhrelid::regclass AS partition_rel, inhrelid::regclass::text AS partition_name
+      FROM pg_catalog.pg_inherits
+      WHERE inhparent = format('%I.%I', '${flyway:defaultSchema}', log_table)::regclass
+    LOOP
+      partition_day := to_date(
+        substring(rec.partition_name from '_(\d{8})$'), 'YYYYMMDD');
+      IF partition_day IS NOT NULL AND partition_day + 1 <= today - retention THEN
+        EXECUTE format('DROP TABLE %s', rec.partition_rel);
+        RETURN NEXT rec.partition_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  UPDATE agent_run_log_retention_settings SET last_run_day = today WHERE id = 1;
+  RETURN;
+END; $_$;
+
+-- Ownership separation per ADR-0015, as for the diagnostic context log; the membership is taken
+-- briefly and given back.
+DO $$
+BEGIN
+  EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+END $$;
+
+ALTER TABLE agent_step_log OWNER TO opaa_audit_owner;
+ALTER TABLE agent_sandbox_log OWNER TO opaa_audit_owner;
+ALTER TABLE agent_run_log_retention_settings OWNER TO opaa_audit_owner;
+ALTER FUNCTION opaa_agent_run_logs_maintain() OWNER TO opaa_audit_owner;
+
+-- Run once as the owner, so the first days exist and belong to opaa_audit_owner.
+SELECT count(*) FROM opaa_agent_run_logs_maintain();
+
+REVOKE ALL ON TABLE agent_step_log, agent_sandbox_log, agent_run_log_retention_settings FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION opaa_agent_run_logs_maintain() FROM PUBLIC;
+GRANT INSERT, SELECT ON TABLE agent_step_log, agent_sandbox_log TO CURRENT_USER;
+GRANT SELECT ON TABLE agent_run_log_retention_settings TO CURRENT_USER;
+GRANT UPDATE (step_log_retention_days, sandbox_log_retention_days, updated_at)
+    ON TABLE agent_run_log_retention_settings TO CURRENT_USER;
+GRANT EXECUTE ON FUNCTION opaa_agent_run_logs_maintain() TO CURRENT_USER;
+
+DO $$
+BEGIN
+  EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+END $$;
+
+-- Agents: an asset type on the shell with its instruction, assigned libraries and tools,
+-- plan step and limits; the installation-wide switch with the tools switched on as a single row;
+-- and per organization the record that the delivered agent "Recherche" was provisioned, so
+-- deleting it never brings it back. seed_key marks that delivered agent.
+
+CREATE TABLE agents (
+    id uuid NOT NULL,
+    asset_type character varying(30) DEFAULT 'AGENT'::character varying NOT NULL,
+    organization_id uuid NOT NULL,
+    instruction text DEFAULT ''::text NOT NULL,
+    plan_step character varying(20) DEFAULT 'OFF'::character varying NOT NULL,
+    max_tool_calls integer,
+    max_search_calls integer,
+    max_duration_seconds integer,
+    max_collected_chars integer,
+    revision integer DEFAULT 1 NOT NULL,
+    seed_key character varying(40),
+    CONSTRAINT chk_agents_asset_type CHECK (((asset_type)::text = 'AGENT'::text)),
+    CONSTRAINT chk_agents_plan_step CHECK ((plan_step IN ('OFF', 'CONFIRM'))),
+    CONSTRAINT chk_agents_instruction_length CHECK ((char_length(instruction) <= 8000)),
+    CONSTRAINT chk_agents_limits_positive CHECK ((((max_tool_calls IS NULL) OR (max_tool_calls >= 1)) AND ((max_search_calls IS NULL) OR (max_search_calls >= 1)) AND ((max_duration_seconds IS NULL) OR (max_duration_seconds >= 1)) AND ((max_collected_chars IS NULL) OR (max_collected_chars >= 1)))),
+    CONSTRAINT chk_agents_revision_positive CHECK ((revision >= 1)),
+    CONSTRAINT chk_agents_seed_key_format CHECK (((seed_key IS NULL) OR ((seed_key)::text ~ '^[a-z][a-z0-9_]*$'::text))),
+    CONSTRAINT agents_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_agents_asset FOREIGN KEY (id, asset_type, organization_id) REFERENCES assets(id, asset_type, organization_id) ON DELETE CASCADE
+);
+
+-- A library is named by id only: deleting or locking it leaves the agent usable and its page
+-- says that one library is gone, rather than the assignment vanishing silently.
+CREATE TABLE agent_libraries (
+    agent_id uuid NOT NULL,
+    library_id uuid NOT NULL,
+    CONSTRAINT agent_libraries_pkey PRIMARY KEY (agent_id, library_id),
+    CONSTRAINT fk_agent_libraries_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE TABLE agent_tools (
+    agent_id uuid NOT NULL,
+    tool_name character varying(64) NOT NULL,
+    CONSTRAINT agent_tools_pkey PRIMARY KEY (agent_id, tool_name),
+    CONSTRAINT chk_agent_tools_name_format CHECK (((tool_name)::text ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT fk_agent_tools_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE TABLE agent_settings (
+    id integer NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    version bigint DEFAULT 0 NOT NULL,
+    CONSTRAINT agent_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_agent_settings_singleton CHECK ((id = 1)),
+    CONSTRAINT fk_agent_settings_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+INSERT INTO agent_settings (id) VALUES (1);
+
+-- The tools the installation switched on; a run is offered only these. Delivered: every tool of
+-- the first cut except run_code, which needs the sandbox to be set up.
+CREATE TABLE agent_settings_tools (
+    settings_id integer NOT NULL,
+    tool_name character varying(64) NOT NULL,
+    CONSTRAINT agent_settings_tools_pkey PRIMARY KEY (settings_id, tool_name),
+    CONSTRAINT chk_agent_settings_tools_name_format CHECK (((tool_name)::text ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT fk_agent_settings_tools_settings FOREIGN KEY (settings_id) REFERENCES agent_settings(id) ON DELETE CASCADE
+);
+
+INSERT INTO agent_settings_tools (settings_id, tool_name) VALUES
+    (1, 'search_knowledge'), (1, 'read_document'), (1, 'list_sources'), (1, 'ask_user');
+
+CREATE TABLE agent_seeds (
+    organization_id uuid NOT NULL,
+    seed_key character varying(40) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT agent_seeds_pkey PRIMARY KEY (organization_id, seed_key),
+    CONSTRAINT chk_agent_seeds_key_format CHECK (((seed_key)::text ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT fk_agent_seeds_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_agent_libraries_library ON agent_libraries USING btree (library_id);
+
+-- Tool checks of chat models: one row per run of the tool-calling case base against a
+-- model entry. The cases are fictional; neither the row nor the report names a person.
+CREATE TABLE llm_tool_checks (
+    id uuid NOT NULL,
+    model_id uuid NOT NULL,
+    base_url character varying(500) NOT NULL,
+    model_identifier character varying(200) NOT NULL,
+    status character varying(20) NOT NULL,
+    repetitions integer NOT NULL,
+    completed_runs integer DEFAULT 0 NOT NULL,
+    total_runs integer NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    heartbeat_at timestamp with time zone NOT NULL,
+    finished_at timestamp with time zone,
+    run_id character varying(120),
+    failure character varying(500),
+    report jsonb,
+    report_markdown text,
+    CONSTRAINT llm_tool_checks_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_llm_tool_checks_model FOREIGN KEY (model_id) REFERENCES llm_models (id) ON DELETE CASCADE,
+    CONSTRAINT chk_llm_tool_checks_status CHECK (status IN ('RUNNING', 'COMPLETED', 'FAILED', 'ABORTED')),
+    CONSTRAINT chk_llm_tool_checks_repetitions CHECK (repetitions BETWEEN 1 AND 3),
+    CONSTRAINT chk_llm_tool_checks_runs CHECK (completed_runs >= 0 AND completed_runs <= total_runs)
+);
+
+CREATE INDEX ix_llm_tool_checks_model ON llm_tool_checks (model_id, started_at DESC);
+
+-- At most one check runs per installation: a measurement occupies the model endpoint for minutes.
+CREATE UNIQUE INDEX ux_llm_tool_checks_one_running ON llm_tool_checks ((true)) WHERE status = 'RUNNING';
+
+-- The document templates an agent fills its result into; one template serves many agents. A
+-- deleted template drops out with its row, a deleted agent takes its rows along.
+CREATE TABLE agent_templates (
+    agent_id uuid NOT NULL,
+    template_id uuid NOT NULL,
+    CONSTRAINT agent_templates_pkey PRIMARY KEY (agent_id, template_id),
+    CONSTRAINT fk_agent_templates_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_templates_template FOREIGN KEY (template_id) REFERENCES document_templates(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_agent_templates_template ON agent_templates USING btree (template_id);

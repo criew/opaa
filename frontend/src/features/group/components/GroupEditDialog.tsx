@@ -1,10 +1,5 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse } from '@/shared/api/types'
@@ -14,6 +9,8 @@ import { notify } from '@/shared/stores/notificationStore'
 import GroupStewardsSection from './GroupStewardsSection'
 import GroupFormFields, { type GroupFormValues } from './GroupFormFields'
 import { groupStateReason } from './groupListLabels'
+import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 const SOURCE_NOTICE: Record<string, string> = {
   ORG_UNIT:
@@ -66,6 +63,7 @@ function GroupEditDialogContent({
   })
   const { name, description, released, protectedGroup } = values
   const [error, setError] = useState<string | null>(null)
+  const [nameMissing, setNameMissing] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const reason = groupStateReason(group)
@@ -73,10 +71,17 @@ function GroupEditDialogContent({
     isInternal && (name.trim() !== opened.name || description.trim() !== (opened.description ?? ''))
   const releaseChanged = isInternal && released !== opened.releasedForUse
   const protectionChanged = protectedGroup !== opened.protectedGroup
-  const canSave =
-    (!isInternal || name.trim() !== '') && (nameChanged || releaseChanged || protectionChanged)
 
   async function save() {
+    if (isInternal && name.trim() === '') {
+      setNameMissing(true)
+      return
+    }
+    // nothing changed: there is nothing to save, the dialog just closes
+    if (!nameChanged && !releaseChanged && !protectionChanged) {
+      onClose()
+      return
+    }
     setError(null)
     setSaving(true)
     try {
@@ -95,57 +100,58 @@ function GroupEditDialogContent({
   }
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="group-edit-title">
-      <DialogTitle id="group-edit-title">„{group.name}“ bearbeiten</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
-          {group.provider ? group.provider.displayName : 'Interne Gruppe'}
-          {group.sourcePath ? ` · ${group.sourcePath}` : ''}
-        </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        {reason && group.state !== 'NOT_RELEASED' && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {reason}
-          </Alert>
-        )}
-        {!isInternal && SOURCE_NOTICE[group.kind] && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {SOURCE_NOTICE[group.kind]}
-          </Alert>
-        )}
+    <FormDialog
+      titleId="group-edit-title"
+      title={`„${group.name}“ bearbeiten`}
+      submitLabel="Speichern"
+      onSubmit={() => void save()}
+      onClose={onClose}
+      busy={saving}
+      busyAnnouncement="Wird gespeichert"
+    >
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+        {group.provider ? group.provider.displayName : 'Interne Gruppe'}
+        {group.sourcePath ? ` · ${group.sourcePath}` : ''}
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {reason && group.state !== 'NOT_RELEASED' && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {reason}
+        </Alert>
+      )}
+      {!isInternal && SOURCE_NOTICE[group.kind] && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {SOURCE_NOTICE[group.kind]}
+        </Alert>
+      )}
 
-        <GroupFormFields
-          values={values}
-          onChange={setValues}
-          idPrefix="group-edit"
-          canProtect
-          isInternal={isInternal}
-        />
+      <GroupFormFields
+        values={values}
+        onChange={(next) => {
+          setValues(next)
+          setNameMissing(false)
+        }}
+        nameError={nameMissing ? 'Bitte einen Namen angeben.' : undefined}
+        idPrefix="group-edit"
+        canProtect
+        isInternal={isInternal}
+      />
 
-        {isInternal && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <GroupStewardsSection
-              groupId={group.id}
-              groupName={group.name}
-              stewards={details?.stewards ?? group.stewards}
-              currentUserId={currentUserId}
-            />
-          </>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
-          Abbrechen
-        </Button>
-        <Button variant="contained" onClick={() => void save()} disabled={!canSave || saving}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+      {isInternal && (
+        <>
+          <Divider sx={{ my: 2 }} />
+          <GroupStewardsSection
+            groupId={group.id}
+            groupName={group.name}
+            stewards={details?.stewards ?? group.stewards}
+            currentUserId={currentUserId}
+          />
+        </>
+      )}
+    </FormDialog>
   )
 }

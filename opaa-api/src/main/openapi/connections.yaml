@@ -107,6 +107,8 @@ paths:
           description: Disconnected
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/connections/authorizations:
     post:
@@ -448,6 +450,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/connection-profiles/{profileId}/impact:
     parameters:
@@ -542,6 +546,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/connection-profiles/{profileId}/test-sign-in:
     post:
@@ -612,6 +618,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/outbound-proxy:
     get:
@@ -868,6 +876,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/mcp-servers/{profileId}/disconnect-all:
     post:
@@ -895,6 +905,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/mcp-servers/{profileId}/lock:
     put:
@@ -928,6 +940,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/connector-types:
     get:
@@ -978,6 +992,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/admin/connector-types/{sourceType}/profile-requirement:
     parameters:

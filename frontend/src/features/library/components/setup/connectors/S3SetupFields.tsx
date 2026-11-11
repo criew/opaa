@@ -3,11 +3,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import {
   S3_PROVIDERS,
   S3_PROVIDER_LABELS,
@@ -19,13 +18,14 @@ import {
 } from '../../../utils/s3Source'
 import CredentialFields from '../CredentialFields'
 import ScopePicker from '../ScopePicker'
-import { displayPath } from '../paths'
-import SecretField from '../SecretField'
+import { displayPath } from '../../sourceCore/paths'
+import SecretField from '@/shared/ui/form/SecretField'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
-import { ALL_SCOPE_HINT, credentialsKept } from './common'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { ALL_SCOPE_HINT, credentialsKept } from '../../sourceCore/common'
 import { browseSource } from '../../../api/libraryApi'
 import { s3Item, s3ScopeOfItem, s3SelectionSource } from '../../sourceKit/selectionSources'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
 
 export function S3ConnectionFields({
   values,
@@ -38,13 +38,13 @@ export function S3ConnectionFields({
   const [advanced, setAdvanced] = useState(false)
   return (
     <Stack spacing={2}>
-      <Box sx={{ maxWidth: 320 }}>
-        <FieldLabel id={`${fieldId('provider')}-label`}>Anbieter</FieldLabel>
-        <Select
+      <Box sx={{ maxWidth: fieldWidth.medium }}>
+        <FormField
+          select
+          label="Anbieter"
           id={fieldId('provider')}
           size="small"
           fullWidth
-          labelId={`${fieldId('provider')}-label`}
           value={values.provider}
           onChange={(e) => onChange(s3ProviderTemplate(e.target.value as S3Provider))}
         >
@@ -53,7 +53,7 @@ export function S3ConnectionFields({
               {S3_PROVIDER_LABELS[provider]}
             </MenuItem>
           ))}
-        </Select>
+        </FormField>
       </Box>
       <SetupTextField
         id={fieldId('sourceUrl')}
@@ -125,14 +125,14 @@ export function S3ConnectionFields({
           <Box>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   checked={values.pathStyle}
                   onChange={(e) => onChange({ pathStyle: e.target.checked })}
                 />
               }
               label="Bucket im Pfad adressieren"
             />
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Für MinIO und Ceph meist an, für AWS aus.
             </Typography>
           </Box>

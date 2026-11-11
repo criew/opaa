@@ -2,24 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
-import Skeleton from '@mui/material/Skeleton'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fieldWidth, fontFamily, fontSize } from '@/shared/theme/tokens'
 import { incompleteNote } from './incompleteNote'
-import { plainMessage } from './plainMessage'
-import PathLabel from '../setup/PathLabel'
+import { plainMessage } from '../sourceCore/plainMessage'
+import PathLabel from '../sourceCore/PathLabel'
 import { TextAction } from '@/shared/ui/DetailSection'
 import {
   adoptTrail,
@@ -32,6 +25,10 @@ import {
   type SelectionItem,
   type SelectionSource,
 } from './selection'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** A level shows its search field from this many entries on (Prüfliste #35). */
 const SEARCH_FROM = 7
@@ -97,8 +94,6 @@ function SelectionDialogBody({
   initialLevel = [],
   startManual = false,
 }: SelectionDialogProps) {
-  const theme = useTheme()
-  const narrow = useMediaQuery(theme.breakpoints.down('sm'))
   const [draft, setDraft] = useState<SelectionItem[]>(value)
   const [level, setLevel] = useState<Crumb[]>(initialLevel)
   const [search, setSearch] = useState('')
@@ -278,7 +273,7 @@ function SelectionDialogBody({
   const body = reviewing ? (
     <Box>
       {draft.length === 0 ? (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 2 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 2 }}>
           {source.emptyMeans ?? `Noch keine ${source.noun[1]} ausgewählt.`}
         </Typography>
       ) : (
@@ -297,7 +292,9 @@ function SelectionDialogBody({
               }}
             >
               <Tooltip disableInteractive title={pathLabel(item)} placement="bottom-start">
-                <Typography sx={{ ...ellipsis, flex: 1, fontSize: 14, color: 'text.primary' }}>
+                <Typography
+                  sx={{ ...ellipsis, flex: 1, fontSize: fontSize.text, color: 'text.primary' }}
+                >
                   {item.name}
                   {item.trail.length > 0 && (
                     <Box component="span" sx={{ color: 'text.secondary' }}>
@@ -324,34 +321,31 @@ function SelectionDialogBody({
   ) : (
     <Box>
       {current?.result && incompleteNote(current.result) && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1 }}>
           {incompleteNote(current.result)}
         </Typography>
       )}
-      {loading && showLoading && (
-        <Box role="status" aria-busy="true" aria-label={`${levelName} wird geladen`}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} variant="rounded" height={32} sx={{ my: 0.5 }} />
-          ))}
-        </Box>
-      )}
+      {loading && showLoading && <LoadingState shape="lines" count={5} />}
       {current?.error && (
         <Box sx={{ py: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 500, color: 'text.primary' }}>
-            {/^.*(403|verweiger|Berechtigung|AccessDenied)/i.test(current.error)
-              ? `Kein Zugriff auf „${levelName}“.`
-              : `„${levelName}“ ließ sich nicht laden.`}
-          </Typography>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5 }}>
-            {plainMessage(current.error)}
-          </Typography>
-          <TextAction onClick={() => setAttempt((n) => n + 1)} sx={{ mt: 0.5 }}>
-            Erneut laden
-          </TextAction>
+          {/^.*(403|verweiger|Berechtigung|AccessDenied)/i.test(current.error) ? (
+            <>
+              <EmptyState kind="noAccess" message={`Kein Zugriff auf „${levelName}“.`} />
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                {plainMessage(current.error)}
+              </Typography>
+            </>
+          ) : (
+            <LoadError
+              message={`„${levelName}“ konnte nicht geladen werden.`}
+              detail={plainMessage(current.error)}
+              onRetry={() => setAttempt((n) => n + 1)}
+            />
+          )}
         </Box>
       )}
       {current?.result && levelSize === 0 && !filtered && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 1 }}>
           {current.result.complete
             ? `In „${levelName}“ liegen keine ${levelNoun}.`
             : current.result.message
@@ -361,16 +355,11 @@ function SelectionDialogBody({
       )}
       {current?.result && entries.length === 0 && filtered && (
         <Box sx={{ py: 1 }}>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-            Keine Treffer für „{search.trim()}“.
-          </Typography>
-          <TextAction onClick={() => setSearch('')} sx={{ mt: 0.5 }}>
-            Suche zurücksetzen
-          </TextAction>
+          <EmptyState kind="noMatch" onReset={() => setSearch('')} />
         </Box>
       )}
       {someBlocked && !coveringParent && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1 }}>
           {entries.find((entry) => entry.blocked)?.blocked}
         </Typography>
       )}
@@ -394,20 +383,20 @@ function SelectionDialogBody({
                 onChange={() => setDraft((prev) => prev.filter((other) => other.key !== item.key))}
                 slotProps={{ input: { 'aria-label': pathLabel(item) } }}
               />
-              <Box sx={{ flex: 1, minWidth: 0, fontSize: 14 }}>
+              <Box sx={{ flex: 1, minWidth: 0, fontSize: fontSize.text }}>
                 <PathLabel path={pathLabel(item)} />
               </Box>
             </Box>
           ))}
           {pinned.length > PINNED_SHOWN && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', py: 1 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 1 }}>
               und {pinned.length - PINNED_SHOWN} weitere ausgewählt
             </Typography>
           )}
         </Box>
       )}
       {coveringParent && entries.length > 0 && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1 }}>
           Ganz ausgewählt über „{coveringParent.name}“.
         </Typography>
       )}
@@ -439,7 +428,7 @@ function SelectionDialogBody({
                   },
                 }}
               />
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500, color: 'text.primary' }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500, color: 'text.primary' }}>
                 {allLabel}
               </Typography>
             </Box>
@@ -486,6 +475,7 @@ function SelectionDialogBody({
                 <Box sx={{ flex: 1, minWidth: 0, py: entry.blocked ? 0.5 : 0 }}>
                   <Typography
                     component={entry.openable && !entry.selectable ? 'button' : 'span'}
+                    {...(entry.openable && !entry.selectable ? { type: 'button' } : {})}
                     aria-label={
                       entry.openable && !entry.selectable ? `„${entry.name}“ öffnen` : undefined
                     }
@@ -498,7 +488,7 @@ function SelectionDialogBody({
                       ...ellipsis,
                       display: 'block',
                       width: '100%',
-                      fontSize: 14,
+                      fontSize: fontSize.text,
                       textAlign: 'left',
                       border: 0,
                       bgcolor: 'transparent',
@@ -528,7 +518,7 @@ function SelectionDialogBody({
           })}
           {entries.length > shown && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1, flexWrap: 'wrap' }}>
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                 {shown} von {entries.length} angezeigt
               </Typography>
               <TextAction onClick={() => setShown((n) => n + PAGE)}>Weitere anzeigen</TextAction>
@@ -545,7 +535,12 @@ function SelectionDialogBody({
               <Typography
                 component="label"
                 htmlFor="selection-manual"
-                sx={{ display: 'block', fontSize: 12, color: 'text.secondary', mb: '5px' }}
+                sx={{
+                  display: 'block',
+                  fontSize: fontSize.meta,
+                  color: 'text.secondary',
+                  mb: '5px',
+                }}
               >
                 {source.manual.label}
               </Typography>
@@ -578,107 +573,97 @@ function SelectionDialogBody({
     </Box>
   )
 
-  return (
-    <Dialog
-      open
-      onClose={() => void requestClose()}
-      fullScreen={narrow}
-      maxWidth="md"
-      fullWidth
-      aria-labelledby="selection-dialog-title"
-      slotProps={{ paper: { sx: { maxHeight: narrow ? '100%' : 'min(760px, 88vh)' } } }}
-    >
-      <DialogTitle id="selection-dialog-title" sx={{ pb: 1 }}>
-        {title}
-      </DialogTitle>
-      <Box sx={{ px: 3, pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-        {!reviewing && !source.nested && level.length === 0 ? null : reviewing ? (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-            Ausgewählt über alle Ebenen
-          </Typography>
-        ) : (
-          <Box
-            component="nav"
-            aria-label="Ebenen"
-            sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mb: 1 }}
-          >
-            {[{ key: '', name: source.rootLabel }, ...level].map((crumb, i, all) => {
-              const last = i === all.length - 1
-              return (
-                <Box
-                  key={crumb.key || 'root'}
-                  sx={{ display: 'flex', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}
-                >
-                  {i > 0 && (
-                    <Typography aria-hidden sx={{ color: 'text.secondary', px: 0.5 }}>
-                      /
+  const toolbar = (
+    <Box sx={{ px: 3, pb: 1.5 }}>
+      {!reviewing && !source.nested && level.length === 0 ? null : reviewing ? (
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Ausgewählt über alle Ebenen
+        </Typography>
+      ) : (
+        <Box
+          component="nav"
+          aria-label="Ebenen"
+          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mb: 1 }}
+        >
+          {[{ key: '', name: source.rootLabel }, ...level].map((crumb, i, all) => {
+            const last = i === all.length - 1
+            return (
+              <Box
+                key={crumb.key || 'root'}
+                sx={{ display: 'flex', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}
+              >
+                {i > 0 && (
+                  <Typography aria-hidden sx={{ color: 'text.secondary', px: 0.5 }}>
+                    /
+                  </Typography>
+                )}
+                <Tooltip disableInteractive title={crumb.name} enterDelay={600}>
+                  {last ? (
+                    <Typography
+                      aria-current="location"
+                      sx={{
+                        ...ellipsis,
+                        fontSize: fontSize.text,
+                        fontWeight: 600,
+                        maxWidth: { xs: fieldWidth.short, sm: fieldWidth.medium },
+                      }}
+                    >
+                      {crumb.name}
                     </Typography>
-                  )}
-                  <Tooltip disableInteractive title={crumb.name} enterDelay={600}>
-                    {last ? (
-                      <Typography
-                        aria-current="location"
-                        sx={{
-                          ...ellipsis,
-                          fontSize: 14,
-                          fontWeight: 600,
-                          maxWidth: { xs: 220, sm: 320 },
-                        }}
-                      >
+                  ) : (
+                    <Button
+                      size="small"
+                      onClick={() => openLevel(level.slice(0, i))}
+                      sx={{ minWidth: 0, px: 0.5, maxWidth: fieldWidth.short }}
+                    >
+                      <Box component="span" sx={ellipsis}>
                         {crumb.name}
-                      </Typography>
-                    ) : (
-                      <Button
-                        size="small"
-                        onClick={() => openLevel(level.slice(0, i))}
-                        sx={{ minWidth: 0, px: 0.5, maxWidth: { xs: 160, sm: 240 } }}
-                      >
-                        <Box component="span" sx={ellipsis}>
-                          {crumb.name}
-                        </Box>
-                      </Button>
-                    )}
-                  </Tooltip>
-                </Box>
-              )
-            })}
-          </Box>
-        )}
-        {!reviewing && showSearch && (
-          <TextField
-            size="small"
-            fullWidth
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setShown(PAGE)
-            }}
-            placeholder={source.searchLabel(level)}
-            slotProps={{ htmlInput: { 'aria-label': source.searchLabel(level), type: 'search' } }}
-          />
-        )}
-      </Box>
-      <DialogContent ref={listRef} sx={{ pt: '8px !important' }}>
-        {body}
-      </DialogContent>
-      <Box sx={{ px: 3, pt: 1 }} role="alert">
+                      </Box>
+                    </Button>
+                  )}
+                </Tooltip>
+              </Box>
+            )
+          })}
+        </Box>
+      )}
+      {!reviewing && showSearch && (
+        <TextField
+          size="small"
+          fullWidth
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setShown(PAGE)
+          }}
+          placeholder={source.searchLabel(level)}
+          slotProps={{ htmlInput: { 'aria-label': source.searchLabel(level), type: 'search' } }}
+        />
+      )}
+      <Box role="alert">
         {applyError && (
-          <Typography sx={{ fontSize: 13, color: 'error.main' }}>{applyError}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, color: 'error.main', mt: 1 }}>
+            {applyError}
+          </Typography>
         )}
       </Box>
-      <DialogActions
-        sx={{
-          px: 3,
-          py: 1.5,
-          borderTop: 1,
-          borderColor: 'divider',
-          flexWrap: 'wrap',
-          gap: 1,
-          justifyContent: 'space-between',
-        }}
-      >
+    </Box>
+  )
+
+  return (
+    <FormDialog
+      width="editor"
+      titleId="selection-dialog-title"
+      title={title}
+      submitLabel="Übernehmen"
+      onSubmit={apply}
+      onClose={() => void requestClose()}
+      submitOnEnter={false}
+      contentRef={listRef}
+      toolbar={toolbar}
+      secondaryAction={
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5, color: 'text.primary' }} aria-live="polite">
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.primary' }} aria-live="polite">
             {draft.length === 0 && source.emptyMeans
               ? source.emptyMeans
               : `${draft.length} ausgewählt`}
@@ -689,13 +674,9 @@ function SelectionDialogBody({
             </TextAction>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
-          <Button onClick={() => void requestClose()}>Abbrechen</Button>
-          <Button variant="contained" onClick={apply}>
-            Übernehmen
-          </Button>
-        </Box>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      {body}
+    </FormDialog>
   )
 }

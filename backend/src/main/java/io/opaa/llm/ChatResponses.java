@@ -48,6 +48,24 @@ public final class ChatResponses {
     return AnswerCompleteness.COMPLETE;
   }
 
+  /** The finish reason the model reported for the result, or {@code null} without one. */
+  public static String finishReason(ChatResponse response) {
+    requireResponse(response);
+    if (response.getResult() == null || response.getResult().getMetadata() == null) {
+      return null;
+    }
+    return response.getResult().getMetadata().getFinishReason();
+  }
+
+  /** The input tokens the response reports, or {@code null} without usage. */
+  public static Integer inputTokens(ChatResponse response) {
+    requireResponse(response);
+    if (response.getMetadata() == null || response.getMetadata().getUsage() == null) {
+      return null;
+    }
+    return response.getMetadata().getUsage().getPromptTokens();
+  }
+
   /** The model that answered, or {@code "unknown"} when the response names none. */
   public static String model(ChatResponse response) {
     requireResponse(response);

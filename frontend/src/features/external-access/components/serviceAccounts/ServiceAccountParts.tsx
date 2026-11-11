@@ -1,8 +1,5 @@
 import type { ReactNode } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type {
   ServiceAccountConsentedLibraryResponse,
@@ -24,6 +21,9 @@ import {
   formatDate,
   soonLabel,
 } from './serviceAccountLabels'
+import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** The responsible person, or „fehlt“ with a warning dot once it was locked or deleted. */
 export function ResponsiblePerson({ account }: { account: ServiceAccountResponse }) {
@@ -92,7 +92,7 @@ export function TokenRows({
 }) {
   async function revoke(token: ServiceAccountTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ widerrufen?`,
+      question: `„${token.name}“ widerrufen?`,
       consequence: REVOKE_TOKEN_CONSEQUENCE,
       confirmLabel: 'Widerrufen',
       tone: 'danger',
@@ -109,7 +109,7 @@ export function TokenRows({
 
   if (tokens.length === 0) {
     return (
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 1 }}>
         Noch kein Token.
       </Typography>
     )
@@ -119,13 +119,13 @@ export function TokenRows({
       {tokens.map((token) => (
         <Box component="li" key={token.id} sx={rowSx}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
               {token.name}
             </Typography>
             <Typography
               component="div"
               sx={{
-                fontSize: 12.5,
+                fontSize: fontSize.meta,
                 color: 'text.secondary',
                 display: 'flex',
                 gap: 1.5,
@@ -165,7 +165,7 @@ export function LibraryRows({
 }) {
   if (libraries.length === 0) {
     return (
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', py: 1 }}>
         Noch keine Bibliothek. Die Verwaltung einer Bibliothek nimmt das Dienstkonto dort unter
         „Freigaben“ auf.
       </Typography>
@@ -182,7 +182,7 @@ export function LibraryRows({
             >
               {library.libraryName}
             </TextLink>
-            <Typography component="div" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography component="div" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               {library.status === 'ACTIVE' ? (
                 <>
                   bis <Ending value={library.expiresAt} />
@@ -212,18 +212,13 @@ export function DetailFrame({
 }) {
   if (error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={onRetry}>
-            Erneut laden
-          </Button>
-        }
-      >
-        {error}
-      </Alert>
+      <LoadError
+        message="Das Dienstkonto konnte nicht geladen werden."
+        detail={error}
+        onRetry={onRetry}
+      />
     )
   }
-  if (loading) return <Skeleton variant="rounded" height={200} />
+  if (loading) return <LoadingState shape="detail" count={4} />
   return <>{children}</>
 }

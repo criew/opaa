@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
 import io.opaa.security.EncryptedColumn;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.LocalAccountFixturesFactory;

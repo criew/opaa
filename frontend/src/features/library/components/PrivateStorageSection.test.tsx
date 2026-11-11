@@ -59,6 +59,20 @@ async function saveCapture() {
   return sent
 }
 
+/** The limit is a value row: „Ändern“ opens its field. */
+async function openField(user = userEvent.setup()) {
+  await user.click(await screen.findByRole('button', { name: 'Grenze je Person ändern' }))
+  return screen.getByLabelText('Grenze je Person (GB)')
+}
+
+/** „Speichern“ stays active; with a wrong or unchanged entry it asks nothing and sends nothing. */
+async function expectNothingToSave() {
+  const save = screen.getByRole('button', { name: 'Speichern' })
+  expect(save).toBeEnabled()
+  await userEvent.setup().click(save)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+}
+
 describe('PrivateStorageSection – Grenze (#2276)', () => {
   it('shows the limit in force and that it is the default', async () => {
     quota()
@@ -68,7 +82,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     expect(await screen.findByTestId('private-storage-quota-current')).toHaveTextContent(
       'Es gilt die Werkseinstellung: 10 GB je Person.',
     )
-    expect(screen.getByLabelText('Grenze je Person (GB)')).toHaveValue('10')
+    expect(await openField()).toHaveValue('10')
     expect(
       screen.queryByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
     ).not.toBeInTheDocument()
@@ -81,16 +95,16 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    const field = await screen.findByLabelText('Grenze je Person (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '20')
-    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const question = 'Speicherkontingent privater Bibliotheken auf 20 GB je Person ändern?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /ab dem nächsten aufgenommenen Dokument.*Bereits Gespeichertes bleibt/,
     )
-    await answerConfirm(user, question, 'Grenze ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 20 * GIB }]))
     expect(await screen.findByTestId('private-storage-quota-current')).toHaveTextContent(
@@ -105,14 +119,15 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Unbegrenzt' }))
+    await openField(user)
+    await user.click(screen.getByRole('checkbox', { name: 'Unbegrenzt' }))
     expect(screen.getByLabelText('Grenze je Person (GB)')).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     const question = 'Speicherkontingent privater Bibliotheken auf unbegrenzt ändern?'
     const dialog = await screen.findByRole('dialog', { name: question })
     expect(dialog).toHaveTextContent(/ohne Grenze/)
     expect(dialog).not.toHaveTextContent(/über der Grenze/)
-    await answerConfirm(user, question, 'Grenze ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 0 }]))
   })
@@ -124,11 +139,11 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    const field = await screen.findByLabelText('Grenze je Person (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '2,5')
-    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
-    await answerConfirm(user, /auf 2,5 GB je Person ändern\?/, 'Grenze ändern')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await answerConfirm(user, /auf 2,5 GB je Person ändern\?/, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 2.5 * GIB }]))
   })
@@ -148,12 +163,12 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
       const user = userEvent.setup()
       renderWithProviders(<PrivateStorageSection />)
 
-      const field = await screen.findByLabelText('Grenze je Person (GB)')
+      const field = await openField(user)
       await user.clear(field)
       await user.type(field, value)
 
       expect(screen.getByText(message)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+      await expectNothingToSave()
       await user.type(field, '{Enter}')
       expect(sent).toEqual([])
     },
@@ -169,11 +184,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
     )
-    await answerConfirm(
-      user,
-      /zur Werkseinstellung von 10 GB zurückkehren\?/,
-      'Werkseinstellung wiederherstellen',
-    )
+    await answerConfirm(user, /auf die Werkseinstellung von 10 GB zurücksetzen\?/, 'Zurücksetzen')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: null }]))
   })
@@ -185,12 +196,12 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    const field = await screen.findByLabelText('Grenze je Person (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '-1')
 
     expect(screen.getByText('Bitte eine Zahl größer als 0 eingeben.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+    await expectNothingToSave()
     expect(sent).toEqual([])
   })
 })
@@ -253,8 +264,8 @@ describe('PrivateStorageSection – Übersicht (#2276)', () => {
     summary(exactSummary)
     renderWithProviders(<PrivateStorageSection />)
 
-    expect(await screen.findByLabelText('Grenze je Person (GB)')).toHaveValue('4,656613')
-    expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+    expect(await openField()).toHaveValue('4,656613')
+    await expectNothingToSave()
   })
 
   it('names in its confirmation that a changed file that does not grow is still taken in', async () => {
@@ -263,10 +274,10 @@ describe('PrivateStorageSection – Übersicht (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    const field = await screen.findByLabelText('Grenze je Person (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '5')
-    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(
       await screen.findByRole('dialog', {

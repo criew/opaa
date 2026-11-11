@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/auth'
-import { isChatAnswer, startFreshChat } from '../fixtures/chat'
+import { expectNoCatalogMatch, isChatAnswer, startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
+import { headerCreateButton } from '../fixtures/pageHeader'
 import {
   catalogEntry,
   createKnowledgeLibraryViaApi,
@@ -60,16 +61,6 @@ function grantsSection(page: Page) {
 }
 
 /**
- * The rendered empty result of this very search - without it, an absent entry would also pass
- * before the result is on the page.
- */
-async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
-  await expect(
-    page.getByText(`Kein Eintrag passt zu „${query}“.`, { exact: true }).and(page.locator('p')),
-  ).toBeVisible()
-}
-
-/**
  * The catalog narrowed to prompt libraries, searched for `name`: the catalog pages its result, so
  * presence and absence are only conclusive through the search.
  */
@@ -116,18 +107,19 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await openNewPromptLibraryWizard(owner)
     await owner.getByLabel(/^Name/).fill(LIBRARY_NAME)
     await owner.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await owner.getByRole('button', { name: 'Weiter zu Rechten' }).click()
-    await owner.getByRole('button', { name: 'Prompt-Bibliothek anlegen' }).click()
+    await owner.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await expect(owner.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeVisible()
+    await owner.getByRole('button', { name: 'Anlegen', exact: true }).click()
     await expect(owner.getByRole('heading', { level: 1, name: LIBRARY_NAME })).toBeVisible()
 
-    await owner.getByRole('button', { name: 'Neuer Prompt' }).click()
+    await headerCreateButton(owner, 'Neuer Prompt').click()
     const dialog = owner.getByRole('dialog', { name: 'Neuer Prompt' })
     await dialog.getByLabel('Titel', { exact: true }).fill(PROMPT_TITLE)
     await dialog.getByLabel('Befehl', { exact: true }).fill(PROMPT_COMMAND)
     await dialog.getByLabel('Text', { exact: true }).fill(PROMPT_TEXT)
     await dialog.getByLabel('Beschriftung von aktenzeichen').fill('Aktenzeichen')
     await dialog.getByLabel('aktenzeichen ist Pflicht').check()
-    await dialog.getByRole('button', { name: 'Prompt speichern' }).click()
+    await dialog.getByRole('button', { name: 'Anlegen' }).click()
     await expect(dialog).toHaveCount(0)
 
     await expect(owner.getByText(`/${PROMPT_COMMAND}`)).toBeVisible()
@@ -280,14 +272,16 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     // A chat offers only the prompts of libraries assigned to its space.
     await assignToDefaultSpace('dev-outsider', 'PROMPT_LIBRARY', await promptLibraryId(LIBRARY_NAME))
     await startFreshChat(outsider)
-    const input = outsider.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = outsider.getByRole('textbox', { name: 'Nachricht eingeben' })
     await input.fill(`/${PROMPT_COMMAND}`)
     await outsider
       .getByRole('option', { name: new RegExp(escapeRegExp(`/${PROMPT_COMMAND}`)) })
       .click()
 
     const dialog = outsider.getByRole('dialog', { name: `Prompt einsetzen: ${PROMPT_TITLE}` })
-    await expect(dialog.getByRole('button', { name: 'Einsetzen' })).toBeDisabled()
+    // „Einsetzen“ stays available; the missing required value is reported at its field.
+    await dialog.getByRole('button', { name: 'Einsetzen' }).click()
+    await expect(dialog.getByText('Bitte ausfüllen.')).toBeVisible()
     await dialog.getByLabel(/Aktenzeichen/).fill('AZ 50-123')
     await dialog.getByRole('button', { name: 'Einsetzen' }).click()
     await expect(dialog).toHaveCount(0)

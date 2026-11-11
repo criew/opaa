@@ -19,6 +19,7 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.observability.RequestIds;
 import io.opaa.ratelimit.RateLimitAuthentication;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -78,6 +80,10 @@ public class GlobalExceptionHandler implements FailureDescriber {
   private static final String SQLSTATE_FOREIGN_KEY_VIOLATION = "23503";
   private static final String SQLSTATE_UNIQUE_VIOLATION = "23505";
   private static final String SQLSTATE_CHECK_VIOLATION = "23514";
+
+  static final String STALE_WRITE_MESSAGE =
+      "Der Eintrag wurde inzwischen an anderer Stelle geändert. Bitte neu laden und die Änderung"
+          + " erneut vornehmen.";
 
   // Instantiated directly to keep it out of the Spring context and avoid
   // forcing every @WebMvcTest to import the bean.
@@ -166,7 +172,7 @@ public class GlobalExceptionHandler implements FailureDescriber {
 
   /** The envelope every branch answers with: the message, the numeric status, and the moment. */
   private ErrorResponse error(HttpStatusCode status, String message) {
-    return new ErrorResponse(message, status.value(), Instant.now(clock));
+    return RequestIds.errorResponse(message, status.value(), Instant.now(clock));
   }
 
   /**
@@ -453,6 +459,18 @@ public class GlobalExceptionHandler implements FailureDescriber {
       body.setCode(ex.getCode());
     }
     return respond(ex, HttpStatus.CONFLICT, body);
+  }
+
+  /**
+   * A write from a stale read of a versioned row ({@code @Version}): another transaction changed
+   * the row after this one read it, and nothing of this request was written. The caller reloads and
+   * decides again.
+   */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+      OptimisticLockingFailureException ex) {
+    log.info("Stale write refused by the optimistic lock: {}", ex.getMessage());
+    return respond(ex, HttpStatus.CONFLICT, STALE_WRITE_MESSAGE);
   }
 
   /** A refusal may carry a stable {@code code} the client acts on (e.g. {@code TOKEN_INVALID}). */

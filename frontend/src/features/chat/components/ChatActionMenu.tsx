@@ -7,11 +7,13 @@ import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, iconSize } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { actionOptionId } from './chatActions'
 import type { ChatActionTexts } from './chatActions'
 import type { SourcedChatAction } from './useChatActions'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface ChatActionMenuProps {
   open: boolean
@@ -25,6 +27,7 @@ interface ChatActionMenuProps {
   highlightedIndex: number
   isLoading: boolean
   error: string | null
+  onRetry: () => void
   onHighlight: (index: number) => void
   onSelect: (action: SourcedChatAction) => void
   onClose: () => void
@@ -45,6 +48,7 @@ export default function ChatActionMenu({
   highlightedIndex,
   isLoading,
   error,
+  onRetry,
   onHighlight,
   onSelect,
   onClose,
@@ -57,15 +61,8 @@ export default function ChatActionMenu({
     }
   })
 
-  const message = error
-    ? error
-    : isLoading && actions.length === 0
-      ? texts.loading
-      : !hasActions
-        ? texts.none
-        : actions.length === 0
-          ? texts.noMatch
-          : null
+  const loading = !error && isLoading && actions.length === 0
+  const message = !hasActions ? texts.none : actions.length === 0 ? texts.noMatch : null
 
   return (
     <Popper
@@ -83,7 +80,7 @@ export default function ChatActionMenu({
               px: 1.5,
               py: 1,
               fontFamily: fontFamily.mono,
-              fontSize: 9.5,
+              fontSize: fontSize.label,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: 'text.secondary',
@@ -93,7 +90,21 @@ export default function ChatActionMenu({
           >
             {texts.heading}
           </Typography>
-          {message !== null ? (
+          {loading ? (
+            <Box sx={{ p: 1.5 }}>
+              <LoadingState shape="lines" count={3} />
+            </Box>
+          ) : error ? (
+            // The input keeps focus while the retry is pressed, as for every option.
+            <Box sx={{ p: 1 }} onMouseDown={(event) => event.preventDefault()}>
+              <LoadError
+                message={texts.loadFailed}
+                detail={error}
+                onRetry={onRetry}
+                moveFocus={false}
+              />
+            </Box>
+          ) : message !== null ? (
             <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>
               {message}
             </Typography>
@@ -114,7 +125,7 @@ export default function ChatActionMenu({
                       id={headerId}
                       component="div"
                       disableSticky
-                      sx={{ lineHeight: 2.2, fontSize: 11.5 }}
+                      sx={{ lineHeight: 2.2, fontSize: fontSize.meta }}
                     >
                       {group.label}
                     </ListSubheader>
@@ -142,11 +153,15 @@ export default function ChatActionMenu({
                               },
                             }}
                           >
-                            <Icon sx={{ fontSize: 15, mt: 0.25, color: 'text.primary' }} />
+                            <Icon sx={{ fontSize: iconSize.sm, mt: 0.25, color: 'text.primary' }} />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography
                                 component="span"
-                                sx={{ display: 'block', fontSize: 13.5, color: 'text.primary' }}
+                                sx={{
+                                  display: 'block',
+                                  fontSize: fontSize.text,
+                                  color: 'text.primary',
+                                }}
                                 noWrap
                               >
                                 <Box
@@ -161,7 +176,11 @@ export default function ChatActionMenu({
                                 <Typography
                                   component="span"
                                   noWrap
-                                  sx={{ display: 'block', fontSize: 12, color: 'text.secondary' }}
+                                  sx={{
+                                    display: 'block',
+                                    fontSize: fontSize.meta,
+                                    color: 'text.secondary',
+                                  }}
                                 >
                                   {action.description}
                                 </Typography>

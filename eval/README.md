@@ -30,9 +30,13 @@ eval/
 │   │   ├── MANIFEST.sha256
 │   │   ├── SOURCE.md
 │   │   └── MAINTENANCE.md           Pflegeverantwortung, Baseline-Neuziehung, known_gap-Fälle
-│   └── prompt-injection/            präparierte Merkblätter (Markdown, PDF, DOCX) und saubere Dokumente
-│       ├── MANIFEST.sha256
-│       └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
+│   ├── prompt-injection/            präparierte Merkblätter (Markdown, PDF, DOCX) und saubere Dokumente
+│   │   ├── MANIFEST.sha256
+│   │   └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
+│   └── tool-calling/                Fallbasis Werkzeugfähigkeit (Issue #1753); Dateien im Backend, siehe SOURCE.md
+│       └── SOURCE.md                Fallklassen, Untergrenze, Grenzen der Messung
+├── agents/
+│   └── recherche/                   Recherchefälle des Agenten „Recherche“ mit Messskript (Issue #3674)
 ├── ocr-poc/                         Messstand des OCR-PoC mit Ergebnis (Issue #1062)
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
 │   ├── comic-characters.json
@@ -40,6 +44,7 @@ eval/
 │   ├── verwaltung.json               fünf Fallklassen mit Zustandsfeldern je Pfad (Issues #1043, #1658)
 │   └── prompt-injection.json         ein Fall je präpariertem Dokument (Issue #3044)
 ├── reports/                         Handproben und Ausgangsmessungen mit Datum, committet
+│   └── tool-calling/                aufgenommene Messläufe der Werkzeugfähigkeit je Kombination
 └── variants/                        Variantenvergleiche, committet (siehe eval/variants/README.md, Issue #1041)
     └── comic-characters-selection-mechanics.json
 ```
@@ -96,6 +101,61 @@ kaum Zusätze; fünf der acht Angriffsziele können bei ihm gar nicht anschlagen
 Die Ausgangsmessung steht unter [`reports/`](reports/). Docker-frei prüft `PromptInjectionDatasetTest`
 (Teil von `evalUnitTest`) Manifest, Fälle und die Extraktion jeder Anweisung durch das produktive
 Format.
+
+## Werkzeugfähigkeit messen (Issue #1753)
+
+Die Fallbasis **Werkzeugfähigkeit** misst, ob eine Kombination aus Modell, Quantisierung und
+Laufzeit ein Werkzeug verlässlich aufruft: 28 Fälle in sieben Fallklassen gegen ein
+Attrappen-Werkzeug mit zwei Parametern und festen Antworten, unabhängig von der Werkzeugschleife.
+Derselbe Messkern (`io.opaa.query.toolcheck`) läuft auch in der Modellverwaltung („Werkzeuge
+prüfen“, nur mit eingeschaltetem Schalter „Agenten“), dort immer mit der Definition des echten
+`search_knowledge`; der Weg hier misst ohne laufende Installation.
+Fallklassen, Untergrenze und Grenzen der Messung:
+[`corpus/tool-calling/SOURCE.md`](corpus/tool-calling/SOURCE.md); Ergebnisformat, aufgenommene
+Läufe und Betriebsfehler: [`reports/tool-calling/README.md`](reports/tool-calling/README.md).
+
+```bash
+cd backend
+export OPAA_EVAL_CHAT_API_KEY=...   # nur, wenn der Endpunkt einen Schlüssel verlangt
+./gradlew evaluateToolCalling \
+  -Dopaa.eval.chatBaseUrl=http://localhost:11434/v1 \
+  -Dopaa.eval.chatModel=qwen2.5:7b-instruct \
+  -Dopaa.eval.toolCalling.quantization=Q4_K_M \
+  -Dopaa.eval.toolCalling.runtime=ollama \
+  -Dopaa.eval.toolCalling.runtimeVersion=0.40.3 \
+  -Dopaa.eval.toolCalling.hardware="CPU, 8 Kerne, 32 GB" \
+  -Dopaa.eval.toolCalling.contextLength=8192
+```
+
+Der Harness `ToolCallingEvaluationHarnessTest` braucht **weder Docker noch Datenbank**, nur den
+Endpunkt. Er baut den Client wie die Anwendung für einen Modelleintrag (OpenAI-kompatibler Weg,
+Entfernen von Denktext) und treibt die Schleife selbst: Jeden Werkzeugaufruf beantwortet er aus dem
+Fall, keiner wird ausgeführt. Modelladresse und Modell sind Pflicht, ein gepinntes Ersatzmodell gibt
+es hier nicht; ohne sie scheitert der Lauf, statt übersprungen zu werden, und ein alter Bericht wird
+zu Beginn gelöscht. Schlüssel, Adressprüfung und Temperatur (`-Dopaa.eval.chatTemperature`, Vorgabe
+0) folgen denselben Regeln wie beim Prompt-Injection-Testsatz.
+
+| Eigenschaft | Wirkung | Vorgabe |
+|---|---|---|
+| `opaa.eval.toolCalling.repetitions` | Läufe je Fall | 3 |
+| `opaa.eval.toolCalling.streaming` | Antworten im Fluss statt am Stück | `false` |
+| `opaa.eval.toolCalling.maxTokens` | Längenbegrenzung je Antwort; wie die Vorgabe eines neuen Modelleintrags | 8000 |
+| `opaa.eval.toolCalling.timeoutSeconds` | Zeitgrenze je Modellaufruf | 300 |
+| `opaa.eval.toolCalling.tool` | angebotene Definition: `mock` (Attrappe) oder `production` (`search_knowledge` der Agenten) | `mock` |
+| `opaa.eval.toolCalling.quantization`, `.runtime`, `.runtimeVersion`, `.hardware`, `.contextLength` | nur Beschreibung der Kombination im Bericht | „nicht angegeben“ |
+
+Bericht: `build/eval-reports/tool-calling.json` und `.md`, mit Messlauf-Kennung, Datum,
+Kombination, Ergebnis je Fallklasse als Zahl, Untergrenze, Laufdauer und jedem Lauf im Wortlaut.
+Der Lauf misst nur; er scheitert an einer verletzten Voraussetzung (Manifest, Endpunkt antwortet
+nicht), nie an einem Ergebnis. Kein CI-Job ruft ihn auf, auch nicht nächtlich: Er braucht ein
+selbst betriebenes Modell, und seine Zahlen gelten nur für dessen Kombination.
+
+In der CI läuft dafür docker- und schlüsselfrei (Teil von `evalUnitTest`): `ToolCallingDatasetTest`
+prüft Manifest, Fälle und Werkzeugschema, `ToolCallingRunnerTest` jede Fallklasse in beide
+Richtungen gegen ein geskriptetes Modell, `ToolCallingWireTest` den echten Client gegen einen
+nachgebildeten OpenAI-kompatiblen Endpunkt, am Stück und im Fluss, und `ToolCallingReportTest` das
+Ergebnisformat samt Untergrenze. Den Ablauf für Betreiber beschreibt das Handbuch
+(`docs/handbuch/betrieb/modell-endpunkte.md`, „Modell auf Werkzeugaufrufe messen“).
 
 ## Retrieval-Evaluation ausführen (Issue #227)
 
@@ -460,6 +520,11 @@ Ist `opaa.eval.explanationDumpDir` gesetzt, entsteht je Fall eine Datei `<fall-i
 Liste, wie die Stufe sie erzeugt hat. Ohne die Property schreibt der Lauf nichts und verhält sich
 byte-identisch zum bisherigen Stand.
 
+Die gemessene Dauer jeder Stufe steht getrennt daneben in `<fall-id>.durations.json` (je Stufe Name
+und `durationMs`, `null` für abgeschaltete und nicht erreichte Stufen). Dauern schwanken zwischen
+zwei Läufen desselben Codes; der Neutralitätsvergleich lässt diese Dateien deshalb aus:
+`diff -r -x '*.durations.json' before after`.
+
 **Indexstabile Schlüssel statt IDs.** Jeder Harness-Lauf indiziert in einen frischen
 Testcontainer-Index; Chunk- und Dokument-IDs sind dort neue UUIDs und wären zwischen zwei Läufen nie
 gleich. Der Dump übersetzt sie deshalb über den `vector_store` des Laufs (`VectorStoreChunkKeys`):
@@ -467,8 +532,8 @@ ein Chunk erscheint als `<dateiname>#<chunk_index>`, ein Dokument als sein Datei
 durch das Manifest des Korpus festgelegt, also über Läufe hinweg stabil.
 
 Verwendung: Vorher-Stand auf `main` dumpen, Umbau durchführen, Nachher-Stand in ein zweites
-Verzeichnis dumpen, `diff -r before after` — ein leerer Diff über alle Fälle ist der Nachweis. Dass
-zwei Läufe **desselben** Codes einen leeren Diff liefern, ist vorher einmal zu prüfen (zwei Dumps auf
+Verzeichnis dumpen, `diff -r -x '*.durations.json' before after` — ein leerer Diff über alle Fälle
+ist der Nachweis. Dass zwei Läufe **desselben** Codes einen leeren Diff liefern, ist vorher einmal zu prüfen (zwei Dumps auf
 `main` gegeneinander); erst das macht einen leeren Diff vor/nach aussagekräftig. Für diesen
 Vergleich darf das Host-Ollama genutzt werden (`-Dopaa.eval.ollamaBaseUrl`): Verglichen wird nur
 Gleichheit vor/nach demselben Index-Verfahren, keine Baseline. Der Dump schreibt ausschließlich der

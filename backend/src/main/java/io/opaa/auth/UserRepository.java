@@ -222,9 +222,34 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getConnectedAccounts();
   }
 
-  /** Writes {@code role} only while the stored role is still {@code expected}. */
+  /**
+   * Writes the time of the last sign-in and nothing else, so role, directory lock and erasure
+   * written concurrently stay as written. Leaves the version alone: a sign-in is no reason for an
+   * administrator's edit of the account to fail.
+   */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
-  @Query("update User u set u.systemRole = :role where u.id = :id and u.systemRole = :expected")
+  @Query("update User u set u.lastLoginAt = :at where u.id = :id")
+  int recordLastLogin(@Param("id") UUID id, @Param("at") Instant at);
+
+  /**
+   * Writes the address and display name a provider's token names, nothing else and never on an
+   * erased account. Leaves the version alone, like {@link #recordLastLogin}.
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update User u set u.email = :email, u.displayName = :displayName"
+          + " where u.id = :id and u.erasedAt is null")
+  int recordProviderClaims(
+      @Param("id") UUID id, @Param("email") String email, @Param("displayName") String displayName);
+
+  /**
+   * Writes {@code role} only while the stored role is still {@code expected}, whatever the version;
+   * raises the version, so a write from a read before this role change fails.
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update User u set u.systemRole = :role, u.version = u.version + 1"
+          + " where u.id = :id and u.systemRole = :expected")
   int changeRoleIfStill(
       @Param("id") UUID id, @Param("expected") SystemRole expected, @Param("role") SystemRole role);
 

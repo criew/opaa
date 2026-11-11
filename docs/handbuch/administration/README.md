@@ -15,7 +15,7 @@ Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht u
 | Ein lokales Konto an den Identitätsanbieter übergeben | [Konto übergeben](konto-uebergeben.md) |
 | Systemverwaltung und Revision vergeben | [Systemrollen vergeben](systemrollen.md) |
 | Gruppen aus dem Verzeichnis und interne Gruppen | [Gruppen verwalten](gruppen.md) |
-| Wer Bibliotheken, Spaces und Gruppen anlegen darf | [Anlegerechte vergeben](anlegerechte.md) |
+| Wer Bibliotheken, Spaces, Gruppen, Agenten und Vorlagen anlegen darf | [Anlegerechte vergeben](anlegerechte.md) |
 | Wenn jemand geht: Eigentum und Nachfolge | [Ausscheiden und Nachfolge regeln](ausscheiden.md) |
 | Quellen einmal einrichten, für alle | [Zugänge einrichten](zugaenge.md) |
 | Chat-, Embedding-, Reranking-, Sprach- und Texterkennungsmodell | [Modelle verwalten](modelle.md) |
@@ -23,6 +23,10 @@ Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht u
 | Externe KI-Werkzeuge wie OpenCode zulassen | [Externe KI-Werkzeuge zulassen](externe-ki-werkzeuge.md) |
 | Fristen und Schalter für Daten von Personen | [Datenschutz einstellen](datenschutz.md) |
 | Mailversand und Vorlagen | [E-Mail](e-mail.md) |
+| Virenscanner anbinden | [Virenprüfung einrichten](virenpruefung.md) |
+| Agenten und ihre Werkzeuge zulassen | [Agenten einschalten](agenten.md) |
+| Agenten und Vorlagen für die Personalvertretung auflisten | [Agentenverzeichnis einsehen](agentenverzeichnis.md) |
+| Word-Vorlagen anbieten | [Vorlagen einschalten](vorlagen.md) |
 | Einstellungen in eine andere Installation mitnehmen | [Einstellungen übertragen](einstellungen-uebertragen.md) |
 
 ## Revision

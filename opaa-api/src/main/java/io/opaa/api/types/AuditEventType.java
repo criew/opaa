@@ -29,9 +29,8 @@ public enum AuditEventType {
   ASSET_EXTERNAL_ACCESS_CHANGED,
   /**
    * A library's Fremdzugangsfreigabe stopped taking effect without anyone acting - carrying the
-   * Anlass, today always the expiry of its mandatory Befristung. The connector share cap ({@link
-   * #CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}) does not bound this field - a lowered cap therefore
-   * never writes this event. Written under a system actor, like every other expiry event.
+   * Anlass, today always the expiry of its mandatory Befristung. Written under a system actor, like
+   * every other expiry event.
    */
   ASSET_EXTERNAL_ACCESS_EXPIRED,
 
@@ -58,12 +57,40 @@ public enum AuditEventType {
   PROMPT_LIBRARY_CHANGED,
   PROMPT_LIBRARY_DELETED,
   /**
+   * An agent was created, changed or deleted. A change names the changed fields, never their
+   * values: the instruction text never appears. Using an agent writes nothing.
+   */
+  AGENT_CREATED,
+  AGENT_CHANGED,
+  AGENT_DELETED,
+  /**
+   * The responsible unit of an agent or a document template changed: before and after name the
+   * group by id or the function as entered. The object is the agent or the template.
+   */
+  ASSET_RESPONSIBILITY_CHANGED,
+  /**
+   * An agent or a document template was locked - by the system administration with its reason, or
+   * by the installation after the period without a responsible unit. Nothing is deleted.
+   */
+  ASSET_LOCKED,
+  /** A lock of an agent or a document template was lifted by the system administration. */
+  ASSET_UNLOCKED,
+  /**
    * A prompt was added to, changed in or removed from its library. The object is the prompt, the
    * payload names its library; the prompt text never appears.
    */
   PROMPT_CREATED,
   PROMPT_CHANGED,
   PROMPT_DELETED,
+  /**
+   * A document template was created, changed (name, description or file) or deleted. The payload
+   * names changed fields and file names, never the content of the file.
+   */
+  DOCUMENT_TEMPLATE_CREATED,
+  DOCUMENT_TEMPLATE_CHANGED,
+  DOCUMENT_TEMPLATE_DELETED,
+  /** The installation switch "Vorlagen" was turned on or off. */
+  DOCUMENT_TEMPLATE_SETTINGS_CHANGED,
   /**
    * A library's source configuration (sourcePath/sourceUrl/sourceCredentials/sourceSettings)
    * changed - distinct from {@link #LIBRARY_CHANGED} (name/description), which does not fire for a
@@ -261,9 +288,8 @@ public enum AuditEventType {
   /** Covers both model defaults and the approval of external models. */
   MODEL_POLICY_CHANGED,
   /**
-   * A system administrator set or changed a connector library's share cap - whether the library may
-   * be granted to "Alle Konten". Distinct from {@link #ASSET_GRANT_REVOKED}, which the same call
-   * also writes whenever lowering the cap revokes such a grant.
+   * No longer written: a system administrator set or changed the former share cap of a connector
+   * library. Kept so existing entries stay readable until their retention ends.
    */
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
@@ -290,6 +316,8 @@ public enum AuditEventType {
    * after} carry the months only.
    */
   SUCCESSION_AGING_THRESHOLD_CHANGED,
+  /** The days after which an agent or a template without a responsible unit is locked changed. */
+  RESPONSIBILITY_LOCK_PERIOD_CHANGED,
   /**
    * The system administration set the plausibility threshold of the directory sync, or returned it
    * to the factory default; {@code before} and {@code after} carry the percentage only.
@@ -379,6 +407,12 @@ public enum AuditEventType {
    * remains. Neither file name nor uploading person is recorded.
    */
   MALWARE_DETECTED,
+  /**
+   * The settings of the malware scan changed: switched on or off, scanner address, timeout or the
+   * policy for a file the scanner could not judge. Written by a system administrator, or by the
+   * installation as a system process; a save that changes nothing writes no entry.
+   */
+  MALWARE_SCAN_SETTINGS_CHANGED,
   /**
    * A person set, changed or removed a core metadata value of a document by hand (ADR-0024). One
    * entry per document and field, carrying the old and the new value - also for every document of a
@@ -503,6 +537,11 @@ public enum AuditEventType {
   INCIDENT_SCOPE_APPROVED,
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
+  /**
+   * The retention periods of the step log and the sandbox log of agent runs changed; before/after
+   * carry both values.
+   */
+  AGENT_RUN_LOG_RETENTION_CHANGED,
   /**
    * The system administration set the periods of the automatic chat cleanup of the spaces, or
    * returned them to the factory defaults; {@code before} and {@code after} carry the periods only.
@@ -706,6 +745,15 @@ public enum AuditEventType {
    * request to a foreign model, and the closed event list does not name it.
    */
   EXTERNAL_ACCESS_SETTINGS_CHANGED,
+
+  /** The installation-wide settings of agents changed: before/after of the switch and the tools. */
+  AGENT_SETTINGS_CHANGED,
+
+  /**
+   * The agent directory was read or exported, or the attempt refused; {@code after} names the form
+   * ({@code VIEW} or {@code CSV}). Carries no content of the directory.
+   */
+  AGENT_DIRECTORY_ACCESSED,
 
   // Verbindungsprofile ("Zugänge", ADR-0041 Entscheidung 7)
   /** A connection profile was created; the client secret appears only as whether one is set. */

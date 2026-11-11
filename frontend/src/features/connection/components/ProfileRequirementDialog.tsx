@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -23,6 +18,9 @@ import {
   setConnectorProfileRequirement,
 } from '../api/connectionProfileApi'
 import { notify } from '@/shared/stores/notificationStore'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface Loaded {
   requirement: ConnectorProfileRequirementResponse | null
@@ -53,6 +51,7 @@ export default function ProfileRequirementDialog({
   onChanged,
 }: ProfileRequirementDialogProps) {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [stock, setStock] = useState<OwnAddressStock>(state.ownAddressStock ?? 'RUNS')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -75,7 +74,7 @@ export default function ProfileRequirementDialog({
     return () => {
       cancelled = true
     }
-  }, [open, state.sourceType])
+  }, [open, state.sourceType, attempt])
 
   const requirement = loaded?.requirement ?? null
   const blocked = switchingOn && requirement !== null && !requirement.switchable
@@ -110,105 +109,98 @@ export default function ProfileRequirementDialog({
   const libraries = requirement?.ownAddressLibraries ?? []
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {switchingOn
+    <FormDialog
+      open={open}
+      title={
+        switchingOn
           ? `„Nur über Zugänge“ für ${state.displayName} einschalten`
-          : `Bestand von ${state.displayName}: Bibliotheken mit eigener Adresse`}
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {loaded === null && (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Angaben werden geladen …
-            </Typography>
-          )}
-          {loaded?.error && <Alert severity="error">{loaded.error}</Alert>}
-          {error && <Alert severity="error">{error}</Alert>}
-          {blocked && (
-            <Alert severity="info" data-testid="profile-requirement-not-switchable">
-              {requirement.notSwitchableReason ??
-                'Die Pflicht lässt sich für diese Quellart derzeit nicht einschalten.'}
-            </Alert>
-          )}
-          {requirement && !blocked && (
-            <>
-              {switchingOn && (
-                <Typography variant="body2">
-                  Danach lassen sich Bibliotheken dieser Quellart nur noch über einen Zugang
-                  anlegen, testen und auflisten; eine eigene Adresse ist nicht mehr möglich, und
-                  keine Bibliothek lässt sich von ihrem Zugang lösen.
-                </Typography>
-              )}
-              {requirement.coverageNotice && (
-                <Alert severity="warning" data-testid="profile-requirement-coverage">
-                  {requirement.coverageNotice}
-                </Alert>
-              )}
-              <Typography variant="subtitle2" component="h3">
-                {libraries.length === 1
-                  ? '1 Bibliothek mit eigener Adresse'
-                  : `${libraries.length} Bibliotheken mit eigener Adresse`}
-              </Typography>
-              {libraries.length > 0 ? (
-                <List dense disablePadding aria-label="Bibliotheken mit eigener Adresse">
-                  {libraries.map((library) => (
-                    <ListItem key={library.id} disableGutters>
-                      <Typography variant="body2">
-                        {library.name}
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{ color: 'text.secondary' }}
-                        >
-                          {` · ${ownerLabel(library)}`}
-                        </Typography>
-                      </Typography>
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Keine Bibliothek dieser Quellart nutzt eine eigene Adresse.
-                </Typography>
-              )}
-              <Typography variant="body2" id="profile-requirement-stock-label">
-                Was geschieht mit Bibliotheken mit eigener Adresse?
-              </Typography>
-              <RadioGroup
-                aria-labelledby="profile-requirement-stock-label"
-                value={stock}
-                onChange={(e) => setStock(e.target.value as OwnAddressStock)}
-              >
-                <FormControlLabel
-                  value="RUNS"
-                  control={<Radio size="small" />}
-                  label="Weiterlaufen lassen – ihre Adresse ist eingefroren; eine neue erhalten sie nur über einen Zugang"
-                />
-                <FormControlLabel
-                  value="LOCKED"
-                  control={<Radio size="small" />}
-                  label="Sperren – sie laufen nicht mehr, bis ihre Verwaltenden sie einem Zugang zuordnen; der Inhalt bleibt durchsuchbar"
-                />
-              </RadioGroup>
-            </>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close} disabled={submitting}>
-          {blocked ? 'Schließen' : 'Abbrechen'}
-        </Button>
-        {!blocked && (
-          <Button
-            variant="contained"
-            onClick={() => void handleConfirm()}
-            disabled={submitting || requirement === null}
-          >
-            {switchingOn ? 'Einschalten' : 'Wahl speichern'}
-          </Button>
+          : `Bestand von ${state.displayName}: Bibliotheken mit eigener Adresse`
+      }
+      submitLabel={switchingOn ? 'Einschalten' : 'Speichern'}
+      onSubmit={() => void handleConfirm()}
+      onClose={close}
+      busy={submitting}
+      busyAnnouncement="Die Einstellung wird gespeichert"
+      hideSubmit={blocked || requirement === null}
+    >
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        {loaded === null && <LoadingState shape="lines" count={3} />}
+        {loaded?.error && (
+          <LoadError
+            message="Die Angaben zur Quellart konnten nicht geladen werden."
+            detail={loaded.error}
+            onRetry={() => {
+              setLoaded(null)
+              setAttempt((n) => n + 1)
+            }}
+          />
         )}
-      </DialogActions>
-    </Dialog>
+        {error && <Alert severity="error">{error}</Alert>}
+        {blocked && (
+          <Alert severity="info" data-testid="profile-requirement-not-switchable">
+            {requirement.notSwitchableReason ??
+              'Die Pflicht lässt sich für diese Quellart derzeit nicht einschalten.'}
+          </Alert>
+        )}
+        {requirement && !blocked && (
+          <>
+            {switchingOn && (
+              <Typography variant="body2">
+                Danach lassen sich Bibliotheken dieser Quellart nur noch über einen Zugang anlegen,
+                testen und auflisten; eine eigene Adresse ist nicht mehr möglich, und die Zuordnung
+                zu einem Zugang lässt sich nicht mehr entfernen.
+              </Typography>
+            )}
+            {requirement.coverageNotice && (
+              <Alert severity="warning" data-testid="profile-requirement-coverage">
+                {requirement.coverageNotice}
+              </Alert>
+            )}
+            <Typography variant="subtitle2" component="h3">
+              {libraries.length === 1
+                ? '1 Bibliothek mit eigener Adresse'
+                : `${libraries.length} Bibliotheken mit eigener Adresse`}
+            </Typography>
+            {libraries.length > 0 ? (
+              <List dense disablePadding aria-label="Bibliotheken mit eigener Adresse">
+                {libraries.map((library) => (
+                  <ListItem key={library.id} disableGutters>
+                    <Typography variant="body2">
+                      {library.name}
+                      <Typography component="span" variant="body2" sx={{ color: 'text.secondary' }}>
+                        {` · ${ownerLabel(library)}`}
+                      </Typography>
+                    </Typography>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Keine Bibliothek dieser Quellart nutzt eine eigene Adresse.
+              </Typography>
+            )}
+            <Typography variant="body2" id="profile-requirement-stock-label">
+              Was geschieht mit Bibliotheken mit eigener Adresse?
+            </Typography>
+            <RadioGroup
+              aria-labelledby="profile-requirement-stock-label"
+              value={stock}
+              onChange={(e) => setStock(e.target.value as OwnAddressStock)}
+            >
+              <FormControlLabel
+                value="RUNS"
+                control={<Radio size="small" />}
+                label="Weiterlaufen lassen – ihre Adresse ist eingefroren; eine neue erhalten sie nur über einen Zugang"
+              />
+              <FormControlLabel
+                value="LOCKED"
+                control={<Radio size="small" />}
+                label="Sperren – sie laufen nicht mehr, bis ihre Verwaltenden sie einem Zugang zuordnen; der Inhalt bleibt durchsuchbar"
+              />
+            </RadioGroup>
+          </>
+        )}
+      </Stack>
+    </FormDialog>
   )
 }

@@ -19,9 +19,10 @@ import io.opaa.common.FeatureFlags;
 import io.opaa.common.ValidationException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.LlmModelService;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.organization.Organization;
 import java.time.Clock;
@@ -91,7 +92,8 @@ class InstallationServiceSpeechInputTest {
             "http://speaches:8000/v1",
             "whisper",
             "sk-stt",
-            "en");
+            "en",
+            null);
   }
 
   @Test
@@ -102,7 +104,7 @@ class InstallationServiceSpeechInputTest {
     service(true).complete(CompletionSource.INSTALLATION_API);
 
     verify(modelRoles, never())
-        .installTranscription(any(), anyString(), any(), any(), any(), any());
+        .installTranscription(any(), anyString(), any(), any(), any(), any(), any());
     verify(audit, org.mockito.Mockito.atLeastOnce()).recordSystemProcessAction(events.capture());
     assertThat(events.getAllValues().getLast().after().get("skippedSteps").toString())
         .contains("TRANSCRIPTION_MODEL");
@@ -130,7 +132,7 @@ class InstallationServiceSpeechInputTest {
     service.complete(CompletionSource.INSTALLATION_API);
 
     verify(modelRoles, never())
-        .installTranscription(any(), anyString(), any(), any(), any(), any());
+        .installTranscription(any(), anyString(), any(), any(), any(), any(), any());
     verify(audit, org.mockito.Mockito.atLeastOnce()).recordSystemProcessAction(events.capture());
     assertThat(events.getAllValues().getLast().after().get("skippedSteps").toString())
         .doesNotContain("TRANSCRIPTION_MODEL");
@@ -195,7 +197,7 @@ class InstallationServiceSpeechInputTest {
     verify(checks, never()).check(eq(InstallationStep.TRANSCRIPTION_MODEL), any(), any(), any());
     verify(rules, never()).toStored(any(StepInput.TranscriptionModel.class), any(), any());
     verify(modelRoles, never())
-        .installTranscription(any(), anyString(), any(), any(), any(), any());
+        .installTranscription(any(), anyString(), any(), any(), any(), any(), any());
   }
 
   private InstallationService service(boolean speechInput) {
@@ -214,10 +216,13 @@ class InstallationServiceSpeechInputTest {
         mock(EmbeddingModelService.class),
         modelRoles,
         mock(MailSettingsService.class),
+        mock(MalwareScanSettingsService.class),
         mock(BrandingSettingsService.class),
-        new FeatureFlags(
-            new MockEnvironment()
-                .withProperty("opaa.features.speech-input.enabled", "" + speechInput)),
+        new OfferedSteps(
+            new FeatureFlags(
+                new MockEnvironment()
+                    .withProperty("opaa.features.speech-input.enabled", "" + speechInput)),
+            false),
         audit,
         mock(UserRepository.class),
         mock(DatabaseInstallationStatus.class),

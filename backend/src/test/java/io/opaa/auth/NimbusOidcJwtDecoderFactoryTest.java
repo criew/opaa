@@ -2,6 +2,7 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -13,14 +14,19 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,6 +74,7 @@ class NimbusOidcJwtDecoderFactoryTest {
           exchange.sendResponseHeaders(302, -1);
           exchange.close();
         });
+    server.setExecutor(Executors.newCachedThreadPool());
     server.start();
   }
 
@@ -79,7 +86,9 @@ class NimbusOidcJwtDecoderFactoryTest {
   private NimbusOidcJwtDecoderFactory factory() {
     return new NimbusOidcJwtDecoderFactory(
         new OidcDiscoveryClient(
-            new OidcAddressPolicy(new TargetAddressValidator(true, List.of("127.0.0.1")))));
+            new OidcAddressPolicy(new TargetAddressValidator(true, List.of("127.0.0.1"))),
+            new SimpleMeterRegistry()),
+        new SimpleMeterRegistry());
   }
 
   private OidcProvider provider(String jwkSetUri) {
@@ -158,6 +167,50 @@ class NimbusOidcJwtDecoderFactoryTest {
 
     assertThatThrownBy(() -> decoder.decode(token("https://elsewhere.example", "opaa-frontend")))
         .isInstanceOf(JwtValidationException.class);
+  }
+
+  @Test
+  void aJwkSetThatDoesNotArriveInTimeCountsAsATimeoutOfTheOidcTarget() {
+    CountDownLatch release = new CountDownLatch(1);
+    server.createContext(
+        "/hanging-certs",
+        exchange -> {
+          try {
+            release.await(10, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.close();
+        });
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    NimbusOidcJwtDecoderFactory factory =
+        new NimbusOidcJwtDecoderFactory(
+            new OidcDiscoveryClient(
+                new OidcAddressPolicy(new TargetAddressValidator(true, List.of("127.0.0.1"))),
+                new SimpleMeterRegistry()),
+            meterRegistry,
+            Duration.ofMillis(200));
+    try {
+      JwtDecoder decoder = factory.create(provider(baseUrl + "/hanging-certs"));
+
+      assertThatThrownBy(() -> decoder.decode(token(issuer, "opaa-frontend")))
+          .isInstanceOf(JwtException.class);
+    } finally {
+      release.countDown();
+    }
+
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        meterRegistry
+                            .get("opaa.outbound.requests")
+                            .tag("target", "oidc")
+                            .tag("outcome", "timeout")
+                            .timer()
+                            .count())
+                    .isEqualTo(1));
   }
 
   @Test

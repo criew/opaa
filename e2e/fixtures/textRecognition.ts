@@ -138,7 +138,7 @@ export async function testTextRecognition(
 
 /**
  * Scenario 1 as the system administration does it: „Modelle → Texterkennung“, switch on,
- * docling-serve with address and key, „Verbindung testen“ with every stage in order, „Speichern“,
+ * an endpoint of one's own as docling-serve with address and key, „Verbindung testen“ with every stage in order, „Speichern“,
  * and the tab reports the service as answering. `typingDelay` > 0 types key by key.
  */
 export async function setUpTextRecognitionInUi(
@@ -154,9 +154,16 @@ export async function setUpTextRecognitionInUi(
     else await field.fill(value)
   }
   await page.getByLabel('Texterkennung einschalten').check()
-  await page.getByRole('radio', { name: /docling-serve/ }).check()
+  await page.getByRole('radio', { name: /Eigener Endpunkt/ }).click()
+  await page
+    .getByRole('radiogroup', { name: 'Anbindung' })
+    .getByRole('radio', { name: /docling-serve/ })
+    .click()
   await enter(page.getByLabel('Basis-Adresse'), service.baseUrl)
-  await enter(page.getByLabel('Zugangsschlüssel (optional)'), service.apiKey)
+  // A key stored by an earlier run reads „Gesetzt“; only „Ersetzen“ opens the field.
+  const replaceKey = page.getByRole('button', { name: 'API-Schlüssel ersetzen' })
+  if (await replaceKey.isVisible()) await replaceKey.click()
+  await enter(page.getByLabel('API-Schlüssel (optional)', { exact: true }), service.apiKey)
   await page.getByRole('button', { name: 'Verbindung testen' }).click()
   const result = page.getByRole('region', { name: 'Ergebnis des Verbindungstests' })
   await expect(result).toBeVisible({ timeout: 300_000 })
@@ -179,7 +186,7 @@ export async function askAboutScan(
   typingDelay = 0,
 ): Promise<Locator> {
   await startFreshChat(page)
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   if (typingDelay > 0) {
     await input.pressSequentially(`@${libraryName}`, { delay: typingDelay })
   } else {

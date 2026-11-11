@@ -12,6 +12,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
 import io.opaa.common.NotFoundException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -56,6 +58,11 @@ import org.springframework.stereotype.Service;
  * synchronisation runs, not concurrent admin activity. A change made through the admin UI while a
  * run is in flight - e.g. an operator adding someone to an {@code AD_HOC} group - is not part of
  * the snapshot this run diffs against and can be reverted by it.
+ *
+ * <p><b>A row changed during the apply transaction</b> (a group or account another transaction
+ * wrote after the run read it) fails the version check, never the change of the other side: the run
+ * rolls back whole and is planned again from the same snapshot against the rows as they are now, at
+ * most {@value #STALE_ROW_ATTEMPTS} times in all.
  */
 @Service
 public class DirectorySyncService {
@@ -82,6 +89,9 @@ public class DirectorySyncService {
       "Der Abgleich ist mit einem Fehler abgebrochen und hat nichts geändert. Der letzte bekannte"
           + " Stand bleibt in Kraft; die Ursache steht im Anwendungsprotokoll.";
 
+  /** How often one run applies its snapshot before a row changed meanwhile fails it. */
+  static final int STALE_ROW_ATTEMPTS = 3;
+
   private final DirectoryClient directoryClient;
   private final DirectorySyncPlanExecutor planExecutor;
   private final DirectorySyncStatusRecorder statusRecorder;
@@ -93,6 +103,7 @@ public class DirectorySyncService {
   private final DirectorySyncRunLock runLock;
   private final Clock clock;
   private final DatabaseClock databaseClock;
+  private final DirectorySyncMetrics metrics;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
@@ -105,7 +116,8 @@ public class DirectorySyncService {
       AuditEventRecorder auditEventRecorder,
       DirectorySyncRunLock runLock,
       Clock clock,
-      DatabaseClock databaseClock) {
+      DatabaseClock databaseClock,
+      DirectorySyncMetrics metrics) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
@@ -117,6 +129,7 @@ public class DirectorySyncService {
     this.runLock = runLock;
     this.clock = clock;
     this.databaseClock = databaseClock;
+    this.metrics = metrics;
   }
 
   /**
@@ -309,26 +322,67 @@ public class DirectorySyncService {
    */
   private SyncReport execute(
       SyncTarget target, BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
+    long started = System.nanoTime();
     Instant now = Instant.now(clock);
     Instant runAt = databaseClock.now();
     DirectorySnapshot snapshot;
     try {
       snapshot = directoryClient.fetchSnapshot(target.organizationId(), target.providerId());
     } catch (DirectoryUnavailableException e) {
-      return recordUnreachable(target, now, runAt, e);
+      SyncReport unreachable = recordUnreachable(target, now, runAt, e);
+      recordMetrics(target, DirectorySyncOutcome.UNREACHABLE, started);
+      return unreachable;
     } catch (RuntimeException e) {
       recordFailed(target, runAt, e);
+      recordMetrics(target, DirectorySyncOutcome.FAILED, started);
       throw e;
     }
     SyncReport report;
     try {
-      report = plan.apply(snapshot, now);
+      report = applyAgainstCurrentRows(target, snapshot, now, plan);
     } catch (RuntimeException e) {
       recordFailed(target, runAt, e);
+      recordMetrics(target, DirectorySyncOutcome.FAILED, started);
       throw e;
     }
     recordStatusSafely(target, runAt, report.outcome(), report.message(), report.changedFraction());
+    recordMetrics(target, report.outcome(), started);
     return report;
+  }
+
+  /**
+   * Hands the snapshot to {@code plan} again when its transaction met a row another transaction
+   * changed after the read; the rolled-back attempt left nothing behind, the next one reads afresh.
+   */
+  private static SyncReport applyAgainstCurrentRows(
+      SyncTarget target,
+      DirectorySnapshot snapshot,
+      Instant now,
+      BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        return plan.apply(snapshot, now);
+      } catch (OptimisticLockingFailureException stale) {
+        if (attempt >= STALE_ROW_ATTEMPTS) {
+          throw stale;
+        }
+        log.info(
+            "Directory sync: a row of provider {} changed during the run, applying again ({} of {})",
+            target.providerId(),
+            attempt + 1,
+            STALE_ROW_ATTEMPTS);
+      }
+    }
+  }
+
+  /** Counts the ended run; a failure of the metrics never changes the run's own result. */
+  private void recordMetrics(SyncTarget target, DirectorySyncOutcome outcome, long startedNanos) {
+    try {
+      metrics.recordRun(
+          target.providerId(), outcome, Duration.ofNanos(System.nanoTime() - startedNanos));
+    } catch (RuntimeException e) {
+      log.warn("Directory sync: could not count the run of provider {}", target.providerId(), e);
+    }
   }
 
   /**

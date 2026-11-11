@@ -98,7 +98,7 @@ async function scopeTo(page: Page, libraryName: string, previous?: string): Prom
       .getByRole('button', { name: `Bibliotheksreferenz ${previous} entfernen` })
       .press('Backspace')
   }
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
   await expect(
@@ -243,7 +243,7 @@ test.describe.serial('Chat über mehrere Runden (#3467)', { tag: '@browser-smoke
       await expect(
         answers(page).last().getByRole('button', { name: 'Belege anzeigen' }),
       ).toBeInViewport({ ratio: 1 })
-      await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeEnabled()
+      await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeEnabled()
     }
     // By round four the history no longer fits its box: the newest answer is in view because the
     // list scrolled to it, not because everything fits.
@@ -302,7 +302,7 @@ test.describe.serial('Chat über mehrere Runden (#3467)', { tag: '@browser-smoke
     const before = `Wie schnell werden Anträge der Gruppe A bearbeitet? (${id})`
     const failing = `E2E-MODELL-FEHLER Und bei Gruppe A im Urlaub? (${id})`
     const after = `Dann noch einmal: wie schnell bei Gruppe A? (${id})`
-    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
 
     await startFreshChat(page)
     await scopeTo(page, libraryA.name)

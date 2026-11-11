@@ -1,18 +1,18 @@
-import { useState, type FormEvent } from 'react'
-import Box from '@mui/material/Box'
+import { useState } from 'react'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import {
   periodLabel,
   type RetentionField,
   type RetentionToggle,
   type RetentionValues,
 } from '../utils/retentionPeriod'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface RetentionFormProps {
   fields: RetentionField[]
@@ -38,9 +38,10 @@ function drafts(fields: RetentionField[], values: RetentionValues): Record<strin
 }
 
 /**
- * The form of one retention setting: whole numbers within their bounds, an optional switch, the
- * state „Werkseinstellung“ or „Eigener Wert“ and the way back to the factory defaults. Confirming
- * and saving is the caller's; the form only sends values that passed their bounds.
+ * The form of one retention setting: whole numbers within their bounds, an optional checkbox that
+ * takes effect with „Speichern“, the state „Werkseinstellung“ or „Eigener Wert“ and the way back
+ * to the factory defaults. Confirming and saving is the caller's; the form only sends values that
+ * passed their bounds.
  */
 export default function RetentionForm({
   fields,
@@ -79,9 +80,13 @@ export default function RetentionForm({
     }
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !valid || !changed) return
+  function discard() {
+    setDraft(drafts(fields, values))
+    setSwitched(toggle ? Boolean(values[toggle.key]) : false)
+  }
+
+  async function handleSave() {
+    if (busy || !valid) return
     const next: RetentionValues = toggle ? { [toggle.key]: switched } : {}
     fields.forEach((field) => {
       next[field.key] = parsed[field.key] as number
@@ -90,19 +95,29 @@ export default function RetentionForm({
   }
 
   return (
-    <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
-        {toggle && (
-          <FormControlLabel
-            control={
-              <Switch checked={switched} onChange={(event) => setSwitched(event.target.checked)} />
-            }
-            label={toggle.label}
-          />
-        )}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+    <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
+      <SettingsForm
+        onSave={handleSave}
+        busy={busy}
+        busyAnnouncement="Frist wird gespeichert"
+        dirty={changed}
+        onDiscard={discard}
+        sx={{ width: '100%' }}
+      >
+        <Stack spacing={2}>
+          {toggle && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={switched}
+                  onChange={(event) => setSwitched(event.target.checked)}
+                />
+              }
+              label={toggle.label}
+            />
+          )}
           {fields.map((field) => (
-            <TextField
+            <FormField
               key={field.key}
               label={field.label}
               size="small"
@@ -110,33 +125,22 @@ export default function RetentionForm({
               onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })}
               error={parsed[field.key] === null}
               helperText={`Erlaubt sind ${periodLabel(field.min, field.unit)} bis ${periodLabel(field.max, field.unit)}.`}
+              numeric
               slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-              sx={{ maxWidth: 280 }}
             />
           ))}
         </Stack>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <BusyButton
-            type="submit"
-            variant="outlined"
-            busy={busy}
-            busyAnnouncement="Frist wird gespeichert"
-            disabled={(!changed || !valid) && !busy}
-          >
-            Speichern
-          </BusyButton>
-          {overridden && (
-            <Button variant="text" disabled={busy} onClick={() => void run(onReset)}>
-              Werkseinstellung wiederherstellen
-            </Button>
-          )}
-        </Stack>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          {overridden
-            ? `Es gilt ein eigener Wert. Werkseinstellung: ${defaultText}.`
-            : 'Es gilt die Werkseinstellung.'}
-        </Typography>
-      </Stack>
-    </Box>
+      </SettingsForm>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+        {overridden
+          ? `Es gilt ein eigener Wert. Werkseinstellung: ${defaultText}.`
+          : 'Es gilt die Werkseinstellung.'}
+      </Typography>
+      {overridden && (
+        <Button variant="text" size="small" disabled={busy} onClick={() => void run(onReset)}>
+          Werkseinstellung wiederherstellen
+        </Button>
+      )}
+    </Stack>
   )
 }

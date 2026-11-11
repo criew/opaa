@@ -83,10 +83,18 @@ class CapabilityServiceIntegrationTest {
     foreignHistoryIds = historyIds();
     member = persistUser(SystemRole.USER);
     admin = persistUser(SystemRole.SYSTEM_ADMIN);
+    // agents are switched off by default; their capability exists only while they are on
+    jdbcTemplate.update("UPDATE agent_settings SET enabled = true WHERE id = 1");
+    // Every capability is offered here; the switch "Vorlagen" is off as delivered.
+    jdbcTemplate.update(
+        "INSERT INTO document_template_settings (id, enabled, updated_at) VALUES (1, true, now())"
+            + " ON CONFLICT (id) DO UPDATE SET enabled = true");
   }
 
   @AfterEach
   void cleanUp() {
+    jdbcTemplate.update("UPDATE agent_settings SET enabled = false WHERE id = 1");
+    jdbcTemplate.update("DELETE FROM document_template_settings");
     if (foreignHistoryIds != null) {
       List<UUID> ownHistory = new ArrayList<>(historyIds());
       ownHistory.removeAll(foreignHistoryIds);

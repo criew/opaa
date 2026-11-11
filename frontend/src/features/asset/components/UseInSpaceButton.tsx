@@ -6,7 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { AssetType, SpaceListResponse } from '@/shared/api/types'
 import { associateSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
@@ -14,6 +14,9 @@ import { notify } from '@/shared/stores/notificationStore'
 import { successionAwareMessage } from '@/features/succession'
 import type { SpaceCreateLocationState } from './assetPick'
 import { useSpaceListLoader } from './spaceListContext'
+import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface UseInSpaceInlineProps {
   assetType: AssetType
@@ -56,6 +59,8 @@ export function UseInSpaceInline({
   const [selected, setSelected] = useState<SpaceListResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -68,17 +73,17 @@ export function UseInSpaceInline({
         const associated = new Set(links.items.map((item) => item.spaceId))
         // Already associated spaces are not offered - the association is the hard border, so a
         // second one carries no meaning.
+        setLoadError(null)
         setSpaces(curatedSpaces(list).filter((space) => !associated.has(space.id)))
       })
       .catch((err) => {
         if (cancelled) return
-        setSpaces([])
-        setError(err instanceof Error ? err.message : 'Spaces konnten nicht geladen werden.')
+        setLoadError(err instanceof Error ? err.message : 'Spaces konnten nicht geladen werden.')
       })
     return () => {
       cancelled = true
     }
-  }, [assetType, assetId, loadSpaces])
+  }, [assetType, assetId, loadSpaces, attempt])
 
   async function associate() {
     if (!selected) return
@@ -104,9 +109,15 @@ export function UseInSpaceInline({
   if (spaces === null) {
     return (
       <Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
-          Spaces werden geladen …
-        </Typography>
+        {loadError ? (
+          <LoadError
+            message="Spaces konnten nicht geladen werden."
+            detail={loadError}
+            onRetry={() => setAttempt((n) => n + 1)}
+          />
+        ) : (
+          <LoadingState shape="lines" count={2} />
+        )}
       </Box>
     )
   }
@@ -117,7 +128,7 @@ export function UseInSpaceInline({
         {error && <Alert severity="error">{error}</Alert>}
         {reachFrozen ? (
           // Never dimmed: it holds the text contrast (2.4) and says why nothing can be chosen.
-          <Typography sx={{ color: 'warning.main', fontSize: 13.5 }}>
+          <Typography sx={{ color: 'warning.main', fontSize: fontSize.text }}>
             Solange die Nachfolge offen ist, lässt sich „{name}“ nicht neu zuordnen.
           </Typography>
         ) : (
@@ -137,10 +148,12 @@ export function UseInSpaceInline({
                 disabled={busy}
                 noOptionsText="Kein kuratierter Space gefunden"
                 renderInput={(params) => (
-                  <TextField
+                  <FormField
                     {...params}
                     size="small"
                     label="Space suchen"
+                    hideLabel
+                    fullWidth
                     placeholder="Name enthält …"
                   />
                 )}

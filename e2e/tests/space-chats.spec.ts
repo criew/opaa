@@ -88,7 +88,7 @@ function uniqueId(testInfo: TestInfo): string {
  * this reason.
  */
 async function referenceLibrary(page: Page, libraryName: string) {
-  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
 }
@@ -107,7 +107,7 @@ async function createSpace(page: Page, spaceName: string): Promise<string> {
   // The lookahead keeps /spaces/new itself from matching while the wizard is still open.
   await Promise.all([
     page.waitForURL(/\/spaces\/(?!new$)[^/]+$/),
-    page.getByRole('button', { name: 'Space anlegen' }).click(),
+    page.getByRole('button', { name: 'Anlegen', exact: true }).click(),
   ])
   await expect(page.getByRole('heading', { name: spaceName })).toBeVisible()
   return page.url().split('/spaces/')[1]
@@ -234,7 +234,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     testInfo,
   ) => {
     const id = uniqueId(testInfo)
-    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
 
     await startFreshChat(page)
     await clearSearchScope(page)
@@ -272,12 +272,12 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // mention feature itself is broken" - only the contrast between adminPage and bPage below
     // makes the absence a real, permission-specific finding.
     await startFreshChat(adminPage)
-    const adminInput = adminPage.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const adminInput = adminPage.getByRole('textbox', { name: 'Nachricht eingeben' })
     await adminInput.fill(`@${privateLibraryName}`)
     await expect(adminPage.getByRole('option', { name: privateLibraryName })).toBeVisible()
 
     await startFreshChat(bPage)
-    const input = bPage.getByRole('combobox', { name: 'Nachricht eingeben' })
+    const input = bPage.getByRole('textbox', { name: 'Nachricht eingeben' })
     await input.fill(`@${sharedLibraryName}`)
     await expect(bPage.getByRole('option', { name: sharedLibraryName })).toBeVisible()
 

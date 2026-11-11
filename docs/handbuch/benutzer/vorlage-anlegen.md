@@ -1,0 +1,80 @@
+# Vorlage anlegen
+
+**Ziel:** Eine Word-Vorlage mit Platzhaltern, nach der ein Agent fertige Dokumente erstellt.
+{: .kopf }
+
+**Wer:** Konto mit dem Anlegerecht „Vorlagen anlegen“, solange die Systemverwaltung Vorlagen eingeschaltet hat
+{: .kopf }
+
+1. In Word das Dokument wie gewohnt gestalten und an den variablen Stellen Platzhalter schreiben
+   (siehe unten). Als `.docx` speichern, ohne Makros.
+2. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Vorlagen“ und „Weiter“.
+3. **Stammdaten:** Name, Beschreibung und „Word-Datei auswählen“.
+4. **Freigaben:** Eigentümer („Eine Gruppe“ ist für Hausvorlagen haltbarer), „Verantwortliche
+   Stelle“ (Gruppe, Einheit oder Funktion, keine Einzelperson) und auf Wunsch Rollen.
+5. **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
+
+OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
+liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen
+Block nicht schließen oder aktive Inhalte tragen: Makros (auch als `.dotm`), ActiveX-Elemente,
+eingebettete Objekte, eine verknüpfte Dokumentvorlage, eine Seriendruck-Datenquelle, Makros an
+Formularfeldern oder Felder, die Inhalte nachladen. Erlaubt sind Links und einfache Felder wie
+Seitenzahl, Datum, Verweis und Inhaltsverzeichnis, aber kein Feld innerhalb eines anderen Feldes.
+
+## Platzhalter schreiben
+
+| Was | Schreibweise | Beispiel |
+|---|---|---|
+| Feld | `{{ name }}` | `Az.: {{ aktenzeichen }}` |
+| Liste | `{% for e in name %}` … `{% endfor %}` | `{% for m in massnahmen %}{{ m.titel }} bis {{ m.frist }}{% endfor %}` |
+| Bedingung | `{% if name %}` … `{% endif %}` | `{% if vertraulich %}VS – NUR FÜR DEN DIENSTGEBRAUCH{% endif %}` |
+
+Erlaubt sind nur Felder, Listen und Bedingungen, dazu Vergleiche (`{% if betrag > 0 %}`), `+` und
+`-`, `~` zum Verketten und die Filter `default`, `upper`, `lower`, `title`, `capitalize`, `trim`,
+`round`, `int`, `float`, `abs`, `join`, `length`, `count`, `first` und `last` mit festen Werten als
+Argument, etwa `{{ name|default('unbekannt') }}`. Funktionsaufrufe, `set`, `macro`, andere Filter
+und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokument landet.
+
+Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
+`{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Ein `-` am Rand
+eines Tags (`{%- if … -%}`) entfernt Leerraum wie gewohnt. Namen bestehen aus Buchstaben, Ziffern
+und Unterstrich. Ein Kommentar `{# … #}` erscheint nicht im Ergebnis. Einträge zählen von vorn ab 0
+(`{{ massnahmen[0] }}`), nicht vom Ende her (`[-1]`).
+
+## So nutzt ein Agent die Vorlage
+
+Ein Agent nutzt nur Vorlagen, die ihm zugeordnet sind ([Agent anlegen](agent-anlegen.md)); dieselbe
+Vorlage kann mehreren Agenten dienen. Mit dem Werkzeug „Vorlage ausfüllen“ bekommt er in jedem Lauf
+seine Vorlagen, die die fragende Person lesen darf, mit ihren Platzhaltern angeboten; ohne
+zugeordnete Vorlage fehlt das Werkzeug. Das Modell liefert nur die Werte, etwa Aktenzeichen und
+Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
+[Sandbox](../betrieb/sandbox.md) und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
+Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert nicht,
+bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste hat keine Einträge, und eine
+Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert das
+Befüllen.
+
+Word-Datei und PDF tragen in jeder Fußzeile und in den Dokumenteigenschaften den Fassungsstempel,
+etwa: Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bescheid“, Fassung 2 ·
+Bibliotheken: Erlasse, Satzungen · Modell (Kennung des Modells). Er wandert mit, wenn Sie die
+Datei weitergeben, die Namen der durchsuchten Bibliotheken eingeschlossen
+([Agentenergebnis prüfen](agentenergebnis-pruefen.md)). Ohne nutzbare Vorlage (Vorlagen aus, kein
+Leserecht, nicht zugeordnet) oder Sandbox antwortet der Agent ohne Datei im Chat und sagt das dazu.
+
+**Rollen an der Vorlage:**
+
+| Rolle | Darf |
+|---|---|
+| Leser | Vorlage sehen, herunterladen und von Agenten nutzen lassen |
+| Bearbeiter | zusätzlich die Datei ersetzen |
+| Verwalter | zusätzlich Name, Beschreibung und Rechte ändern |
+| Eigentümer | zusätzlich die Vorlage löschen |
+
+**Gut zu wissen:**
+
+- OPAA führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
+  einer abgeschotteten Umgebung; Werte aus dem Chat landen dort immer als Text, nie als Befehl.
+- Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen, und die
+  Vorlage bekommt eine neue Fassung; eine Agentenantwort nennt die Fassung, die sie ausgefüllt hat.
+- Ohne verantwortliche Stelle über die Frist hinaus wird die Vorlage gesperrt (Reiter „Freigaben“).
+- Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, nie der Inhalt der Datei.

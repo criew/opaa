@@ -7,7 +7,6 @@ import { AssetOwnerSection } from '@/features/asset'
 import { LibraryServiceAccountsSection } from '@/features/external-access'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
-import ShareCapSwitch from './ShareCapSwitch'
 
 interface LibrarySharingTabProps {
   libraryId: string
@@ -16,10 +15,7 @@ interface LibrarySharingTabProps {
   privateLibrary: boolean
   canEdit: boolean
   externalAccessEnabled: boolean
-  shareCapVisible: boolean
   onTransferred: () => Promise<void>
-  /** A rejection is passed on to the switch that triggered it. */
-  onSaveShareCap: (allAccountsGrantAllowed: boolean) => Promise<void>
   diagnosticsLockSaving: boolean
   diagnosticsLockError: string | null
   onToggleDiagnosticsLock: () => void
@@ -37,9 +33,7 @@ export default function LibrarySharingTab({
   privateLibrary,
   canEdit,
   externalAccessEnabled,
-  shareCapVisible,
   onTransferred,
-  onSaveShareCap,
   diagnosticsLockSaving,
   diagnosticsLockError,
   onToggleDiagnosticsLock,
@@ -66,22 +60,7 @@ export default function LibrarySharingTab({
           />
         </Box>
 
-        {sections && (
-          <AssetGrantsSection
-            assetType="KNOWLEDGE_LIBRARY"
-            assetId={library.id}
-            capControl={
-              shareCapVisible ? (
-                <ShareCapSwitch
-                  label="Freigabe an Alle erlaubt"
-                  description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
-                  checked={details?.allAccountsGrantAllowed ?? true}
-                  onSave={onSaveShareCap}
-                />
-              ) : null
-            }
-          />
-        )}
+        {sections && <AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />}
 
         {/* the single values close the tab as rows of the Reiter „Quelle“ under one line:
            external access, service accounts, diagnostics lock and derivation */}

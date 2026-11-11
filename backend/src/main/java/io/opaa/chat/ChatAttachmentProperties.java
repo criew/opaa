@@ -25,6 +25,13 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     deleted; default one day, from one hour to seven days.
  * @param readWait how long the upload call waits for the text to be read before it answers with
  *     {@code PROCESSING}; default 8 seconds.
+ * @param accountQuotaBytes bytes the attachments of one account occupy together, bound and unbound;
+ *     default 2 GiB, {@code 0} for unlimited. An upload above it is answered with 413.
+ * @param unboundQuotaBytes bytes the attachments of one account that no question has named yet
+ *     occupy together; default 512 MiB (one question with ten files of the largest size), {@code 0}
+ *     for unlimited, never above {@code accountQuotaBytes}.
+ * @param organizationQuotaBytes bytes the attachments of all accounts of one organization occupy
+ *     together; default {@code 0}, unlimited.
  */
 @ConfigurationProperties(prefix = "opaa.chat.attachments")
 public record ChatAttachmentProperties(
@@ -35,7 +42,13 @@ public record ChatAttachmentProperties(
     @DefaultValue("40000") @DataImpact int excerptMaxChars,
     @DefaultValue("24h") @DataImpact Duration unboundRetention,
     @DefaultValue("8s") @NoDataImpact("a waiting time of the request") @InstallationWide
-        Duration readWait) {
+        Duration readWait,
+    @DefaultValue("2147483648") @NoDataImpact("a usage limit") @InstallationWide
+        long accountQuotaBytes,
+    @DefaultValue("536870912") @NoDataImpact("a usage limit") @InstallationWide
+        long unboundQuotaBytes,
+    @DefaultValue("0") @NoDataImpact("a usage limit") @InstallationWide
+        long organizationQuotaBytes) {
 
   public static final int MAX_PER_MESSAGE_LIMIT = 10;
 
@@ -68,6 +81,18 @@ public record ChatAttachmentProperties(
     if (readWait.isNegative() || readWait.compareTo(Duration.ofSeconds(30)) > 0) {
       throw new IllegalArgumentException(
           "opaa.chat.attachments.read-wait must lie between 0 and 30s, got " + readWait);
+    }
+    if (accountQuotaBytes < 0 || unboundQuotaBytes < 0 || organizationQuotaBytes < 0) {
+      throw new IllegalArgumentException(
+          "opaa.chat.attachments.account-, unbound- and organization-quota-bytes must not be"
+              + " negative");
+    }
+    if (accountQuotaBytes > 0
+        && (unboundQuotaBytes == 0 || unboundQuotaBytes > accountQuotaBytes)) {
+      throw new IllegalArgumentException(
+          "opaa.chat.attachments.unbound-quota-bytes must lie between 1 and account-quota-bytes,"
+              + " got "
+              + unboundQuotaBytes);
     }
   }
 }

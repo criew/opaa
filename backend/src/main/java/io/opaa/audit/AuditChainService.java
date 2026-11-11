@@ -10,6 +10,7 @@ import io.opaa.audit.AuditChainHasher.ChainedEntry;
 import io.opaa.audit.AuditChainReport.Deviation;
 import io.opaa.audit.AuditChainReport.DeviationKind;
 import io.opaa.audit.AuditChainReport.Status;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.organization.Organization;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -700,6 +701,7 @@ class AuditChainService {
       unsealedMonths.set((double) ended);
     } catch (RuntimeException e) {
       log.warn("Audit chain metrics could not be read and report NaN: {}", e.getMessage());
+      ScheduledRunFailures.report();
       lagSeconds.set(Double.NaN);
       unsealedMonths.set(Double.NaN);
     }

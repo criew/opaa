@@ -4,8 +4,10 @@ import io.opaa.format.shared.ParserLimitExceededException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSObjectKey;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.io.IOUtils;
@@ -36,7 +39,8 @@ import org.slf4j.LoggerFactory;
  * Loads a PDF like {@code Loader.loadPDF}, but every cross-reference and object stream PDFBox
  * decodes is measured against the stream limit of a {@link PdfReadBudget} first, and the objects it
  * registers - cross-reference entries, object-stream objects, brute-force finds - count against the
- * object limit. The brute-force search skips an encrypted file's object streams.
+ * object limit. The brute-force search skips an encrypted file's object streams. Once loaded, every
+ * object is resolved and each embedded font stream measured, see {@link #requireFontStreams}.
  */
 final class PdfLoading {
 
@@ -63,19 +67,96 @@ final class PdfLoading {
 
   private static final byte[] OBJ = {'o', 'b', 'j'};
 
+  /** The keys under which a font holds a stream that PDFBox reads into memory as a whole. */
+  private static final Set<COSName> FONT_STREAM_KEYS =
+      Set.of(
+          COSName.FONT_FILE,
+          COSName.FONT_FILE2,
+          COSName.FONT_FILE3,
+          COSName.ENCODING,
+          COSName.USE_CMAP,
+          COSName.CID_TO_GID_MAP,
+          COSName.TO_UNICODE);
+
   private PdfLoading() {}
 
-  /** The document in {@code file}, its loading charged to {@code budget}. */
+  /**
+   * The document in {@code file}, its loading charged to {@code budget}, its font streams measured
+   * by {@link #requireFontStreams}.
+   */
   static PDDocument load(Path file, PdfReadBudget budget) throws IOException {
+    return load(file, budget, true);
+  }
+
+  /**
+   * The document in {@code file} without measuring its font streams, for reading its structure
+   * only: no fonts may be loaded from it.
+   */
+  static PDDocument loadStructure(Path file, PdfReadBudget budget) throws IOException {
+    return load(file, budget, false);
+  }
+
+  private static PDDocument load(Path file, PdfReadBudget budget, boolean measureFonts)
+      throws IOException {
     RandomAccessRead source = new RandomAccessReadBufferedFile(file.toFile());
     try {
       MeasuringParser parser = new MeasuringParser(source, budget);
       PDDocument document = parser.parse();
       parser.loaded = true;
+      try {
+        if (measureFonts) {
+          requireFontStreams(document.getDocument(), budget);
+        }
+      } catch (IOException | RuntimeException | Error e) {
+        IOUtils.closeQuietly(document);
+        throw e;
+      }
       return document;
     } catch (IOException | RuntimeException | Error e) {
       IOUtils.closeQuietly(source);
       throw e;
+    }
+  }
+
+  /**
+   * Measures every stream PDFBox reads into memory as a whole when it loads a font - the programs
+   * under {@code /FontFile}, {@code /FontFile2} and {@code /FontFile3}, a stream {@code /Encoding}
+   * or {@code /UseCMap}, {@code /CIDToGIDMap} and {@code /ToUnicode} - wherever it is reachable
+   * from the trailer or a cross-reference entry, every reference resolved now as PDFBox would
+   * resolve it later, including objects only its brute-force lookup finds. Matched by key, not by
+   * {@code /Type}, which PDFBox does not require.
+   */
+  static void requireFontStreams(COSDocument document, PdfReadBudget budget) throws IOException {
+    Set<COSBase> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    Set<COSStream> measured = Collections.newSetFromMap(new IdentityHashMap<>());
+    Deque<COSBase> pending = new ArrayDeque<>();
+    pending.push(document.getTrailer());
+    for (COSObjectKey key : new ArrayList<>(document.getXrefTable().keySet())) {
+      pending.push(document.getObjectFromPool(key));
+    }
+    while (!pending.isEmpty()) {
+      COSBase base = pending.pop();
+      if (!(base instanceof COSObject || base instanceof COSArray || base instanceof COSDictionary)
+          || !seen.add(base)) {
+        continue;
+      }
+      if (base instanceof COSObject reference) {
+        budget.requireTime();
+        pending.push(reference.getObject());
+      } else if (base instanceof COSArray array) {
+        array.forEach(pending::push);
+      } else if (base instanceof COSDictionary dictionary) {
+        for (Map.Entry<COSName, COSBase> entry : dictionary.entrySet()) {
+          COSBase value = entry.getValue();
+          COSBase resolved = value instanceof COSObject reference ? reference.getObject() : value;
+          if (FONT_STREAM_KEYS.contains(entry.getKey())
+              && resolved instanceof COSStream stream
+              && measured.add(stream)) {
+            budget.requireFontStream(stream);
+          }
+          pending.push(value);
+        }
+      }
     }
   }
 

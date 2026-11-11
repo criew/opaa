@@ -1,18 +1,13 @@
 import { useState } from 'react'
+import { secretPart } from '@/shared/ui/setup/setupDrafts'
 import { Link as RouterLink } from 'react-router'
 import { AxiosError } from 'axios'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import FormLabel from '@mui/material/FormLabel'
 import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
   EmbeddingInfoResponse,
@@ -20,7 +15,10 @@ import type {
   EmbeddingModelProbeResponse,
   EmbeddingReindexStatusResponse,
 } from '@/shared/api/types'
+import SectionHead from '@/shared/ui/SectionHead'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import ModelEndpointFields from '@/shared/ui/setup/ModelEndpointFields'
+import { EmbeddingModelFields } from '@/shared/ui/setup/ModelParameterFields'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import {
@@ -36,8 +34,8 @@ import {
   formatTokens,
   sameEndpoint,
 } from './embeddingChange'
-
-type KeyChoice = 'keep' | 'new' | 'none'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
+import { formatNumber } from '@/shared/utils/formatDate'
 
 /** The field errors of a 400, by the field name after the prefix (`embeddingModel.baseUrl`). */
 function fieldErrorsOf(err: unknown): Record<string, string> {
@@ -78,7 +76,7 @@ interface EmbeddingChangeSectionProps {
 export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingChangeSectionProps) {
   if (!info.model) {
     return (
-      <Box sx={{ maxWidth: '72ch' }}>
+      <Box sx={{ maxWidth: formWidth.column }}>
         <EmbeddingDraftForm info={info} mode="initial" onDone={onChanged} />
       </Box>
     )
@@ -88,7 +86,7 @@ export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingCha
     return <ChangeUnderWay info={info} index={index} onChanged={onChanged} />
   }
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
       {index?.lastRun?.kind === 'REFILL' && index.running && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Nach dem Verwerfen werden {formatCount(index.withoutCurrentVector ?? 0)} Abschnitte mit
@@ -145,17 +143,17 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
   }
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
       <Alert severity="warning" sx={{ mb: 2 }}>
         Die Vektorsuche ist ausgesetzt, bis die Neueinbettung abgeschlossen ist. Suche und Chat
         finden bis dahin nur über die Volltextsuche.
       </Alert>
       <Stack spacing={1} sx={{ mb: 2 }}>
-        <Typography sx={{ fontSize: 13 }}>
+        <Typography sx={{ fontSize: fontSize.text }}>
           Neues Modell: <strong>{target.model}</strong> ({target.dimensions} Dimensionen)
         </Typography>
         {previous && (
-          <Typography sx={{ fontSize: 13 }}>
+          <Typography sx={{ fontSize: fontSize.text }}>
             Bisheriges Modell: <strong>{previous.model}</strong> ({previous.dimensions} Dimensionen)
           </Typography>
         )}
@@ -166,16 +164,19 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
             aria-label="Fortschritt der Neueinbettung"
             sx={{ height: 6, borderRadius: 1 }}
           />
-          <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          <Typography
+            role="status"
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}
+          >
             {formatCount(index.embeddedChunks)} von {formatCount(index.totalChunks)} Abschnitten neu
             eingebettet
             {index.switching ? ' · Umschalten läuft' : index.running ? ' · läuft' : ' · angehalten'}
           </Typography>
         </Box>
         {index.lastRun?.message && !index.running && (
-          <Typography sx={{ fontSize: 12.5 }}>{index.lastRun.message}</Typography>
+          <Typography sx={{ fontSize: fontSize.meta }}>{index.lastRun.message}</Typography>
         )}
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           Anhalten und Fortsetzen unter{' '}
           <Link component={RouterLink} to="/admin/search/index">
             Suche &amp; Indexierung → Indexstatus
@@ -209,13 +210,13 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
         </Button>
       </Stack>
       {index.switching && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
           Der Vektorindex der neuen Spalte wird aufgebaut; verwerfen lässt sich der Wechsel jetzt
           nicht mehr.
         </Typography>
       )}
       {index.running && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
           Einen Ersatz-Endpunkt nimmt OPAA nur bei angehaltenem Lauf an.
         </Typography>
       )}
@@ -252,8 +253,8 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
   const [maxInputTokens, setMaxInputTokens] = useState(
     info.maxInputTokens ? String(info.maxInputTokens) : '',
   )
-  const [keyChoice, setKeyChoice] = useState<KeyChoice>(info.apiKeySet ? 'keep' : 'none')
-  const [keyInput, setKeyInput] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [removeKey, setRemoveKey] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [probing, setProbing] = useState(false)
@@ -263,8 +264,8 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
   const [probesExhausted, setProbesExhausted] = useState(false)
   const offerEndpointChange =
     probesExhausted || (result?.succeeded === true && result.kind === 'ENDPOINT_CHANGE')
+  // The stored key goes only to the endpoint it was stored for; elsewhere none is sent.
   const keepAllowed = Boolean(info.apiKeySet) && sameEndpoint(storedBaseUrl, baseUrl)
-  const effectiveChoice: KeyChoice = keyChoice === 'keep' && !keepAllowed ? 'new' : keyChoice
   const prefix = `embedding-${mode}`
 
   function changed() {
@@ -278,8 +279,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
       baseUrl: baseUrl.trim(),
       model: model.trim(),
       maxInputTokens: Number.isFinite(limit) ? limit : undefined,
-      apiKey:
-        effectiveChoice === 'keep' ? undefined : effectiveChoice === 'new' ? keyInput.trim() : '',
+      apiKey: secretPart(apiKey.trim(), removeKey) ?? (keepAllowed ? undefined : ''),
     }
   }
 
@@ -355,7 +355,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           fallen die bisherigen Vektoren weg; zurück geht es dann nur mit einem neuen Wechsel.
         </>
       ),
-      confirmLabel: 'Wechsel starten',
+      confirmLabel: 'Wechseln',
       tone: 'danger',
     })
     if (!confirmed || probed.dimensions == null) return
@@ -375,114 +375,65 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
 
   return (
     <Box>
-      <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>
+      <SectionHead component="h3">
         {mode === 'change'
           ? 'Modell wechseln oder Endpunkt ändern'
           : mode === 'initial'
             ? 'Embedding-Modell festlegen'
             : 'Ersatz-Endpunkt'}
-      </Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+      </SectionHead>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {mode === 'change'
           ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
           : mode === 'initial'
             ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt OPAA die Vektorablage an. Vor dem ersten Modell nimmt OPAA keine Inhalte an, deshalb wird nichts neu eingebettet.'
             : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
       </Typography>
-      <Stack spacing={2}>
-        <TextField
-          id={`${prefix}-base-url`}
-          label="Basis-Adresse"
-          required
-          value={baseUrl}
-          onChange={(e) => {
-            setBaseUrl(e.target.value)
-            changed()
-          }}
-          error={Boolean(errors.baseUrl)}
-          helperText={errors.baseUrl ?? 'Etwa http://ollama:11434/v1.'}
-          size="small"
-          fullWidth
-        />
-        <TextField
-          id={`${prefix}-model`}
-          label="Modell-Kennung"
-          required
-          value={model}
-          disabled={mode === 'replacement'}
-          onChange={(e) => {
-            setModel(e.target.value)
-            changed()
-          }}
-          error={Boolean(errors.model)}
-          helperText={errors.model}
-          size="small"
-          fullWidth
-        />
-        <FormControl>
-          <FormLabel id={`${prefix}-key-label`} sx={{ fontSize: 13 }}>
-            Zugangsschlüssel
-          </FormLabel>
-          <RadioGroup
-            row
-            aria-labelledby={`${prefix}-key-label`}
-            value={effectiveChoice}
-            onChange={(e) => {
-              setKeyChoice(e.target.value as KeyChoice)
-              changed()
-            }}
-          >
-            {info.apiKeySet && (
-              <FormControlLabel
-                value="keep"
-                control={<Radio size="small" />}
-                label="beibehalten"
-                disabled={!keepAllowed}
-              />
-            )}
-            <FormControlLabel value="new" control={<Radio size="small" />} label="neu" />
-            <FormControlLabel value="none" control={<Radio size="small" />} label="ohne" />
-          </RadioGroup>
-          {info.apiKeySet && !keepAllowed && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              Die Adresse nennt einen anderen Endpunkt; der gespeicherte Schlüssel geht nicht mit.
-            </Typography>
-          )}
-        </FormControl>
-        {effectiveChoice === 'new' && (
-          <TextField
-            id={`${prefix}-api-key`}
-            label="Neuer Zugangsschlüssel"
-            type="password"
-            value={keyInput}
-            onChange={(e) => {
-              setKeyInput(e.target.value)
-              changed()
-            }}
-            error={Boolean(errors.apiKey)}
-            helperText={errors.apiKey ?? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'}
-            size="small"
-            fullWidth
-            autoComplete="new-password"
-          />
-        )}
-        <TextField
-          id={`${prefix}-max-input-tokens`}
-          label="Eingabegrenze in Tokens"
-          value={maxInputTokens}
-          onChange={(e) => {
-            setMaxInputTokens(e.target.value.replace(/\D/g, ''))
-            changed()
-          }}
-          error={Boolean(errors.maxInputTokens)}
-          helperText={
-            errors.maxInputTokens ??
-            'Leer für 2048, die Grenze eines unverändert gezogenen Ollama-Modells.'
+      <Stack spacing={3}>
+        <ModelEndpointFields
+          purpose="embedding"
+          stored={
+            storedBaseUrl ? { baseUrl: storedBaseUrl, apiKeySet: Boolean(info.apiKeySet) } : null
           }
-          size="small"
-          sx={{ maxWidth: 260 }}
-          slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-        />
+          baseUrl={baseUrl}
+          onBaseUrlChange={(next) => {
+            setBaseUrl(next)
+            changed()
+          }}
+          apiKey={apiKey}
+          onApiKeyChange={(next) => {
+            setApiKey(next)
+            changed()
+          }}
+          removeKey={removeKey}
+          onRemoveKeyChange={(next) => {
+            setRemoveKey(next)
+            changed()
+          }}
+          model={model}
+          onModelChange={(next) => {
+            setModel(next)
+            changed()
+          }}
+          modelFixed={mode === 'replacement'}
+          errors={errors}
+        >
+          <EmbeddingModelFields
+            idPrefix={prefix}
+            maxInputTokens={maxInputTokens}
+            onMaxInputTokensChange={(next) => {
+              setMaxInputTokens(next.replace(/\D/g, ''))
+              changed()
+            }}
+            contextLength={null}
+            errors={errors}
+          />
+        </ModelEndpointFields>
+        {info.apiKeySet && !keepAllowed && apiKey === '' && !removeKey && (
+          <Alert severity="info">
+            Die Adresse nennt einen anderen Endpunkt; der gespeicherte Schlüssel geht nicht mit.
+          </Alert>
+        )}
         {error && <Alert severity="error">{error}</Alert>}
         {probesExhausted && (
           <Alert severity="info">
@@ -495,7 +446,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           <Alert severity="info">
             {result.message} Der Endpunkt bettet wie das aktive Modell ein
             {result.similarity != null
-              ? ` (Ähnlichkeit ${result.similarity.toLocaleString('de-DE', { maximumFractionDigits: 4 })})`
+              ? ` (Ähnlichkeit ${formatNumber(result.similarity, { maximumFractionDigits: 4 })})`
               : ''}
             ; ein Wechsel des Endpunkts genügt, ohne Neueinbettung.
           </Alert>
@@ -529,7 +480,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
               busyAnnouncement="Endpunkt wird geändert"
               onClick={() => void handleEndpointChange()}
             >
-              {mode === 'change' ? 'Endpunkt ändern' : 'Ersatz-Endpunkt speichern'}
+              {mode === 'change' ? 'Endpunkt ändern' : 'Ersatz-Endpunkt festlegen'}
             </BusyButton>
           )}
           {result?.succeeded && result.kind === 'INITIAL' && (
@@ -575,7 +526,7 @@ function ChangePreview({ result }: { result: EmbeddingModelProbeResponse }) {
             gridTemplateColumns: 'max-content 1fr',
             columnGap: 2,
             rowGap: 0.5,
-            fontSize: 13,
+            fontSize: fontSize.text,
             m: 0,
             mb: 1.5,
             '& dt': { color: 'text.secondary' },

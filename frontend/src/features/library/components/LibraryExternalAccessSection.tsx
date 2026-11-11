@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '@/features/succession'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -16,6 +11,9 @@ import ValueRow from '@/shared/ui/ValueRow'
 import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../api/libraryApi'
 import { updateLibraryExternalAccess } from '@/features/external-access'
+import { formatDate } from '@/shared/utils/formatDate'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import { fieldWidth } from '@/shared/theme/tokens'
 
 interface LibraryExternalAccessSectionProps {
   libraryId: string
@@ -36,11 +34,6 @@ function toDateInput(value: string): string {
   const month = `${date.getMonth() + 1}`.padStart(2, '0')
   const day = `${date.getDate()}`.padStart(2, '0')
   return `${date.getFullYear()}-${month}-${day}`
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('de-DE')
 }
 
 function tokenLine(count: number): string {
@@ -80,7 +73,7 @@ function latestAdmissibleDate(maxReleaseDays: number): string {
  * A library's release for external access as one row of the Reiter „Freigaben" — state on the
  * left, „Freigeben" resp. „Ändern" at the right edge (guidelines 5.1). The change pops up in a
  * dialog: the expiry date (never pre-filled), the number of access tokens that hold the library
- * (a number, no names), and „Freigabe beenden" with a confirmation. Visible to everyone who may
+ * (a number, no names), and „Freigabe widerrufen" with a confirmation. Visible to everyone who may
  * grant rights on the library; below this role the backend omits the field entirely.
  */
 export default function LibraryExternalAccessSection({
@@ -139,10 +132,10 @@ export default function LibraryExternalAccessSection({
 
   async function end() {
     const confirmed = await confirmAction({
-      question: 'Freigabe für externe KI-Werkzeuge beenden?',
+      question: 'Freigabe für externe KI-Werkzeuge widerrufen?',
       consequence:
         'Zugangstokens, die diese Bibliothek enthalten, finden danach nichts mehr darin. Eine erneute Freigabe ist jederzeit möglich.',
-      confirmLabel: 'Freigabe beenden',
+      confirmLabel: 'Widerrufen',
       tone: 'danger',
     })
     if (!confirmed) return
@@ -169,58 +162,52 @@ export default function LibraryExternalAccessSection({
         </TextAction>
       }
     >
-      <Dialog open={open} onClose={() => !saving && setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Externer Zugang</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            {dialogError && <Alert severity="error">{dialogError}</Alert>}
-            <TextField
-              label="Freigabe bis"
-              type="date"
-              value={dateInput}
-              disabled={saving}
-              onChange={(event) => setDateInput(event.target.value)}
-              slotProps={{
-                inputLabel: { shrink: true },
-                htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
-              }}
-              size="small"
-              sx={{ maxWidth: 220 }}
-              helperText={`höchstens ${access.maxReleaseDays} Tage`}
-            />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Personen mit Lesezugriff können diese Bibliothek in einem eigenen Zugangstoken
-              auswählen und aus externen Werkzeugen darin suchen.
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Nach Ablauf erlischt die Freigabe; die Erneuerung ist eine bewusste Entscheidung der
-              Bibliotheksverantwortung.
-            </Typography>
-            {released && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Derzeit {tokenLine(access.tokenCount)} enthalten.
-              </Typography>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'space-between' }}>
-          <Box>
-            {released && (
-              <Button color="error" disabled={saving} onClick={() => void end()}>
-                Freigabe beenden
-              </Button>
-            )}
-          </Box>
-          <Box>
-            <Button disabled={saving} onClick={() => setOpen(false)}>
-              Abbrechen
+      <FormDialog
+        open={open}
+        title="Externer Zugang"
+        submitLabel={released ? 'Speichern' : 'Freigeben'}
+        onSubmit={() => void save()}
+        onClose={() => setOpen(false)}
+        busy={saving}
+        busyAnnouncement="Die Freigabe wird gespeichert"
+        secondaryAction={
+          released && (
+            <Button variant="outlined" color="error" disabled={saving} onClick={() => void end()}>
+              Freigabe widerrufen
             </Button>
-            <Button variant="contained" disabled={saving} onClick={() => void save()}>
-              {saving ? 'Wird gespeichert …' : released ? 'Speichern' : 'Freigeben'}
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
+          )
+        }
+      >
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          {dialogError && <Alert severity="error">{dialogError}</Alert>}
+          <FormField
+            label="Freigabe bis"
+            type="date"
+            value={dateInput}
+            disabled={saving}
+            onChange={(event) => setDateInput(event.target.value)}
+            slotProps={{
+              htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
+            }}
+            size="small"
+            sx={{ maxWidth: fieldWidth.short }}
+            helperText={`höchstens ${access.maxReleaseDays} Tage`}
+          />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Personen mit Lesezugriff können diese Bibliothek in einem eigenen Zugangstoken auswählen
+            und aus externen Werkzeugen darin suchen.
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Nach Ablauf erlischt die Freigabe; die Erneuerung ist eine bewusste Entscheidung der
+            Bibliotheksverantwortung.
+          </Typography>
+          {released && (
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Derzeit {tokenLine(access.tokenCount)} enthalten.
+            </Typography>
+          )}
+        </Stack>
+      </FormDialog>
     </ValueRow>
   )
 }

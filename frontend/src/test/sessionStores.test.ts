@@ -10,6 +10,9 @@ import { registeredSessionStores } from '@/shared/session/resettableStores'
  * an expired session and a handover to another account reset exactly these.
  */
 const SESSION_STORES = [
+  'useAgentAvailability',
+  'useAgentDirectoryStore',
+  'useAgentStore',
   'useCatalogStore',
   'useChatListStore',
   'useChatStore',
@@ -31,13 +34,18 @@ const SESSION_STORES = [
   'useUserAdminStore',
 ]
 
-/** Stores that deliberately survive a sign-out: device settings, sign-in state, open dialogs. */
+/**
+ * Stores that deliberately survive a sign-out: device settings, sign-in state, open dialogs and the
+ * installation's runtime switches, which switch themselves off on sign-out and are read again on
+ * sign-in.
+ */
 const NOT_SESSION_STORES = [
   'useAuthStore',
   'useBrandingStore',
   'useConfirmStore',
   'useCopyAnnouncement',
   'useLinkTargetsStore',
+  'useRuntimeSwitchStore',
   'useUiStore',
 ]
 

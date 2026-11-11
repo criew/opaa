@@ -9,9 +9,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * One identity provider a deployment accepts sign-ins from (ADR-0025). {@link #getIssuerUri()} is
@@ -27,7 +29,13 @@ import java.util.UUID;
  * ux_oidc_providers_single_local}): its {@link #isEnabled()} is that management's switch, its
  * issuer is fixed to {@link LocalIssuer#URN}, it has no client id, is never the default and has no
  * editable connection details - the schema's CHECKs and this class refuse all of that.
+ *
+ * <p>Optimistically locked ({@link #version}): a write from a stale read, a saved detached instance
+ * included, fails instead of switching a provider back on or restoring a claim mapping. Writing
+ * only the changed columns ({@code @DynamicUpdate}) keeps what a writer without the version changed
+ * meanwhile, such as the predecessor version during a rolling update.
  */
+@DynamicUpdate
 @Entity
 @Table(name = "oidc_providers")
 public class OidcProvider {
@@ -90,6 +98,8 @@ public class OidcProvider {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  @Version private long version;
 
   protected OidcProvider() {}
 

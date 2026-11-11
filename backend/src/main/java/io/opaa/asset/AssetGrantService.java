@@ -63,9 +63,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>"Alle Konten" is a recipient here, not a level elsewhere</b> (ADR-0037): it is the subject
  * {@link AssetGrantSubjectType#ALL_ACCOUNTS}, reaching every account of the asset's organization.
- * It passes the same escalation guard and the same succession guard as any other recipient, and
- * additionally the type's own ceiling ({@link AssetTypeDefinition#requireAllAccountsGrantAllowed})
- * - which is where a connector library's share cap takes effect now.
+ * It passes the same escalation guard and the same succession guard as any other recipient; who may
+ * reach that far is decided by the right to create the asset, not by a ceiling per asset.
  *
  * <p>Every response carries {@code subjectDisplayName} and {@code grantedByDisplayName}, resolved
  * here - see {@link #toViews(List)}.
@@ -206,7 +205,9 @@ public class AssetGrantService {
     switch (request.subjectType()) {
       case USER -> requireUserInOrganization(request.subjectId(), asset.getOrganizationId());
       case GROUP -> requireGrantableGroup(request.subjectId(), asset.getOrganizationId(), caller);
-      case ALL_ACCOUNTS -> definition.requireAllAccountsGrantAllowed(asset);
+      case ALL_ACCOUNTS -> {
+        // reaches the asset's own organization only, nothing to resolve
+      }
     }
 
     // Escalation guard, half 1: a caller may never grant a role higher than their own.
@@ -452,8 +453,8 @@ public class AssetGrantService {
       throw new ConflictException(
           "Die letzte "
               + roleLabel(AssetRole.OWNER)
-              + "-Berechtigung einer "
-              + definition.singular()
+              + "-Berechtigung "
+              + definition.aGenitive()
               + " kann nicht entfernt werden");
     }
 
@@ -469,38 +470,6 @@ public class AssetGrantService {
             null));
     grantRepository.delete(grant);
     invalidateAfterCommit(assetType, asset.getId());
-  }
-
-  /**
-   * Takes back the grant to "Alle Konten" because the type's ceiling now forbids it (ADR-0037
-   * Entscheidung 5). Deliberately without the {@code MANAGER} check of {@link #revokeGrant}: the
-   * caller is the system administration, whose {@code SYSTEM_ADMIN} role it has already
-   * established, and the clamp must never be refused. Everything else is an ordinary revocation -
-   * one grant-history interval, one audit entry, one cache invalidation.
-   *
-   * @return whether such a grant existed and was taken back.
-   */
-  @Transactional
-  public boolean revokeAllAccountsGrantForLoweredCap(Asset asset, UUID actorUserId) {
-    AssetGrant grant =
-        grantRepository
-            .findByAssetTypeAndAssetIdAndSubjectType(
-                asset.getAssetType(), asset.getId(), AssetGrantSubjectType.ALL_ACCOUNTS)
-            .orElse(null);
-    if (grant == null) {
-      return false;
-    }
-    eventPublisher.publishEvent(
-        new AssetGrantChanged(
-            asset,
-            grant,
-            AssetGrantChanged.Cause.REVOKED,
-            actorUserId,
-            grantAuditPayload(grant),
-            null));
-    grantRepository.delete(grant);
-    invalidateAfterCommit(asset.getAssetType(), asset.getId());
-    return true;
   }
 
   private void requireCallerCanTouchExistingGrant(
@@ -570,8 +539,8 @@ public class AssetGrantService {
       throw new ConflictException(
           "Die letzte "
               + roleLabel(AssetRole.OWNER)
-              + "-Berechtigung einer "
-              + definition.singular()
+              + "-Berechtigung "
+              + definition.aGenitive()
               + " kann nicht herabgestuft werden");
     }
   }
@@ -609,8 +578,8 @@ public class AssetGrantService {
     }
     if (!groupMemberships.groupIdsForUser(caller.id()).contains(group.id())) {
       throw new AccessDeniedException(
-          "Nur Mitglieder der Gruppe können eine "
-              + assetTypes.require(assetType).singular()
+          "Nur Mitglieder der Gruppe können "
+              + assetTypes.require(assetType).aAccusative()
               + " in ihrem Namen anlegen");
     }
     requireGrantableGroup(group.id(), caller.organizationId(), caller);

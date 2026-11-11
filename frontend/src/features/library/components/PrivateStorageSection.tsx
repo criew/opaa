@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import Alert from '@mui/material/Alert'
+import { useCallback, useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
+import AdminList from '@/shared/ui/list/AdminList'
 import Typography from '@mui/material/Typography'
 import type {
   MaskedNumber,
@@ -22,12 +17,17 @@ import {
   getPrivateStorageSummary,
   updatePrivateStorageQuota,
 } from '../api/privateStorageApi'
+import SectionHead from '@/shared/ui/SectionHead'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
 import { limitDraft, parseLimit } from '../utils/storageLimit'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingValueRow from '@/shared/ui/settings/SettingValueRow'
 import PageSection from '@/shared/ui/PageSection'
+import { contentWidth, fontSize, formWidth } from '@/shared/theme/tokens'
+import { formatNumber } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** A size in words; 0 is unlimited. */
 function sizeOrUnlimited(bytes: number): string {
@@ -59,7 +59,7 @@ const RUN_CATEGORY_LABELS: Record<string, string> = {
  * Nothing is derived from other numbers of the answer.
  */
 function maskedCount(number: MaskedNumber): string {
-  if (number.value != null) return number.value.toLocaleString('de-DE')
+  if (number.value != null) return formatNumber(number.value)
   if (number.fewerThanPersons != null) return `weniger als ${number.fewerThanPersons}`
   return 'nicht ausgewiesen'
 }
@@ -90,7 +90,7 @@ function QuotaForm({
   const quotaBytes = parsed.bytes
   const changed = valid && quotaBytes !== current.quotaBytes
 
-  async function save(next: number | null) {
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
@@ -100,38 +100,41 @@ function QuotaForm({
         `Das Speicherkontingent privater Bibliotheken ist jetzt ${limitLabel(saved.quotaBytes)}.`,
         'success',
       )
+      return true
     } catch (err: unknown) {
       setSaveError(
         err instanceof Error ? err.message : 'Die Grenze konnte nicht gespeichert werden.',
       )
+      return false
     } finally {
       setBusy(false)
     }
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (busy || !valid) return false
+    if (!changed) return true
     const confirmed = await confirmAction({
       question: `Speicherkontingent privater Bibliotheken auf ${limitLabel(quotaBytes)} ändern?`,
       consequence:
         quotaBytes === 0
           ? 'Private Bibliotheken nehmen dann ohne Grenze auf, ab dem nächsten aufgenommenen Dokument; nur das Kontingent je Bibliothek gilt weiter. Die Änderung steht im Revisionsprotokoll.'
           : 'Die Grenze gilt für alle privaten Bibliotheken einer Person zusammen, ab dem nächsten aufgenommenen Dokument. Bereits Gespeichertes bleibt; wer über der Grenze liegt, nimmt nichts mehr auf, was den Speicher wachsen lässt. Eine geänderte Datei, die nicht größer wird, ersetzt ihre bisherige Fassung weiter. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Grenze ändern',
+      confirmLabel: 'Ändern',
       tone: 'caution',
     })
-    if (!confirmed) return
-    await save(quotaBytes)
+    if (!confirmed) return false
+    return save(quotaBytes)
   }
 
   async function handleReset() {
     if (busy) return
     const confirmed = await confirmAction({
-      question: `Speicherkontingent privater Bibliotheken zur Werkseinstellung von ${sizeOrUnlimited(current.defaultQuotaBytes)} zurückkehren?`,
+      question: `Speicherkontingent privater Bibliotheken auf die Werkseinstellung von ${sizeOrUnlimited(current.defaultQuotaBytes)} zurücksetzen?`,
       consequence:
         'Es gilt dann wieder die Werkseinstellung. Bereits Gespeichertes bleibt. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -139,13 +142,18 @@ function QuotaForm({
   }
 
   return (
-    <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { sm: 'flex-start' } }}
-      >
-        <TextField
+    <SettingValueRow
+      title="Grenze je Person"
+      headingLevel="h3"
+      value={sizeOrUnlimited(current.quotaBytes)}
+      onOpen={() => {
+        setUnlimited(current.quotaBytes === 0)
+        setDraft(current.quotaBytes === 0 ? '' : limitDraft(current.quotaBytes))
+        setSaveError(null)
+      }}
+      onSave={handleSave}
+      editor={
+        <FormField
           label="Grenze je Person (GB)"
           size="small"
           value={draft}
@@ -154,59 +162,43 @@ function QuotaForm({
             setDraft(event.target.value)
             setSaveError(null)
           }}
-          error={!valid}
-          helperText={parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'}
+          error={!valid || saveError !== null}
+          helperText={
+            saveError ?? parsed.error ?? 'Gilt über alle privaten Bibliotheken einer Person.'
+          }
+          numeric
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          sx={{ maxWidth: 240 }}
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={unlimited}
-              onChange={(event) => {
-                setUnlimited(event.target.checked)
-                setSaveError(null)
-              }}
+          sx={{ maxWidth: formWidth.column }}
+          action={
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={unlimited}
+                  onChange={(event) => {
+                    setUnlimited(event.target.checked)
+                    setSaveError(null)
+                  }}
+                />
+              }
+              label="Unbegrenzt"
             />
           }
-          label="Unbegrenzt"
         />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          busy={busy}
-          busyAnnouncement="Grenze wird gespeichert"
-          disabled={!changed && !busy}
-          sx={{ mt: { sm: 0.25 } }}
-        >
-          Grenze speichern
-        </BusyButton>
-        {current.overridden && (
-          <Button
-            variant="text"
-            disabled={busy}
-            onClick={() => void handleReset()}
-            sx={{ mt: { sm: 0.25 } }}
-          >
-            Werkseinstellung wiederherstellen
-          </Button>
-        )}
-      </Stack>
-      {saveError && (
-        <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-          {saveError}
-        </Alert>
+      }
+    >
+      {current.overridden && (
+        <Button variant="text" size="small" disabled={busy} onClick={() => void handleReset()}>
+          Werkseinstellung wiederherstellen
+        </Button>
       )}
-    </Box>
+    </SettingValueRow>
   )
 }
 
 function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
   return (
     <Box data-testid="private-storage-summary" sx={{ mt: 3 }}>
-      <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
-        Übersicht (nur Summen, ohne Namen)
-      </Typography>
+      <SectionHead component="h3">Übersicht (nur Summen, ohne Namen)</SectionHead>
       <Stack spacing={0.5} sx={{ mb: 2 }}>
         <Typography variant="body2">
           Besitzerinnen privater Bibliotheken:{' '}
@@ -219,48 +211,52 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
       </Stack>
 
       {summary.profiles.length > 0 && (
-        <Table size="small" aria-label="Belegter Speicher je Zugang" sx={{ mb: 2, maxWidth: 560 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Zugang</TableCell>
-              <TableCell align="right">Belegter Speicher</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {summary.profiles.map((profile) => (
-              <TableRow key={profile.profileId}>
-                <TableCell>{profile.name}</TableCell>
-                <TableCell align="right">{maskedBytes(profile.usedBytes)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Box sx={{ mb: 2, maxWidth: contentWidth.form }}>
+          <AdminList
+            label="Belegter Speicher je Zugang"
+            rows={summary.profiles}
+            rowKey={(profile) => profile.profileId}
+            rowLabel={(profile) => profile.name}
+            columns={[
+              { id: 'profile', head: 'Zugang', cell: (profile) => profile.name },
+              {
+                id: 'used',
+                head: 'Belegter Speicher',
+                width: '40%',
+                align: 'right',
+                cell: (profile) => maskedBytes(profile.usedBytes),
+              },
+            ]}
+          />
+        </Box>
       )}
 
       {summary.runEnds.length > 0 && (
-        <Table
-          size="small"
-          aria-label={`Laufabbrüche der letzten ${summary.runWindowDays} Tage je Ursache`}
-          sx={{ mb: 2, maxWidth: 560 }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Ursache</TableCell>
-              <TableCell align="right">Läufe</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {summary.runEnds.map((entry) => (
-              <TableRow key={entry.category}>
-                <TableCell>{RUN_CATEGORY_LABELS[entry.category] ?? entry.category}</TableCell>
-                <TableCell align="right">{maskedCount(entry.runs)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Box sx={{ mb: 2, maxWidth: contentWidth.form }}>
+          <AdminList
+            label={`Laufabbrüche der letzten ${summary.runWindowDays} Tage je Ursache`}
+            rows={summary.runEnds}
+            rowKey={(entry) => entry.category}
+            rowLabel={(entry) => RUN_CATEGORY_LABELS[entry.category] ?? entry.category}
+            columns={[
+              {
+                id: 'cause',
+                head: 'Ursache',
+                cell: (entry) => RUN_CATEGORY_LABELS[entry.category] ?? entry.category,
+              },
+              {
+                id: 'runs',
+                head: 'Läufe',
+                width: '40%',
+                align: 'right',
+                cell: (entry) => maskedCount(entry.runs),
+              },
+            ]}
+          />
+        </Box>
       )}
 
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine Zahl
         auf einzelne Personen schließen lässt. Den Verbrauch einer einzelnen Person zeigt OPAA der
         Verwaltung nicht.
@@ -306,20 +302,13 @@ export default function PrivateStorageSection() {
       description="Die hausweite Grenze, die sich alle privaten Bibliotheken einer Person teilen, und wie viel sie insgesamt belegen."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Das Speicherkontingent konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : quota === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Speicherkontingent wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
         <>
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="private-storage-quota-current">

@@ -16,6 +16,7 @@ import AssetTile from '../components/AssetTile'
 import { tileFromCatalogEntry } from '../components/assetTileData'
 import AssetFilterBar from '../components/AssetFilterBar'
 import { CATALOG_NEW_ROUTE } from '@/shared/routes'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** Long enough to let a word be typed out before the server is asked. */
 const SEARCH_DELAY_MS = 300
@@ -121,10 +122,16 @@ export default function CatalogPage() {
           <CatalogCard entry={entry} to={definition.detailRoute(entry.assetId)} />
         ) : null
       }}
-      emptyState={
-        <Typography sx={{ color: 'text.secondary' }}>
-          Der Katalog ist noch leer. Er zeigt alles, was Sie lesen dürfen.
-        </Typography>
+      errorMessage="Der Katalog konnte nicht geladen werden."
+      onRetry={() => void load({ type: filterType, q: appliedQuery, favorites: favoritesOnly })}
+      onResetFilters={() => {
+        setParam('type', null)
+        setParam('favorites', null)
+      }}
+      emptyMessage={
+        canCreate
+          ? 'Noch keine Katalogeinträge. Der Katalog zeigt alles, was Sie lesen dürfen.'
+          : 'Noch keine Katalogeinträge. Der Katalog zeigt alles, was Sie lesen dürfen; Einträge anlegen kann, wem die Verwaltung das Anlegerecht gegeben hat.'
       }
       listFooter={
         page + 1 < totalPages ? (
@@ -137,7 +144,7 @@ export default function CatalogPage() {
               mt: 2.5,
             }}
           >
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               {entries.length} von {total} angezeigt
             </Typography>
             <Button variant="outlined" onClick={() => void loadMore()} disabled={isLoading}>

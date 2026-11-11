@@ -1,19 +1,17 @@
+import { useState } from 'react'
 import Button from '@mui/material/Button'
 import StateDot from '@/shared/ui/StateDot'
-import Paper from '@mui/material/Paper'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
+import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 
 import type { LibraryIndexState, LibrarySearchStatusResponse } from '@/shared/api/types'
 import { formatShare } from '@/shared/utils/labels'
 import type { LibraryBatchRun } from '../stores/searchAdminStore'
 import { plural } from '@/shared/utils/format'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
+import { definitionListSx } from '@/shared/ui/list/adminListStyles'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
   EMPTY: 'Leer',
@@ -44,7 +42,7 @@ function MetadataBackfillCell({
   const resumable = !running && run != null && !run.done && run.error == null
   const buttonLabel = running ? 'Anhalten' : resumable ? 'Weiter' : 'Kernfelder nachrüsten'
   return (
-    <TableCell>
+    <>
       <Typography variant="body2" component="div">
         {backfill.currentDocuments} / {backfill.totalDocuments} aktuell
       </Typography>
@@ -123,7 +121,7 @@ function MetadataBackfillCell({
       {(backfill.pendingDocuments > 0 || running) && (
         <Button
           size="small"
-          variant={running ? 'outlined' : 'contained'}
+          variant="outlined"
           sx={{ mt: 0.5 }}
           aria-label={`${buttonLabel}: ${library.libraryName}`}
           onClick={() => (running ? onPause(library.libraryId) : onStart(library.libraryId))}
@@ -131,7 +129,7 @@ function MetadataBackfillCell({
           {buttonLabel}
         </Button>
       )}
-    </TableCell>
+    </>
   )
 }
 
@@ -156,7 +154,7 @@ function ContextPrefixCell({
   const resumable = !running && run != null && !run.done && run.error == null
   const buttonLabel = running ? 'Anhalten' : resumable ? 'Weiter' : 'Neu einbetten'
   return (
-    <TableCell>
+    <>
       <Typography variant="body2" component="div">
         {rerun.currentDocuments} / {rerun.totalDocuments} mit aktuellem Präfix
       </Typography>
@@ -186,7 +184,7 @@ function ContextPrefixCell({
       {(rerun.pendingDocuments > 0 || running) && (
         <Button
           size="small"
-          variant={running ? 'outlined' : 'contained'}
+          variant="outlined"
           sx={{ mt: 0.5 }}
           aria-label={`${buttonLabel}: ${library.libraryName}`}
           onClick={() => (running ? onPause(library.libraryId) : onStart(library.libraryId))}
@@ -194,7 +192,7 @@ function ContextPrefixCell({
           {buttonLabel}
         </Button>
       )}
-    </TableCell>
+    </>
   )
 }
 
@@ -207,15 +205,15 @@ function MetadataSchemaChangeCell({ library }: { library: LibrarySearchStatusRes
   const changes = library.metadataSchemaChanges
   if (changes.pendingChanges === 0) {
     return (
-      <TableCell>
+      <>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           keine
         </Typography>
-      </TableCell>
+      </>
     )
   }
   return (
-    <TableCell>
+    <>
       <Typography variant="body2" component="div">
         {plural(changes.pendingChanges, 'Änderung läuft', 'Änderungen laufen')}
       </Typography>
@@ -235,11 +233,39 @@ function MetadataSchemaChangeCell({ library }: { library: LibrarySearchStatusRes
           )}
         </Typography>
       )}
-    </TableCell>
+    </>
   )
 }
 
-/** The index state of every library, with the two chargen controls per row. */
+/** What is still open in a library's index, in the words of the detail below the row. */
+function openPoints(library: LibrarySearchStatusResponse, metadataEnabled: boolean): string[] {
+  return [
+    (library.vectorIndexState === 'INCOMPLETE' ||
+      library.vectorChunkCount !== library.chunkCount) &&
+      'Vektorindex',
+    library.fullTextIndexState === 'OUTDATED' && 'Volltextindex',
+    metadataEnabled && library.metadataBackfill.pendingDocuments > 0 && 'Kernfelder',
+    metadataEnabled && library.contextPrefixRerun.pendingDocuments > 0 && 'Kontextpräfix',
+    metadataEnabled && library.metadataSchemaChanges.pendingChanges > 0 && 'Schemaänderungen',
+  ].filter((point): point is string => Boolean(point))
+}
+
+/** One word for the row, and below it what is open - the figures stand in the row's detail. */
+function StateCell({ points }: { points: string[] }) {
+  if (points.length === 0) return <StateDot tone="neutral" label="Vollständig" />
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <StateDot tone="warning" label="Offen" />
+      <ListText secondary>{points.join(' · ')}</ListText>
+    </Box>
+  )
+}
+
+/**
+ * The index state of every library in two levels (guidelines 5.3): the row carries documents,
+ * backlog, last run and one state; the row opens its detail with the figures per index and,
+ * with metadata, the two batch runs and their controls.
+ */
 export default function LibraryStatusTable({
   libraries,
   backfillRuns,
@@ -257,8 +283,9 @@ export default function LibraryStatusTable({
   onStartContextPrefixRerun: (libraryId: string) => void
   onPauseContextPrefixRerun: (libraryId: string) => void
 }) {
-  // Without metadata (ADR-0044) neither run exists, and neither do their three columns.
+  // Without metadata (ADR-0044) neither run exists, and neither do their three entries.
   const metadataEnabled = useFeatureEnabled('metadata')
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   if (libraries.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -266,100 +293,133 @@ export default function LibraryStatusTable({
       </Typography>
     )
   }
+  function toggle(libraryId: string) {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (!next.delete(libraryId)) next.add(libraryId)
+      return next
+    })
+  }
   return (
-    // Eleven columns overflow narrower viewports into a horizontal scroll; a scrollable region must
-    // be reachable and scrollable by keyboard (axe scrollable-region-focusable), hence the tab stop.
-    <TableContainer
-      component={Paper}
-      variant="outlined"
-      tabIndex={0}
-      role="region"
-      aria-label="Tabelle Indexstatus je Bibliothek, horizontal scrollbar"
-    >
-      <Table size="small" aria-label="Indexstatus je Bibliothek">
-        <TableHead>
-          <TableRow>
-            <TableCell>Bibliothek</TableCell>
-            <TableCell align="right">Dokumente</TableCell>
-            <TableCell align="right">Rückstand</TableCell>
-            <TableCell align="right">Abschnitte (im Index / laut Dokumenten)</TableCell>
-            <TableCell align="right">Ohne oder mit auffällig wenigen Abschnitten</TableCell>
-            <TableCell>Letzter Lauf</TableCell>
-            <TableCell>Vektorindex</TableCell>
-            <TableCell>Volltextindex</TableCell>
+    <AdminList
+      label="Indexstatus je Bibliothek"
+      rows={libraries}
+      rowKey={(library) => library.libraryId}
+      rowLabel={(library) => library.libraryName}
+      rowTarget={(library) => ({
+        onOpen: () => toggle(library.libraryId),
+        expanded: expanded.has(library.libraryId),
+      })}
+      columns={[
+        {
+          id: 'library',
+          head: 'Bibliothek',
+          cell: (library) => <ListText strong>{library.libraryName}</ListText>,
+        },
+        {
+          id: 'documents',
+          head: 'Dokumente',
+          width: 128,
+          align: 'right',
+          cell: (library) => `${library.indexedDocumentCount} / ${library.documentCount}`,
+        },
+        {
+          id: 'pending',
+          head: 'Rückstand',
+          width: 112,
+          align: 'right',
+          cell: (library) => library.pendingDocumentCount,
+        },
+        {
+          id: 'lastRun',
+          head: 'Letzter Lauf',
+          width: 168,
+          cell: (library) =>
+            library.lastIndexedAt ? formatDateTime(library.lastIndexedAt) : 'noch nie',
+        },
+        {
+          id: 'state',
+          head: 'Zustand',
+          width: '28%',
+          cell: (library) => <StateCell points={openPoints(library, metadataEnabled)} />,
+        },
+      ]}
+      rowDetail={(library) =>
+        expanded.has(library.libraryId) ? (
+          <Box
+            component="dl"
+            aria-label={`Indexdetails: ${library.libraryName}`}
+            sx={{ ...definitionListSx, mt: 0, mb: 1 }}
+          >
+            <dt>Abschnitte</dt>
+            <dd>
+              {`${library.vectorChunkCount} im Index, ${library.chunkCount} laut Dokumenten`}
+              {library.vectorChunkCount !== library.chunkCount && (
+                <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
+                  Vektorindex und Dokumentzählung weichen ab
+                </Typography>
+              )}
+            </dd>
+            <dt>Wenige Abschnitte</dt>
+            <dd>
+              {plural(
+                library.lowChunkDocumentCount,
+                'Dokument ohne oder mit auffällig wenigen Abschnitten',
+                'Dokumente ohne oder mit auffällig wenigen Abschnitten',
+              )}
+            </dd>
+            <dt>Vektorindex</dt>
+            <dd>
+              <StateDot
+                tone={library.vectorIndexState === 'INCOMPLETE' ? 'warning' : 'neutral'}
+                label={INDEX_STATE_LABELS[library.vectorIndexState]}
+              />
+            </dd>
+            <dt>Volltextindex</dt>
+            <dd>
+              <StateDot
+                tone={library.fullTextIndexState === 'OUTDATED' ? 'warning' : 'neutral'}
+                label={INDEX_STATE_LABELS[library.fullTextIndexState]}
+              />
+              {library.fullTextOutdatedChunks > 0 && (
+                <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
+                  {plural(
+                    library.fullTextOutdatedChunks,
+                    'Abschnitt in älterer Fassung',
+                    'Abschnitte in älterer Fassung',
+                  )}
+                </Typography>
+              )}
+            </dd>
             {metadataEnabled && (
               <>
-                <TableCell>Kernfelder</TableCell>
-                <TableCell>Kontextpräfix</TableCell>
-                <TableCell>Schemaänderungen</TableCell>
-              </>
-            )}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {libraries.map((library) => (
-            <TableRow key={library.libraryId}>
-              <TableCell>{library.libraryName}</TableCell>
-              <TableCell align="right">
-                {library.indexedDocumentCount} / {library.documentCount}
-              </TableCell>
-              <TableCell align="right">{library.pendingDocumentCount}</TableCell>
-              <TableCell align="right">
-                {`${library.vectorChunkCount} / ${library.chunkCount}`}
-                {library.vectorChunkCount !== library.chunkCount && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
-                    Vektorindex und Dokumentzählung weichen ab
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell align="right">{library.lowChunkDocumentCount}</TableCell>
-              <TableCell>
-                {library.lastIndexedAt
-                  ? new Date(library.lastIndexedAt).toLocaleString('de-DE')
-                  : 'noch nie'}
-              </TableCell>
-              <TableCell>
-                <StateDot
-                  tone={library.vectorIndexState === 'INCOMPLETE' ? 'warning' : 'neutral'}
-                  label={INDEX_STATE_LABELS[library.vectorIndexState]}
-                />
-              </TableCell>
-              <TableCell>
-                <StateDot
-                  tone={library.fullTextIndexState === 'OUTDATED' ? 'warning' : 'neutral'}
-                  label={INDEX_STATE_LABELS[library.fullTextIndexState]}
-                />
-                {library.fullTextOutdatedChunks > 0 && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">
-                    {plural(
-                      library.fullTextOutdatedChunks,
-                      'Abschnitt in älterer Fassung',
-                      'Abschnitte in älterer Fassung',
-                    )}
-                  </Typography>
-                )}
-              </TableCell>
-              {metadataEnabled && (
-                <>
+                <dt>Kernfelder</dt>
+                <dd>
                   <MetadataBackfillCell
                     library={library}
                     run={backfillRuns[library.libraryId]}
                     onStart={onStartBackfill}
                     onPause={onPauseBackfill}
                   />
+                </dd>
+                <dt>Kontextpräfix</dt>
+                <dd>
                   <ContextPrefixCell
                     library={library}
                     run={contextPrefixRuns[library.libraryId]}
                     onStart={onStartContextPrefixRerun}
                     onPause={onPauseContextPrefixRerun}
                   />
+                </dd>
+                <dt>Schemaänderungen</dt>
+                <dd>
                   <MetadataSchemaChangeCell library={library} />
-                </>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+                </dd>
+              </>
+            )}
+          </Box>
+        ) : null
+      }
+    />
   )
 }

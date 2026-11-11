@@ -16,6 +16,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined'
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined'
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
@@ -27,12 +28,14 @@ import { NotificationBell } from '@/features/notification'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { tourAnchor, type TourAnchorName } from '@/shared/ui/a11y/tourAnchor'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
+import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { userInitial } from '@/shared/utils/userInitial'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import { catalogScopePrefixes } from '@/shared/assetTypes'
 import { createRailTheme } from '@/shared/theme/theme'
-import { darkRoles, railRoles, shadow } from '@/shared/theme/tokens'
+import { darkRoles, fontSize, iconSize, railRoles, shadow } from '@/shared/theme/tokens'
 
 const RAIL_WIDTH = 64
 
@@ -65,6 +68,14 @@ export default function GlobalRail() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const quickTour = useFeatureEnabled('quickTour')
   const startQuickTour = useStartQuickTour()
+  const agentsOn = useRuntimeSwitchStore((s) => s.agents)
+  const { capabilities } = useMyCapabilities()
+  // The administration reaches the directory from its own navigation; whoever else holds the
+  // right - typically the staff council - gets an entry of its own.
+  const holdsDirectory =
+    agentsOn &&
+    user?.systemRole !== 'SYSTEM_ADMIN' &&
+    (capabilities?.includes('VIEW_AGENT_DIRECTORY') ?? false)
 
   const appTheme = useTheme()
   const appMode = appTheme.palette.mode
@@ -99,9 +110,19 @@ export default function GlobalRail() {
           {
             label: 'Admin',
             to: '/admin/users',
-            activePrefixes: ['/admin'],
+            activePrefixes: ['/admin', '/agent-directory'],
             icon: SettingsOutlinedIcon,
             tourAnchor: 'admin' as const,
+          },
+        ]
+      : []),
+    ...(holdsDirectory
+      ? [
+          {
+            label: 'Verzeichnis',
+            to: '/agent-directory',
+            activePrefixes: ['/agent-directory'],
+            icon: MenuBookOutlinedIcon,
           },
         ]
       : []),
@@ -176,10 +197,13 @@ export default function GlobalRail() {
                 '&:hover': { bgcolor: active ? roles.bg3 : roles.bg2 },
               }}
             >
-              <Icon sx={{ fontSize: 18 }} />
+              <Icon sx={{ fontSize: iconSize.md }} />
               {/* The design labels the tiles at micro size; 9.5px matches the sidebar's own
                   micro-caption step. The icon alone would leave the tile ambiguous. */}
-              <Typography component="span" sx={{ fontSize: 9.5, fontWeight: 500, lineHeight: 1 }}>
+              <Typography
+                component="span"
+                sx={{ fontSize: fontSize.label, fontWeight: 500, lineHeight: 1 }}
+              >
                 {destination.label}
               </Typography>
             </ButtonBase>
@@ -220,7 +244,7 @@ export default function GlobalRail() {
                   width: 30,
                   height: 30,
                   bgcolor: 'primary.main',
-                  fontSize: 11,
+                  fontSize: fontSize.label,
                   fontWeight: 600,
                 }}
               >

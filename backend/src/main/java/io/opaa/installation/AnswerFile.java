@@ -2,6 +2,9 @@ package io.opaa.installation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -10,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -17,12 +21,14 @@ import tools.jackson.databind.json.JsonMapper;
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
  * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
  * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
- * embeddingModel}, {@code rerankModel}, {@code transcriptionModel}, {@code mail} and {@code
- * branding} are optional: a file without one skips its step, without {@code rerankModel} reranking
- * stays off, without {@code transcriptionModel} speech input stays off, without {@code mail}
- * sending stays off, without {@code branding} the OPAA default stays. Parts of later steps are
- * ignored, and so is {@code transcriptionModel} while speech input is switched off ({@link
- * InstallationService}).
+ * embeddingModel}, {@code rerankModel}, {@code transcriptionModel}, {@code textRecognitionModel},
+ * {@code malwareScan}, {@code mail} and {@code branding} are optional: a file without one skips its
+ * step, without {@code malwareScan} the malware scan stays off, without {@code rerankModel}
+ * reranking stays off, without {@code transcriptionModel} speech input stays off, without {@code
+ * textRecognitionModel} text recognition stays off, without {@code mail} sending stays off, without
+ * {@code branding} the OPAA default stays. Parts of later steps are ignored, and so are {@code
+ * transcriptionModel} while speech input is switched off and {@code textRecognitionModel} while the
+ * operation has not released text recognition ({@link OfferedSteps}).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -32,6 +38,8 @@ record AnswerFile(
     EmbeddingModel embeddingModel,
     RerankModel rerankModel,
     TranscriptionModel transcriptionModel,
+    TextRecognitionModel textRecognitionModel,
+    MalwareScan malwareScan,
     Mail mail,
     Branding branding) {
 
@@ -73,10 +81,50 @@ record AnswerFile(
   @JsonIgnoreProperties(ignoreUnknown = true)
   record RerankModel(String baseUrl, String model, String apiKeyFile, String apiKey) {}
 
-  /** {@code language} absent means {@code de}, empty lets the model detect it. */
+  /**
+   * {@code language} absent means {@code de}, empty lets the model detect it; {@code realtime}
+   * absent means dictation by recording only.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   record TranscriptionModel(
-      String baseUrl, String model, String apiKeyFile, String apiKey, String language) {}
+      String baseUrl,
+      String model,
+      String apiKeyFile,
+      String apiKey,
+      String language,
+      TranscriptionRealtime realtime) {}
+
+  /**
+   * The live transcription on top of dictation; without {@code apiKeyFile} it sends the key of the
+   * transcription model, on that model's origin only.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record TranscriptionRealtime(
+      RealtimeTranscriptionProtocol protocol,
+      String url,
+      String model,
+      String apiKeyFile,
+      String apiKey) {}
+
+  /**
+   * The text recognition model; {@code connectionType} absent means docling-serve, {@code model} is
+   * read for a vision model only, and without {@code apiKeyFile} it is called without a key.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record TextRecognitionModel(
+      TextRecognitionConnectionType connectionType,
+      String baseUrl,
+      String model,
+      String apiKeyFile,
+      String apiKey) {}
+
+  /** The clamd daemon of the malware scan; no secret, so it stands in the file as it is. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record MalwareScan(
+      String host,
+      Integer port,
+      Integer timeoutSeconds,
+      MalwareScanUnavailablePolicy onUnavailable) {}
 
   /** The mail server; without {@code passwordFile} it connects without a password. */
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -109,8 +157,12 @@ record AnswerFile(
     }
   }
 
-  /** The steps of the file, with the secrets read from their files. */
-  List<StepInput> steps() {
+  /**
+   * The steps of the file, with the secrets read from their files. A part of a step this
+   * installation does not offer ({@code offered} false) is left out before its secret file is read,
+   * so a missing file there does not refuse the answers.
+   */
+  List<StepInput> steps(Predicate<InstallationStep> offered) {
     if (firstAdmin == null || signIn == null) {
       throw new ValidationException("Die Antwortdatei braucht die Angaben firstAdmin und signIn.");
     }
@@ -119,6 +171,10 @@ record AnswerFile(
         || (embeddingModel != null && embeddingModel.apiKey() != null)
         || (rerankModel != null && rerankModel.apiKey() != null)
         || (transcriptionModel != null && transcriptionModel.apiKey() != null)
+        || (transcriptionModel != null
+            && transcriptionModel.realtime() != null
+            && transcriptionModel.realtime().apiKey() != null)
+        || (textRecognitionModel != null && textRecognitionModel.apiKey() != null)
         || (mail != null && mail.password() != null)) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
@@ -168,13 +224,38 @@ record AnswerFile(
               rerankModel.model(),
               keyOf(rerankModel.apiKeyFile(), "rerankModel.apiKeyFile")));
     }
-    if (transcriptionModel != null) {
+    if (transcriptionModel != null && offered.test(InstallationStep.TRANSCRIPTION_MODEL)) {
       steps.add(
           new StepInput.TranscriptionModel(
               transcriptionModel.baseUrl(),
               transcriptionModel.model(),
               keyOf(transcriptionModel.apiKeyFile(), "transcriptionModel.apiKeyFile"),
-              transcriptionModel.language()));
+              transcriptionModel.language(),
+              transcriptionModel.realtime() == null
+                  ? null
+                  : new StepInput.TranscriptionRealtime(
+                      transcriptionModel.realtime().protocol(),
+                      transcriptionModel.realtime().url(),
+                      transcriptionModel.realtime().model(),
+                      keyOf(
+                          transcriptionModel.realtime().apiKeyFile(),
+                          "transcriptionModel.realtime.apiKeyFile"))));
+    }
+    if (textRecognitionModel != null && offered.test(InstallationStep.TEXT_RECOGNITION_MODEL)) {
+      steps.add(
+          new StepInput.TextRecognitionModel(
+              textRecognitionModel.connectionType(),
+              textRecognitionModel.baseUrl(),
+              textRecognitionModel.model(),
+              keyOf(textRecognitionModel.apiKeyFile(), "textRecognitionModel.apiKeyFile")));
+    }
+    if (malwareScan != null) {
+      steps.add(
+          new StepInput.MalwareScan(
+              malwareScan.host(),
+              malwareScan.port(),
+              malwareScan.timeoutSeconds(),
+              malwareScan.onUnavailable()));
     }
     if (mail != null) {
       steps.add(

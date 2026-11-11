@@ -1,32 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Pagination from '@mui/material/Pagination'
 import Typography from '@mui/material/Typography'
-import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
 import type { SuccessionListResponse } from '@/shared/api/types'
 import { getSuccessionEntries } from '../api/successionApi'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
+import { ListPager } from '@/shared/ui/list/AdminList'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
+
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const PAGE_SIZE = 50
-
-/** Nothing open: say so, and say when something would show up here. */
-function EmptyState({ text }: { text: SuccessionTabText }) {
-  return (
-    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', py: 1 }}>
-      <TaskAltOutlinedIcon aria-hidden="true" sx={{ color: 'text.secondary', mt: 0.25 }} />
-      <Box>
-        <Typography sx={{ fontSize: 14.5, fontWeight: 500 }}>
-          Zurzeit ist hier nichts offen.
-        </Typography>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.25 }}>
-          {text.emptyExample}
-        </Typography>
-      </Box>
-    </Box>
-  )
-}
 
 /**
  * One tab of the list (ADR-0036, Entscheidung 6): complete from the first day, oldest entry
@@ -34,14 +21,7 @@ function EmptyState({ text }: { text: SuccessionTabText }) {
  * acting person** (Personalrat E1/Z7) - the API deliberately offers none, and the interface does
  * not rebuild it on the client.
  */
-export default function SuccessionList({
-  text,
-  onChanged,
-}: {
-  text: SuccessionTabText
-  /** After a transfer or a note - the page refreshes its counts. */
-  onChanged: () => void
-}) {
+export default function SuccessionList({ text }: { text: SuccessionTabText }) {
   const [page, setPage] = useState(0)
   const [data, setData] = useState<SuccessionListResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -66,21 +46,26 @@ export default function SuccessionList({
   }, [load])
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>
+    return (
+      <LoadError
+        message="Die Liste konnte nicht geladen werden."
+        detail={error}
+        onRetry={() => void load()}
+      />
+    )
   }
-  if (isLoading && !data) {
-    return <Typography sx={{ color: 'text.secondary' }}>Die Liste wird geladen …</Typography>
-  }
+  if (isLoading && !data) return <LoadingState />
   if (!data || data.totalElements === 0) {
-    return <EmptyState text={text} />
+    // Nothing open: say so, and say when something would show up here.
+    return <EmptyState message={`Zurzeit ist hier nichts offen. ${text.emptyExample}`} />
   }
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 14, maxWidth: 760 }}>{text.intro}</Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1, mb: 1.5 }}>
-        {data.totalElements === 1 ? '1 Eintrag' : `${data.totalElements} Einträge`}, die ältesten
-        zuerst.
+      <Typography sx={{ fontSize: fontSize.text, maxWidth: readingWidth }}>{text.intro}</Typography>
+      <AreaPageCount total={data.totalElements} unit={['Eintrag', 'Einträge']} />
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, mb: 1.5 }}>
+        Die ältesten zuerst.
       </Typography>
 
       {/* An empty follow-up page is no „all in order": between two runs a page can empty, and
@@ -106,24 +91,18 @@ export default function SuccessionList({
               key={`${entry.objectType}-${entry.objectId}`}
               kind={text.kind}
               entry={entry}
-              onChanged={() => {
-                void load()
-                onChanged()
-              }}
+              onChanged={() => void load()}
             />
           ))}
         </Box>
       )}
 
-      {(data.totalPages > 1 || data.page > 0) && (
-        <Pagination
-          sx={{ mt: 2 }}
-          count={Math.max(data.totalPages, data.page + 1)}
-          page={data.page + 1}
-          onChange={(_event, next) => setPage(next - 1)}
-          aria-label="Seiten der Liste"
-        />
-      )}
+      <ListPager
+        label="Seiten der Liste"
+        page={data.page}
+        pageCount={data.totalPages}
+        onPage={setPage}
+      />
     </Box>
   )
 }

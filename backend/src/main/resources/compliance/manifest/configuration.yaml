@@ -65,20 +65,31 @@ settings:
       - >-
         Auch der Abschluss der Installation legt es fest, wenn der Schritt Rerank-Modell geprüft
         ist; die Systemverwaltung ändert es unter Modelle → Reranking
-  - key: opaa.malware-scan.enabled
+  - key: malware_scan_settings.enabled
+    source: DATABASE
     defaultValue: "false"
-    effect: Ob jede Datei vor der Aufnahme in eine Bibliothek an den Virenscanner geht
+    effect: >-
+      Ob jede Datei vor der Aufnahme in eine Bibliothek oder einen Chat an den Virenscanner geht
     bearings: [DATA_FLOW]
-    helm:
-      values: malwareScan.enabled
-      defaultValue: "false"
-  - key: opaa.malware-scan.host
+    notes:
+      - >-
+        Werkseinstellung im Code; die Systemverwaltung schaltet unter Administration →
+        Virenprüfung, oder der Abschluss der Installation mit einem geprüften Schritt Virenprüfung.
+        OPAA liefert keinen Virenscanner mit, der Betrieb stellt den clamd-Dienst
+  - key: malware_scan_settings.host
+    source: DATABASE
     defaultValue: ""
     effect: Adresse des Virenscanners (clamd); Pflicht bei eingeschalteter Virenprüfung
     bearings: [DATA_FLOW]
-    helm:
-      values: malwareScan.host
-      defaultValue: ""
+    notes:
+      - Im Installationsassistenten nur mit Port 3310, in der Administration ohne Adressprüfung
+  - key: malware_scan_settings.on_unavailable
+    source: DATABASE
+    defaultValue: REJECT
+    effect: >-
+      Ob eine Datei, die der Virenscanner nicht prüfen konnte, abgewiesen (REJECT) oder ungeprüft
+      aufgenommen wird (ACCEPT)
+    bearings: [DATA]
   - key: transcription_model.enabled
     source: DATABASE
     defaultValue: "false"
@@ -108,6 +119,61 @@ settings:
       - >-
         Auch der Abschluss der Installation legt es fest, wenn der Schritt Transkriptionsmodell
         geprüft ist; die Systemverwaltung ändert es unter Modelle → Spracheingabe
+  - key: transcription_model.realtime_protocol
+    source: DATABASE
+    defaultValue: ""
+    effect: >-
+      Ob und in welchem Protokoll (OPENAI, VLLM, MISTRAL) die Spracheingabe zusätzlich ein
+      Live-Transkript bei einem Live-Dienst anfragt; ohne Angabe nur Diktat mit ganzer Aufnahme
+    bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Die Systemverwaltung wählt es unter Modelle → Spracheingabe, oder der Abschluss der
+        Installation mit einem geprüften Schritt Transkriptionsmodell, der das Live-Transkript wählt;
+        wirkt nur, solange auch die Spracheingabe eingeschaltet ist
+  - key: transcription_model.realtime_url
+    source: DATABASE
+    defaultValue: ""
+    effect: WebSocket-Adresse (ws:// oder wss://) des Live-Dienstes
+    bearings: [DATA_FLOW]
+    notes:
+      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
+  - key: transcription_model.realtime_model
+    source: DATABASE
+    defaultValue: ""
+    effect: Modell des Live-Dienstes
+    bearings: [DATA_FLOW]
+  - key: transcription_model.realtime_max_sessions
+    source: DATABASE
+    defaultValue: "1"
+    effect: >-
+      Höchstzahl gleichzeitiger Live-Sitzungen der ganzen Installation, über alle Instanzen;
+      darüber diktiert die Person mit ganzer Aufnahme
+    bearings: [DATA_FLOW]
+  - key: opaa.sandbox.enabled
+    defaultValue: "false"
+    effect: >-
+      Ob Agenten die Werkzeuge run_code und fill_template angeboten bekommen: Skripte des
+      Chat-Modells und das Befüllen von Dokumentvorlagen laufen dann je Agentenlauf in einer Sandbox
+      ohne Netz beim Sandbox-Dienst; erzeugte Dateien werden Anhang der Antwort. Ausgeschaltet gibt
+      es weder Client noch Werkzeuge
+    bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Eingeschaltet startet das Backend nicht ohne opaa.sandbox.base-url und opaa.sandbox.api-key;
+        zusätzlich entscheiden der Werkzeugschalter und die Zuordnung am Agenten
+    helm:
+      values: sandbox.enabled
+      defaultValue: "false"
+  - key: opaa.sandbox.base-url
+    defaultValue: "http://opensandbox-server:8090"
+    effect: >-
+      Adresse des Sandbox-Dienstes, an den die Skripte gehen; vom Betrieb gesetzt, nie aus Modell
+      oder Anfrage
+    bearings: [DATA_FLOW]
+    helm:
+      values: sandbox.baseUrl
+      defaultValue: ""
   - key: opaa.ocr.enabled
     defaultValue: "false"
     effect: >-

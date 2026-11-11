@@ -4,7 +4,8 @@ import com.pgvector.PGvector;
 import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingClients;
+import io.opaa.llm.embedding.EmbeddingClients;
+import io.opaa.observability.QueryEmbeddingTime;
 import io.opaa.retrieval.VectorIndexScanProperties;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +39,8 @@ import tools.jackson.databind.ObjectMapper;
  * <p>The query is embedded with one pinned client and searched only while its generation is the one
  * of the embedding column, checked against this instance's state and again in the query against
  * {@code embedding_index}; otherwise the search finds nothing and the full-text search answers
- * alone (ADR-0061, Entscheidung 6).
+ * alone (ADR-0061, Entscheidung 6). The embedding call's time goes to a running {@link
+ * QueryEmbeddingTime} measurement.
  */
 @DataFlow("embedding-model")
 @Component
@@ -92,7 +94,13 @@ public class VectorChunkSearch {
    */
   public List<Document> similaritySearch(SearchRequest request) {
     EmbeddingClients.Pinned pinned = clients.pin();
-    PGvector queryEmbedding = new PGvector(pinned.client().embed(request.getQuery()));
+    long embeddingStarted = System.nanoTime();
+    PGvector queryEmbedding;
+    try {
+      queryEmbedding = new PGvector(pinned.client().embed(request.getQuery()));
+    } finally {
+      QueryEmbeddingTime.add(System.nanoTime() - embeddingStarted);
+    }
     if (!indexState.isVectorSearchAvailableFor(pinned.generation())) {
       return List.of();
     }

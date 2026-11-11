@@ -1,72 +1,56 @@
-import { useId, useState } from 'react'
+import { useRef, useState } from 'react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import StateDot from '@/shared/ui/StateDot'
-import type { InstallationStatusResponse } from '../api/types'
+import type { InstallationStatusResponse, InstallationStepId } from '../api/types'
 import type { WizardResult } from '../hooks/useInstallationWizard'
 import {
   STEP_INFO,
   STEP_STATUS_LABEL,
   STEP_STATUS_TONE,
   SUMMARY_LABEL,
-  findStep,
   openSteps,
   stepStatus,
 } from '../utils/steps'
 import StepFrame, { type StepNavigationProps } from './StepFrame'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface SummaryStepProps extends Pick<StepNavigationProps, 'onBack'> {
   installation: InstallationStatusResponse
   complete: () => Promise<WizardResult>
+  /** Opens a step from its row or from the notice about what is still open. */
+  onSelect: (step: InstallationStepId) => void
 }
 
+const STEP_LINK_SX = { verticalAlign: 'baseline', fontSize: 'inherit' } as const
+
 /**
- * Every step with its state, and the completion. Whether it can complete is the API's verdict
- * (`completable`). The action stays visible but refuses until then, and the sentence above it
- * names the open steps - a hidden or merely greyed-out button would leave the reason to guesswork.
- * A checked mail step also shows the backend's sentence about its check, which says whether a test
- * message went out.
+ * Every step with its state as a link to the step, and the completion. Whether it can complete is
+ * the API's verdict (`completable`). „Installation abschließen“ is always active: while a step
+ * holds the completion up, it names that step in a notice and leads there. A checked mail step
+ * also shows the backend's sentence about its check, which says whether a test message went out.
  */
-export default function SummaryStep({ installation, complete, onBack }: SummaryStepProps) {
-  const hintId = useId()
+export default function SummaryStep({
+  installation,
+  complete,
+  onBack,
+  onSelect,
+}: SummaryStepProps) {
+  const noticeRef = useRef<HTMLDivElement>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [asked, setAsked] = useState(false)
   const open = openSteps(installation)
-  const skippedModels = installation.steps.filter(
-    (s) => !s.mandatory && !s.saved && (s.step === 'CHAT_MODEL' || s.step === 'EMBEDDING_MODEL'),
-  )
-  const modelSentence =
-    skippedModels.length === 0
-      ? ''
-      : ` Übersprungen: ${skippedModels.map((s) => STEP_INFO[s.step].label).join(', ')}. Ohne Chat-Modell beantwortet der Chat keine Fragen, ohne Embedding-Modell gibt es keinen Suchindex; beides legt die Systemverwaltung später unter Modelle fest.`
   const blocked = !installation.completable
-  const mail = findStep(installation, 'MAIL')
-  const mailSentence = !mail
-    ? ''
-    : mail.checked
-      ? ' Der E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet.'
-      : ' Der E-Mail-Versand bleibt aus; er lässt sich später unter „Administration → E-Mail“ einrichten.'
-  const rerank = findStep(installation, 'RERANK_MODEL')
-  const rerankSentence = !rerank
-    ? ''
-    : rerank.checked
-      ? ' Das Reranking wird mit dem geprüften Rerank-Modell eingeschaltet.'
-      : ' Das Reranking bleibt aus; es lässt sich später unter Modelle einschalten.'
-  const transcription = findStep(installation, 'TRANSCRIPTION_MODEL')
-  const transcriptionSentence = !transcription
-    ? ''
-    : transcription.checked
-      ? ' Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet.'
-      : ' Die Spracheingabe bleibt aus; sie lässt sich später unter „Modelle → Spracheingabe“ einrichten.'
-  const branding = findStep(installation, 'BRANDING')
-  const brandingSentence = !branding
-    ? ''
-    : branding.checked
-      ? ' Das Branding wird übernommen.'
-      : ' Es gilt das Standard-Branding von OPAA; es lässt sich später unter „Administration → Branding“ ändern.'
 
   async function handleSubmit() {
-    if (blocked) return
+    if (blocked) {
+      setAsked(true)
+      requestAnimationFrame(() => noticeRef.current?.focus())
+      return
+    }
     setBusy(true)
     setFailure(null)
     const result = await complete()
@@ -79,25 +63,38 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
       title={SUMMARY_LABEL}
       mandatory
       description={
-        blocked ? (
-          <span id={hintId}>
-            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte geprüft sind und
-            jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist.
-            {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
-          </span>
-        ) : (
-          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${rerankSentence}${transcriptionSentence}${mailSentence}${brandingSentence}`
-        )
+        blocked
+          ? 'Abschließen lässt sich die Installation, sobald alle Pflichtschritte geprüft sind und jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist.'
+          : 'Der Abschluss legt an, was die geprüften Schritte festlegen, und beendet die Einrichtung. Danach melden Sie sich mit dem ersten Konto an; das Token verliert seine Gültigkeit.'
       }
       failure={failure}
       busy={busy}
       submitLabel="Installation abschließen"
       busyAnnouncement="Installation wird abgeschlossen"
-      unavailable={blocked}
-      describedBy={blocked ? hintId : undefined}
       onSubmit={() => void handleSubmit()}
       onBack={onBack}
     >
+      {blocked && asked && (
+        <Alert severity="warning" role="alert" tabIndex={-1} ref={noticeRef}>
+          {open.length === 0
+            ? 'Die Installation lässt sich noch nicht abschließen; der Stand der Schritte steht unten.'
+            : 'Noch nicht geprüft: '}
+          {open.map((s, index) => (
+            <span key={s.step}>
+              {index > 0 && ', '}
+              <Link
+                component="button"
+                type="button"
+                onClick={() => onSelect(s.step)}
+                sx={STEP_LINK_SX}
+              >
+                {STEP_INFO[s.step].label}
+              </Link>
+            </span>
+          ))}
+          {open.length > 0 && '. Der Name führt zum Schritt.'}
+        </Alert>
+      )}
       <Box component="ul" aria-label="Stand der Schritte" sx={{ m: 0, p: 0 }}>
         {installation.steps.map((s) => {
           const status = stepStatus(s)
@@ -118,14 +115,24 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
               }}
             >
               <Box>
-                <Typography sx={{ fontSize: 14 }}>
-                  {STEP_INFO[s.step].label}
-                  <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                <Typography sx={{ fontSize: fontSize.text }}>
+                  <Link
+                    component="button"
+                    type="button"
+                    onClick={() => onSelect(s.step)}
+                    sx={STEP_LINK_SX}
+                  >
+                    {STEP_INFO[s.step].label}
+                  </Link>
+                  <Typography
+                    component="span"
+                    sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+                  >
                     {s.mandatory ? ' · Pflicht' : ' · optional'}
                   </Typography>
                 </Typography>
                 {s.step === 'MAIL' && s.checked && s.checkMessage && (
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+                  <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
                     {s.checkMessage}
                   </Typography>
                 )}

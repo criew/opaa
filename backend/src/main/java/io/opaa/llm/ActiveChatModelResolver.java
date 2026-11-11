@@ -2,13 +2,19 @@ package io.opaa.llm;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+import io.opaa.api.types.ToolCapability;
 import io.opaa.compliance.DataFlow;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.observability.ModelCallPurpose;
+import io.opaa.observability.ModelTokenMetrics;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,6 +22,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
@@ -60,6 +69,15 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
    */
   private final AtomicReference<TimedResolved> timedCache = new AtomicReference<>();
 
+  /**
+   * The configured identifier of the model each built client talks to - the {@code model} tag of
+   * {@link #recordUsage}, so the tag stays within the identifiers the administration chose and
+   * names the model of the client that made the call. Weak keys: a client no cache holds any more
+   * drops out with it.
+   */
+  private final Map<ChatClient, String> modelIdentifiers =
+      Collections.synchronizedMap(new WeakHashMap<>());
+
   private final AtomicLong generation = new AtomicLong();
   private final AtomicInteger buildCount = new AtomicInteger();
 
@@ -96,6 +114,27 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
    */
   public ChatClient resolveChatClient() {
     return resolve().chatClient();
+  }
+
+  /**
+   * The same client as {@link #resolveChatClient()}, for a call that hands the model tools - only
+   * while the active model is recorded as {@link ToolCapability#CAPABLE}. The capability is read
+   * from {@code llm_models} on every call, so a changed statement applies to the next turn. The
+   * ordinary chat never calls this method and works with any capability. Capability and client are
+   * read separately: until the cache is invalidated after a committed edit, the cached client may
+   * still serve the previous combination while the capability already belongs to the new one - a
+   * short window that this check accepts rather than locking the row on every turn.
+   *
+   * @throws NoActiveChatModelException when {@code llm_models} has no active row
+   * @throws ToolCallingNotCapableException when the active model is {@link
+   *     ToolCapability#UNVERIFIED} or {@link ToolCapability#NOT_CAPABLE}
+   */
+  public ChatClient resolveToolCallingChatClient() {
+    ToolCapability capability = activeModel().getToolCapability();
+    if (capability != ToolCapability.CAPABLE) {
+      throw new ToolCallingNotCapableException(capability);
+    }
+    return resolveChatClient();
   }
 
   /**
@@ -188,24 +227,74 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     return resolved;
   }
 
+  /**
+   * The configured identifier of the model {@code chatClient} was built for, {@code null} for a
+   * client this resolver did not build: the model a caller actually talks to, even if the active
+   * model changes after the client was resolved.
+   */
+  public String modelIdentifierOf(ChatClient chatClient) {
+    return chatClient == null ? null : modelIdentifiers.get(chatClient);
+  }
+
+  /**
+   * Counts the tokens {@code response} reports under {@code purpose} and the configured identifier
+   * of the model {@code chatClient} was built for ({@code opaa.model.tokens}); a response without
+   * usage counts nothing, a client this resolver did not build counts as model {@code unknown}.
+   */
+  public void recordUsage(ModelCallPurpose purpose, ChatClient chatClient, ChatResponse response) {
+    MeterRegistry registry = meterRegistryProvider.getIfAvailable();
+    if (registry == null
+        || response == null
+        || response.getMetadata() == null
+        || response.getMetadata().getUsage() == null) {
+      return;
+    }
+    Usage usage = response.getMetadata().getUsage();
+    ModelTokenMetrics.record(
+        registry,
+        purpose,
+        chatClient == null ? null : modelIdentifiers.get(chatClient),
+        usage.getPromptTokens(),
+        usage.getCompletionTokens());
+  }
+
+  /**
+   * A fresh, uncached model for {@code model}, active or not, built like the client of the active
+   * entry but without retries - e.g. to measure an entry before it is relied on. One call then
+   * lasts at most {@code requestTimeout}, so a caller can bound how long it goes without news.
+   */
+  public ChatModel chatModelFor(LlmModel model, Duration requestTimeout) {
+    ObservationRegistry observationRegistry =
+        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
+    return new ReasoningTextStrippingChatModel(
+        chatModelBuilder(model, observationRegistry, requestTimeout, 0).build());
+  }
+
   /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */
   private ChatClient newChatClient(LlmModel model, Duration requestTimeout) {
     ObservationRegistry observationRegistry =
         observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
     OpenAiChatModel chatModel =
-        chatModelBuilder(model, observationRegistry, requestTimeout).build();
-    return ChatClient.builder(
-            new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
-        .build();
+        chatModelBuilder(model, observationRegistry, requestTimeout, null).build();
+    ChatClient client =
+        ChatClient.builder(
+                new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
+            .build();
+    modelIdentifiers.put(client, model.getModelIdentifier());
+    return client;
   }
 
   /**
    * The builder both clients share; only {@code requestTimeout} distinguishes them. It goes onto
    * the options, not onto the HTTP client: the SDK carries a per-request timeout that overrides
-   * whatever the client was built with, so a timeout set there would be ignored.
+   * whatever the client was built with, so a timeout set there would be ignored. {@code maxRetries}
+   * {@code null} keeps the SDK's default.
    */
   private OpenAiChatModel.Builder chatModelBuilder(
-      LlmModel model, ObservationRegistry observationRegistry, Duration requestTimeout) {
+      LlmModel model,
+      ObservationRegistry observationRegistry,
+      Duration requestTimeout,
+      Integer maxRetries) {
     String apiKey =
         model.getApiKeyCiphertext() == null
             ? ""
@@ -223,6 +312,9 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     }
     if (requestTimeout != null) {
       optionsBuilder.timeout(requestTimeout);
+    }
+    if (maxRetries != null) {
+      optionsBuilder.maxRetries(maxRetries);
     }
     OpenAiChatOptions options = optionsBuilder.build();
     return OpenAiChatModel.builder()

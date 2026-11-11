@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -21,13 +21,15 @@ describe('SuccessionSettingsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SuccessionSettingsSection onSaved={onSaved} />)
 
-    const field = await screen.findByLabelText(FIELD)
+    expect(await screen.findByText('Werkseinstellung: 12 Monate')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Lange offen ab ändern' }))
+    const field = screen.getByLabelText(FIELD)
     expect(field).toHaveValue('12')
-    expect(screen.getByText('Werkseinstellung: 12 Monate')).toBeInTheDocument()
     await user.clear(field)
     await user.type(field, '6')
-    await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    const question = 'Einträge ab 6 Monate als lange offen hervorheben?'
+    const section = screen.getByRole('region', { name: 'Hervorhebung lange offener Einträge' })
+    await user.click(within(section).getByRole('button', { name: 'Speichern' }))
+    const question = 'Schwelle für lange offene Einträge auf 6 Monate ändern?'
     expect(await screen.findByRole('dialog', { name: question })).toBeVisible()
     expect(useConfirmStore.getState().request?.tone).toBe('danger')
     await answerConfirm(user, question, 'Ändern')
@@ -47,6 +49,11 @@ describe('SuccessionSettingsSection', () => {
           minAgingThresholdMonths: 1,
           maxAgingThresholdMonths: 120,
           overridden: true,
+          responsibleLockDays: 14,
+          defaultResponsibleLockDays: 30,
+          minResponsibleLockDays: 1,
+          maxResponsibleLockDays: 365,
+          responsibleLockDaysOverridden: true,
         }),
       ),
     )
@@ -57,16 +64,44 @@ describe('SuccessionSettingsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SuccessionSettingsSection onSaved={vi.fn()} />)
 
+    const section = await screen.findByRole('region', {
+      name: 'Hervorhebung lange offener Einträge',
+    })
     await user.click(
-      await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+      await within(section).findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
     )
     const question = 'Auf die Werkseinstellung von 12 Monate zurücksetzen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       'erst nach 12 Monate statt nach 6 Monate hervorgehoben',
     )
     expect(useConfirmStore.getState().request?.tone).toBe('caution')
-    await answerConfirm(user, question, 'Werkseinstellung wiederherstellen')
+    await answerConfirm(user, question, 'Zurücksetzen')
 
-    await waitFor(() => expect(sent).toEqual([{ agingThresholdMonths: null }]))
+    await waitFor(() =>
+      expect(sent).toEqual([{ agingThresholdMonths: null, responsibleLockDays: 14 }]),
+    )
+  })
+
+  it('sets the period until a lock without a responsible unit and keeps the threshold', async () => {
+    const sent: unknown[] = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'PUT') sent.push(await request.clone().json())
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<SuccessionSettingsSection onSaved={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Gesperrt nach ändern' }))
+    const field = screen.getByLabelText('Gesperrt nach (Tage)')
+    expect(field).toHaveValue('30')
+    await user.clear(field)
+    await user.type(field, '10')
+    const section = screen.getByRole('region', { name: 'Sperre ohne verantwortliche Stelle' })
+    await user.click(within(section).getByRole('button', { name: 'Speichern' }))
+    const question = 'Frist bis zur Sperre auf 10 Tage ändern?'
+    await answerConfirm(user, question, 'Ändern')
+
+    await waitFor(() =>
+      expect(sent).toEqual([{ agingThresholdMonths: null, responsibleLockDays: 10 }]),
+    )
   })
 })

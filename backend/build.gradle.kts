@@ -1,9 +1,12 @@
 buildscript {
     dependencies {
-        // Lifts the Jackson versions the build plugins pin on the buildscript classpath to the
-        // CVE-fixed releases; the dependencyManagement override only reaches project configurations.
+        // Lifts the Jackson, Guava and Commons Lang versions the build plugins pin on the buildscript
+        // classpath to the CVE-fixed releases; the dependencyManagement override only reaches project
+        // configurations.
         classpath(platform(libs.jackson3.bom))
         classpath(platform(libs.jackson2.buildscript.bom))
+        classpath(libs.guava.buildscript)
+        classpath(libs.commons.lang3.buildscript)
     }
 }
 
@@ -156,6 +159,9 @@ dependencies {
     }
     implementation(libs.smbj)
     implementation(libs.bundles.shedlock)
+    implementation(libs.bundles.tracing) {
+        exclude(group = "io.opentelemetry", module = "opentelemetry-exporter-sender-okhttp")
+    }
     runtimeOnly(libs.bundles.runtime)
     "configurationProcessor"(libs.spring.boot.configuration.processor)
     "configMetadataImplementation"(libs.bundles.spring.boot)
@@ -256,6 +262,16 @@ fun registerEvalHarnessTask(
             "opaa.rerank.timeout",
             "opaa.query.rerank-candidate-count",
             "opaa.query.search-window-turns",
+            "opaa.eval.toolCalling.repetitions",
+            "opaa.eval.toolCalling.streaming",
+            "opaa.eval.toolCalling.maxTokens",
+            "opaa.eval.toolCalling.timeoutSeconds",
+            "opaa.eval.toolCalling.quantization",
+            "opaa.eval.toolCalling.runtime",
+            "opaa.eval.toolCalling.runtimeVersion",
+            "opaa.eval.toolCalling.hardware",
+            "opaa.eval.toolCalling.contextLength",
+            "opaa.eval.toolCalling.tool",
         ).forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
         forcedProperties.forEach { (key, value) -> systemProperty(key, value) }
         testLogging {
@@ -412,6 +428,24 @@ tasks.named<Test>("evaluatePromptInjection") {
     doFirst { staleReports.forEach { it.get().asFile.delete() } }
 }
 
+// Tool-calling case base (eval/corpus/tool-calling/SOURCE.md, files in main resources because the
+// model administration runs it too): measures one model endpoint against the mock tool or the agent
+// loop's search_knowledge and reports per case category. Measures only, no baseline and no gate. Needs the model
+// address (-Dopaa.eval.chatBaseUrl/-Dopaa.eval.chatModel) but no Docker; not part of build/check.
+registerEvalHarnessTask(
+    "evaluateToolCalling",
+    "Runs the tool-calling case base against the model at -Dopaa.eval.chatBaseUrl and writes " +
+        "build/eval-reports/tool-calling.{json,md}. Not part of build/check.",
+    "io.opaa.eval.ToolCallingEvaluationHarnessTest",
+    emptyMap(),
+)
+tasks.named<Test>("evaluateToolCalling") {
+    val staleReports =
+        listOf("tool-calling.json", "tool-calling.md")
+            .map { layout.buildDirectory.file("eval-reports/$it") }
+    doFirst { staleReports.forEach { it.get().asFile.delete() } }
+}
+
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
 // `main`/`test`) so the classes under test never ship in the production jar, but still runs as part
@@ -434,6 +468,7 @@ tasks.register<Test>("evalUnitTest") {
     filter {
         excludeTestsMatching("*RetrievalEvaluationHarnessTest")
         excludeTestsMatching("*PromptInjectionEvaluationHarnessTest")
+        excludeTestsMatching("*ToolCallingEvaluationHarnessTest")
         excludeTestsMatching("*BaselineRegressionTest")
     }
 }
@@ -450,12 +485,13 @@ tasks.named("check") {
 // jobs by package (`./gradlew test -PtestShard=<name>`, see .github/workflows/ci.yml). The named
 // shards list their packages explicitly; "core" is the complement, so a test in a new package
 // always lands in a shard instead of silently running nowhere. Rebalance the lists when one job
-// runs noticeably longer than the others.
+// runs noticeably longer than the others: every shard job lists its slowest test classes in the
+// job summary.
 val testShards = mapOf(
     "api" to listOf(
         "io.opaa.api.*", "io.opaa.library.*", "io.opaa.knowledge.*", "io.opaa.auth.*", "io.opaa.audit.*",
         "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.permission.*",
-        "io.opaa.account.*", "io.opaa.directory.*",
+        "io.opaa.directory.*",
         "io.opaa.branding.*",
         "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",
         "io.opaa.asset.web.*", "io.opaa.mail.web.*", "io.opaa.revision.web.*", "io.opaa.succession.web.*",
@@ -466,6 +502,10 @@ val testShards = mapOf(
         "io.opaa.indexing.*", "io.opaa.format.*", "io.opaa.metadata.*", "io.opaa.llm.*",
         "io.opaa.installation.*",
     ),
+    // account sits here rather than in api only to even out the shard durations
+    "connection" to listOf("io.opaa.connection.*", "io.opaa.retrieval.*", "io.opaa.account.*"),
+    // each migration test class boots its own container with a template database
+    "migration" to listOf("io.opaa.migration.*"),
 )
 
 // The DNS rebinding tests (*RebindingTest, ADR-0063) run in a JVM of their own that caches no

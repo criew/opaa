@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-04 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
+Akzeptiert · zuletzt geändert 2026-11-09 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
 (Entscheidung 4 und die `listed`-Teile von 5, 6, 7 und 9),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 9, Begründung) und
 [ADR-0035](0035-fremdzugaenge-mcp-server-und-zugangstokens.md) (Entscheidung 5, Gleichheitszusage)
@@ -55,8 +55,7 @@ Schalter „Im Katalog auffindbar" sind ersatzlos entfallen. **Sichtbar ist glei
 `listed` ist auch aus `asset_visibility_history` entfernt, `ASSET_VISIBILITY_CHANGED` hat keinen
 Schreiber mehr (der Enum-Wert bleibt für alte Protokollzeilen); bestehende Intervalle wurden nicht überführt, weil alle Installationen neu aufgebaut wurden. Der
 Nachweis „war das Asset gelistet?" hat nie Zugriff belegt; „wer konnte lesen?" beantwortet die
-Grant-Historie unverändert. `asset_visibility_history` bleibt für die Fremdzugangsfreigabe (ADR-0035);
-die Freigabe-Obergrenze (#797) besteht nur noch aus `all_accounts_grant_allowed`.
+Grant-Historie unverändert. `asset_visibility_history` bleibt für die Fremdzugangsfreigabe (ADR-0035).
 
 ### 4. Die Space-Zuordnung ist für alle Asset-Typen eine harte Grenze
 

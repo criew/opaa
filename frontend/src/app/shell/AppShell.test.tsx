@@ -12,7 +12,7 @@ import { ARRIVAL_FOCUS_ATTRIBUTE, KEEP_FOCUS_STATE } from '@/shared/ui/a11y/rout
 import { SPACE_SEARCH_HANDOVER } from '@/features/space'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { useSpaceListLoader } from '@/features/asset'
-import { loadSpaceList } from '../themeSeams'
+import { loadSpaceList } from './themeSeams'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]
 
@@ -101,6 +101,15 @@ describe('AppShell', () => {
     expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+  })
+
+  // regression guard: visually hidden live regions deep in a page scroll container are positioned
+  // absolutely; main must be their containing block, or they stretch the document below the shell.
+  it('makes main a clipping containing block for the page content', () => {
+    renderShell()
+    const main = screen.getByRole('main')
+    expect(getComputedStyle(main).position).toBe('relative')
+    expect(getComputedStyle(main).overflow).toBe('clip')
   })
 
   it('offers the skip link as the first focusable element', async () => {

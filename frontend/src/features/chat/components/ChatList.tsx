@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -26,9 +25,14 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '@/features/space'
 import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
 import { useSectionCollapsed, useUiStore } from '@/shared/stores/uiStore'
-import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
+import { chatTitle, splitChats } from './chatListSections'
+import { RECENT_PAGE_SIZE } from '../stores/chatListStore'
 import { exportChat } from './exportChat'
 import RowMenu from '@/shared/ui/RowMenu'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
@@ -36,10 +40,10 @@ const PAGING_BUTTON_SX = {
   minHeight: 0,
   px: 0.75,
   py: 0.25,
-  fontSize: 11.5,
+  fontSize: fontSize.meta,
   whiteSpace: 'nowrap',
   '& .MuiButton-endIcon': { ml: 0.25 },
-  '& .MuiButton-endIcon > svg': { fontSize: 16 },
+  '& .MuiButton-endIcon > svg': { fontSize: iconSize.sm },
 } as const
 
 /**
@@ -88,7 +92,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
   const isLoading = useChatListStore((s) => s.isLoading)
-  const error = useChatListStore((s) => s.error)
+  const loadError = useChatListStore((s) => s.loadError)
   const loadChats = useChatListStore((s) => s.loadChats)
   const renameChat = useChatListStore((s) => s.renameChat)
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
@@ -221,7 +225,9 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     const title = renameValue.trim()
     setRenamingChatId(null)
     if (!title) return
-    await renameChat(spaceId, chatId, title)
+    if (!(await renameChat(spaceId, chatId, title))) {
+      reportActionFailure('Der Chat konnte nicht umbenannt werden.')
+    }
   }
 
   function handlePin(chat: ChatSummary, pinned: boolean) {
@@ -232,12 +238,22 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     }
     refocusMovedChatIdRef.current = chat.id
     pinFocusChatIdRef.current = chat.id
-    void setChatPinned(spaceId, chat.id, pinned).finally(() => {
-      // Deferred past the render of a rollback, whose effect still needs the id.
-      setTimeout(() => {
-        if (pinFocusChatIdRef.current === chat.id) pinFocusChatIdRef.current = null
-      }, 0)
-    })
+    void setChatPinned(spaceId, chat.id, pinned)
+      .then((held) => {
+        if (!held && useChatListStore.getState().error) {
+          reportActionFailure(
+            pinned
+              ? 'Der Chat konnte nicht angeheftet werden.'
+              : 'Der Chat konnte nicht gelöst werden.',
+          )
+        }
+      })
+      .finally(() => {
+        // Deferred past the render of a rollback, whose effect still needs the id.
+        setTimeout(() => {
+          if (pinFocusChatIdRef.current === chat.id) pinFocusChatIdRef.current = null
+        }, 0)
+      })
   }
 
   /**
@@ -277,10 +293,16 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     return (shown[index + 1] ?? shown[index - 1])?.id ?? null
   }
 
+  /** A failed action on the list is a notice of its own; the list and its load state stay. */
+  function reportActionFailure(fallback: string) {
+    notify(useChatListStore.getState().takeError() ?? fallback, 'error')
+  }
+
   async function handleArchive(chat: ChatSummary) {
     const neighbour = neighbourOf(chat.id)
     const archived = await setChatArchived(spaceId, chat.id, true)
     if (!archived) {
+      reportActionFailure('Der Chat konnte nicht archiviert werden.')
       actionButtonRefs.current?.get(chat.id)?.focus()
       return
     }
@@ -292,13 +314,16 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
 
   async function handleDelete(chat: ChatSummary) {
     const confirmed = await confirmAction({
-      question: `„${chatTitle(chat)}“ wirklich löschen?`,
-      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      question: `„${chatTitle(chat)}“ löschen?`,
+      consequence: 'Alle Nachrichten, Notizen und Anhänge des Chats werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })
     if (!confirmed) return
-    await deleteChatFromList(spaceId, chat.id)
+    if (!(await deleteChatFromList(spaceId, chat.id))) {
+      reportActionFailure('Der Chat konnte nicht gelöscht werden.')
+      return
+    }
     if (location.pathname === `/spaces/${spaceId}/chats/${chat.id}`) {
       navigate(`/spaces/${spaceId}/chats/new`, { replace: true })
     }
@@ -417,7 +442,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     const headingId = `${groupIdPrefix}-${key}`
     // The pin stands once at the head of its group, never on each row; the label states it.
     const icon = key === 'pinned' && (
-      <PushPinIcon aria-hidden sx={{ fontSize: 12, flexShrink: 0, opacity: 0.7 }} />
+      <PushPinIcon aria-hidden sx={{ fontSize: iconSize.xs, flexShrink: 0, opacity: 0.7 }} />
     )
     if (collapsibleGroups) {
       const collapsed = key === 'pinned' ? pinnedCollapsed : recentCollapsed
@@ -553,7 +578,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
                 disabled={Boolean(isArchived)}
                 sx={{ p: 0.5, borderRadius: '4px' }}
               >
-                <AddIcon sx={{ fontSize: 16 }} />
+                <AddIcon sx={{ fontSize: iconSize.sm }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -571,28 +596,29 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
               }}
               sx={{ p: 0.5, borderRadius: '4px' }}
             >
-              <SearchIcon sx={{ fontSize: 16 }} />
+              <SearchIcon sx={{ fontSize: iconSize.sm }} />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
 
-      {error && (
-        <Typography role="alert" variant="body2" sx={{ color: 'error.main', mb: 1 }}>
-          {error}
-        </Typography>
-      )}
-
       {chats === undefined && isLoading ? (
-        <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={20} />
-        </Box>
-      ) : !chats || chats.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }} variant="body2">
-          Keine aktiven Chats in diesem Space.
-        </Typography>
+        <LoadingState shape="lines" count={4} />
+      ) : (chats === undefined || chats.length === 0) && loadError ? (
+        // Failed and empty never stand together: without a list there is only the notice.
+        <LoadError
+          dense
+          message="Chats konnten nicht geladen werden."
+          onRetry={() => void loadChats(spaceId)}
+        />
       ) : (
-        renderChats(chats)
+        <>
+          {!chats || chats.length === 0 ? (
+            <EmptyState message="Noch keine aktiven Chats in diesem Space." />
+          ) : (
+            renderChats(chats)
+          )}
+        </>
       )}
     </Box>
   )

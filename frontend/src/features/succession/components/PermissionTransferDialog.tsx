@@ -3,10 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
@@ -23,9 +19,12 @@ import { executePermissionTransfer, previewPermissionTransfer } from '../api/per
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import { UserPicker } from '@/features/principal'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import { GroupPicker } from '@/features/principal'
 import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from '@/features/principal'
+import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',
@@ -107,9 +106,17 @@ export default function PermissionTransferDialog({
   }
 
   async function createPreview() {
+    if (!ready) {
+      setError('Bitte Quelle, Ziel und mindestens einen Bereich auswählen.')
+      return
+    }
     // The same confirmation question as in the sharing dialog (ADR-0036, Entscheidung 2): whoever
     // transfers to a group of an external provider confirms that explicitly.
-    if (targetType === 'GROUP' && targetGroup && !(await confirmGroupSubject(targetGroup))) {
+    if (
+      targetType === 'GROUP' &&
+      targetGroup &&
+      !(await confirmGroupSubject(targetGroup, 'transfer'))
+    ) {
       return
     }
     setBusy(true)
@@ -133,7 +140,10 @@ export default function PermissionTransferDialog({
   }
 
   async function confirmTransfer() {
-    if (!preview) return
+    if (!preview) {
+      setError('Bitte zuerst die Vorschau erstellen und prüfen.')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -165,139 +175,138 @@ export default function PermissionTransferDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>{intro}</Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Stack spacing={2}>
-          <Box>
-            <FieldLabel htmlFor="transfer-source">{sourceLabel}</FieldLabel>
-            {choosesSource ? (
-              <UserPicker
-                inputId="transfer-source"
-                ariaLabel={sourceLabel}
-                placeholder="Person suchen …"
-                value={sourceUser}
-                onChange={(next) => {
-                  setPreview(null)
-                  setSourceUser(next)
-                }}
-                excludedUserIds={targetUser ? [targetUser.id] : []}
-              />
-            ) : (
-              <TextField id="transfer-source" fullWidth size="small" value={source.name} disabled />
-            )}
-          </Box>
-
-          {targetKinds.length > 1 && (
-            <Box>
-              <FieldLabel htmlFor="transfer-target-type">Art des Ziels</FieldLabel>
-              <TextField
-                id="transfer-target-type"
-                select
-                fullWidth
-                size="small"
-                value={targetType}
-                onChange={(e) => {
-                  setPreview(null)
-                  setTargetType(e.target.value as PermissionSubjectType)
-                }}
-              >
-                {targetKinds.map((kind) => (
-                  <MenuItem key={kind} value={kind}>
-                    {kind === 'GROUP' ? 'Gruppe' : 'Person'}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-          )}
-
-          {targetType === 'GROUP' ? (
-            <Box>
-              <FieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FieldLabel>
-              {/* The shared group search: server-side selection with origin,
-                 „extern" marker and the eligibility rules - instead of the full
-                 administration list in a select field. */}
-              <GroupPicker
-                inputId="transfer-target-group"
-                ariaLabel={targetGroupLabel}
-                placeholder="Zielgruppe suchen …"
-                value={targetGroup}
-                onChange={(group) => {
-                  setPreview(null)
-                  setTargetGroup(group)
-                }}
-                excludedGroupIds={sourceType === 'GROUP' && sourceId !== '' ? [sourceId] : []}
-              />
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {PROTECTED_GROUP_SEARCH_HINT}
-              </Typography>
-            </Box>
-          ) : (
-            <Box>
-              <FieldLabel htmlFor="transfer-target-user">{targetUserLabel}</FieldLabel>
-              <UserPicker
-                inputId="transfer-target-user"
-                ariaLabel={targetUserLabel}
-                placeholder="Person suchen …"
-                value={targetUser}
-                onChange={(next) => {
-                  setPreview(null)
-                  setTargetUser(next)
-                }}
-                excludedUserIds={sourceId !== '' && sourceType === 'USER' ? [sourceId] : []}
-              />
-            </Box>
-          )}
-
-          <Box>
-            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>Umfang</Typography>
-            {scopes.map((scope) => (
-              <FormControlLabel
-                key={scope}
-                control={
-                  <Checkbox
-                    checked={selectedScopes.includes(scope)}
-                    onChange={() => toggleScope(scope)}
-                  />
-                }
-                label={scopeLabels[scope]}
-              />
-            ))}
-          </Box>
-
-          {preview && (
-            <Alert severity="info">
-              <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>Vorschau</Typography>
-              <Typography sx={{ fontSize: 13.5 }}>{preview.summary}</Typography>
-              <Typography sx={{ fontSize: 12.5, mt: 0.5 }}>
-                Die Vorschau ist 30 Minuten gültig und selbst ein Protokollereignis. Erst die
-                Bestätigung überträgt.
-              </Typography>
-            </Alert>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button onClick={() => void createPreview()} disabled={!ready || busy}>
+    <FormDialog
+      open={open}
+      title={title}
+      submitLabel="Übertragen"
+      onSubmit={() => void confirmTransfer()}
+      onClose={onClose}
+      busy={busy}
+      busyAnnouncement="Wird ausgeführt"
+      secondaryAction={
+        <Button variant="outlined" onClick={() => void createPreview()} disabled={busy}>
           Vorschau erstellen
         </Button>
-        <Button
-          variant="contained"
-          onClick={() => void confirmTransfer()}
-          disabled={!preview || busy}
-        >
-          Übertragung bestätigen
-        </Button>
-      </DialogActions>
-    </Dialog>
+      }
+    >
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+        {intro}
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Stack spacing={2}>
+        <Box>
+          <FormFieldLabel htmlFor="transfer-source">{sourceLabel}</FormFieldLabel>
+          {choosesSource ? (
+            <UserPicker
+              inputId="transfer-source"
+              ariaLabel={sourceLabel}
+              placeholder="Person suchen …"
+              value={sourceUser}
+              onChange={(next) => {
+                setPreview(null)
+                setSourceUser(next)
+              }}
+              excludedUserIds={targetUser ? [targetUser.id] : []}
+            />
+          ) : (
+            <TextField id="transfer-source" fullWidth size="small" value={source.name} disabled />
+          )}
+        </Box>
+
+        {targetKinds.length > 1 && (
+          <Box>
+            <FormField
+              label="Art des Ziels"
+              id="transfer-target-type"
+              select
+              fullWidth
+              size="small"
+              value={targetType}
+              onChange={(e) => {
+                setPreview(null)
+                setTargetType(e.target.value as PermissionSubjectType)
+              }}
+            >
+              {targetKinds.map((kind) => (
+                <MenuItem key={kind} value={kind}>
+                  {kind === 'GROUP' ? 'Gruppe' : 'Person'}
+                </MenuItem>
+              ))}
+            </FormField>
+          </Box>
+        )}
+
+        {targetType === 'GROUP' ? (
+          <Box>
+            <FormFieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FormFieldLabel>
+            {/* The shared group search: server-side selection with origin,
+                 „extern" marker and the eligibility rules - instead of the full
+                 administration list in a select field. */}
+            <GroupPicker
+              inputId="transfer-target-group"
+              ariaLabel={targetGroupLabel}
+              placeholder="Zielgruppe suchen …"
+              value={targetGroup}
+              onChange={(group) => {
+                setPreview(null)
+                setTargetGroup(group)
+              }}
+              excludedGroupIds={sourceType === 'GROUP' && sourceId !== '' ? [sourceId] : []}
+            />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {PROTECTED_GROUP_SEARCH_HINT}
+            </Typography>
+          </Box>
+        ) : (
+          <Box>
+            <FormFieldLabel htmlFor="transfer-target-user">{targetUserLabel}</FormFieldLabel>
+            <UserPicker
+              inputId="transfer-target-user"
+              ariaLabel={targetUserLabel}
+              placeholder="Person suchen …"
+              value={targetUser}
+              onChange={(next) => {
+                setPreview(null)
+                setTargetUser(next)
+              }}
+              excludedUserIds={sourceId !== '' && sourceType === 'USER' ? [sourceId] : []}
+            />
+          </Box>
+        )}
+
+        <Box>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.5 }}>Umfang</Typography>
+          {scopes.map((scope) => (
+            <FormControlLabel
+              key={scope}
+              control={
+                <Checkbox
+                  checked={selectedScopes.includes(scope)}
+                  onChange={() => toggleScope(scope)}
+                />
+              }
+              label={scopeLabels[scope]}
+            />
+          ))}
+        </Box>
+
+        {preview && (
+          <Alert severity="info">
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>Vorschau</Typography>
+            <Typography sx={{ fontSize: fontSize.text }}>{preview.summary}</Typography>
+            <Typography sx={{ fontSize: fontSize.meta, mt: 0.5 }}>
+              Die Vorschau ist 30 Minuten gültig und selbst ein Protokollereignis. Erst die
+              Bestätigung überträgt.
+            </Typography>
+          </Alert>
+        )}
+      </Stack>
+    </FormDialog>
   )
 }

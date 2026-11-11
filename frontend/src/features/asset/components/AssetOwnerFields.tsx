@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import FormControl from '@mui/material/FormControl'
@@ -5,10 +6,10 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import type { AssetOwnerType, AssetType, GroupListResponse } from '@/shared/api/types'
 import type { MyGroupsState } from '@/features/principal'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetANominative } from '../../../shared/assetTypes'
 
 interface AssetOwnerFieldsProps {
   idPrefix: string
@@ -18,6 +19,10 @@ interface AssetOwnerFieldsProps {
   myGroups: MyGroupsState
   selectedGroup: GroupListResponse | null
   onSelectedGroupChange: (group: GroupListResponse | null) => void
+  /** A missing group, said at the field (guidelines 5.15). */
+  groupError?: string | null
+  /** Takes the focus when the group is missing. */
+  groupInputRef?: Ref<HTMLInputElement>
 }
 
 /**
@@ -33,12 +38,14 @@ export default function AssetOwnerFields({
   myGroups,
   selectedGroup,
   onSelectedGroupChange,
+  groupError = null,
+  groupInputRef,
 }: AssetOwnerFieldsProps) {
   const { groups, error, loaded } = myGroups
   return (
     <>
       <FormControl>
-        <FieldLabel id={`${idPrefix}-owner-label`}>Eigentümer</FieldLabel>
+        <FormFieldLabel id={`${idPrefix}-owner-label`}>Eigentümer</FormFieldLabel>
         <RadioGroup
           row
           aria-labelledby={`${idPrefix}-owner-label`}
@@ -54,7 +61,7 @@ export default function AssetOwnerFields({
           {error && <Alert severity="error">{error}</Alert>}
           {loaded && !error && groups.length === 0 && (
             <Alert severity="info">
-              Sie sind aktuell in keiner Gruppe Mitglied. Eine {assetTypeLabel(assetType)} mit
+              Sie sind aktuell in keiner Gruppe Mitglied. {assetANominative(assetType)} mit
               Gruppen-Eigentum lässt sich erst anlegen, sobald Sie einer Gruppe angehören.
             </Alert>
           )}
@@ -65,13 +72,16 @@ export default function AssetOwnerFields({
               option.deactivated ? `${option.name} (deaktiviert)` : option.name
             }
             getOptionDisabled={(option) => option.deactivated}
-            noOptionsText="Keine Treffer"
+            noOptionsText="Keine Treffer."
             value={selectedGroup}
             onChange={(_e, value) => onSelectedGroupChange(value)}
             disabled={groups.length === 0}
             renderInput={(params) => (
               <TextField
                 {...params}
+                inputRef={groupInputRef}
+                error={groupError !== null}
+                helperText={groupError ?? undefined}
                 placeholder="Gruppe auswählen …"
                 slotProps={{
                   ...params.slotProps,

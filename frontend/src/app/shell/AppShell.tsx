@@ -11,12 +11,12 @@ import MobileHeader from './MobileHeader'
 import SkipLink from '@/shared/ui/a11y/SkipLink'
 import { MAIN_CONTENT_ID } from '@/shared/ui/a11y/PageHeading'
 import { arrivalFocusTarget, keepsFocus } from '@/shared/ui/a11y/routeFocus'
-import { IndexingSnackbar } from '@/features/search-admin'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
+import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { SpaceListContext } from '@/features/asset'
-import { loadSpaceList } from '../themeSeams'
+import { loadSpaceList } from './themeSeams'
 import PageLoading from './PageLoading'
 import QuickTour from './tour/QuickTour'
 
@@ -31,7 +31,16 @@ export default function AppShell() {
   const previousPathname = useRef(pathname)
   // Global areas drop the space column; the rail and the area's own light
   // frame carry the navigation there.
+  const loadAgentAvailability = useAgentAvailability((s) => s.load)
+  // `/agents` counts as the catalog's scope only while the switch is on; subscribing re-renders
+  // the frame (and the rail below it) once the answer arrives.
+  useAgentAvailability((s) => s.enabled)
   const isGlobalArea = isGlobalAreaPath(pathname)
+
+  // The agents switch is a runtime setting, not a feature flag: asked once per signed-in shell.
+  useEffect(() => {
+    void loadAgentAvailability()
+  }, [loadAgentAvailability])
 
   // On every route change, move focus to the new page's heading so screen readers announce it, or
   // to the element the page marks as its arrival focus target; if neither is rendered yet (data
@@ -115,7 +124,13 @@ export default function AppShell() {
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
-            overflow: 'hidden',
+            // Containing block for absolutely positioned descendants of the page scroll containers
+            // (visually hidden live regions): without it they resolve against the document at
+            // their static position and stretch it below the shell - a second, empty scrollbar.
+            // 'clip', not 'hidden': main must not become a scroll container that scrollIntoView
+            // shifts without the user being able to scroll back.
+            overflow: 'clip',
+            position: 'relative',
             // Focused only programmatically (skip link, route change) - no ring on the region itself.
             '&:focus': { outline: 'none' },
           }}
@@ -128,7 +143,6 @@ export default function AppShell() {
         </Box>
       </Box>
 
-      <IndexingSnackbar />
       <NotificationHost />
       <ConfirmHost />
       <QuickTour />

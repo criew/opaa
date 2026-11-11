@@ -3,9 +3,9 @@ package io.opaa.indexing.chunk;
 import io.opaa.indexing.chunk.EmbeddingIndexState.Snapshot;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
-import io.opaa.llm.EmbeddingInfo;
-import io.opaa.llm.EmbeddingInfoService;
-import io.opaa.llm.InstalledEmbeddingModel;
+import io.opaa.llm.embedding.EmbeddingInfo;
+import io.opaa.llm.embedding.EmbeddingInfoService;
+import io.opaa.llm.embedding.InstalledEmbeddingModel;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 

@@ -3,14 +3,19 @@ package io.opaa.health;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.chunk.EmbeddingIdentity;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
-import io.opaa.llm.EmbeddingInfo;
-import io.opaa.llm.EmbeddingInfoService;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingInfo;
+import io.opaa.llm.embedding.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.test.MutableClock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -24,13 +29,15 @@ class VectorStoreHealthIndicatorTest {
 
   private final EmbeddingInfoService embeddingInfo = installed();
 
+  private final MutableClock clock = new MutableClock(Instant.parse("2026-11-09T08:00:00Z"));
+
   @Test
   void reportsUpWhenVectorStoreIsAccessible() {
     VectorStore vectorStore = mock(VectorStore.class);
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     VectorStoreHealthIndicator indicator =
         new VectorStoreHealthIndicator(
-            vectorStore, new EmbeddingIndexState(), embeddingInfo, models);
+            vectorStore, new EmbeddingIndexState(), embeddingInfo, models, clock);
 
     Health health = indicator.health();
 
@@ -45,7 +52,7 @@ class VectorStoreHealthIndicatorTest {
         .thenThrow(new RuntimeException("Connection refused"));
     VectorStoreHealthIndicator indicator =
         new VectorStoreHealthIndicator(
-            vectorStore, new EmbeddingIndexState(), embeddingInfo, models);
+            vectorStore, new EmbeddingIndexState(), embeddingInfo, models, clock);
 
     Health health = indicator.health();
 
@@ -61,7 +68,7 @@ class VectorStoreHealthIndicatorTest {
     EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024, 1);
     state.replace(new EmbeddingIndexState.Snapshot(built, configured, configured));
     VectorStoreHealthIndicator indicator =
-        new VectorStoreHealthIndicator(vectorStore, state, embeddingInfo, models);
+        new VectorStoreHealthIndicator(vectorStore, state, embeddingInfo, models, clock);
 
     Health health = indicator.health();
 
@@ -77,7 +84,7 @@ class VectorStoreHealthIndicatorTest {
     when(notInstalled.getEmbeddingInfo()).thenReturn(EmbeddingInfo.NOT_INSTALLED);
     VectorStoreHealthIndicator indicator =
         new VectorStoreHealthIndicator(
-            vectorStore, new EmbeddingIndexState(), notInstalled, models);
+            vectorStore, new EmbeddingIndexState(), notInstalled, models, clock);
 
     Health health = indicator.health();
 
@@ -93,10 +100,31 @@ class VectorStoreHealthIndicatorTest {
 
     assertThat(
             new VectorStoreHealthIndicator(
-                    mock(VectorStore.class), new EmbeddingIndexState(), notInstalled, models)
+                    mock(VectorStore.class), new EmbeddingIndexState(), notInstalled, models, clock)
                 .health()
                 .getStatus())
         .isEqualTo(Status.UNKNOWN);
+  }
+
+  @Test
+  void aSearchWithinTheCacheTimeIsAnsweredFromTheLastProbe() {
+    VectorStore vectorStore = mock(VectorStore.class);
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    VectorStoreHealthIndicator indicator =
+        new VectorStoreHealthIndicator(
+            vectorStore, new EmbeddingIndexState(), embeddingInfo, models, clock);
+
+    indicator.health();
+    clock.advance(CachedProbe.TIME_TO_LIVE.minusSeconds(1));
+    Health second = indicator.health();
+
+    assertThat(second.getStatus()).isEqualTo(Status.UP);
+    verify(vectorStore, times(1)).similaritySearch(any(SearchRequest.class));
+
+    clock.advance(Duration.ofSeconds(1));
+    indicator.health();
+
+    verify(vectorStore, times(2)).similaritySearch(any(SearchRequest.class));
   }
 
   private static EmbeddingInfoService installed() {

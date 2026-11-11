@@ -1,15 +1,18 @@
 package io.opaa.query.answer;
 
+import io.opaa.common.PromptText;
+
 /**
  * The block of the answer prompt that carries the instruction of the chat's space
  * (docs/decisions/0043-anweisung-je-space.md). It stands after the fixed rules and before the
  * Gesprächsnotiz; its header gives it its rank: an instruction of the space, no source, unable to
  * lift the citation rules, allowed to set the answer language, and second to a wish of the asking
- * person. The text sits between two marker lines so it cannot pass for a rule of the prompt itself.
+ * person. The text sits between two marker lines so it cannot pass for a rule of the prompt itself;
+ * {@link PromptText#between} keeps the markers and invisible characters out of it.
  *
  * <p>Without a text there is no block at all, not an empty one.
  */
-final class SpaceInstructionBlock {
+public final class SpaceInstructionBlock {
 
   static final String HEADER =
       "Anweisung dieses Space — dauerhafte Vorgabe der Space-Verantwortlichen für jede Antwort in"
@@ -27,10 +30,10 @@ final class SpaceInstructionBlock {
   private SpaceInstructionBlock() {}
 
   /** The rendered block, or {@code null} when {@code instruction} is {@code null} or blank. */
-  static String render(String instruction) {
+  public static String render(String instruction) {
     if (instruction == null || instruction.isBlank()) {
       return null;
     }
-    return HEADER + "\n" + START + "\n" + instruction.strip() + "\n" + END;
+    return HEADER + "\n" + PromptText.between(START, END, instruction);
   }
 }

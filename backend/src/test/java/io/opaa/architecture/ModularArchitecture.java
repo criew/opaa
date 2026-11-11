@@ -108,10 +108,12 @@ public final class ModularArchitecture {
           "library",
           "retrieval",
           "prompt",
+          "template",
           "chat",
           "query",
           "search",
           "searchadmin",
+          "agent",
           "externalaccess",
           "mcp",
           "api",
@@ -177,10 +179,12 @@ public final class ModularArchitecture {
           entry("library", LIBRARY),
           entry("retrieval", RETRIEVAL),
           entry("prompt", ASSISTANT),
+          entry("template", ASSISTANT),
           entry("chat", ASSISTANT),
           entry("query", ASSISTANT),
           entry("search", ASSISTANT),
           entry("searchadmin", ASSISTANT),
+          entry("agent", ASSISTANT),
           entry("externalaccess", EXTERNAL),
           entry("mcp", EXTERNAL),
           entry("api", APP),
@@ -248,6 +252,35 @@ public final class ModularArchitecture {
           "connection.consent",
           "connection.account",
           "connection.oauth");
+
+  /**
+   * The root package of the models: the chat model, the endpoint rules and the scaffold every
+   * optional model role builds on. It names none of its subpackages.
+   */
+  static final String LLM = "llm";
+
+  /**
+   * The model roles below {@link #LLM}, one package each. A role depends only on itself and on the
+   * scaffold in {@link #LLM}, never on another role.
+   */
+  static final List<String> LLM_ROLES =
+      List.of("llm.embedding", "llm.rerank", "llm.transcription", "llm.textrecognition");
+
+  /**
+   * The packages below {@link #LLM} that span several roles (administration of the stored roles,
+   * disclosure of all models); they may use the scaffold and every role, no role uses them.
+   */
+  static final List<String> LLM_ACROSS_ROLES = List.of("llm.administration");
+
+  /** The stored row of an optional model role, relative to the root. */
+  static final String OPTIONAL_ROLE_SETTINGS = "llm.OptionalRoleSettings";
+
+  /** The methods that change the row of an optional model role. */
+  static final Set<String> ROLE_ROW_WRITERS =
+      Set.of("replaceEndpoint", "replaceOwn", "replaceRealtime");
+
+  /** The only package that creates or changes the row of an optional model role. */
+  static final String ROLE_ROW_ADMINISTRATION = "llm.administration";
 
   /**
    * The capability granted per connector type or profile, relative to the root (ADR-0036,
@@ -577,7 +610,7 @@ public final class ModularArchitecture {
    * only, so a provider access package - present or future - is refused without being named.
    */
   static final List<String> FILE_SYNC_ALLOWED =
-      List.of("common", "sourceaccess", "format", "knowledge", "api.types");
+      List.of("common", "sourceaccess", "format", "knowledge", "observability", "api.types");
 
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
@@ -828,38 +861,54 @@ public final class ModularArchitecture {
 
   /**
    * The edges {@code a -> b} between two packages below the same top-level package that lie on a
-   * cycle, that is whose ends share a strongly connected component; each with one dependency as
-   * evidence.
+   * cycle, that is whose ends share a strongly connected component; each with one reference as
+   * evidence. {@code namedInSources} adds the edges only the sources show, from a package to the
+   * packages it names, both fully qualified, each with its evidence.
    */
-  private Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
-    Map<String, Map<String, Dependency>> graph = new TreeMap<>();
+  Map<String, String> subpackageCycleEdges(
+      Iterable<JavaClass> classes, Map<String, Map<String, String>> namedInSources) {
+    Map<String, Map<String, String>> graph = new TreeMap<>();
     for (JavaClass origin : classes) {
-      String from = relative(origin.getPackageName());
-      if (from == null || from.isEmpty()) {
-        continue;
-      }
       for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
-        String to = relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
-        if (to != null
-            && !to.isEmpty()
-            && !to.equals(from)
-            && !isOutsideTheLayering(to)
-            && topLevel(to).equals(topLevel(from))) {
-          graph.computeIfAbsent(from, key -> new TreeMap<>()).putIfAbsent(to, dependency);
-        }
+        addSubpackageEdge(
+            graph,
+            origin.getPackageName(),
+            dependency.getTargetClass().getBaseComponentType().getPackageName(),
+            dependency.getDescription());
       }
     }
+    namedInSources.forEach(
+        (from, targets) ->
+            targets.forEach((to, evidence) -> addSubpackageEdge(graph, from, to, evidence)));
     Map<String, Integer> component = StronglyConnectedComponents.of(graph);
-    Map<String, Dependency> cyclic = new TreeMap<>();
+    Map<String, String> cyclic = new TreeMap<>();
     graph.forEach(
         (from, targets) ->
             targets.forEach(
-                (to, dependency) -> {
+                (to, evidence) -> {
                   if (component.get(from).equals(component.get(to))) {
-                    cyclic.put(from + " -> " + to, dependency);
+                    cyclic.put(from + " -> " + to, evidence);
                   }
                 }));
     return cyclic;
+  }
+
+  private void addSubpackageEdge(
+      Map<String, Map<String, String>> graph,
+      String fromPackage,
+      String toPackage,
+      String evidence) {
+    String from = relative(fromPackage);
+    String to = relative(toPackage);
+    if (from != null
+        && !from.isEmpty()
+        && to != null
+        && !to.isEmpty()
+        && !to.equals(from)
+        && !isOutsideTheLayering(to)
+        && topLevel(to).equals(topLevel(from))) {
+      graph.computeIfAbsent(from, key -> new TreeMap<>()).putIfAbsent(to, evidence);
+    }
   }
 
   private ArchCondition<JavaClass> formNoSubpackageCycle() {
@@ -873,15 +922,12 @@ public final class ModularArchitecture {
 
       @Override
       public void finish(ConditionEvents events) {
-        subpackageCycleEdges(seen)
+        subpackageCycleEdges(seen, Map.of())
             .forEach(
-                (edge, dependency) ->
+                (edge, evidence) ->
                     events.add(
                         SimpleConditionEvent.violated(
-                            dependency,
-                            edge
-                                + " lies on a cycle between subpackages: "
-                                + dependency.getDescription())));
+                            edge, edge + " lies on a cycle between subpackages: " + evidence)));
       }
     };
   }
@@ -976,6 +1022,114 @@ public final class ModularArchitecture {
                                     + " package it uses")));
               }
             })
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Inside {@link #LLM} the scaffold names no subpackage, a role of {@link #LLM_ROLES} names only
+   * the scaffold, and a package of {@link #LLM_ACROSS_ROLES} names no package that spans roles but
+   * itself. A subpackage in neither list, other than the web package, is reported.
+   */
+  ArchRule llmRolesDependOnlyOnTheScaffold() {
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            new ArchCondition<>("depend inside llm only on the scaffold or the own role") {
+              private final Set<String> unlisted = new TreeSet<>();
+
+              @Override
+              public void check(JavaClass origin, ConditionEvents events) {
+                String from = relative(origin.getBaseComponentType().getPackageName());
+                if (from == null || !isLlmPackage(from) || isWebPackage(from)) {
+                  return;
+                }
+                boolean role = LLM_ROLES.contains(from);
+                if (!from.equals(LLM) && !role && !LLM_ACROSS_ROLES.contains(from)) {
+                  unlisted.add(from);
+                  return;
+                }
+                for (Dependency dependency : origin.getDirectDependenciesFromSelf()) {
+                  String to =
+                      relative(dependency.getTargetClass().getBaseComponentType().getPackageName());
+                  if (to == null
+                      || !isLlmPackage(to)
+                      || isWebPackage(to)
+                      || to.equals(from)
+                      || (!from.equals(LLM) && to.equals(LLM))
+                      || (LLM_ACROSS_ROLES.contains(from) && LLM_ROLES.contains(to))) {
+                    continue;
+                  }
+                  events.add(
+                      SimpleConditionEvent.violated(
+                          dependency,
+                          from
+                              + " -> "
+                              + to
+                              + (from.equals(LLM)
+                                  ? " lets the llm scaffold name a package below it"
+                                  : role
+                                      ? " lets a model role name a package other than the llm"
+                                          + " scaffold"
+                                      : " lets a package spanning the roles name another one")
+                              + ": "
+                              + dependency.getDescription()));
+                }
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                unlisted.forEach(
+                    name ->
+                        events.add(
+                            SimpleConditionEvent.violated(
+                                name,
+                                root
+                                    + "."
+                                    + name
+                                    + " is not assigned: add it to ModularArchitecture.LLM_ROLES or"
+                                    + " ModularArchitecture.LLM_ACROSS_ROLES")));
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
+  private static boolean isLlmPackage(String relative) {
+    return relative.equals(LLM) || relative.startsWith(LLM + ".");
+  }
+
+  /** A row class of an optional model role: a subtype of {@code rowType} below {@link #LLM}. */
+  private boolean isRowClassInLlm(JavaClass javaClass, String rowType) {
+    String relative = relative(javaClass.getPackageName());
+    return relative != null && isLlmPackage(relative) && javaClass.isAssignableTo(rowType);
+  }
+
+  /**
+   * Creating a row of {@link #OPTIONAL_ROLE_SETTINGS} with a timestamp, or calling one of {@link
+   * #ROLE_ROW_WRITERS} on it, also by reference, only in {@link #ROLE_ROW_ADMINISTRATION} and in
+   * the row classes below {@link #LLM} themselves; a subclass elsewhere is no exception.
+   */
+  ArchRule onlyTheAdministrationWritesTheRoleRows() {
+    String rowType = root + "." + OPTIONAL_ROLE_SETTINGS;
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are outside " + ROLE_ROW_ADMINISTRATION + " and the row classes in llm",
+                javaClass ->
+                    !ROLE_ROW_ADMINISTRATION.equals(relative(javaClass.getPackageName()))
+                        && !isRowClassInLlm(topLevel(javaClass), rowType)))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "create or change the row of an optional model role",
+                access ->
+                    access.getTargetOwner().isAssignableTo(rowType)
+                        && (ROLE_ROW_WRITERS.contains(access.getName())
+                            || (access.getName().equals("<init>")
+                                && access.getTarget() instanceof CodeUnitAccessTarget target
+                                && !target.getRawParameterTypes().isEmpty()))))
+        .because(
+            "the administration writes every role row, with its audit entry and the cache it drops"
+                + " (ModelRoleAdministration)")
         .allowEmptyShould(true);
   }
 
@@ -2007,6 +2161,7 @@ public final class ModularArchitecture {
         privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
+        onlyTheAdministrationWritesTheRoleRows(),
         onlyTheManifestDeltaStartsProcesses(),
         transactionCallbacksGoThroughTheHelper(),
         onlyTheRunRemovesThroughTheCleanupService(),
@@ -2020,6 +2175,7 @@ public final class ModularArchitecture {
         theIndexingCoreDependsOnlyDownward(),
         everyIndexingPackageIsInTheCore(),
         theConnectionPackagesDependOnlyDownward(),
+        llmRolesDependOnlyOnTheScaffold(),
         theFileSyncKnowsNoProvider(),
         connectorsDoNotKnowEachOther(),
         noOneOutsideAConnectorKnowsIt(),

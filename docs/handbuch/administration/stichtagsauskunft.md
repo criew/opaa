@@ -11,7 +11,7 @@
 3. „Von“ und „Bis“ setzen, **höchstens 92 Tage**. Ein weiteres Fenster wird abgewiesen, nicht
    gekürzt; längere Zeiträume setzen Sie aus mehreren Abfragen zusammen.
 4. „Anlass“ eintragen. Er steht im Protokolleintrag dieses Abrufs.
-5. „Auskunft erstellen“.
+5. „Auskunft erstellen“. Fehlt etwas, nennt es das Feld nach dem Klick.
 
 Die Tabelle zeigt je Zeitraum Person, Grundlage (Freigabe, Gruppe, Mitgliedschaft, Eigentum, alle
 Konten), Gruppe, Rolle, Von und Bis. Zeiten, in denen ein Konto gesperrt, abgelaufen oder noch nicht

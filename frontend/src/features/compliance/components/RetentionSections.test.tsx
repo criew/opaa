@@ -6,10 +6,12 @@ import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import {
+  getAgentRunLogRetention,
   getChatAutoCleanupRetention,
   getIncidentScopeRetention,
   getLockedAccountChatRetention,
 } from '../api/retentionApi'
+import AgentRunLogRetentionSection from './AgentRunLogRetentionSection'
 import ChatAutoCleanupRetentionSection from './ChatAutoCleanupRetentionSection'
 import IncidentScopeRetentionSection from './IncidentScopeRetentionSection'
 import LockedAccountChatRetentionSection from './LockedAccountChatRetentionSection'
@@ -37,7 +39,7 @@ describe('ChatAutoCleanupRetentionSection', () => {
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/längeren Fristen/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Fristen ändern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }))
 
     await waitFor(async () =>
       expect((await getChatAutoCleanupRetention()).archiveAfterDays).toBe(120),
@@ -53,7 +55,9 @@ describe('ChatAutoCleanupRetentionSection', () => {
     await user.clear(remove)
     await user.type(remove, '29')
 
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('warns that a shorter period deletes earlier and returns to the factory defaults', async () => {
@@ -66,7 +70,7 @@ describe('ChatAutoCleanupRetentionSection', () => {
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/früher als bisher/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Fristen ändern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }))
     await waitFor(async () => expect((await getChatAutoCleanupRetention()).overridden).toBe(true))
 
     await user.click(
@@ -74,7 +78,7 @@ describe('ChatAutoCleanupRetentionSection', () => {
     )
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
-        name: 'Werkseinstellung wiederherstellen',
+        name: 'Zurücksetzen',
       }),
     )
     await waitFor(async () => expect((await getChatAutoCleanupRetention()).overridden).toBe(false))
@@ -100,13 +104,13 @@ describe('LockedAccountChatRetentionSection', () => {
     const user = userEvent.setup()
     render(<LockedAccountChatRetentionSection />)
 
-    const toggle = await screen.findByRole('switch', { name: 'Chats nach der Sperre löschen' })
+    const toggle = await screen.findByRole('checkbox', { name: 'Chats nach der Sperre löschen' })
     expect(toggle).toBeChecked()
     await user.click(toggle)
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/jede Frist neu/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Ausschalten' }))
 
     await waitFor(async () => expect((await getLockedAccountChatRetention()).enabled).toBe(false))
   })
@@ -120,14 +124,16 @@ describe('IncidentScopeRetentionSection', () => {
     const field = await screen.findByLabelText('Löschfrist (Kalenderjahre)')
     await user.clear(field)
     await user.type(field, '11')
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.clear(field)
     await user.type(field, '3')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/Dienstvereinbarung/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Frist ändern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }))
 
     await waitFor(async () => expect((await getIncidentScopeRetention()).retentionYears).toBe(3))
   })
@@ -142,7 +148,7 @@ describe('reset and pause', () => {
     await user.type(remove, '500')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Fristen ändern' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ändern' }),
     )
     await waitFor(async () => expect((await getChatAutoCleanupRetention()).overridden).toBe(true))
 
@@ -151,9 +157,9 @@ describe('reset and pause', () => {
     )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/früher als bisher/)).toBeInTheDocument()
-    expect(
-      within(dialog).getByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
-    ).toHaveClass('MuiButton-colorError')
+    expect(within(dialog).getByRole('button', { name: 'Zurücksetzen' })).toHaveClass(
+      'MuiButton-colorError',
+    )
   })
 
   it('warns that a reset of the locked-account deletion to the shorter factory period deletes earlier', async () => {
@@ -193,7 +199,7 @@ describe('reset and pause', () => {
       ),
     )
     render(<LockedAccountChatRetentionSection />)
-    await user.click(await screen.findByRole('switch', { name: 'Chats nach der Sperre löschen' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Chats nach der Sperre löschen' }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const dialog = await screen.findByRole('dialog')
@@ -237,10 +243,60 @@ describe('reset and pause', () => {
     expect(screen.getByText('OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Angezeigte Werte festlegen' }))
     await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Wert festlegen' }),
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Festlegen' }),
     )
 
     await waitFor(() => expect(sent).toEqual({ retentionYears: 1 }))
     await waitFor(() => expect(screen.queryByText('Löschen pausiert')).not.toBeInTheDocument())
+  })
+})
+
+describe('AgentRunLogRetentionSection', () => {
+  it('shortens both periods after a warning and returns to the factory default', async () => {
+    const user = userEvent.setup()
+    render(<AgentRunLogRetentionSection />)
+
+    const step = await screen.findByLabelText('Schrittprotokoll (Tage)')
+    expect(step).toHaveValue('7')
+    expect(screen.getByText('Es gilt die Werkseinstellung.')).toBeInTheDocument()
+
+    await user.clear(step)
+    await user.type(step, '3')
+    const sandbox = screen.getByLabelText('Sandboxprotokoll (Tage)')
+    await user.clear(sandbox)
+    await user.type(sandbox, '2')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/endgültig/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Ändern' }))
+
+    await waitFor(async () =>
+      expect(await getAgentRunLogRetention()).toEqual({
+        stepLogRetentionDays: 3,
+        sandboxLogRetentionDays: 2,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    )
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ändern' }),
+    )
+    await waitFor(async () =>
+      expect((await getAgentRunLogRetention()).stepLogRetentionDays).toBe(7),
+    )
+  })
+
+  it('refuses a period beyond 30 days before sending', async () => {
+    const user = userEvent.setup()
+    render(<AgentRunLogRetentionSection />)
+
+    const step = await screen.findByLabelText('Schrittprotokoll (Tage)')
+    await user.clear(step)
+    await user.type(step, '31')
+
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

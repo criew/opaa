@@ -21,6 +21,7 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
 import { memberLabelOf } from './memberLabel'
+import { fieldWidth, fontSize, iconSize } from '@/shared/theme/tokens'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
@@ -33,7 +34,7 @@ function OwnerLockIcon({ className }: { className?: string }) {
     <LockOutlinedIcon
       aria-hidden
       className={className}
-      sx={{ fontSize: 16, color: 'text.secondary' }}
+      sx={{ fontSize: iconSize.sm, color: 'text.secondary' }}
     />
   )
 }
@@ -123,7 +124,11 @@ export default function SpaceMemberList({
 
   async function remove(member: SpaceMemberResponse) {
     const confirmed = await confirmAction({
-      question: `${memberLabelOf(member)} aus diesem Space entfernen?`,
+      question: `„${memberLabelOf(member)}“ aus diesem Space entfernen?`,
+      consequence:
+        member.subjectType === 'GROUP'
+          ? 'Wer nur über diese Gruppe Mitglied ist, verliert sofort den Zugriff auf den Space.'
+          : 'Die Person verliert sofort den Zugriff auf den Space, sofern keine Gruppe sie hält.',
       confirmLabel: 'Entfernen',
       tone: 'danger',
     })
@@ -132,7 +137,8 @@ export default function SpaceMemberList({
 
   async function makeOwner(member: SpaceMemberResponse) {
     const confirmed = await confirmAction({
-      question: `Verantwortung an ${memberLabelOf(member)} übertragen?`,
+      question: `Verantwortung an „${memberLabelOf(member)}“ übertragen?`,
+      consequence: `„${memberLabelOf(member)}“ ist danach sofort für diesen Space verantwortlich.`,
       confirmLabel: 'Übertragen',
       tone: 'caution',
     })
@@ -149,11 +155,11 @@ export default function SpaceMemberList({
           onChange={(event) => setFilter(event.target.value)}
           placeholder="Name suchen …"
           slotProps={{ htmlInput: { 'aria-label': 'Mitglieder filtern' } }}
-          sx={{ maxWidth: 360 }}
+          sx={{ maxWidth: fieldWidth.medium }}
         />
       )}
       {showFilter && visible.length === 0 && (
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: fontSize.text }}>
           Kein Mitglied passt zu „{filter.trim()}“.
         </Typography>
       )}
@@ -180,7 +186,7 @@ export default function SpaceMemberList({
                   <Typography
                     data-testid="space-member-name"
                     sx={{
-                      fontSize: 13.5,
+                      fontSize: fontSize.text,
                       ...(namelessRow ? { fontFamily: 'monospace' } : {}),
                       ...(member.protectedGroup ? { fontStyle: 'italic' } : {}),
                     }}

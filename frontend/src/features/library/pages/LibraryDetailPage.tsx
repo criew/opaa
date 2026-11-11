@@ -40,13 +40,16 @@ import { libraryState, runWord } from '../components/libraryState'
 import LibraryNextSteps from '../components/LibraryNextSteps'
 import LibraryQuotaNotice from '../components/LibraryQuotaNotice'
 import { useNextSteps } from '../components/nextSteps'
-import { CONTENT_WIDTH } from '../components/setup/rowStyles'
+import { contentWidth } from '@/shared/theme/tokens'
 import { useDocumentUpload } from '../hooks/useDocumentUpload'
 import { useDocumentStore } from '../stores/documentStore'
 import LibraryUploadInputs from '../components/LibraryUploadInputs'
 import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
+import { formatNumber } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 export default function LibraryDetailPage() {
   const { libraryId } = useParams()
@@ -58,7 +61,6 @@ export default function LibraryDetailPage() {
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
-  const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
 
   const [localError, setLocalError] = useState<string | null>(null)
@@ -122,14 +124,6 @@ export default function LibraryDetailPage() {
   const showMetadataTab = useFeatureEnabled('metadata')
   const externalAccessEnabled = useFeatureEnabled('externalAccess')
 
-  // Only the system administration sets the ceiling - the owner only ever sees its
-  // consequence, the locked switch and the 409 when a grant would exceed it. An UPLOAD library
-  // carries none.
-  const shareCapVisible =
-    isSystemAdmin &&
-    details != null &&
-    details.sourceType !== 'UPLOAD' &&
-    details.allAccountsGrantAllowed != null
   const activeTab: LibraryDetailTab = resolveTab(
     searchParams.get('tab'),
     showSourceTab,
@@ -284,12 +278,6 @@ export default function LibraryDetailPage() {
     }
   }
 
-  /** A rejection is passed on - it belongs in the switch that triggered it. */
-  async function handleSaveShareCap(allAccountsGrantAllowed: boolean) {
-    if (!libraryId) return
-    await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
-  }
-
   // the source counts as connected only once a run has read it and the newest did not fail at
   // the connection
   const newestWord = runs[0]
@@ -326,9 +314,13 @@ export default function LibraryDetailPage() {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         {storeError ? (
-          <Alert severity="error">{storeError}</Alert>
+          <LoadError
+            message="Die Bibliothek konnte nicht geladen werden."
+            detail={storeError}
+            onRetry={() => void reloadLibrary()}
+          />
         ) : (
-          <Typography sx={{ color: 'text.secondary' }}>Bibliothek wird geladen …</Typography>
+          <LoadingState shape="detail" count={4} />
         )}
       </Box>
     )
@@ -371,7 +363,7 @@ export default function LibraryDetailPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, md: 5 }, overflowY: 'auto' }}>
       {/* one column for head, tabs and every tab's content - the width of wizard and editing */}
-      <Box sx={{ maxWidth: CONTENT_WIDTH }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <AssetDetailHeader
           assetType="KNOWLEDGE_LIBRARY"
           assetId={libraryId}
@@ -395,7 +387,7 @@ export default function LibraryDetailPage() {
             canEdit: mayChange,
             onSave: saveHeadline,
           }}
-          extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
+          extent={`${formatNumber(library.documentCount ?? 0)} ${
             (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
           }`}
           // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only; a full
@@ -526,22 +518,12 @@ export default function LibraryDetailPage() {
         {/* A failed GET /libraries/{id} while the list entry is cached leaves the typed areas
           below empty; this notice explains it and offers the reload. */}
         {!details && storeError && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => void loadLibraryDetails(libraryId)}
-              >
-                Erneut versuchen
-              </Button>
-            }
-          >
-            Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden. Versuchen Sie
-            es in einem Moment erneut.
-          </Alert>
+          <Box sx={{ mb: 2 }}>
+            <LoadError
+              message="Die Angaben zu dieser Bibliothek konnten nicht geladen werden."
+              onRetry={() => void loadLibraryDetails(libraryId)}
+            />
+          </Box>
         )}
 
         <LibraryQuotaNotice
@@ -569,7 +551,7 @@ export default function LibraryDetailPage() {
               // cascading-render risk): a fresh component instance starts every piece of local
               // state at its initial value for free. The prefix keeps the key distinct from the
               // other keyed sections of this page - two siblings sharing the bare libraryId made
-              // React duplicate the spaces section into stuck "Wird geladen …" clones.
+              // React duplicate the spaces section into stuck loading clones.
               key={`documents-${libraryId}`}
               libraryId={libraryId}
               sourceType={details.sourceType}
@@ -612,12 +594,12 @@ export default function LibraryDetailPage() {
                 }
                 indexHint={connectorConfiguration?.runsHint ?? undefined}
               />
-            ) : (
+            ) : storeError ? (
               <Typography sx={{ color: 'text.secondary' }}>
-                {storeError
-                  ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
-                  : 'Quelle wird geladen …'}
+                Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.
               </Typography>
+            ) : (
+              <LoadingState shape="lines" count={4} />
             )}
           </Box>
         )}
@@ -652,9 +634,7 @@ export default function LibraryDetailPage() {
             privateLibrary={privateLibrary}
             canEdit={canEdit}
             externalAccessEnabled={externalAccessEnabled}
-            shareCapVisible={shareCapVisible}
             onTransferred={() => reloadLibrary()}
-            onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
             diagnosticsLockSaving={diagnosticsLockSaving}
             diagnosticsLockError={diagnosticsLockError}
             onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}

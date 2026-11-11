@@ -136,8 +136,11 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 21: {@code opaa.query.fusion.*} and {@code opaa.query.relevance-cutoff.*} became
    * checked fixed points ({@link FusionSettings}, {@link RelevanceCutoffSettings}). Re-measured.
+   *
+   * <p>Version 22: {@code PdfOcrDocumentFormat} ({@code pdf-ocr:1}) joined the registry -
+   * fingerprint-only, no corpus document reaches a stored text recognition.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 21;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 22;
 
   /**
    * {@code opaa.query.fusion.*} of a run. The whole set is pinned, including {@code vectorWeight}

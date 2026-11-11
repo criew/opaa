@@ -1,20 +1,17 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
-import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
+import QueryForm, { QueryPeriod, QueryPrompt, QueryReason } from '@/shared/ui/list/QueryForm'
+import { periodProblem } from '@/shared/ui/list/queryRules'
 import { useAuthStore } from '@/shared/session/authStore'
-import { getAccessAsOf } from '../api/rightsHistoryApi'
+import { getAccessAsOf, type AccessAsOfQuery } from '../api/rightsHistoryApi'
 import type {
   AccessAsOfObjectType,
   AccessAsOfPage,
@@ -22,6 +19,7 @@ import type {
   AccessBasis,
 } from '@/shared/api/types'
 import { contentWidth } from '@/shared/theme/tokens'
+import { formatProtocolTime, MISSING_VALUE } from '@/shared/utils/formatDate'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
   DIRECT_GRANT: 'Direkte Freigabe',
@@ -41,7 +39,7 @@ const SOURCE_LABELS: Record<AccessAsOfSource, string> = {
 
 function formatInstant(value: string | null | undefined, fallback: string): string {
   if (!value) return fallback
-  return new Date(value).toLocaleString('de-DE')
+  return formatProtocolTime(value)
 }
 
 function toInstant(localValue: string): string {
@@ -64,22 +62,33 @@ export default function RightsHistoryPage() {
   const [result, setResult] = useState<AccessAsOfPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [attempted, setAttempted] = useState(false)
+  const [applied, setApplied] = useState<AccessAsOfQuery | null>(null)
 
-  const canSubmit =
-    objectId.trim() !== '' && from !== '' && to !== '' && reason.trim() !== '' && !isLoading
+  const objectMissing = attempted && objectId.trim() === ''
 
-  async function submit(pageIndex = 0): Promise<void> {
-    setIsLoading(true)
-    try {
-      const page = await getAccessAsOf({
+  function submitForm(): void {
+    setAttempted(true)
+    if (objectId.trim() === '' || reason.trim() === '' || periodProblem(from, to)) return
+    void submit(
+      {
         objectType,
         objectId: objectId.trim(),
         from: toInstant(from),
         to: toInstant(to),
         reason: reason.trim(),
-        page: pageIndex,
-      })
+      },
+      0,
+    )
+  }
+
+  // Paging reuses the submitted query, never what the fields hold now.
+  async function submit(query: AccessAsOfQuery, pageIndex: number): Promise<void> {
+    setIsLoading(true)
+    try {
+      const page = await getAccessAsOf({ ...query, page: pageIndex })
       setResult(page)
+      setApplied(query)
       setError(null)
     } catch (err: unknown) {
       setResult(null)
@@ -99,15 +108,21 @@ export default function RightsHistoryPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={HistoryOutlinedIcon}
           title="Stichtagsauskunft"
           description="Wer durfte ein bestimmtes Objekt in einem bestimmten Zeitraum lesen. Je Abfrage genau ein benanntes Objekt, höchstens 92 Tage Zeitraum und ein Anlass als Pflichtangabe. Jeder Abruf wird protokolliert."
         />
 
-        <Stack spacing={2} sx={{ mb: 3 }}>
-          <TextField
+        <QueryForm
+          label="Abfrage der Stichtagsauskunft"
+          submitLabel="Auskunft erstellen"
+          busy={isLoading}
+          busyAnnouncement="Auskunft wird erstellt"
+          onSubmit={submitForm}
+        >
+          <FormField
             select
             label="Objektart"
             value={objectType}
@@ -115,38 +130,23 @@ export default function RightsHistoryPage() {
           >
             <MenuItem value="KNOWLEDGE_LIBRARY">Wissensbibliothek</MenuItem>
             <MenuItem value="SPACE">Space</MenuItem>
-          </TextField>
-          <TextField
+          </FormField>
+          <FormField
             label="Kennung des Objekts"
             value={objectId}
             onChange={(event) => setObjectId(event.target.value)}
+            error={objectMissing}
+            helperText={objectMissing ? 'Bitte die Kennung des Objekts angeben.' : undefined}
           />
-          <TextField
-            label="Von"
-            type="datetime-local"
-            value={from}
-            slotProps={{ inputLabel: { shrink: true } }}
-            onChange={(event) => setFrom(event.target.value)}
+          <QueryPeriod
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            showProblems={attempted}
           />
-          <TextField
-            label="Bis"
-            type="datetime-local"
-            value={to}
-            slotProps={{ inputLabel: { shrink: true } }}
-            onChange={(event) => setTo(event.target.value)}
-          />
-          <TextField
-            label="Anlass"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            helperText="Pflichtangabe. Der Anlass steht im Protokolleintrag dieses Abrufs."
-          />
-          <Box>
-            <Button variant="contained" disabled={!canSubmit} onClick={() => void submit(0)}>
-              Auskunft erstellen
-            </Button>
-          </Box>
-        </Stack>
+          <QueryReason value={reason} onChange={setReason} showProblems={attempted} />
+        </QueryForm>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -154,11 +154,18 @@ export default function RightsHistoryPage() {
           </Alert>
         )}
 
+        {!result && !error && (
+          <QueryPrompt message="Hier erscheinen nach der Abfrage die Zeiträume, in denen Personen das Objekt lesen durften, mit der Grundlage ihres Zugriffs." />
+        )}
+
         {result && (
           <>
-            <Typography sx={{ mb: 1 }}>
-              {result.objectName ?? 'Gelöschtes Objekt'} — {result.totalElements}{' '}
-              {result.totalElements === 1 ? 'Zugriffszeitraum' : 'Zugriffszeiträume'}
+            <AreaPageCount
+              total={result.totalElements}
+              unit={['Zugriffszeitraum', 'Zugriffszeiträume']}
+            />
+            <Typography sx={{ mb: 1, fontWeight: 600 }}>
+              {result.objectName ?? 'Gelöschtes Objekt'}
             </Typography>
             {result.beyondRetention && (
               <Alert severity="warning" sx={{ mb: 2 }}>
@@ -184,51 +191,55 @@ export default function RightsHistoryPage() {
                 verzeichnet. Die oben genannten Quellen sind dabei nicht berücksichtigt.
               </Typography>
             ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Person</TableCell>
-                    <TableCell>Grundlage</TableCell>
-                    <TableCell>Gruppe</TableCell>
-                    <TableCell>Rolle</TableCell>
-                    <TableCell>Von</TableCell>
-                    <TableCell>Bis</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {result.entries.map((entry, index) => (
-                    <TableRow key={`${entry.userId ?? 'alle'}-${entry.validFrom}-${index}`}>
-                      <TableCell>{entry.userName ?? 'Alle Konten der Organisation'}</TableCell>
-                      <TableCell>{BASIS_LABELS[entry.basis]}</TableCell>
-                      <TableCell>
-                        {entry.groupName ?? (entry.groupId ? 'Gelöschte Gruppe' : '—')}
-                      </TableCell>
-                      <TableCell>{entry.assetRole ?? entry.spaceRole ?? '—'}</TableCell>
-                      <TableCell>{formatInstant(entry.validFrom, '—')}</TableCell>
-                      <TableCell>{formatInstant(entry.validTo, 'noch wirksam')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-            {result.totalPages > 1 && (
-              <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
-                <Button
-                  disabled={result.page === 0 || isLoading}
-                  onClick={() => void submit(result.page - 1)}
-                >
-                  Zurück
-                </Button>
-                <Typography>
-                  Seite {result.page + 1} von {result.totalPages}
-                </Typography>
-                <Button
-                  disabled={result.page + 1 >= result.totalPages || isLoading}
-                  onClick={() => void submit(result.page + 1)}
-                >
-                  Weiter
-                </Button>
-              </Stack>
+              <AdminList
+                label="Zugriffszeiträume"
+                rows={result.entries}
+                rowKey={(entry) =>
+                  `${entry.userId ?? 'alle'}-${entry.groupId ?? ''}-${entry.basis}-${entry.validFrom}`
+                }
+                rowLabel={(entry) => entry.userName ?? 'Alle Konten der Organisation'}
+                columns={[
+                  {
+                    id: 'person',
+                    head: 'Person',
+                    cell: (entry) => (
+                      <ListText strong>{entry.userName ?? 'Alle Konten der Organisation'}</ListText>
+                    ),
+                  },
+                  { id: 'basis', head: 'Grundlage', cell: (entry) => BASIS_LABELS[entry.basis] },
+                  {
+                    id: 'group',
+                    head: 'Gruppe',
+                    cell: (entry) => entry.groupName ?? (entry.groupId ? 'Gelöschte Gruppe' : '—'),
+                  },
+                  {
+                    id: 'role',
+                    head: 'Rolle',
+                    width: '12%',
+                    cell: (entry) => entry.assetRole ?? entry.spaceRole ?? '—',
+                  },
+                  {
+                    id: 'from',
+                    head: 'Von',
+                    width: 168,
+                    cell: (entry) => formatInstant(entry.validFrom, MISSING_VALUE),
+                  },
+                  {
+                    id: 'to',
+                    head: 'Bis',
+                    width: 168,
+                    cell: (entry) => formatInstant(entry.validTo, 'noch wirksam'),
+                  },
+                ]}
+                pager={{
+                  pageCount: result.totalPages,
+                  page: result.page,
+                  disabled: isLoading,
+                  onPage: (page) => {
+                    if (applied) void submit(applied, page)
+                  },
+                }}
+              />
             )}
           </>
         )}

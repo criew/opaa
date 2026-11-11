@@ -1,7 +1,9 @@
 package io.opaa.retrieval.search;
 
+import io.opaa.common.PromptText;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
@@ -31,7 +33,9 @@ import org.springframework.ai.chat.messages.UserMessage;
  * #promptMessages()} renders window and question into one labelled user message. Handed over as
  * alternating user and assistant messages, a chat model reads long assistant answers as a
  * conversation it is part of and continues it - answering the question instead of reformulating it.
- * The labels are OPAA's own wording and stay out of the anchor space, like a block's heading.
+ * The labels are OPAA's own wording and stay out of the anchor space, like a block's heading. No
+ * text of the window or the question can start a line with a label - {@link PromptText} removes it
+ * with any invisible character - so no earlier answer can forge a turn or the current question.
  */
 public record DecompositionContext(
     String question, List<Message> searchWindow, List<ContextBlock> contextBlocks) {
@@ -67,6 +71,16 @@ public record DecompositionContext(
 
   static final String QUESTION_LABEL = "Aktuelle Nutzerfrage: ";
 
+  /**
+   * A label of {@link #promptMessages()} at the start of a line, with any space and either colon.
+   * The spaces stay within the line, so a run of blank lines is read once, not once per line.
+   */
+  private static final Pattern LABEL_AT_LINE_START =
+      Pattern.compile(
+          "(?im)^[\\t\\p{Zs}]*(?:Bisheriger Gesprächsverlauf|Aktuelle Nutzerfrage|Nutzer|Assistent)"
+              + "[\\t\\p{Zs}]*[:\\uFF1A]",
+          Pattern.UNICODE_CASE);
+
   public DecompositionContext {
     searchWindow = List.copyOf(searchWindow);
     contextBlocks = List.copyOf(contextBlocks);
@@ -97,15 +111,20 @@ public record DecompositionContext(
    * turn.
    */
   public List<Message> promptMessages() {
-    String labelledQuestion = QUESTION_LABEL + question;
+    String labelledQuestion = QUESTION_LABEL + material(question);
     if (searchWindow.isEmpty()) {
       return List.of(new UserMessage(labelledQuestion));
     }
     String window =
         searchWindow.stream()
-            .map(message -> labelOf(message) + message.getText())
+            .map(message -> labelOf(message) + material(message.getText()))
             .collect(Collectors.joining("\n\n"));
     return List.of(new UserMessage(WINDOW_LABEL + "\n" + window + "\n\n" + labelledQuestion));
+  }
+
+  /** Text of the window or the question as the model sees it; the anchor space uses the same. */
+  private static String material(String text) {
+    return text == null ? "" : PromptText.clean(text, List.of(LABEL_AT_LINE_START));
   }
 
   private static String labelOf(Message message) {
@@ -131,8 +150,8 @@ public record DecompositionContext(
    */
   public List<String> contextTexts() {
     List<String> texts = new ArrayList<>(searchWindow.size() + contextBlocks.size() + 1);
-    searchWindow.forEach(message -> texts.add(message.getText()));
-    texts.add(question);
+    searchWindow.forEach(message -> texts.add(material(message.getText())));
+    texts.add(material(question));
     contextBlocks.forEach(block -> texts.addAll(block.anchorTexts()));
     return List.copyOf(texts);
   }

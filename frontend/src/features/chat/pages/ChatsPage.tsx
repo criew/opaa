@@ -15,7 +15,10 @@ import SearchIcon from '@mui/icons-material/Search'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { chatAutoCleanupNotice } from '../components/deletionDueLabel'
-import { ListEmptyState, ListLoading, ListPager } from '@/shared/ui/list/AdminList'
+import { ListPager } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import ChatSearchResults from '../components/ChatSearchResults'
 import ChatTable from '../components/ChatTable'
 import { chatTitle, splitChats } from '../components/chatListSections'
@@ -30,6 +33,7 @@ import { CHAT_PAGE_SIZE, useChatListStore } from '../stores/chatListStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useSpaceStore } from '@/features/space'
 import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
+import { fontSize } from '@/shared/theme/tokens'
 
 type ChatsTab = 'active' | 'archive'
 
@@ -70,6 +74,7 @@ export default function ChatsPage() {
   const isLoading = useChatListStore((s) => s.isLoading)
   const isLoadingArchive = useChatListStore((s) => s.isLoadingArchive)
   const error = useChatListStore((s) => s.error)
+  const loadError = useChatListStore((s) => s.loadError)
   const loadChats = useChatListStore((s) => s.loadChats)
   const loadArchivedChats = useChatListStore((s) => s.loadArchivedChats)
   const applyBulkAction = useChatListStore((s) => s.applyBulkAction)
@@ -172,9 +177,12 @@ export default function ChatsPage() {
       const confirmed = await confirmAction({
         question:
           targets.length === 1
-            ? `„${chatTitle(targets[0])}“ wirklich löschen?`
-            : `${chatCount(targets.length)} wirklich löschen?`,
-        consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+            ? `„${chatTitle(targets[0])}“ löschen?`
+            : `${chatCount(targets.length)} löschen?`,
+        consequence:
+          targets.length === 1
+            ? 'Alle Nachrichten, Notizen und Anhänge des Chats werden gelöscht.'
+            : 'Alle Nachrichten, Notizen und Anhänge dieser Chats werden gelöscht.',
         confirmLabel: 'Löschen',
         tone: 'danger',
       })
@@ -212,6 +220,11 @@ export default function ChatsPage() {
   const activeCount = chats?.length ?? 0
   const archivedCount = archive?.totalElements ?? 0
   const isTabLoading = tab === 'active' ? chats === undefined && isLoading : isLoadingArchive
+  // Nothing to show and the load failed: only the load notice stands, never next to an empty text.
+  const tabFailed =
+    !isTabLoading &&
+    loadError !== null &&
+    (tab === 'active' ? !chats?.length : !archive?.items.length)
   const tabPanelId = `${idPrefix}-panel`
   const tabId = (value: ChatsTab) => `${idPrefix}-tab-${value}`
   const selectedChats = rows.filter((chat) => selection.has(chat.id))
@@ -234,6 +247,7 @@ export default function ChatsPage() {
         </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
+        {loadError && !tabFailed && <Alert severity="error">{loadError}</Alert>}
 
         <TextField
           type="search"
@@ -336,13 +350,13 @@ export default function ChatsPage() {
                     />
                   }
                   label="Alle auf dieser Seite auswählen"
-                  slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                  slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                   sx={{ mr: 0 }}
                 />
                 <Box sx={{ flexGrow: 1 }} />
                 {hasSelection ? (
                   <>
-                    <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                       {selectedIds.length} ausgewählt
                     </Typography>
                     <Button
@@ -364,23 +378,33 @@ export default function ChatsPage() {
                     </Button>
                   </>
                 ) : null}
-                <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                <Typography role="status" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                   {statusMessage}
                 </Typography>
               </Stack>
 
               {isTabLoading ? (
-                <ListLoading label="Chats werden geladen …" />
+                <LoadingState />
+              ) : tabFailed ? (
+                <LoadError
+                  message="Chats konnten nicht geladen werden."
+                  detail={loadError}
+                  onRetry={() =>
+                    void (tab === 'active'
+                      ? loadChats(spaceId)
+                      : loadArchivedChats(spaceId, archive?.page ?? 0))
+                  }
+                />
               ) : rows.length === 0 ? (
                 tab === 'archive' ? (
-                  <ListEmptyState
-                    title="Das Chat-Archiv dieses Space ist leer."
-                    hint="Archivierte Chats bleiben lesbar; wer darin weiterschreibt, holt sie zurück."
+                  <EmptyState
+                    framed
+                    message="Noch keine archivierten Chats in diesem Space. Archivierte Chats bleiben lesbar; wer darin weiterschreibt, holt sie zurück."
                   />
                 ) : (
-                  <ListEmptyState
-                    title="Keine aktiven Chats in diesem Space."
-                    hint="Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
+                  <EmptyState
+                    framed
+                    message="Noch keine aktiven Chats in diesem Space. Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
                   />
                 )
               ) : (
@@ -402,7 +426,6 @@ export default function ChatsPage() {
                 size={CHAT_PAGE_SIZE}
                 page={tab === 'active' ? shownActivePage : (archive?.page ?? 0)}
                 onPage={changePage}
-                countLabel={chatCount(tab === 'active' ? orderedActive.length : archivedCount)}
               />
             </Box>
           </Box>

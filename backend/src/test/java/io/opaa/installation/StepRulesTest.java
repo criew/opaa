@@ -9,6 +9,9 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
@@ -754,7 +757,8 @@ class StepRulesTest {
         .isEqualTo("sk-stt");
     assertThat(rules.transcriptionModelPayload(stored.payload()))
         .isEqualTo(
-            new StepRules.TranscriptionModelPayload("http://ollama:8000/v1", "whisper", "en"));
+            new StepRules.TranscriptionModelPayload(
+                "http://ollama:8000/v1", "whisper", "en", null));
 
     StepRules.Stored withoutLanguage =
         rules.toStored(
@@ -805,6 +809,127 @@ class StepRulesTest {
   }
 
   @Test
+  void aLiveKeyOfItsOwnIsStoredEncryptedInsideThePayloadAndKeptForTheSameLiveAddress() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                null,
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.OPENAI,
+                    "wss://ollama.example.org/v1/realtime",
+                    "gpt-live-transcribe",
+                    "sk-live")),
+            null,
+            null);
+
+    assertThat(stored.payload()).doesNotContain("sk-live");
+    StepRules.RealtimePayload live = rules.transcriptionModelPayload(stored.payload()).realtime();
+    assertThat(
+            encryptor.decrypt(
+                live.apiKeyCiphertext(),
+                InstallationEncryptedColumns.of(InstallationStep.TRANSCRIPTION_MODEL)))
+        .isEqualTo("sk-live");
+    assertThat(live.toString()).doesNotContain(live.apiKeyCiphertext());
+
+    StepRules.Stored again =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                null,
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.OPENAI,
+                    "wss://ollama.example.org/v1/realtime",
+                    "gpt-live-transcribe",
+                    null)),
+            stored.payload(),
+            stored.secret());
+    assertThat(rules.transcriptionModelPayload(again.payload()).realtime().apiKeyCiphertext())
+        .isEqualTo(live.apiKeyCiphertext());
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TranscriptionModel(
+                        "http://ollama:8000/v1",
+                        "whisper",
+                        null,
+                        "de",
+                        new StepInput.TranscriptionRealtime(
+                            RealtimeTranscriptionProtocol.OPENAI,
+                            "wss://ollama:9000/v1/realtime",
+                            "gpt-live-transcribe",
+                            null)),
+                    stored.payload(),
+                    stored.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcriptionModel.realtime.apiKey"));
+  }
+
+  @Test
+  void openAiAndMistralLiveNeedAKeyThatReachesThemWhileVllmGoesWithout() {
+    for (RealtimeTranscriptionProtocol protocol :
+        List.of(RealtimeTranscriptionProtocol.OPENAI, RealtimeTranscriptionProtocol.MISTRAL)) {
+      assertThatThrownBy(
+              () ->
+                  rules.toStored(
+                      new StepInput.TranscriptionModel(
+                          "http://ollama:8000/v1",
+                          "whisper",
+                          "sk-batch",
+                          "de",
+                          new StepInput.TranscriptionRealtime(
+                              protocol, "wss://ollama.example.org/v1/realtime", "live", null)),
+                      null,
+                      null))
+          .isInstanceOfSatisfying(
+              FieldValidationException.class,
+              e ->
+                  assertThat(e.fieldErrors())
+                      .extracting(FieldValidationException.FieldError::field)
+                      .containsExactly("transcriptionModel.realtime.apiKey"));
+    }
+
+    StepRules.Stored sameOrigin =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                "sk-batch",
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.OPENAI, "ws://ollama:8000/v1/realtime", "live")),
+            null,
+            null);
+    assertThat(rules.transcriptionModelPayload(sameOrigin.payload()).realtime().apiKeyCiphertext())
+        .isNull();
+
+    StepRules.Stored vllm =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                "http://ollama:8000/v1",
+                "whisper",
+                null,
+                "de",
+                new StepInput.TranscriptionRealtime(
+                    RealtimeTranscriptionProtocol.VLLM,
+                    "ws://ollama.example.org:8000/v1/realtime",
+                    "voxtral")),
+            null,
+            null);
+    assertThat(rules.transcriptionModelPayload(vllm.payload()).realtime().protocol())
+        .isEqualTo(RealtimeTranscriptionProtocol.VLLM);
+  }
+
+  @Test
   void aSavedTranscriptionKeyDoesNotFollowAChangedAddress() {
     StepRules.Stored first =
         rules.toStored(
@@ -825,5 +950,144 @@ class StepRulesTest {
                 assertThat(e.fieldErrors())
                     .extracting(FieldValidationException.FieldError::field)
                     .containsExactly("transcriptionModel.apiKey"));
+  }
+
+  @Test
+  void theTextRecognitionModelIsStoredWithItsKeyEncryptedAndWithoutAModelForDocling() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.TextRecognitionModel(
+                null, " http://ollama:5001 ", "ignored-for-docling", "ocr-key"),
+            null,
+            null);
+
+    assertThat(stored.payload()).doesNotContain("ocr-key").doesNotContain("ignored-for-docling");
+    assertThat(
+            encryptor.decrypt(
+                stored.secret(),
+                InstallationEncryptedColumns.of(InstallationStep.TEXT_RECOGNITION_MODEL)))
+        .isEqualTo("ocr-key");
+    assertThat(rules.textRecognitionModelPayload(stored.payload()))
+        .isEqualTo(
+            new StepRules.TextRecognitionModelPayload(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://ollama:5001", null));
+    assertThat(
+            rules.view(InstallationStep.TEXT_RECOGNITION_MODEL, stored.payload(), stored.secret()))
+        .isEqualTo(
+            new InstallationOverview.TextRecognitionModel(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://ollama:5001", null, true));
+
+    StepRules.Stored vision =
+        rules.toStored(
+            new StepInput.TextRecognitionModel(
+                TextRecognitionConnectionType.OPENAI_VISION,
+                "http://ollama:5001",
+                " paddle-vl ",
+                null),
+            stored.payload(),
+            stored.secret());
+    assertThat(rules.textRecognitionModelPayload(vision.payload()).model()).isEqualTo("paddle-vl");
+    assertThat(vision.secret()).isEqualTo(stored.secret());
+  }
+
+  @Test
+  void theTextRecognitionModelFollowsTheRulesOfTheAdministrationAndTheAddressCheck() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TextRecognitionModel(
+                        TextRecognitionConnectionType.OPENAI_VISION, "", " ", null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("textRecognitionModel.baseUrl", "textRecognitionModel.model"));
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TextRecognitionModel(null, "http://10.0.0.5:5001", null, null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::code)
+                    .containsExactly("BLOCKED"));
+  }
+
+  @Test
+  void aSavedTextRecognitionKeyDoesNotFollowAChangedAddress() {
+    StepRules.Stored first =
+        rules.toStored(
+            new StepInput.TextRecognitionModel(null, "http://ollama:5001", null, "ocr-key"),
+            null,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TextRecognitionModel(
+                        null, "http://ollama.example.org:5001", null, null),
+                    first.payload(),
+                    first.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("textRecognitionModel.apiKey"));
+  }
+
+  @Test
+  void theTextRecognitionStepNeverPrintsItsKey() {
+    assertThat(
+            new StepInput.TextRecognitionModel(null, "http://ollama:5001", null, "ocr-key")
+                .toString())
+        .doesNotContain("ocr-key")
+        .contains("apiKey=***");
+  }
+
+  // regression guard for ADR-0060, Entscheidung 19: the token alone reaches no other clamd port
+  @Test
+  void theAssistantRefusesEveryPortButTheClamdPort() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.MalwareScan("clamav.stadt.example", 22, null, null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(
+                        FieldValidationException.FieldError::field,
+                        FieldValidationException.FieldError::code)
+                    .containsExactly(tuple("malwareScan.port", "BLOCKED")));
+  }
+
+  @Test
+  void theScannerIsStoredWithItsDefaultsAndItsProblemsNamedUnderTheStep() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.MalwareScan(" clamav.stadt.example ", null, null, null), null, null);
+
+    assertThat(rules.malwareScanPayload(stored.payload()))
+        .isEqualTo(
+            new StepRules.MalwareScanPayload(
+                "clamav.stadt.example", 3310, 30, MalwareScanUnavailablePolicy.REJECT));
+    assertThat(stored.secret()).isNull();
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.MalwareScan("tcp://clamav", 3310, 0, null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactlyInAnyOrder("malwareScan.host", "malwareScan.timeoutSeconds"));
   }
 }

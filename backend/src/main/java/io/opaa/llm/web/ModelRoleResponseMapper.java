@@ -4,15 +4,15 @@ import io.opaa.api.dto.RerankModelSettingsResponse;
 import io.opaa.api.dto.TextRecognitionModelSettingsResponse;
 import io.opaa.api.dto.TextRecognitionTestResponse;
 import io.opaa.api.dto.TranscriptionModelSettingsResponse;
+import io.opaa.api.dto.TranscriptionRealtimeSettingsResponse;
 import io.opaa.api.types.ModelRoleCondition;
-import io.opaa.llm.ModelRoleAdministration.RerankModelView;
-import io.opaa.llm.ModelRoleAdministration.TextRecognitionModelView;
-import io.opaa.llm.ModelRoleAdministration.TextRecognitionTestOutcome;
-import io.opaa.llm.ModelRoleAdministration.TranscriptionModelView;
-import io.opaa.llm.RerankRoleState;
-import io.opaa.llm.TextRecognitionClient;
-import io.opaa.llm.TextRecognitionRoleState;
-import io.opaa.llm.TranscriptionRoleState;
+import io.opaa.llm.OptionalRoleState;
+import io.opaa.llm.administration.ModelRoleAdministration.RealtimeView;
+import io.opaa.llm.administration.ModelRoleAdministration.RerankModelView;
+import io.opaa.llm.administration.ModelRoleAdministration.TextRecognitionModelView;
+import io.opaa.llm.administration.ModelRoleAdministration.TextRecognitionTestOutcome;
+import io.opaa.llm.administration.ModelRoleAdministration.TranscriptionModelView;
+import io.opaa.llm.textrecognition.TextRecognitionClient;
 
 /** Maps the views of the rerank, transcription and text recognition roles; never a key. */
 final class ModelRoleResponseMapper {
@@ -36,6 +36,7 @@ final class ModelRoleResponseMapper {
             view.apiKeySet(),
             view.language(),
             view.vocabulary(),
+            toResponse(view.realtime()),
             condition(view.status().state()),
             view.speechInputAvailable(),
             view.retiredVariables())
@@ -44,22 +45,12 @@ final class ModelRoleResponseMapper {
         .updatedAt(view.updatedAt());
   }
 
-  static ModelRoleCondition condition(RerankRoleState state) {
-    return switch (state) {
-      case DISABLED -> ModelRoleCondition.DISABLED;
-      case READY -> ModelRoleCondition.ACTIVE;
-      case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
-      case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
-    };
-  }
-
-  static ModelRoleCondition condition(TranscriptionRoleState state) {
-    return switch (state) {
-      case DISABLED -> ModelRoleCondition.DISABLED;
-      case READY -> ModelRoleCondition.ACTIVE;
-      case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
-      case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
-    };
+  static TranscriptionRealtimeSettingsResponse toResponse(RealtimeView view) {
+    return new TranscriptionRealtimeSettingsResponse(
+            view.enabled(), view.apiKeySet(), view.maxSessions(), condition(view.status().state()))
+        .protocol(view.protocol())
+        .url(view.url())
+        .model(view.model());
   }
 
   static TextRecognitionModelSettingsResponse toResponse(TextRecognitionModelView view) {
@@ -100,7 +91,7 @@ final class ModelRoleResponseMapper {
     };
   }
 
-  static ModelRoleCondition condition(TextRecognitionRoleState state) {
+  static ModelRoleCondition condition(OptionalRoleState state) {
     return switch (state) {
       case DISABLED -> ModelRoleCondition.DISABLED;
       case READY -> ModelRoleCondition.ACTIVE;

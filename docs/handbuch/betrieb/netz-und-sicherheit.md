@@ -23,6 +23,14 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   über `proxy-buffering: "off"`, schalten es ausdrücklich ab. Komprimieren darf der Proxy den
   Strom nicht. Das Backend schickt alle 10 Sekunden ein Lebenszeichen, das Timeout begrenzt also
   die Pause zwischen zwei Ereignissen.
+- **Lange Läufe eines Agenten durchlassen:** Ein Agent arbeitet in mehreren Schritten und meldet
+  jeden im selben Antwortstrom, oft über Minuten. Solange Modell oder Werkzeug arbeiten, sendet
+  OPAA mindestens alle 10 Sekunden ein Lebenszeichen. Der Proxy darf deshalb nicht puffern, damit
+  die Schritte erscheinen, wenn sie geschehen; ein Lese-Timeout ab etwa 30 Sekunden genügt, auch
+  für Läufe über Minuten. Bricht die Person ab, schickt der Browser zusätzlich
+  `POST /api/v1/query/stream/cancel`; der Stopp liegt in der Datenbank und wirkt, gleich welche
+  Instanz ihn annimmt. Diese Anfrage zählt nicht gegen die Grenze für Fragen. Der Lauf endet vor
+  seinem nächsten Schritt, nichts davon wird gespeichert; ein Wiederaufnehmen gibt es nicht.
 - **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
@@ -32,6 +40,8 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
   OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
   und Mail aus, bis die Starts des Tages erschöpft sind.
+- **Das WebSocket-Upgrade der Spracheingabe weiterreichen** (`/api/v1/transcriptions/stream`),
+  siehe [WebSocket der Spracheingabe](#websocket-der-spracheingabe).
 - **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
@@ -39,6 +49,25 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 - OPAA läuft nur im Wurzelpfad. Eine öffentliche Adresse mit Nicht-Standardport gehört in
   `OPAA_CORS_ALLOWED_ORIGINS`.
 - **`Strict-Transport-Security` setzt der äußere Proxy**, wo TLS endet.
+
+### WebSocket der Spracheingabe
+
+Das [Live-Transkript](modell-endpunkte.md#live-transkript) läuft über einen WebSocket unter
+`/api/v1/transcriptions/stream`. Der Frontend-Container reicht das Upgrade weiter; ein Proxy oder
+Ingress davor muss es ebenso tun:
+
+- **`Upgrade` und `Connection` weiterreichen** und HTTP/1.1 zum Frontend sprechen.
+- **Nicht puffern**; das Timeout für Lesen und Senden deckt Sprechpausen ab. Eine Aufnahme dauert
+  höchstens gut zwei Minuten und endet nach 30 Sekunden ohne Audio. Im Frontend-Container gilt dafür
+  `OPAA_BACKEND_READ_TIMEOUT` wie für `/api/` (Vorgabe `600s`); ein Wert unter einer Minute bricht
+  Live-Sitzungen in Sprechpausen ab, das Diktat fällt dann auf die ganze Aufnahme zurück.
+- **`Sec-WebSocket-Protocol` nicht protokollieren:** Der Browser kann an einen WebSocket keine
+  Header hängen und schickt das Anmeldetoken deshalb in diesem Header mit.
+- **Origin unverändert lassen:** Das Backend nimmt das Upgrade nur von der eigenen Adresse oder einer
+  aus `OPAA_CORS_ALLOWED_ORIGINS` an.
+
+Reicht der Proxy das Upgrade nicht weiter, bleibt es still beim Diktat mit der ganzen Aufnahme;
+die Person sieht keine Fehlermeldung, nur keinen Text beim Sprechen.
 
 ### Sicherheits-Header und `Strict-Transport-Security`
 
@@ -74,6 +103,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 - **Bilder** lädt die Oberfläche in Antworten und Vorschau nie, auch nicht von der eigenen Adresse;
   an ihrer Stelle steht „[Bild: …]“ mit der Adresse. Unabhängig davon blockiert die
   `Content-Security-Policy` fremde Bilder.
+- **Kopieren und Export** wenden dieselben Regeln an, in jedem Format: Ein Bild wird zu „[Bild: …]“
+  mit der Adresse als Text, ein Link zu einem nicht erlaubten Ziel zu Linktext mit Adresse, HTML in
+  der Antwort zu Text. Ein anderes Programm, in das die Antwort eingefügt wird, lädt so nichts nach.
 - **Bedienung:** Verwaltung › Anbindungen › Einstellungen, Abschnitt „Erlaubte Linkziele“. Jedes
   Hinzufügen und Entfernen speichert die ganze Liste sofort; eine abgewiesene Eingabe zeigt die
   Meldung und bleibt im Feld stehen.
@@ -170,8 +202,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.
 - **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (`xn--…`) eintragen.
-- Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
-  werden immer geprüft.
+- Nur `http` und `https`; Redirects nie von `https` auf `http` herab. Einem Redirect auf einen
+  fremden Host folgen nur das Webverzeichnis, der RSS-Feed selbst und Confluence-Anhänge, dann ohne
+  Zugangsdaten, sowie Downloads aus Microsoft Graph auf das von Graph genannte `https`-Ziel; alle
+  anderen Abrufe bleiben auf ihrem Origin. Zertifikate werden immer geprüft.
 - **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; OPAA bindet
   und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
   Egress auf Netzebene bleibt die zweite Linie.
@@ -183,7 +217,10 @@ Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine
 Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
 einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
 noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
-`opaa_target_validation_refused_connection_checks_total`. Ist die
+`opaa_target_validation_refused_connection_checks_total`. Ein einzelner Lauf des RSS-Feed-,
+Webverzeichnis- und Confluence-Konnektors fragt höchstens `OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN`
+verschiedene Hosts an, Redirects eingeschlossen; Redirects auf ständig neue Namen füllen die
+Bindungen deshalb nicht. Ist die
 Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
 Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
 zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart
@@ -271,15 +308,22 @@ Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber�
 geschnitten und, beim Upload, in der Originalablage abgelegt.
 
 > **Beispiel.** Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
-> Der Betrieb trägt dessen Adresse ein und schaltet die Prüfung ein. Lädt eine Sachbearbeiterin eine
+> Die Systemverwaltung trägt dessen Adresse unter „Administration → Virenprüfung“ ein und schaltet
+> die Prüfung ein. Lädt eine Sachbearbeiterin eine
 > befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
 > der Originalablage noch im Index.
 
 - **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. OPAA
-  bringt keinen Scanner mit; der Dienst der Behörde oder ein eigener Container neben dem Backend wird
-  eingetragen. Die Verbindung geht direkt, nie über den Ausgangsproxy, und trägt nur den Inhalt der
-  Datei, weder Namen noch Bibliothek noch Person.
-- **Ab Werk aus.** Eingeschaltet ohne Adresse bricht der Start ab.
+  bringt keinen Scanner mit, weder als Image noch als Zusatzdatei für Compose oder Helm; der Dienst
+  der Behörde wird angebunden wie ein Modell oder die Texterkennung. Die Verbindung geht direkt, nie
+  über den Ausgangsproxy, und trägt nur den Inhalt der Datei, weder Namen noch Bibliothek noch
+  Person.
+- **Einrichten:** ab Werk aus. Eingerichtet wird der Scanner im optionalen Schritt „Virenprüfung“
+  der [Installation](installation.md#schritte) oder danach unter „Administration → Virenprüfung“
+  ([Virenprüfung einrichten](../administration/virenpruefung.md)), mit Host, Port, Zeitlimit und
+  dem Verhalten bei Ausfall. OPAA liest die Einstellung für jede Datei neu; eine Änderung wirkt ohne
+  Neustart auf allen Instanzen. Umgebungsvariablen gibt es dafür nicht mehr; setzt ein Start noch
+  eine der früheren `OPAA_MALWARE_SCAN_*`, nennt das Log sie als wirkungslos.
 - **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
   Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
   abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
@@ -292,19 +336,21 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
   nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
   Bibliothek auf ihre Eigentümerin schließen ließe.
 - **Scanner nicht erreichbar:** Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
-  seiner Grenze für Datenströme gilt als nicht geprüft. Mit `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` auf
-  `REJECT` wird sie nicht aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim
-  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen; das Laufprotokoll
-  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
-  Einstellung.
-- **Frist:** `OPAA_MALWARE_SCAN_TIMEOUT` begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
-  Antwort; danach gilt die Datei als nicht geprüft.
+  seiner Grenze für Datenströme gilt als nicht geprüft. Mit „Ablehnen“ (ab Werk) wird sie nicht
+  aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim nächsten Lauf erneut
+  versucht. Mit „Ungeprüft aufnehmen“ wird sie ungeprüft aufgenommen; das Laufprotokoll nennt sie
+  unter „Ohne Virenprüfung aufgenommen“.
+- **Frist:** Das Zeitlimit begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur Antwort;
+  danach gilt die Datei als nicht geprüft.
 - **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
   annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
   Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
   sie dennoch als sauber, solange `AlertExceedsMax` aus ist; verschlüsselte Archive meldet er nur
   mit `AlertEncrypted`. Beides stellt der Betrieb des Scanners ein.
-- **Metrik:** `opaa_malware_scans_total` nach Ergebnis (`clean`, `infected`, `failed`).
+- **Metriken:** `opaa_malware_scans_seconds_*` mit Dauer nach Ergebnis (`clean`, `infected`,
+  `failed`) und `opaa_malware_signatures_age_seconds`, das Alter der Signaturen
+  ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)). Die frühere Anzahl
+  `opaa_malware_scans_total` heißt jetzt `opaa_malware_scans_seconds_count`.
 - **Grenzen der Prüfung:**
   - „Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
     seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim
@@ -318,16 +364,8 @@ Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands m
 und die Prüfung von Seiteninhalten, die eine Quelle als Text liefert (Confluence-Seiten, Einträge
 eines Feeds).
 
-| Variable | Standard | Bedeutung |
-|---|---|---|
-| `OPAA_MALWARE_SCAN_ENABLED` | `false` | Virenprüfung ein |
-| `OPAA_MALWARE_SCAN_HOST` | — | Adresse des clamd-Dienstes, ohne Schema |
-| `OPAA_MALWARE_SCAN_PORT` | `3310` | Port des clamd-Dienstes |
-| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist eines Scans insgesamt |
-| `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `REJECT` | Umgang mit einer nicht geprüften Datei: `REJECT` oder `ACCEPT` |
-
-Unter Kubernetes stehen dieselben Werte unter `malwareScan` im Helm-Chart; eine NetworkPolicy muss
-dem Backend den Weg zum Scanner öffnen.
+Unter Kubernetes muss eine NetworkPolicy dem Backend den Weg zu Host und Port des Scanners öffnen;
+der Helm-Chart kennt dafür keine eigenen Werte mehr.
 
 ## Schlüssel und Geheimnisse
 
@@ -335,7 +373,7 @@ dem Backend den Weg zum Scanner öffnen.
 |---|---|---|---|
 | `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../administration/externe-ki-werkzeuge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: gespeicherte Werte unlesbar, neu einzutragen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modell-endpunkte.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modell-endpunkte.md#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
 | `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | abgelöste Schlüssel während eines [Schlüsselwechsels](#schlüsselwechsel), nur zum Entschlüsseln | leer: kein Wechsel im Gang | nach dem Wechsel entfernen, getrennt aufbewahren |
 | `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
 
@@ -449,9 +487,9 @@ steht, erreicht über die Suche das Modell.
 **Was unabhängig vom Modell wirkt:**
 
 - **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
-  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss
-  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
-  Anweisung folgt.
+  die Antwort nie, auch nicht in Kopie und Export
+  ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss über einen
+  präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der Anweisung folgt.
 - **Rechte und Belege:** Die Suche findet nur Dokumente, die die Person lesen darf, und die
   Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.
 
@@ -465,7 +503,14 @@ steht, erreicht über die Suche das Modell.
   Laufprotokoll und in einer Metrik
   ([Wissensbibliotheken, Parsen und Chunken](../referenz/wie-indexierung-arbeitet.md#was-mit-jedem-dokument-passiert)
   und [Ergebnis je Dokument](../referenz/wie-indexierung-arbeitet.md#laufprotokoll)).
-- **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
+- **Unsichtbare Zeichen in eigenen Texten:** Frage, Prompt-Vorlage, Anweisung des Space und eines
+  Agenten erreichen das Modell ohne unsichtbare Zeichen und ohne Steuerzeichen der Schreibrichtung;
+  Prompt-Vorlagen und Anweisungen des Space werden schon so gespeichert. Was die Schrift braucht,
+  bleibt: verbindende und trennende Zeichen innerhalb eines Emoji und zwischen Buchstaben von
+  Schriften wie Persisch oder Devanagari, und ein Variantenwähler direkt nach einem Emoji, einer
+  Tastenkappe oder einem Zeichen solcher Schriften, nie nach einem lateinischen Buchstaben.
+- **MCP-Server:** Treffer sowie Namen und Beschreibungen der Bibliotheken sind für externe
+  KI-Werkzeuge als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../benutzer/ki-werkzeug-einrichten.md)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
   lenken lässt ([Modell gegen Prompt-Injection messen](modell-endpunkte.md#modell-gegen-prompt-injection-messen)).

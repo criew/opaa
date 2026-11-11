@@ -3,7 +3,7 @@
 Was im Zielbild der [Vision](./VISION.md) noch nicht gebaut ist, nach Phasen geordnet. Was gebaut ist,
 steht im [Handbuch](./handbuch/README.md) und im [Gesamtstand](./fortschritt/gesamtstand.md).
 
-Stand: 05.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
+Stand: 09.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
 angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ## Phase 1 — Souveräner Wissensassistent (Rest)
@@ -34,8 +34,10 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ### A · Wissensschicht & Retrieval
 
-- **Deep Research** — eigener Betriebsmodus: Zerlegung in Teilfragen, gegliederter Bericht mit
-  Fundstellen und benannten Widersprüchen, Ergebnis als Artefakt, Verbrauch vorab angezeigt.
+- **Deep Research** — kein eigener Betriebsmodus, sondern ein mitgelieferter Agent „Recherche“ auf der
+  Werkzeugschleife (siehe D): sichtbarer Plan mit Teilfragen, mehrstufige Suche, gegliederter Bericht mit
+  Fundstellen und benannten Widersprüchen, Ergebnis als Datei nach der Vorlage des Agenten, Verbrauch
+  vorab angezeigt. _(Epic #1747)_
 - **Bildverständnis** — Fotos, Diagramme und Handschrift erschließen; gescannte PDF-Dokumente liest
   die Texterkennung bereits, ihr Text ist als erkannt gekennzeichnet. Offen: Fotos und
   Bilddateien, einzelne Scanseiten in PDF mit Textebene, Rahmen im Viewer. _(Epic #2640)_
@@ -82,13 +84,16 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ### D · Agenten, Prompts & Werkzeuge
 
-- **Fundament für Werkzeugaufrufe im Chat** — Modellfähigkeit „Werkzeugaufrufe“ messen, Werkzeugschleife
-  mit der Suche als erstem Werkzeug, sichtbare Zwischenschritte, Werkzeug-Audit; heute Spike hinter
-  Schalter. _(Epic #1747 (geparkt); #1752)_
+- **Werkzeugschleife als gemeinsamer Motor der Agenten** — Modellfähigkeit „Werkzeugaufrufe“ messen,
+  Werkzeugschleife mit der Suche als erstem Werkzeug, Belegprüfung über alle Schritte, sichtbare
+  Zwischenschritte, Werkzeug-Audit. Der gewöhnliche Chat bleibt einschüssig; die Schleife läuft nur in
+  einem Agenten, den man im Chat mit `@` wählt, und nur, wenn die Installation Agenten freischaltet.
+  Schleife, Wahl mit `@` und sichtbare Schritte gebaut. _(Epic #1747)_
 - **Skills als Objektart** — teilbare Fähigkeit mit lesbarem Paketformat, später mit Werkzeugen (Schritt
   3). _(Epic #1727 (geparkt))_
-- **Agent als teilbares Paket** — Verhalten, Wissensbindung, Werkzeugrechte und Modellwahl in einem
-  Asset; liest immer mit den Rechten der aufrufenden Person.
+- **Agent als teilbares Paket** — Katalogeintrag mit Verhalten, zugeordneten Bibliotheken und Werkzeugen,
+  Grenzen, Vorlage und Modellwahl; Anlegen hängt an einem eigenen Recht; liest immer mit den Rechten der
+  aufrufenden Person. Erster Agent ist „Recherche“ (siehe A, Deep Research). _(Epic #1747)_
 - **Geführtes Agenten-Onboarding** — Beschreibung wie eine Stelle mit festen Abschnitten statt
   Freitext-Prompt. Wie streng die Struktur erzwungen wird, ist offen. _(⚑ (Strenge))_
 - **Agenten-Prüfstand vor der Freigabe** — automatisierter Prüflauf in sechs Kategorien, Bericht als
@@ -97,8 +102,10 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Kritikalität; welches Modell sie nutzen, ist offen. _(⚑ (Modellwahl))_
 - **Textwerkzeuge** — Zusammenfassung, Übersetzung, Leichte Sprache/Amtssprache, Export nach Text,
   Tabelle, Textdokument, Foliensatz (siehe K).
-- **Isolierte Ausführungsumgebung je Chat** — Dateiverarbeitung, Tabellenauswertung, OCR, Transkription
-  mit Sprechererkennung, Diagramme und Foliensätze; Umgang mit Abbrüchen offen.
+- **Isolierte Ausführungsumgebung je Sitzung** — Dateiverarbeitung, Tabellenauswertung, OCR, Transkription
+  mit Sprechererkennung, Diagramme und Foliensätze; Sandbox lebt je Sitzung und Person, Korrekturen
+  arbeiten im selben Ordner; Umgang mit Abbrüchen offen. `run_code` und `fill_template` als Werkzeuge
+  der Agenten gebaut. _(Epic #3583)_
 - **Ausgangstor (Egress-Kontrollpunkt)** — Genehmigungsfähigkeit klären (TLS-Aufbruch, Protokollumfang,
   Verhältnis zu Proxy und Zielprüfung) vor dem Bau fremder Werkzeuge. ⚑
 - **MCP-Client mit Zulassungsliste** — fremde MCP-Server als Werkzeuge, Liste der Systemverwaltung mit
@@ -108,12 +115,10 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Vorgang.
 - **Auslösung ohne Person** — Zeitpläne und Ereignis-Auslöser für Agenten; mit wessen Rechten, ist
   offen. ⚑
-- **Offene Grundsatzfragen der Werkzeugschleife** — Höhe der Grenzen und des Platzlimits, mehrschrittige
-  Suche statt fester Zerlegung, Begründungspflicht je Aufruf, Unterrichtung der Beschäftigten, Agent
-  ruft Agent, Belegvalidierung für Agenten. ⚑
-- **Oberflächenfragen zu Skills und Agenten** — Wahl im Chat (`@` oder eigenes Zeichen), Wirkdauer,
-  Ungelesen-Markierung langer Läufe, Agentenstart ohne Gespräch, Teilen von Läufen. _(#1297 (Postfach) ·
-  ⚑)_
+- **Offene Grundsatzfragen der Werkzeugschleife** — Höhe der Grenzen und des Platzlimits,
+  Begründungspflicht je Aufruf, Unterrichtung der Beschäftigten, Agent ruft Agent. ⚑
+- **Oberflächenfragen zu Skills und Agenten** — Wirkdauer, Ungelesen-Markierung langer Läufe,
+  Agentenstart ohne Gespräch, Teilen von Läufen. _(#1297 (Postfach) · ⚑)_
 
 ### E · Modelle & zentrale Steuerung
 
@@ -137,8 +142,6 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   organisationsweit, Abbruch laufender Antworten bei Sitzungsende.
 - **Erzwungene Neuanmeldung durch die Systemverwaltung** — für Person, Gruppe oder alle; automatisch bei
   Verzeichnissperre und zugangsrelevanter Rechteänderung (für lokale Konten gebaut).
-- **Vorgabewert der Freigabe-Obergrenze für Konnektorbibliotheken** — installationsweiter Standard bei
-  Neuanlage. ⚑
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 

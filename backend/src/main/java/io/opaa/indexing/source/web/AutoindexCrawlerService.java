@@ -141,7 +141,7 @@ public class AutoindexCrawlerService {
       String baseUrl, RenewableCredential<String> authHeader, RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
 
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient("http_directory");
 
     List<CrawledFileEntry> results = new ArrayList<>();
     List<String> rejectedLinks = new ArrayList<>();

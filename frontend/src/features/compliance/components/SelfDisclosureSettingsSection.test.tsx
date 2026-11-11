@@ -20,16 +20,16 @@ describe('SelfDisclosureSettingsSection', () => {
     const user = userEvent.setup()
     renderSection()
 
-    const toggle = await screen.findByRole('switch', { name: 'Selbstauskunft anbieten' })
+    const toggle = await screen.findByRole('checkbox', { name: 'Selbstauskunft anbieten' })
     expect(toggle).toBeChecked()
     await user.click(toggle)
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    await user.click(await screen.findByRole('button', { name: 'Abschalten' }))
+    await user.click(await screen.findByRole('button', { name: 'Ausschalten' }))
 
     await waitFor(async () => expect((await getSelfDisclosureSettings()).enabled).toBe(false))
-    expect(screen.getByRole('switch', { name: 'Selbstauskunft anbieten' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Selbstauskunft anbieten' })).not.toBeChecked()
 
-    await user.click(screen.getByRole('switch', { name: 'Selbstauskunft anbieten' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Selbstauskunft anbieten' }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(async () => expect((await getSelfDisclosureSettings()).enabled).toBe(true))
@@ -43,7 +43,9 @@ describe('SelfDisclosureSettingsSection', () => {
     await user.clear(field)
     await user.type(field, '11')
     expect(screen.getByText('Bitte eine ganze Zahl von 1 bis 10 eingeben.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    // „Speichern“ stays active: the wrong entry is told at its field, nothing is asked or sent
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.clear(field)
     await user.type(field, '3')
@@ -55,7 +57,7 @@ describe('SelfDisclosureSettingsSection', () => {
   it('shows nothing about any person, in particular no last export', async () => {
     renderSection()
 
-    await screen.findByRole('switch', { name: 'Selbstauskunft anbieten' })
+    await screen.findByRole('checkbox', { name: 'Selbstauskunft anbieten' })
     expect(screen.queryByText(/letzte[rn]? (Export|Download)/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/zuletzt/i)).not.toBeInTheDocument()
   })

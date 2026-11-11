@@ -2,24 +2,28 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import { notify } from '@/shared/stores/notificationStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import CreateButton from '@/shared/ui/CreateButton'
 import AreaTabs from '@/shared/ui/AreaTabs'
+import { SETUP_NAMES } from '@/shared/ui/setup/setupNames'
 import EmbeddingChangeSection from '../components/EmbeddingChangeSection'
 import EmbeddingInfoTable from '../components/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
 import ModelRoleSection from '../components/ModelRoleSection'
 import TextRecognitionSection from '../components/TextRecognitionSection'
-import { contentWidth } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import { contentWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription' | 'text-recognition'
 
@@ -27,14 +31,15 @@ function isLlmModelTab(value: string | undefined): value is LlmModelTab {
   return tabs.some((tab) => tab.value === value)
 }
 
-// „Chat-Modelle" instead of „Chat": the application's main area has that name too, and what is
-// meant here is not the conversation but the model that answers it.
+// The tabs carry the names of the assistant's steps (guidelines 5.17). „Chat-Modell" instead of
+// „Chat": the application's main area has that name too, and what is meant here is not the
+// conversation but the model that answers it.
 const tabs: Array<{ value: LlmModelTab; label: string }> = [
-  { value: 'chat', label: 'Chat-Modelle' },
-  { value: 'embedding', label: 'Einbettung' },
-  { value: 'rerank', label: 'Reranking' },
-  { value: 'transcription', label: 'Spracheingabe' },
-  { value: 'text-recognition', label: 'Texterkennung' },
+  { value: 'chat', label: SETUP_NAMES.chatModel },
+  { value: 'embedding', label: SETUP_NAMES.embeddingModel },
+  { value: 'rerank', label: SETUP_NAMES.rerankModel },
+  { value: 'transcription', label: SETUP_NAMES.transcriptionModel },
+  { value: 'text-recognition', label: SETUP_NAMES.textRecognitionModel },
 ]
 
 /**
@@ -61,49 +66,42 @@ function ChatModelsSection() {
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
-        }}
-      >
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-          {models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setForm({ open: true, model: null })}
-        >
-          Neues Modell
-        </Button>
-      </Box>
+      {!isLoading && !error && (
+        <AreaPageCount total={models.length} unit={['Chat-Modell', 'Chat-Modelle']} />
+      )}
+      <CreateButton onClick={() => setForm({ open: true, model: null })}>Neues Modell</CreateButton>
 
-      {error && (
+      {error && models.length > 0 && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
       {!isLoading && !error && !models.some((model) => model.active) && (
-        <Alert severity="warning" sx={{ mb: 2, maxWidth: '80ch' }}>
+        <Alert severity="warning" sx={{ mb: 2, maxWidth: readingWidth }}>
           Es ist noch kein Chat-Modell aktiv. Bis eines angelegt und aktiviert ist, beantwortet der
           Chat keine Fragen; die Personen sehen dort einen Hinweis.
         </Alert>
       )}
 
       {isLoading ? (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Modelle werden geladen …
-        </Typography>
+        <LoadingState />
+      ) : error && models.length === 0 ? (
+        <LoadError
+          message="Die Chat-Modelle konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadModels()}
+        />
       ) : models.length === 0 ? (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Es sind noch keine Modelle hinterlegt.
-        </Typography>
+        <EmptyState
+          framed
+          message="Noch keine Chat-Modelle."
+          action={
+            <CreateButton placement="empty" onClick={() => setForm({ open: true, model: null })}>
+              Neues Modell
+            </CreateButton>
+          }
+        />
       ) : (
         <ModelList models={models} onEdit={(model) => setForm({ open: true, model })} />
       )}
@@ -132,6 +130,7 @@ export const EMBEDDING_POLL_INTERVAL_MS = 5000
 
 function EmbeddingInfoSection() {
   const embeddingInfo = useLlmModelStore((s) => s.embeddingInfo)
+  const error = useLlmModelStore((s) => s.error)
   const loadEmbeddingInfo = useLlmModelStore((s) => s.loadEmbeddingInfo)
   const watching = Boolean(embeddingInfo?.index?.stale || embeddingInfo?.index?.running)
 
@@ -151,7 +150,9 @@ function EmbeddingInfoSection() {
          below it would be the same statement a second time. The area is named via the tab
          its panel points to. */}
       {embeddingInfo?.model !== null && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, maxWidth: readingWidth }}
+        >
           Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
           bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
           Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.
@@ -159,7 +160,7 @@ function EmbeddingInfoSection() {
       )}
       {embeddingInfo && !embeddingInfo.model ? (
         <>
-          <Alert severity="warning" sx={{ mb: 3, maxWidth: '80ch' }}>
+          <Alert severity="warning" sx={{ mb: 3, maxWidth: readingWidth }}>
             Es ist noch kein Embedding-Modell eingerichtet. Ohne es gibt es keinen Suchindex:
             Indexierung, Upload und Suche stehen erst bereit, wenn das erste Modell festgelegt ist.
           </Alert>
@@ -175,10 +176,14 @@ function EmbeddingInfoSection() {
             />
           </Box>
         </>
+      ) : error ? (
+        <LoadError
+          message="Die Einbettungskonfiguration konnte nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadEmbeddingInfo()}
+        />
       ) : (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Einbettungskonfiguration wird geladen …
-        </Typography>
+        <LoadingState shape="lines" count={4} />
       )}
     </>
   )
@@ -206,7 +211,7 @@ export default function LlmModelManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Modelle" gutterBottom />
         <Alert severity="info">
           Die Modellverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese Seite
@@ -218,7 +223,7 @@ export default function LlmModelManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={PsychologyOutlinedIcon}
           title="Modelle"

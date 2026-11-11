@@ -3,10 +3,15 @@ package io.opaa.health;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.llm.EmbeddingModelNotInstalledException;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelNotInstalledException;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.test.MutableClock;
+import java.time.Duration;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.health.contributor.Health;
@@ -16,11 +21,14 @@ class EmbeddingsHealthIndicatorTest {
 
   private final EmbeddingModelService models = mock(EmbeddingModelService.class);
 
+  private final MutableClock clock = new MutableClock(Instant.parse("2026-11-09T08:00:00Z"));
+
   @Test
   void reportsUpWhenEmbeddingSucceeds() {
     EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
     when(embeddingModel.embed(anyString())).thenReturn(new float[] {0.1f, 0.2f});
-    EmbeddingsHealthIndicator indicator = new EmbeddingsHealthIndicator(embeddingModel, models);
+    EmbeddingsHealthIndicator indicator =
+        new EmbeddingsHealthIndicator(embeddingModel, models, clock);
 
     Health health = indicator.health();
 
@@ -32,7 +40,8 @@ class EmbeddingsHealthIndicatorTest {
   void reportsDownWhenEmbeddingFails() {
     EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
     when(embeddingModel.embed(anyString())).thenThrow(new RuntimeException("Connection refused"));
-    EmbeddingsHealthIndicator indicator = new EmbeddingsHealthIndicator(embeddingModel, models);
+    EmbeddingsHealthIndicator indicator =
+        new EmbeddingsHealthIndicator(embeddingModel, models, clock);
 
     Health health = indicator.health();
 
@@ -45,7 +54,8 @@ class EmbeddingsHealthIndicatorTest {
     EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
     when(embeddingModel.embed(anyString()))
         .thenThrow(mock(EmbeddingModelNotInstalledException.class));
-    EmbeddingsHealthIndicator indicator = new EmbeddingsHealthIndicator(embeddingModel, models);
+    EmbeddingsHealthIndicator indicator =
+        new EmbeddingsHealthIndicator(embeddingModel, models, clock);
 
     Health health = indicator.health();
 
@@ -60,9 +70,29 @@ class EmbeddingsHealthIndicatorTest {
         .thenThrow(mock(EmbeddingModelNotInstalledException.class));
     when(models.chunksWithoutModel()).thenReturn(true);
 
-    Health health = new EmbeddingsHealthIndicator(embeddingModel, models).health();
+    Health health = new EmbeddingsHealthIndicator(embeddingModel, models, clock).health();
 
     assertThat(health.getStatus()).isEqualTo(Status.DOWN);
     assertThat(health.getDetails()).containsEntry("embeddingModel", "MISSING_WITH_CHUNKS");
+  }
+
+  @Test
+  void aCallWithinTheCacheTimeIsAnsweredFromTheLastProbe() {
+    EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+    when(embeddingModel.embed(anyString())).thenThrow(new RuntimeException("Connection refused"));
+    EmbeddingsHealthIndicator indicator =
+        new EmbeddingsHealthIndicator(embeddingModel, models, clock);
+
+    indicator.health();
+    clock.advance(CachedProbe.TIME_TO_LIVE.minusSeconds(1));
+    Health second = indicator.health();
+
+    assertThat(second.getStatus()).isEqualTo(Status.DOWN);
+    verify(embeddingModel, times(1)).embed(anyString());
+
+    clock.advance(Duration.ofSeconds(1));
+    indicator.health();
+
+    verify(embeddingModel, times(2)).embed(anyString());
   }
 }

@@ -5,6 +5,7 @@ import io.opaa.api.dto.InstallationChatModelView;
 import io.opaa.api.dto.InstallationEmbeddingModelView;
 import io.opaa.api.dto.InstallationFirstAdminView;
 import io.opaa.api.dto.InstallationMailView;
+import io.opaa.api.dto.InstallationMalwareScan;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationRerankModelView;
 import io.opaa.api.dto.InstallationSignIn;
@@ -12,7 +13,9 @@ import io.opaa.api.dto.InstallationSignInMode;
 import io.opaa.api.dto.InstallationStatusResponse;
 import io.opaa.api.dto.InstallationStep;
 import io.opaa.api.dto.InstallationStepState;
+import io.opaa.api.dto.InstallationTextRecognitionModelView;
 import io.opaa.api.dto.InstallationTranscriptionModelView;
+import io.opaa.api.dto.InstallationTranscriptionRealtimeView;
 import io.opaa.installation.InstallationOverview;
 import io.opaa.installation.StepInput;
 
@@ -66,10 +69,34 @@ final class InstallationResponseMapper {
       case InstallationOverview.RerankModel model ->
           response.setRerankModel(
               new InstallationRerankModelView(model.baseUrl(), model.model(), model.apiKeySet()));
-      case InstallationOverview.TranscriptionModel model ->
-          response.setTranscriptionModel(
-              new InstallationTranscriptionModelView(
-                  model.baseUrl(), model.model(), model.apiKeySet(), model.language()));
+      case InstallationOverview.TranscriptionModel model -> {
+        InstallationTranscriptionModelView view =
+            new InstallationTranscriptionModelView(
+                model.baseUrl(), model.model(), model.apiKeySet(), model.language());
+        if (model.realtime() != null) {
+          view.setRealtime(
+              new InstallationTranscriptionRealtimeView(
+                  model.realtime().protocol(),
+                  model.realtime().url(),
+                  model.realtime().model(),
+                  model.realtime().apiKeySet()));
+        }
+        response.setTranscriptionModel(view);
+      }
+      case InstallationOverview.TextRecognitionModel model -> {
+        InstallationTextRecognitionModelView view =
+            new InstallationTextRecognitionModelView(
+                model.connectionType(), model.baseUrl(), model.apiKeySet());
+        view.setModel(model.model());
+        response.setTextRecognitionModel(view);
+      }
+      case InstallationOverview.MalwareScan scan -> {
+        InstallationMalwareScan view = new InstallationMalwareScan(scan.host());
+        view.setPort(scan.port());
+        view.setTimeoutSeconds(scan.timeoutSeconds());
+        view.setOnUnavailable(scan.onUnavailable());
+        response.setMalwareScan(view);
+      }
       case InstallationOverview.Mail mail -> {
         InstallationMailView view =
             new InstallationMailView(

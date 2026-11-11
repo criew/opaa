@@ -261,21 +261,44 @@ export const fontFamily = {
   mono: "'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace",
 } as const
 
-/** Fixed pixel steps (guidelines 3.2). The app uses 11-30px; larger steps are brand moments. */
+/**
+ * The six type steps of the app (guidelines 3.2). Components name a step, never a pixel value;
+ * ESLint rejects a numeric `fontSize` under `features/` and `app/`.
+ */
 export const fontSize = {
-  xs2: 11,
-  xs: 12,
-  sm: 14,
-  base: 16,
-  md: 18,
-  lg: 20,
-  xl: 24,
-  xl2: 30,
-  xl3: 36,
-  xl4: 48,
-  xl5: 64,
-  xl6: 80,
-  xl7: 104,
+  /** Uppercase section labels, table heads, overlines. */
+  label: 11,
+  /** Badges and chips, secondary facts next to a value (dates, counts), hints under a field. */
+  meta: 12,
+  /** Running text, field values, buttons, menu entries. */
+  text: 14,
+  /** Title of an area page, dialog or side panel; section heads. */
+  title: 16,
+  /** Title of a detail page. */
+  detailTitle: 20,
+  /** Step title in a wizard and other single-purpose pages. */
+  wizardTitle: 24,
+} as const
+
+/**
+ * Icon sizes in px (MUI sizes icons through `fontSize`). An icon next to text takes the size of
+ * the text step it accompanies or one step up.
+ */
+export const iconSize = {
+  xs: 14,
+  sm: 16,
+  md: 20,
+  lg: 24,
+  xl: 48,
+} as const
+
+/**
+ * Heights of buttons and single-line fields (guidelines 5.1, 5.2): `regular` everywhere,
+ * `compact` only in table rows, section heads, filter rows and toolbars.
+ */
+export const controlHeight = {
+  regular: 36,
+  compact: 32,
 } as const
 
 /** Inter weights (guidelines 3.3). Nothing above 700. */
@@ -307,19 +330,37 @@ export const letterSpacing = {
 export const spacingGridPx = 4
 
 /**
- * Widths of the area pages. The pages behind an area navigation form a
- * set: if the content of one runs to the window edge and that of the other only to 960 px, the
- * right edge jumps when switching between two menu items. That is why the width is here and not
- * in every page.
- *
- * `areaContent` is the width of the account list, the widest of these pages - it carries seven
- * columns and thus sets the measure. `notice` is the narrower area of the pages that show only a
- * hint instead of content (no access): a sentence at reading width, not stretched across half the
- * window width.
+ * The three content widths in px (guidelines 4.6). A page takes the width of its kind, so the
+ * right edge stays put between two pages of the same kind: `form` for forms, wizards and pages
+ * that carry only running text (a refusal, a hint), `detail` for detail pages, `list` for area
+ * pages with a table. No theme writes a width as a number.
  */
 export const contentWidth = {
-  areaContent: 1180,
-  notice: 720,
+  form: 720,
+  detail: 880,
+  list: 1180,
+} as const
+
+/** Longest line of an explaining text (guidelines 4.6), also above a wide table. */
+export const readingWidth = '72ch'
+
+/**
+ * Widths in px of a single control or small block that must not stretch across its container: a
+ * field with a short value, a search field, a narrow form group.
+ */
+export const fieldWidth = {
+  short: 240,
+  medium: 360,
+  long: 480,
+} as const
+
+/**
+ * Widths of forms (guidelines 5.2): a settings form is one column of `column` px, a field holding
+ * only a number is `number` px wide.
+ */
+export const formWidth = {
+  column: 640,
+  number: 160,
 } as const
 
 /** Radii (guidelines 4.2). `md` is the 10px default for cards, inputs, buttons, dialogs. */
@@ -333,13 +374,13 @@ export const radius = {
 } as const
 
 /**
- * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius, 12 px and
+ * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius, the meta step (12 px) and
  * weight 500, the same as the theme's `MuiChip`, so a badge never reads square, small or bold
  * beside a chip.
  */
 export const badgeShape = {
   borderRadius: `${radius.pill}px`,
-  fontSize: fontSize.xs,
+  fontSize: fontSize.meta,
   fontWeight: fontWeight.medium,
 } as const
 

@@ -6,6 +6,7 @@ import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
@@ -62,8 +63,8 @@ class InstanceDisclosureAssemblerTest {
   void namesExactlyTheSettingsThatDeviateFromTheirDefault() {
     MockEnvironment environment =
         new MockEnvironment()
-            .withProperty("opaa.malware-scan.enabled", "true")
-            .withProperty("opaa.malware-scan.host", defaultOf("opaa.malware-scan.host"))
+            .withProperty("opaa.siem-export.enabled", "true")
+            .withProperty("opaa.siem-export.host", defaultOf("opaa.siem-export.host"))
             .withProperty("opaa.demo.chat-import.enabled", "FALSE");
     InstanceStateSource audit =
         new InstanceStateSource() {
@@ -81,7 +82,7 @@ class InstanceDisclosureAssemblerTest {
     assertThat(disclosure.deviations())
         .extracting(SettingValue::key)
         .containsExactlyInAnyOrder(
-            "opaa.malware-scan.enabled", "audit_retention_settings.retention_months");
+            "opaa.siem-export.enabled", "audit_retention_settings.retention_months");
     SettingValue retention = setting(disclosure, "audit_retention_settings.retention_months");
     assertThat(retention.source()).isEqualTo(SettingSource.DATABASE);
     assertThat(retention.defaultValue()).isEqualTo("36");
@@ -97,7 +98,7 @@ class InstanceDisclosureAssemblerTest {
         new InstanceStateSource() {
           @Override
           public Set<String> settingsDifferingBetweenInstances() {
-            return Set.of("opaa.malware-scan.enabled");
+            return Set.of("opaa.siem-export.enabled");
           }
 
           @Override
@@ -109,11 +110,11 @@ class InstanceDisclosureAssemblerTest {
         };
     MockEnvironment podA =
         new MockEnvironment()
-            .withProperty("opaa.malware-scan.enabled", "true")
+            .withProperty("opaa.siem-export.enabled", "true")
             .withProperty("opaa.features.speech-input.enabled", "true");
     MockEnvironment podB =
         new MockEnvironment()
-            .withProperty("opaa.malware-scan.enabled", "false")
+            .withProperty("opaa.siem-export.enabled", "false")
             .withProperty("opaa.features.speech-input.enabled", "true");
 
     InstanceDisclosure fromA =
@@ -123,7 +124,7 @@ class InstanceDisclosureAssemblerTest {
 
     assertThat(fromA.settings()).isEqualTo(fromB.settings());
     assertThat(fromA.instances()).isEqualTo(fromB.instances());
-    SettingValue differing = setting(fromA, "opaa.malware-scan.enabled");
+    SettingValue differing = setting(fromA, "opaa.siem-export.enabled");
     assertThat(differing.sameOnAllInstances()).isFalse();
     assertThat(differing.effectiveValue()).isNull();
     assertThat(setting(fromA, "opaa.features.speech-input.enabled").effectiveValue())
@@ -141,8 +142,8 @@ class InstanceDisclosureAssemblerTest {
     SettingValue retention = setting(disclosure, "audit_retention_settings.retention_months");
     assertThat(retention.effectiveValue()).isNull();
     assertThat(retention.deviates()).isFalse();
-    SettingValue malwareScan = setting(disclosure, "opaa.malware-scan.enabled");
-    assertThat(malwareScan.effectiveValue()).isNull();
+    SettingValue siemExport = setting(disclosure, "opaa.siem-export.enabled");
+    assertThat(siemExport.effectiveValue()).isNull();
     assertThat(disclosure.deviations()).isEmpty();
   }
 
@@ -306,6 +307,29 @@ class InstanceDisclosureAssemblerTest {
     assertThat(withCommit.commit()).isEqualTo("abc123");
     assertThat(withCommit.generatedAt()).isEqualTo(NOW);
     assertThat(withoutCommit.commit()).isEqualTo(InstanceDisclosureAssembler.UNKNOWN_COMMIT);
+  }
+
+  @Test
+  void collectsTheDescribedDataSetsOfEveryModuleById() {
+    InstanceStateSource later = describing("b-log");
+    InstanceStateSource earlier = describing("a-log");
+
+    InstanceDisclosure disclosure =
+        assembler(new MockEnvironment(), List.of(later, earlier))
+            .assemble(MANIFEST, PROTOCOL, ORGANIZATION);
+
+    assertThat(disclosure.dataSets())
+        .extracting(DataSetDescription::id)
+        .containsExactly("a-log", "b-log");
+  }
+
+  private static InstanceStateSource describing(String id) {
+    return new InstanceStateSource() {
+      @Override
+      public List<DataSetDescription> dataSetDescriptions() {
+        return List.of(new DataSetDescription(id, id, "Zweck", List.of(), List.of(), List.of()));
+      }
+    };
   }
 
   private static InstanceDisclosureAssembler assembler(

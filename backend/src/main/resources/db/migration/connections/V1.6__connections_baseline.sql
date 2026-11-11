@@ -241,6 +241,7 @@ CREATE TABLE connector_type_policies (
     updated_at timestamp with time zone NOT NULL,
     profile_required_at timestamp with time zone,
     own_address_stock character varying(16),
+    version bigint DEFAULT 0 NOT NULL,
     CONSTRAINT chk_connector_type_policies_own_address_stock CHECK ((own_address_stock IN ('RUNS', 'LOCKED'))),
     CONSTRAINT chk_connector_type_policies_profile_requirement CHECK (((profile_required_at IS NULL) = (own_address_stock IS NULL)))
 );
@@ -443,3 +444,18 @@ DO $$
 BEGIN
   EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
 END $$;
+
+-- The thresholds and periods of the connections as the system administration set them, one row per
+-- setting; without a row the factory default in ConnectionLifecycleSetting applies. The bounds of
+-- each setting are checked here as well, so no SQL stretches them.
+CREATE TABLE connection_lifecycle_settings (
+    setting character varying(40) NOT NULL,
+    setting_value integer NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT connection_lifecycle_settings_pkey PRIMARY KEY (setting),
+    CONSTRAINT chk_connection_lifecycle_settings_bounds CHECK ((
+        (setting <> 'INACTIVITY_THRESHOLD_DAYS' OR (setting_value >= 30 AND setting_value <= 365))
+        AND (setting <> 'PRIVATE_LIBRARY_DELETION_DAYS' OR (setting_value >= 1 AND setting_value <= 90))
+        AND (setting <> 'EXPIRED_CONNECTION_WARNING_THRESHOLD' OR (setting_value >= 1 AND setting_value <= 1000))
+    ))
+);

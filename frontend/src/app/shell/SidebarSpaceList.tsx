@@ -1,6 +1,5 @@
 import { useId, useMemo } from 'react'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -17,8 +16,9 @@ import { spaceSettingsRoute } from '@/shared/routes'
 import type { SpaceListResponse } from '@/shared/api/types'
 import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
 import { useSectionCollapsed } from '@/shared/stores/uiStore'
-import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import { darkRoles, fontSize, iconSize, lightRoles } from '@/shared/theme/tokens'
 import { SPACE_SEARCH_HANDOVER, spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** How many spaces the column shows as rows; the rest are behind the search button. */
 export const SPACE_ROW_COUNT = 5
@@ -100,7 +100,7 @@ export default function SidebarSpaceList({
                   color: inSettings ? 'primary.main' : 'text.secondary',
                 }}
               >
-                <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
+                <SettingsOutlinedIcon sx={{ fontSize: iconSize.sm }} />
               </IconButton>
             </Tooltip>
           )
@@ -141,7 +141,7 @@ export default function SidebarSpaceList({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 11,
+              fontSize: fontSize.label,
               fontWeight: 600,
               color: active ? 'primary.main' : 'text.secondary',
             }}
@@ -161,7 +161,7 @@ export default function SidebarSpaceList({
           {space.archived && (
             <Typography
               component="span"
-              sx={{ fontSize: 11, color: 'text.secondary', flexShrink: 0 }}
+              sx={{ fontSize: fontSize.label, color: 'text.secondary', flexShrink: 0 }}
             >
               archiviert
             </Typography>
@@ -190,7 +190,7 @@ export default function SidebarSpaceList({
                 aria-label="Neuer Space"
                 sx={{ p: 0.5, borderRadius: '4px' }}
               >
-                <AddIcon sx={{ fontSize: 16 }} />
+                <AddIcon sx={{ fontSize: iconSize.sm }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Alle Spaces anzeigen und durchsuchen">
@@ -202,7 +202,7 @@ export default function SidebarSpaceList({
                 aria-label="Alle Spaces anzeigen und durchsuchen"
                 sx={{ p: 0.5, borderRadius: '4px' }}
               >
-                <SearchIcon sx={{ fontSize: 16 }} />
+                <SearchIcon sx={{ fontSize: iconSize.sm }} />
               </IconButton>
             </Tooltip>
           </>
@@ -210,9 +210,7 @@ export default function SidebarSpaceList({
       />
       <Box id={regionId} hidden={collapsed}>
         {isLoading && spaces.length === 0 ? (
-          <Box sx={{ py: 1, display: 'flex', justifyContent: 'center' }}>
-            <CircularProgress size={18} aria-label="Spaces werden geladen" />
-          </Box>
+          <LoadingState shape="lines" count={3} />
         ) : (
           !collapsed &&
           rows.length > 0 && (

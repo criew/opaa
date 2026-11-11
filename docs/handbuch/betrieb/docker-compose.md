@@ -79,7 +79,7 @@ leere Datenbank im Installationsmodus ([Installation im Compose-Stapel](#install
 | Service     | Host-Port | Container-Port | Beschreibung                                          |
 |-------------|-----------|-----------------|--------------------------------------------------------|
 | frontend    | 3000      | 8080            | React-App über nginx bereitgestellt                    |
-| backend     | 8081      | 8080            | Spring Boot API                                         |
+| backend     | 8081, 8082 (Management-Port) | 8080, 8081 | Spring Boot API; Probes, Health und Metriken auf dem Management-Port, beide an `127.0.0.1` gebunden |
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
 | ollama      | —         | 11434           | Ollama-Server (nur `ollama`-Profil; kein Host-Port) |
@@ -197,11 +197,17 @@ des Stapels braucht `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, 
 `.env.docker.example` setzt ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)),
 nicht in der Liste der Quellen.
 Das Passwort steht nie in der JSON-Datei, sondern nur in der
-Datei, auf die `passwordFile` zeigt; Zugangsschlüssel der Modelle ebenso über `apiKeyFile`. Das
+Datei, auf die `passwordFile` zeigt; API-Schlüssel der Modelle ebenso über `apiKeyFile`. Das
 erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange `requirePasswordChange`
 nicht `false` ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
 `docker compose logs backend | grep "answer file"` nennt Schritt und Grund.
+
+`installation/installation.live-transcription.example.json` zeigt dieselbe Datei mit
+Spracheingabe: das Diktat über speaches, das Live-Transkript über einen eigenen vLLM-Server mit
+Voxtral Realtime ([Live-Transkript](modell-endpunkte.md#live-transkript)). Beide Dienste bringt der
+Stapel nicht mit; Hosts und Modelle sind anzupassen, und beide Hosts gehören in
+`OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, sonst scheitert die Prüfung des Schritts.
 
 **Mit dem gebündelten Keycloak** (Profil `oidc`) bekommt die Antwortdatei das Anmeldeverfahren
 `LOCAL_AND_OIDC`. Der Browser erreicht den Issuer unter `localhost`, das Backend die Schlüssel unter
@@ -359,7 +365,8 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
   `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` auf. Die Liste kommt dann aus Shell oder `.env` (ohne
   Eintrag dort `ollama:11434`) und ersetzt den Wert aus `.env.docker`; wer dort weitere Modellserver
   eingetragen hat, setzt die Liste in `.env`.
-- **Einrichtung:** Unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
+- **Einrichtung:** Im Schritt „Texterkennung“ des [Einrichtungs-Assistenten](installation.md#einrichtungs-assistent-im-browser)
+  oder später unter Modelle → Texterkennung Verbindungstyp docling-serve, Adresse
   `http://opaa-ocr:5001` und denselben Schlüssel eintragen
   ([Texterkennung einschalten](modell-endpunkte.md#texterkennung-einschalten)).
 - **Grenzen:** Health Check auf die Readiness des Dienstes, Read-only Filesystem mit `/tmp` im
@@ -369,6 +376,15 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
 - **Mehrere Instanzen:** Das Overlay hängt nur `backend` an das Netz des Dienstes. Mit
   `docker-compose.multi.yml` gehören `backend-a` und `backend-b` in einer eigenen Override-Datei
   ebenfalls in die Netze `default` und `ocr`, mit denselben beiden Variablen.
+
+## Monitoring im Compose-Stapel
+
+Das Overlay `docker-compose.monitoring.yml` startet Prometheus mit den Alarmen und Grafana mit den
+Dashboards auf einem eigenen Port an `127.0.0.1`, für eine eigene Subdomain hinter dem
+Reverse-Proxy, nie unter dem Hostnamen von OPAA, auch nicht mit anderem Port. Das Admin-Passwort `OPAA_GRAFANA_ADMIN_PASSWORD` ist
+Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell oder `.env`. Einrichtung und
+Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
+[Dashboards und Alarme](dashboards-und-alarme.md#compose).
 
 ## Mehrere Backend-Instanzen
 
@@ -607,14 +623,16 @@ selbst:
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)) |
 
 Die mitgelieferten Vorlagen (`.env.docker.example`, `.env.example` und jede `docker-compose*.yml`
-des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
+des Repositorys) halten vier Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
 durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
 gehören nicht dazu.
 
-- **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend` und
-  `keycloak` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` öffnen,
-  beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt
-  nicht vor. Der Texterkennungsdienst veröffentlicht gar keinen Port, auch nicht an Loopback.
+- **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend`,
+  `keycloak` und `grafana` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS`,
+  `OPAA_KEYCLOAK_BIND_ADDRESS` bzw. `OPAA_GRAFANA_BIND_ADDRESS` öffnen, alle mit Loopback als
+  Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt nicht vor. Der
+  Texterkennungsdienst und der Prometheus des Monitorings veröffentlichen gar keinen Port, auch
+  nicht an Loopback.
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.
@@ -622,6 +640,11 @@ gehören nicht dazu.
   bleiben in den Vorlagen leer. Fest vorgegeben sind nur die Zugangsdaten der Entwicklungsdienste
   (Datenbank, Keycloak-Administrator, Objektspeicher) und eines Testdienstes; jede davon ist in der
   Prüfung einzeln begründet.
+- **Gehärtete Dienste bleiben gehärtet.** `frontend`, der Texterkennungsdienst, der Prometheus des
+  Monitorings und der Sandbox-Dienst laufen mit Read-only Filesystem, ohne Capabilities
+  (`cap_drop: [ALL]`) und mit `no-new-privileges`. Die Prüfung schlägt fehl, wenn eine der drei
+  Angaben fehlt oder der Dienst sie wieder aufweicht: `privileged: true`, `cap_add`, ein Profil
+  `seccomp:unconfined` oder `apparmor:unconfined`, `pid`, `ipc` oder `network_mode` auf `host`.
 
 Eigene Dateien wie `.env.docker` oder eine `docker-compose.override.yml` prüft sie nicht.
 
@@ -772,17 +795,19 @@ unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jeman
 ### Neu aufsetzen statt aktualisieren
 
 Fassen die Notizen eines Release die Schemahistorie zu einer neuen Baseline zusammen, lässt sich eine
-ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. So ist es beim Wechsel der
-Migrationsbibliothek von Liquibase zu Flyway (Oktober 2026): Die Historie beginnt dort neu mit einer
-Baseline je Modul, und eine Datenbank, die noch Liquibase migriert hat, startet nicht. Ob eine
-Installation betroffen ist, zeigt vor dem Update:
+ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. Eine solche Datenbank erkennt man
+so:
 
-```bash
-docker compose exec postgres psql -U opaa -d opaa -tAc \
-  "SELECT to_regclass('flyway_schema_history') IS NOT NULL"
-```
+- Der Start bricht mit „Validate failed: Migrations have failed validation“ und
+  „Migration checksum mismatch for migration version …“ ab, etwa für Version 1.1.
+- Die Datenbank wurde noch mit Liquibase migriert. Dann liefert diese Abfrage `f`:
 
-`t` heißt: nicht betroffen. `f` heißt: neu aufsetzen. Neu aufsetzen:
+  ```bash
+  docker compose exec postgres psql -U opaa -d opaa -tAc \
+    "SELECT to_regclass('flyway_schema_history') IS NOT NULL"
+  ```
+
+Neu aufsetzen:
 
 1. **Was in der Datenbank liegt, geht verloren** — Konten, Anbieter, Gruppen, Bibliotheken samt
    Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands

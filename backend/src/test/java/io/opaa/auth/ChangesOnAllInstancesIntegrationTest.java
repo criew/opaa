@@ -3,10 +3,12 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SystemRole;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.instance.PostgresInvalidationBus;
+import io.opaa.observability.AuthMetrics;
 import io.opaa.permission.GroupMembershipChangeListener;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupMembershipSource;
@@ -93,7 +95,8 @@ class ChangesOnAllInstancesIntegrationTest {
                 },
             new OidcAddressPolicy(TargetAddressValidator.disabled()),
             clock,
-            busOfB);
+            busOfB,
+            new AuthMetrics(new SimpleMeterRegistry()));
     membershipOfB =
         new GroupMembershipResolver(
             membershipSource,

@@ -3,9 +3,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import SecretField from './SecretField'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
+import SecretField from '@/shared/ui/form/SecretField'
 import SetupTextField from './SetupTextField'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 interface Part {
   id: string
@@ -38,9 +39,11 @@ export default function CredentialFields({ account, secret, stored }: Credential
   if (stored && !replacing && !entered) {
     return (
       <Box>
-        <FieldLabel id={`${secret.id}-label`}>Zugangsdaten</FieldLabel>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}>
-          <Typography sx={{ fontSize: 13.5 }}>gesetzt</Typography>
+        <FormFieldLabel id={`${secret.id}-label`}>Zugangsdaten</FormFieldLabel>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: controlHeight.regular }}
+        >
+          <Typography sx={{ fontSize: fontSize.text }}>gesetzt</Typography>
           <Button
             size="small"
             variant="outlined"
@@ -57,7 +60,9 @@ export default function CredentialFields({ account, secret, stored }: Credential
           </Button>
         </Box>
         {error && (
-          <Typography sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>{error}</Typography>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'error.main', mt: 0.5 }}>
+            {error}
+          </Typography>
         )}
       </Box>
     )

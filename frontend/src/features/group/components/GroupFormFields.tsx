@@ -1,10 +1,10 @@
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
+import { fontSize } from '@/shared/theme/tokens'
 
 const RELEASE_HELP = 'Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar.'
 
@@ -32,6 +32,8 @@ interface GroupFormFieldsProps {
   /** Name and description exist only for an internal group; a provider group has the switch only. */
   isInternal?: boolean
   autoFocusName?: boolean
+  /** Shown at the name field, e.g. when „Anlegen“ found it empty. */
+  nameError?: string
 }
 
 /**
@@ -46,6 +48,7 @@ export default function GroupFormFields({
   canProtect,
   isInternal = true,
   autoFocusName = false,
+  nameError,
 }: GroupFormFieldsProps) {
   const set = (patch: Partial<GroupFormValues>) => onChange({ ...values, ...patch })
 
@@ -54,8 +57,8 @@ export default function GroupFormFields({
       {isInternal && (
         <>
           <Box>
-            <FieldLabel htmlFor={`${idPrefix}-name`}>Name der Gruppe</FieldLabel>
-            <TextField
+            <FormField
+              label="Name der Gruppe"
               // Focus moves to the first field of a dialog the user just opened (WAI-ARIA APG
               // dialog pattern).
               // eslint-disable-next-line jsx-a11y-x/no-autofocus
@@ -65,17 +68,19 @@ export default function GroupFormFields({
               size="small"
               value={values.name}
               onChange={(e) => set({ name: e.target.value })}
+              error={Boolean(nameError)}
+              helperText={nameError}
               slotProps={{ htmlInput: { maxLength: 255 } }}
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`${idPrefix}-description`}>Beschreibung (optional)</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
+              optional
               id={`${idPrefix}-description`}
               fullWidth
               size="small"
               multiline
-              minRows={2}
               value={values.description}
               onChange={(e) => set({ description: e.target.value })}
               slotProps={{ htmlInput: { maxLength: 2000 } }}
@@ -84,7 +89,7 @@ export default function GroupFormFields({
           <Box>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   checked={values.released}
                   onChange={(e) => set({ released: e.target.checked })}
                   slotProps={{ input: { 'aria-describedby': `${idPrefix}-release-help` } }}
@@ -94,7 +99,7 @@ export default function GroupFormFields({
             />
             <Typography
               id={`${idPrefix}-release-help`}
-              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
             >
               {RELEASE_HELP}
             </Typography>
@@ -105,7 +110,7 @@ export default function GroupFormFields({
         <Box>
           <FormControlLabel
             control={
-              <Switch
+              <Checkbox
                 checked={values.protectedGroup}
                 onChange={(e) => set({ protectedGroup: e.target.checked })}
                 slotProps={{ input: { 'aria-describedby': `${idPrefix}-protection-help` } }}
@@ -115,7 +120,7 @@ export default function GroupFormFields({
           />
           <Typography
             id={`${idPrefix}-protection-help`}
-            sx={{ fontSize: 12.5, color: 'text.secondary' }}
+            sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
           >
             {PROTECTION_HELP}
           </Typography>

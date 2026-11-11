@@ -1,8 +1,10 @@
 package io.opaa.installation;
 
 import io.opaa.llm.ModelAddressPolicy;
+import io.opaa.llm.transcription.RealtimeTranscriptionEndpoint;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsSnapshot;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +34,9 @@ class StoredTargetWarmup {
           + " UNION SELECT base_url FROM transcription_model"
           + " UNION SELECT base_url FROM text_recognition_model";
 
+  private static final String STORED_LIVE_ENDPOINTS =
+      "SELECT realtime_url FROM transcription_model WHERE realtime_url IS NOT NULL";
+
   private final JdbcTemplate jdbc;
   private final ModelAddressPolicy modelAddresses;
   private final MailSettingsService mailSettings;
@@ -54,23 +59,39 @@ class StoredTargetWarmup {
     Thread.ofVirtual().name("stored-target-warmup").start(this::warmUp);
   }
 
+  /**
+   * Checks the stored targets; a failure is logged by its type alone, since the message of a
+   * database error can carry connection details.
+   */
   void warmUp() {
     try {
       warmUpModels();
     } catch (RuntimeException e) {
-      log.warn("Stored model endpoints could not be checked at start: {}", e.toString());
+      log.warn("Stored model endpoints could not be checked at start: {}", e.getClass().getName());
     }
     try {
       warmUpMail();
     } catch (RuntimeException e) {
-      log.warn("The stored mail server could not be checked at start: {}", e.toString());
+      log.warn("The stored mail server could not be checked at start: {}", e.getClass().getName());
     }
   }
 
+  /**
+   * The stored base URLs of every model role and the live address of speech input as its {@code
+   * http}/{@code https} equivalent, which the address check reads; {@code null} where unset.
+   */
+  List<String> storedModelEndpoints() {
+    List<String> endpoints =
+        new ArrayList<>(jdbc.queryForList(STORED_MODEL_ENDPOINTS, String.class));
+    jdbc.queryForList(STORED_LIVE_ENDPOINTS, String.class).stream()
+        .map(RealtimeTranscriptionEndpoint::httpEquivalent)
+        .forEach(endpoints::add);
+    return endpoints;
+  }
+
   private void warmUpModels() {
-    List<String> endpoints = jdbc.queryForList(STORED_MODEL_ENDPOINTS, String.class);
     long refused =
-        endpoints.stream()
+        storedModelEndpoints().stream()
             .filter(url -> url != null && !url.isBlank())
             .filter(url -> modelAddresses.blockedReason(url) != null)
             .count();

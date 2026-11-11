@@ -10,12 +10,13 @@ import io.opaa.common.Feature;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
-import io.opaa.llm.PersonalTranscriptionVocabularyService;
-import io.opaa.llm.TranscriptionAudioFormat;
-import io.opaa.llm.TranscriptionClient.TranscriptionUnavailableException;
-import io.opaa.llm.TranscriptionModelRole;
-import io.opaa.llm.TranscriptionModelRole.TranscriptionRoleBusyException;
-import io.opaa.llm.TranscriptionModelRole.TranscriptionRoleUnusableException;
+import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole;
+import io.opaa.llm.transcription.TranscriptionAudioFormat;
+import io.opaa.llm.transcription.TranscriptionClient.TranscriptionUnavailableException;
+import io.opaa.llm.transcription.TranscriptionModelRole;
+import io.opaa.llm.transcription.TranscriptionModelRole.TranscriptionRoleBusyException;
+import io.opaa.llm.transcription.TranscriptionModelRole.TranscriptionRoleUnusableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
  * #readBounded} into one array, which the client sends without copying and which is overwritten
  * once the call ends. No answer, no exception and no log line carries audio or recognised text, and
  * no person is named to the endpoint; the installation's and the caller's vocabulary lists go along
- * as prompt ({@link io.opaa.llm.TranscriptionVocabulary#prompt}). At most {@code
+ * as prompt ({@link io.opaa.llm.transcription.TranscriptionVocabulary#prompt}). At most {@code
  * opaa.transcription.max-concurrent} recordings are held at once on this instance (ADR-0053).
  */
 @RestController
@@ -53,17 +54,22 @@ public class TranscriptionController {
           + " Frage.";
 
   private final TranscriptionModelRole role;
+  private final RealtimeTranscriptionRole realtime;
   private final PersonalTranscriptionVocabularyService vocabularies;
 
   public TranscriptionController(
-      TranscriptionModelRole role, PersonalTranscriptionVocabularyService vocabularies) {
+      TranscriptionModelRole role,
+      RealtimeTranscriptionRole realtime,
+      PersonalTranscriptionVocabularyService vocabularies) {
     this.role = role;
+    this.realtime = realtime;
     this.vocabularies = vocabularies;
   }
 
   @GetMapping("/availability")
   public TranscriptionAvailabilityResponse getTranscriptionAvailability() {
-    return new TranscriptionAvailabilityResponse(role.usable(), false);
+    boolean usable = role.usable();
+    return new TranscriptionAvailabilityResponse(usable, usable && realtime.available());
   }
 
   @PostMapping(consumes = "audio/*")

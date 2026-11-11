@@ -2,9 +2,11 @@ package io.opaa.chat;
 
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.PromptText;
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.ChatMetrics;
+import io.opaa.observability.ModelCallPurpose;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -107,7 +109,12 @@ public class ChatNoteExtractionService {
     }
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
-        chatClient.prompt().user(ChatNoteExtraction.prompt(userMessage)).call().chatResponse();
+        chatClient
+            .prompt()
+            .user(ChatNoteExtraction.prompt(PromptText.withoutInvisible(userMessage)))
+            .call()
+            .chatResponse();
+    activeChatModelResolver.recordUsage(ModelCallPurpose.NOTE, chatClient, response);
     if (response == null
         || response.getResult() == null
         || response.getResult().getOutput() == null) {

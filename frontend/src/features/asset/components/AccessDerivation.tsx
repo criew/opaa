@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -12,7 +11,11 @@ import type {
 import { getAssetAccessDerivation } from '../api/assetApi'
 import { accessBasisLabel } from './assetLabels'
 import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetThisAccusative, assetThisGenitive } from '../../../shared/assetTypes'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 type AssetTarget = { kind: 'asset'; assetType: AssetType; assetId: string }
 type SpaceTarget = { kind: 'space'; spaceId: string; userId?: string }
@@ -89,14 +92,14 @@ function pathRoleLabel(path: AccessPathResponse): string | null {
 }
 
 function sinceTitle(path: AccessPathResponse): string | undefined {
-  return path.since ? `Seit ${new Date(path.since).toLocaleDateString('de-DE')}` : undefined
+  return path.since ? `Seit ${formatDate(path.since)}` : undefined
 }
 
-const assetRolePhrases: Record<AssetRole, (noun: string) => [string, string]> = {
-  VIEWER: (noun) => ['darf', `diese ${noun} lesen`],
-  EDITOR: (noun) => ['darf', `diese ${noun} bearbeiten`],
-  MANAGER: (noun) => ['darf', `diese ${noun} verwalten`],
-  OWNER: (noun) => ['ist', `Eigentümer dieser ${noun}`],
+const assetRolePhrases: Record<AssetRole, (type: string) => [string, string]> = {
+  VIEWER: (type) => ['darf', `${assetThisAccusative(type)} lesen`],
+  EDITOR: (type) => ['darf', `${assetThisAccusative(type)} bearbeiten`],
+  MANAGER: (type) => ['darf', `${assetThisAccusative(type)} verwalten`],
+  OWNER: (type) => ['ist', `Eigentümer ${assetThisGenitive(type)}`],
 }
 
 const pluralVerbs: Record<string, string> = { darf: 'dürfen', ist: 'sind', hat: 'haben' }
@@ -112,9 +115,9 @@ function headline(
       ? role
         ? ['ist', `${spaceRoleLabel(role)} in diesem Space`]
         : ['hat', 'Zugriff auf diesen Space']
-      : (assetRolePhrases[role as AssetRole]?.(assetTypeLabel(target.assetType)) ?? [
+      : (assetRolePhrases[role as AssetRole]?.(target.assetType) ?? [
           'hat',
-          `Zugriff auf diese ${assetTypeLabel(target.assetType)}`,
+          `Zugriff auf ${assetThisAccusative(target.assetType)}`,
         ])
   return subjectName ? `${subjectName} ${verb} ${rest}` : `Sie ${pluralVerbs[verb]} ${rest}`
 }
@@ -137,7 +140,7 @@ function administrationSentence(
 ): string {
   const subject = subjectName ? `${subjectName} verwaltet` : 'Sie verwalten'
   const also = besideOtherWays ? ' zudem' : ''
-  return `${subject} diese ${assetTypeLabel(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
+  return `${subject} ${assetThisAccusative(assetType)}${also} über die Systemverwaltung (ohne Leserecht am Inhalt).`
 }
 
 /**
@@ -152,6 +155,9 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     target.kind === 'asset'
       ? `asset:${target.assetType}:${target.assetId}`
       : `space:${target.spaceId}:${target.userId ?? 'self'}`
+  // A retry after a failed load asks again for the same object under a new key.
+  const [attempt, setAttempt] = useState(0)
+  const requestKey = `${key}#${attempt}`
   // One state instead of four: as long as the response does not belong to the requested object, the
   // view is still loading - so the loading state needs no setState in the effect body.
   const [answer, setAnswer] = useState<{
@@ -166,12 +172,12 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     let active = true
     void loadDerivation(props)
       .then((response) => {
-        if (active) setAnswer({ key, ...response, error: null })
+        if (active) setAnswer({ key: requestKey, ...response, error: null })
       })
       .catch((err) => {
         if (!active) return
         setAnswer({
-          key,
+          key: requestKey,
           paths: [],
           role: null,
           withheld: false,
@@ -184,13 +190,19 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     // The key condenses the requested object; the object literal itself changes its identity
     // on every render and would otherwise trigger an endless loop of requests.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }, [requestKey])
 
-  if (answer?.key !== key) {
-    return <Typography sx={{ color: 'text.secondary' }}>Herleitung wird geladen …</Typography>
+  if (answer?.key !== requestKey) {
+    return <LoadingState shape="lines" count={2} />
   }
   if (answer.error) {
-    return <Alert severity="error">{answer.error}</Alert>
+    return (
+      <LoadError
+        message="Die Herleitung konnte nicht geladen werden."
+        detail={answer.error}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
+    )
   }
 
   const { withheld } = answer
@@ -205,7 +217,7 @@ export default function AccessDerivation(props: AccessDerivationProps) {
   const role = administration ? highestAssetRole(paths) : answer.role
   const administrationLine =
     administration && target.kind === 'asset' ? (
-      <Typography sx={{ fontSize: 13.5 }}>
+      <Typography sx={{ fontSize: fontSize.text }}>
         {administrationSentence(target.assetType, subjectName, paths.length > 0 || withheld)}
       </Typography>
     ) : null
@@ -223,7 +235,7 @@ export default function AccessDerivation(props: AccessDerivationProps) {
   if (wayCount === 1 && paths.length === 1) {
     return (
       <Stack spacing={0.25}>
-        <Typography sx={{ fontSize: 13.5 }} title={sinceTitle(paths[0])}>
+        <Typography sx={{ fontSize: fontSize.text }} title={sinceTitle(paths[0])}>
           {`${first} – ${originOf(paths[0])}.`}
         </Typography>
         {administrationLine}
@@ -233,7 +245,7 @@ export default function AccessDerivation(props: AccessDerivationProps) {
 
   return (
     <Stack spacing={0.25}>
-      <Typography sx={{ fontSize: 13.5 }}>{`${first}.`}</Typography>
+      <Typography sx={{ fontSize: fontSize.text }}>{`${first}.`}</Typography>
       {paths.map((path, index) => {
         const pathRole = pathRoleLabel(path)
         const origin = capitalized(originOf(path))
@@ -241,18 +253,20 @@ export default function AccessDerivation(props: AccessDerivationProps) {
           <Typography
             key={`${path.basis}-${path.group?.id ?? index}`}
             title={sinceTitle(path)}
-            sx={{ fontSize: 13, pl: 2 }}
+            sx={{ fontSize: fontSize.text, pl: 2 }}
           >
             {pathRole ? `${origin}: ${pathRole}` : origin}
           </Typography>
         )
       })}
       {withheld && (
-        <Typography sx={{ fontSize: 13, pl: 2, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.text, pl: 2, color: 'text.secondary' }}>
           Ein Weg führt über eine geschützte Gruppe und wird hier nicht benannt.
         </Typography>
       )}
-      {wayCount > 1 && <Typography sx={{ fontSize: 13 }}>Es gilt die höhere Rolle.</Typography>}
+      {wayCount > 1 && (
+        <Typography sx={{ fontSize: fontSize.text }}>Es gilt die höhere Rolle.</Typography>
+      )}
       {administrationLine}
     </Stack>
   )

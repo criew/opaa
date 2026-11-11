@@ -2,26 +2,31 @@ package io.opaa.installation;
 
 import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.common.FieldValidationException;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.llm.textrecognition.TextRecognitionClient;
+import io.opaa.llm.transcription.RealtimeTranscriptionEndpoint;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
-import io.opaa.security.SettingsEncryptor;
 import java.util.List;
+import java.util.function.Function;
 import org.springframework.stereotype.Component;
 
 /**
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
  * administration runs for an identity provider and a chat model, a probe embedding for the
  * embedding model, which also yields its vector size (Entscheidung 10), the probes of the model
- * administration for the rerank and the transcription model (Entscheidung 16 for transcription), a
- * connection to the mail server that sends nothing unless a test recipient is named, and the rules
- * of the branding administration once more for the branding, without any connection. A model
- * address and a mail server are checked against the address check of the installation again right
- * before the connection. The outcome is German and user-facing; a failed check is a result, never
- * an exception.
+ * administration for the rerank and the transcription model (Entscheidung 16 for transcription),
+ * the staged test of the model administration for text recognition (Entscheidung 18), the version
+ * request of the scanner administration for the malware scan (Entscheidung 19), a connection to the
+ * mail server that sends nothing unless a test recipient is named, and the rules of the branding
+ * administration once more for the branding, without any connection. A model address and a mail
+ * server are checked against the address check of the installation again right before the
+ * connection. The outcome is German and user-facing; a failed check is a result, never an
+ * exception.
  */
 @Component
 class StepChecks {
@@ -45,29 +50,29 @@ class StepChecks {
   private final StepRules rules;
   private final OidcProviderConnectionTester oidcTester;
   private final LlmModelConnectionTester chatTester;
-  private final SettingsEncryptor settingsEncryptor;
   private final ModelAddressPolicy modelAddresses;
   private final EmbeddingModelService embeddingModels;
   private final MailConnectionTester mailTester;
   private final ModelRoleAdministration modelRoles;
+  private final MalwareScanSettingsService malwareScans;
 
   StepChecks(
       StepRules rules,
       OidcProviderConnectionTester oidcTester,
       LlmModelConnectionTester chatTester,
-      SettingsEncryptor settingsEncryptor,
       ModelAddressPolicy modelAddresses,
       EmbeddingModelService embeddingModels,
       MailConnectionTester mailTester,
-      ModelRoleAdministration modelRoles) {
+      ModelRoleAdministration modelRoles,
+      MalwareScanSettingsService malwareScans) {
     this.rules = rules;
     this.oidcTester = oidcTester;
     this.chatTester = chatTester;
-    this.settingsEncryptor = settingsEncryptor;
     this.modelAddresses = modelAddresses;
     this.embeddingModels = embeddingModels;
     this.mailTester = mailTester;
     this.modelRoles = modelRoles;
+    this.malwareScans = malwareScans;
   }
 
   /**
@@ -86,6 +91,9 @@ class StepChecks {
       case RERANK_MODEL -> rerankModel(rules.rerankModelPayload(payload), secret);
       case TRANSCRIPTION_MODEL ->
           transcriptionModel(rules.transcriptionModelPayload(payload), secret);
+      case TEXT_RECOGNITION_MODEL ->
+          textRecognitionModel(rules.textRecognitionModelPayload(payload), secret);
+      case MALWARE_SCAN -> malwareScan(rules.malwareScanPayload(payload));
       case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
       case BRANDING -> branding(rules.brandingPayload(payload));
     };
@@ -112,17 +120,27 @@ class StepChecks {
     if (blocked != null) {
       return new Outcome(false, blocked);
     }
+    return withKey(
+        InstallationStep.CHAT_MODEL,
+        secret,
+        apiKey -> {
+          LlmModelConnectionTester.TestOutcome outcome =
+              chatTester.test(model.baseUrl(), model.model(), apiKey, null, model.temperature());
+          return new Outcome(outcome.success(), outcome.message());
+        });
+  }
+
+  /**
+   * {@code probe} with the saved key of a model step in clear; an unreadable key fails the check.
+   */
+  private Outcome withKey(InstallationStep step, String secret, Function<String, Outcome> probe) {
     String apiKey;
     try {
-      apiKey =
-          settingsEncryptor.decrypt(
-              secret, InstallationEncryptedColumns.of(InstallationStep.CHAT_MODEL));
+      apiKey = rules.apiKey(step, secret);
     } catch (IllegalStateException e) {
       return new Outcome(false, UNREADABLE_KEY);
     }
-    LlmModelConnectionTester.TestOutcome outcome =
-        chatTester.test(model.baseUrl(), model.model(), apiKey, null, model.temperature());
-    return new Outcome(outcome.success(), outcome.message());
+    return probe.apply(apiKey);
   }
 
   private Outcome embeddingModel(StepRules.EmbeddingModelPayload model, String secret) {
@@ -144,17 +162,10 @@ class StepChecks {
     if (blocked != null) {
       return new Outcome(false, blocked);
     }
-    String apiKey;
-    try {
-      apiKey =
-          settingsEncryptor.decrypt(
-              secret, InstallationEncryptedColumns.of(InstallationStep.RERANK_MODEL));
-    } catch (IllegalStateException e) {
-      return new Outcome(false, UNREADABLE_KEY);
-    }
-    ModelRoleAdministration.TestOutcome outcome =
-        modelRoles.probeRerank(model.baseUrl(), model.model(), apiKey);
-    return new Outcome(outcome.success(), outcome.message());
+    return withKey(
+        InstallationStep.RERANK_MODEL,
+        secret,
+        apiKey -> outcome(modelRoles.probeRerank(model.baseUrl(), model.model(), apiKey)));
   }
 
   private Outcome transcriptionModel(StepRules.TranscriptionModelPayload model, String secret) {
@@ -162,16 +173,92 @@ class StepChecks {
     if (blocked != null) {
       return new Outcome(false, blocked);
     }
-    String apiKey;
-    try {
-      apiKey =
-          settingsEncryptor.decrypt(
-              secret, InstallationEncryptedColumns.of(InstallationStep.TRANSCRIPTION_MODEL));
-    } catch (IllegalStateException e) {
-      return new Outcome(false, UNREADABLE_KEY);
+    StepRules.RealtimePayload realtime = model.realtime();
+    if (realtime != null) {
+      String liveBlocked =
+          StepRules.blockedModelAddress(
+              modelAddresses, RealtimeTranscriptionEndpoint.httpEquivalent(realtime.url()));
+      if (liveBlocked != null) {
+        return new Outcome(false, liveBlocked.replace("Basis-Adresse", "Live-Adresse"));
+      }
     }
-    ModelRoleAdministration.TestOutcome outcome =
-        modelRoles.probeTranscription(model.baseUrl(), model.model(), apiKey);
+    return withKey(
+        InstallationStep.TRANSCRIPTION_MODEL,
+        secret,
+        apiKey -> {
+          Outcome batch =
+              outcome(modelRoles.probeTranscription(model.baseUrl(), model.model(), apiKey));
+          if (!batch.succeeded() || realtime == null) {
+            return batch;
+          }
+          String liveKey;
+          if (realtime.apiKeyCiphertext() != null) {
+            try {
+              liveKey =
+                  rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, realtime.apiKeyCiphertext());
+            } catch (IllegalStateException e) {
+              return new Outcome(false, UNREADABLE_KEY);
+            }
+          } else {
+            liveKey =
+                RealtimeTranscriptionEndpoint.sharesOrigin(realtime.url(), model.baseUrl())
+                    ? apiKey
+                    : "";
+          }
+          ModelRoleAdministration.TestOutcome live =
+              modelRoles.probeTranscriptionRealtime(
+                  realtime.protocol(), realtime.url(), realtime.model(), liveKey);
+          return live.success()
+              ? new Outcome(true, batch.message() + " " + live.message())
+              : new Outcome(false, "Live-Transkript: " + live.message());
+        });
+  }
+
+  private static Outcome outcome(ModelRoleAdministration.TestOutcome outcome) {
+    return new Outcome(outcome.success(), outcome.message());
+  }
+
+  /**
+   * The staged test of the text recognition administration with its test page; the message names
+   * the stage a failure stopped at (address, sign-in, recognition).
+   */
+  private Outcome textRecognitionModel(StepRules.TextRecognitionModelPayload model, String secret) {
+    String blocked = StepRules.blockedModelAddress(modelAddresses, model.baseUrl());
+    if (blocked != null) {
+      return new Outcome(false, stageMessage(TextRecognitionClient.FailedStage.ADDRESS, blocked));
+    }
+    return withKey(
+        InstallationStep.TEXT_RECOGNITION_MODEL,
+        secret,
+        apiKey -> {
+          ModelRoleAdministration.TextRecognitionTestOutcome outcome =
+              modelRoles.probeTextRecognition(
+                  model.connectionType(), model.baseUrl(), model.model(), apiKey);
+          return outcome.success()
+              ? new Outcome(
+                  true, "Adresse, Anmeldung und Erkennung in Ordnung. " + outcome.message())
+              : new Outcome(false, stageMessage(outcome.failedStage(), outcome.message()));
+        });
+  }
+
+  /** A failed staged test, the stage named first; without a stage the message alone. */
+  static String stageMessage(TextRecognitionClient.FailedStage stage, String message) {
+    if (stage == null) {
+      return message;
+    }
+    String name =
+        switch (stage) {
+          case ADDRESS -> "Adresse";
+          case AUTHENTICATION -> "Anmeldung";
+          case RECOGNITION -> "Erkennung";
+        };
+    return "Gescheitert an der Stufe „" + name + "“: " + message;
+  }
+
+  /** The version request of the scanner administration: connect, ask, no file. */
+  private Outcome malwareScan(StepRules.MalwareScanPayload scan) {
+    MalwareScanSettingsService.TestOutcome outcome =
+        malwareScans.test("malwareScan.", scan.host(), scan.port(), scan.timeoutSeconds());
     return new Outcome(outcome.success(), outcome.message());
   }
 

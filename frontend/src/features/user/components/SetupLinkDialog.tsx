@@ -1,17 +1,11 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { LocalUserResponse, MailDeliveryPath } from '@/shared/api/types'
-import { fontFamily, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, radius } from '@/shared/theme/tokens'
 import { MAIL_DELIVERY_PATH_TEXT, SHOWN_ONCE_HINT } from './localUserLabels'
 import { copyOnce } from '@/shared/utils/copyOnce'
+import SecretDialog from '@/shared/ui/dialog/SecretDialog'
 
 export interface SetupLinkHandover {
   user: LocalUserResponse
@@ -41,63 +35,43 @@ export default function SetupLinkDialog({
       : `Link zum Zurücksetzen für „${user.displayName}“`
 
   return (
-    <Dialog
-      open
-      fullWidth
-      maxWidth="sm"
-      aria-labelledby="setup-link-title"
-      // Without `onClose` neither a click outside nor Escape closes it: both would destroy the
-      // value that exists exactly once. It is closed only
-      // via the button.
+    <SecretDialog
+      titleId="setup-link-title"
+      title={title}
+      onCopy={() => void copyOnce(url, 'Der Link')}
+      onClose={onClose}
     >
-      <DialogTitle id="setup-link-title">{title}</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
-          {user.email}
-        </Typography>
-        {deliveryPath && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {MAIL_DELIVERY_PATH_TEXT[deliveryPath]}
-          </Alert>
-        )}
-        <Box
-          data-testid="setup-link-value"
-          sx={{
-            fontFamily: fontFamily.mono,
-            fontSize: 12.5,
-            p: 1.25,
-            border: 1,
-            borderColor: 'divider',
-            borderRadius: `${radius.sm}px`,
-            overflowWrap: 'anywhere',
-          }}
-        >
-          {url}
-        </Box>
-        {url.startsWith('/') && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-            Dies ist ein Pfad relativ zur Installation, weil keine öffentliche Basis-URL gesetzt ist
-            – setzen Sie die Adresse Ihrer Installation davor.
-          </Typography>
-        )}
-        <Alert severity="info" sx={{ mt: 2 }}>
-          {SHOWN_ONCE_HINT}
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
+        {user.email}
+      </Typography>
+      {deliveryPath && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {MAIL_DELIVERY_PATH_TEXT[deliveryPath]}
         </Alert>
-      </DialogContent>
-      <DialogActions>
-        <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={<ContentCopyOutlinedIcon />}
-            onClick={() => void copyOnce(url, 'Der Link')}
-          >
-            Link kopieren
-          </Button>
-          <Button variant="contained" onClick={onClose}>
-            Schließen
-          </Button>
-        </Stack>
-      </DialogActions>
-    </Dialog>
+      )}
+      <Box
+        data-testid="setup-link-value"
+        sx={{
+          fontFamily: fontFamily.mono,
+          fontSize: fontSize.meta,
+          p: 1.25,
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: `${radius.sm}px`,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {url}
+      </Box>
+      {url.startsWith('/') && (
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
+          Dies ist ein Pfad relativ zur Installation, weil keine öffentliche Basis-URL gesetzt ist –
+          setzen Sie die Adresse Ihrer Installation davor.
+        </Typography>
+      )}
+      <Alert severity="info" sx={{ mt: 2 }}>
+        {SHOWN_ONCE_HINT}
+      </Alert>
+    </SecretDialog>
   )
 }

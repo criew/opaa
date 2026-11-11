@@ -181,8 +181,8 @@ final class LibraryResponseMapper {
         .externalAccess(
             managementDetail.externalAccess() == null
                 ? null
-                : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
-        .allAccountsGrantAllowed(managementDetail.allAccountsGrantAllowed());
+                : LibraryExternalAccessResponseMapper.toResponse(
+                    managementDetail.externalAccess()));
     // a manager sees the connector's whole settings, every other reader what the connector shows
     ConnectorData settings =
         managementDetail.connectorSettings() != null

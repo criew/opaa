@@ -11,13 +11,17 @@ import org.junit.jupiter.api.Test;
 /**
  * Proves on the classes under {@code io.opaa.architecture.fixture.security} that every rule of
  * {@link SecurityInvariants} fires - on a call, a method reference and a connecting constructor -
- * names the offending code unit and is silenced by an allowlist entry only for that unit.
+ * names the offending code unit and is silenced by an allowlist entry only for that unit. The
+ * whole-row rule fires on a save, a save by method reference and a field change through a delegate,
+ * and stays silent where {@code @Version} or {@code @DynamicUpdate} keep the row.
  */
 class SecurityInvariantsFixtureTest {
 
   private static final String FIXTURE = "io.opaa.architecture.fixture.security";
 
   private static final JavaClasses CLASSES = new ClassFileImporter().importPackages(FIXTURE);
+
+  private static final String ROWS = FIXTURE + ".rows";
 
   @Test
   void everyWayToConnectIsReportedByItsCodeUnit() {
@@ -78,6 +82,72 @@ class SecurityInvariantsFixtureTest {
             FIXTURE + ".format.LineReader#isKey",
             FIXTURE + ".format.LineReader#compiler",
             FIXTURE + ".format.LineReader#<init>");
+  }
+
+  @Test
+  void everyStaleWholeRowWriteIsReportedAndAGuardedRowOnlyWhereItCanStillBeStale() {
+    JavaClasses rows = new ClassFileImporter().importPackages(ROWS);
+
+    assertThat(
+            SecurityInvariants.wholeRowWriters(
+                rows, Set.of(ROWS + ".Account", ROWS + ".VersionedToken", ROWS + ".DynamicGroup")))
+        .containsOnlyKeys(
+            ROWS + ".AccountWriter#rename",
+            ROWS + ".AccountWriter#insert",
+            ROWS + ".AccountWriter#saver",
+            ROWS + ".AccountWriter#deactivateAll")
+        .hasEntrySatisfying(
+            ROWS + ".AccountWriter#rename",
+            call -> assertThat(call).startsWith("calls " + ROWS + ".Account#renameTwice"))
+        .hasEntrySatisfying(
+            ROWS + ".AccountWriter#saver",
+            call -> assertThat(call).startsWith("refers to " + ROWS + ".AccountRepository#save"))
+        .hasEntrySatisfying(
+            ROWS + ".AccountWriter#deactivateAll",
+            call ->
+                assertThat(call).startsWith("calls " + ROWS + ".DynamicGroupRepository#saveAll"));
+  }
+
+  @Test
+  void aVersionedSaveIsFoundThroughAnInterfaceAndALambdaButOnlyWhenReachable() {
+    JavaClasses rows = new ClassFileImporter().importPackages(ROWS);
+
+    assertThat(
+            SecurityInvariants.versionedSavesReachableFrom(
+                rows,
+                Set.of(ROWS + ".SignIn#signIn"),
+                Set.of(ROWS + ".Account", ROWS + ".VersionedToken", ROWS + ".DynamicGroup")))
+        .containsOnlyKeys(ROWS + ".RevokingStep#apply")
+        .hasEntrySatisfying(
+            ROWS + ".RevokingStep#apply",
+            call ->
+                assertThat(call).startsWith("calls " + ROWS + ".VersionedTokenRepository#save"));
+  }
+
+  @Test
+  void aPersistentTypeIsFoundByAFieldNamedLikeSecurityState() {
+    assertThat(
+            SecurityInvariants.typesWithSecurityStateFields(
+                new ClassFileImporter().importPackages(ROWS)))
+        .containsExactlyInAnyOrder(
+            ROWS + ".Account", ROWS + ".VersionedToken", ROWS + ".DynamicGroup");
+  }
+
+  @Test
+  void aPromptBuiltPastPromptTextIsReportedByItsMethodEvenNextToOneThatCleans() {
+    Map<String, String> prompts = SecurityInvariants.promptBuildingUnits(CLASSES);
+
+    assertThat(prompts)
+        .containsOnlyKeys(
+            FIXTURE + ".RawPromptWriter#message",
+            FIXTURE + ".RawPromptWriter#prompt",
+            FIXTURE + ".RawPromptWriter#ask",
+            FIXTURE + ".CleanPromptWriter#title");
+    assertThat(prompts.get(FIXTURE + ".RawPromptWriter#prompt"))
+        .startsWith("calls org.springframework.ai.chat.prompt.Prompt#builder");
+    assertThat(prompts.get(FIXTURE + ".RawPromptWriter#ask"))
+        .startsWith(
+            "calls org.springframework.ai.chat.client.ChatClient$ChatClientRequestSpec#system");
   }
 
   @Test

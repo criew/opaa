@@ -10,9 +10,11 @@ import io.opaa.api.dto.TextRecognitionTestRequest;
 import io.opaa.api.dto.TextRecognitionTestResponse;
 import io.opaa.api.dto.TranscriptionModelSettingsRequest;
 import io.opaa.api.dto.TranscriptionModelSettingsResponse;
+import io.opaa.api.dto.TranscriptionRealtimeSettingsRequest;
+import io.opaa.api.dto.TranscriptionRealtimeTestRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,7 +81,31 @@ public class ModelRoleController {
             request.getModel(),
             request.getApiKey(),
             request.getLanguage(),
-            request.getVocabulary()));
+            request.getVocabulary(),
+            realtimeChange(request.getRealtime())));
+  }
+
+  private static ModelRoleAdministration.RealtimeChange realtimeChange(
+      TranscriptionRealtimeSettingsRequest realtime) {
+    if (realtime == null) {
+      return null;
+    }
+    return new ModelRoleAdministration.RealtimeChange(
+        Boolean.TRUE.equals(realtime.getEnabled()),
+        realtime.getProtocol(),
+        realtime.getUrl(),
+        realtime.getModel(),
+        realtime.getApiKey(),
+        realtime.getMaxSessions());
+  }
+
+  @PostMapping("/transcription/realtime/test")
+  public LlmModelTestResponse testTranscriptionRealtimeModel(
+      @Valid @RequestBody TranscriptionRealtimeTestRequest request) {
+    ModelRoleAdministration.TestOutcome outcome =
+        administration.testTranscriptionRealtime(
+            request.getProtocol(), request.getUrl(), request.getModel(), request.getApiKey());
+    return new LlmModelTestResponse(outcome.success(), outcome.message());
   }
 
   @PostMapping("/transcription/test")

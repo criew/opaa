@@ -11,6 +11,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.GlobalExceptionHandler;
 import io.opaa.api.RequestLoggingFilter;
 import io.opaa.api.types.SystemRole;
@@ -18,11 +19,12 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.FeatureFlags;
 import io.opaa.knowledge.UploadProperties;
-import io.opaa.llm.PersonalTranscriptionVocabularyService;
-import io.opaa.llm.TranscriptionClient;
-import io.opaa.llm.TranscriptionEndpoint;
-import io.opaa.llm.TranscriptionModelRole;
-import io.opaa.llm.TranscriptionProperties;
+import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
+import io.opaa.llm.transcription.RealtimeTranscriptionRole;
+import io.opaa.llm.transcription.TranscriptionClient;
+import io.opaa.llm.transcription.TranscriptionEndpoint;
+import io.opaa.llm.transcription.TranscriptionModelRole;
+import io.opaa.llm.transcription.TranscriptionProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.Part;
@@ -88,6 +90,7 @@ class TranscriptionControllerTest {
 
   private final PersonalTranscriptionVocabularyService vocabularies =
       Mockito.mock(PersonalTranscriptionVocabularyService.class);
+  private final RealtimeTranscriptionRole realtime = Mockito.mock(RealtimeTranscriptionRole.class);
 
   private HttpServer upstream;
   private final AtomicInteger upstreamStatus = new AtomicInteger(200);
@@ -121,7 +124,7 @@ class TranscriptionControllerTest {
           answer(exchange, upstreamStatus.get(), upstreamBody);
         });
     upstream.start();
-    client = new TranscriptionClient(new ObjectMapper());
+    client = new TranscriptionClient(new ObjectMapper(), new SimpleMeterRegistry());
 
     logs = new ListAppender<>();
     logs.start();
@@ -162,7 +165,7 @@ class TranscriptionControllerTest {
 
   private TranscriptionController controller(boolean enabled, Duration timeout) {
     role = role(enabled, timeout);
-    return new TranscriptionController(role, vocabularies);
+    return new TranscriptionController(role, realtime, vocabularies);
   }
 
   private TranscriptionModelRole role(boolean enabled, Duration timeout) {
@@ -184,15 +187,22 @@ class TranscriptionControllerTest {
   }
 
   @Test
-  void availabilityFollowsTheRoleAndNeverOffersLiveText() throws Exception {
+  void availabilityFollowsTheRoleAndOffersLiveTextOnlyWhenTheLiveUpstreamIsUsable()
+      throws Exception {
     mockMvc(true)
         .perform(get("/api/v1/transcriptions/availability"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.available").value(true))
         .andExpect(jsonPath("$.realtimeAvailable").value(false));
+
+    Mockito.when(realtime.available()).thenReturn(true);
+    mockMvc(true)
+        .perform(get("/api/v1/transcriptions/availability"))
+        .andExpect(jsonPath("$.realtimeAvailable").value(true));
     mockMvc(false)
         .perform(get("/api/v1/transcriptions/availability"))
-        .andExpect(jsonPath("$.available").value(false));
+        .andExpect(jsonPath("$.available").value(false))
+        .andExpect(jsonPath("$.realtimeAvailable").value(false));
   }
 
   @Test
@@ -382,12 +392,12 @@ class TranscriptionControllerTest {
   }
 
   @Test
-  void theGuardIsFirstInTheFilterChain() {
+  void theGuardComesRightAfterTheRequestIdAndTheInstallationsFilters() {
     assertThat(
             new TranscriptionWebConfiguration()
                 .transcriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC())
                 .getOrder())
-        .isEqualTo(org.springframework.core.Ordered.HIGHEST_PRECEDENCE);
+        .isEqualTo(io.opaa.observability.RequestIdFilter.ORDER + 4);
   }
 
   /** A refusal of one recording is answered with 502 and leaves dictation on for everybody. */

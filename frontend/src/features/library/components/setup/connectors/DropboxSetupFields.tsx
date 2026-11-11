@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import {
   DROPBOX_API,
@@ -13,8 +13,9 @@ import {
   dropboxTeamFoldersOfItems,
 } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
-import type { SetupFieldsProps } from '../setupTypes'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
 import FolderScope from './FolderScope'
+import { fontSize } from '@/shared/theme/tokens'
 
 export function DropboxConnectionFields({
   values,
@@ -24,7 +25,7 @@ export function DropboxConnectionFields({
 }: SetupFieldsProps<DropboxSourceValues>) {
   if (isDropboxTeamApp(context.connection)) {
     return (
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
         Der Zugang ist eine Team-App: Die Bibliothek liest Team-Ordner des Teams als
         Team-Administration, auch solche, die kein einzelnes Mitgliedskonto sieht.
       </Typography>
@@ -34,7 +35,7 @@ export function DropboxConnectionFields({
     <Box>
       <FormControlLabel
         control={
-          <Switch
+          <Checkbox
             id={fieldId('teamSpace')}
             checked={values.teamSpace}
             onChange={(e) => onChange({ teamSpace: e.target.checked })}

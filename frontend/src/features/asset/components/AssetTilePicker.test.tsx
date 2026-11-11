@@ -67,7 +67,7 @@ describe('AssetTilePicker', () => {
     expect(await screen.findByText(/Weitere Einträge konnten nicht geladen werden/)).toBeVisible()
     expect(screen.getByRole('checkbox', { name: /^Erste Bibliothek/ })).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
 
     expect(await screen.findByRole('checkbox', { name: /^Zweite Bibliothek/ })).toBeVisible()
     expect(screen.getByRole('checkbox', { name: /^Erste Bibliothek/ })).toBeVisible()
@@ -253,7 +253,7 @@ describe('AssetTilePicker', () => {
   })
 
   /** A filter change while a further page loads must not lock its buttons. */
-  it('keeps "Weitere laden" and "Erneut versuchen" usable after a filter change mid-load', async () => {
+  it('keeps "Weitere laden" and "Erneut laden" usable after a filter change mid-load', async () => {
     let releaseStale: () => void = () => undefined
     const stale = new Promise<void>((resolve) => {
       releaseStale = resolve
@@ -290,7 +290,7 @@ describe('AssetTilePicker', () => {
     const more = await screen.findByRole('button', { name: 'Weitere laden' })
     await waitFor(() => expect(more).toBeEnabled())
     await user.click(more)
-    const retry = await screen.findByRole('button', { name: 'Erneut versuchen' })
+    const retry = await screen.findByRole('button', { name: 'Erneut laden' })
     expect(retry).toBeEnabled()
     releaseStale()
   })

@@ -1,6 +1,9 @@
 package io.opaa.installation;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -39,8 +42,30 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
   public record RerankModel(String baseUrl, String model, boolean apiKeySet)
       implements SavedValues {}
 
-  /** The transcription model; {@code language} empty lets the model detect it. */
-  public record TranscriptionModel(String baseUrl, String model, boolean apiKeySet, String language)
+  /**
+   * The transcription model; {@code language} empty lets the model detect it, {@code realtime}
+   * {@code null} for dictation by recording only.
+   */
+  public record TranscriptionModel(
+      String baseUrl,
+      String model,
+      boolean apiKeySet,
+      String language,
+      TranscriptionRealtime realtime)
+      implements SavedValues {}
+
+  /** The live upstream of the transcription model, without its key. */
+  public record TranscriptionRealtime(
+      RealtimeTranscriptionProtocol protocol, String url, String model, boolean apiKeySet) {}
+
+  /** The text recognition model; {@code model} is {@code null} for docling-serve. */
+  public record TextRecognitionModel(
+      TextRecognitionConnectionType connectionType, String baseUrl, String model, boolean apiKeySet)
+      implements SavedValues {}
+
+  /** The clamd daemon of the malware scan, with its defaults filled in. */
+  public record MalwareScan(
+      String host, int port, int timeoutSeconds, MalwareScanUnavailablePolicy onUnavailable)
       implements SavedValues {}
 
   /** The mail server; {@code passwordSet} says whether a password is saved, never which. */

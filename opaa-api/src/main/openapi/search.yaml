@@ -22,8 +22,10 @@ paths:
         the provider is unreachable, overloaded or rate-limiting, and while no chat model is
         active at all; 502 once the provider answered but not usefully, which is the shape of a
         misconfiguration (unknown model identifier, rejected key) rather than of a passing
-        disturbance. The 503 carries Retry-After where the provider named a waiting time. Nothing
-        of the turn is persisted in either case.
+        disturbance. The 503 carries Retry-After where the provider named a waiting time. A turn
+        that needs tool calls is refused with 503 and code CHAT_MODEL_NOT_TOOL_CAPABLE while the
+        active chat model is not recorded as capable of them; it is never answered without its
+        tools. Nothing of the turn is persisted in any of these cases.
       requestBody:
         required: true
         content:
@@ -53,9 +55,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          $ref: "#/components/responses/Conflict"
+          description: >
+            The named chat's space is archived. Or agentId names an agent the caller cannot use,
+            with code AGENT_NOT_AVAILABLE: unknown, of another organization, not visible to the
+            caller, not assigned to the chat's space, or agents are switched off - all alike, so a
+            foreign id is never confirmed. An agent the caller may see that the system
+            administration or the installation locked answers with code AGENT_LOCKED and a message
+            saying so. Nothing is persisted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
-          $ref: "#/components/responses/TooManyRequests"
+          description: >
+            The rate limit was reached. Or, with agentId, every place of the installation's agent
+            workspace is taken, with code AGENT_WORKSPACE_FULL, or the caller already holds as
+            many places as one person may, with code AGENT_PERSON_LIMIT: the request is refused
+            before a run begins, nothing is queued and nothing is persisted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "502":
           $ref: "#/components/responses/BadGateway"
         "503":
@@ -82,6 +102,16 @@ paths:
         this one request: there is no reconnection and no resumption, and a turn whose stream
         ends without final - the client went away, the instance shut down - was not persisted.
         The response carries X-Accel-Buffering: no for proxies in front of the application.
+        With agentId the stream commits as soon as the run holds its place in the workspace:
+        started follows at once, then run_started with the run's runId and cancelToken, ping comments at
+        least every 10 seconds also while the model or a tool works, step_started before and
+        step_finished after each tool call, limit_reached once the run reaches a limit,
+        run_finished when the model is done, then reset with the whole provisional answer while
+        citation validation and persistence run, then final. Without agentId none of these five
+        events is sent. A run ends before its next tool call and next model call, and nothing of
+        the turn is persisted, once POST /api/v1/query/stream/cancel names its cancelToken - on
+        any instance -, once a write to its reader fails, or once the instance stops (error with
+        code SHUTTING_DOWN at once).
       requestBody:
         required: true
         content:
@@ -108,13 +138,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          $ref: "#/components/responses/Conflict"
+          description: >
+            As POST /api/v1/query: the named chat's space is archived, or agentId names an agent
+            the caller cannot use, with code AGENT_NOT_AVAILABLE, or a locked one, with code
+            AGENT_LOCKED.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
-          $ref: "#/components/responses/TooManyRequests"
+          description: >
+            As POST /api/v1/query: the rate limit was reached, or with agentId every place of the
+            agent workspace is taken, with code AGENT_WORKSPACE_FULL, or the caller holds their
+            share of it, with code AGENT_PERSON_LIMIT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "502":
           $ref: "#/components/responses/BadGateway"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/query/stream/cancel:
+    post:
+      operationId: cancelQueryStream
+      tags: [query]
+      summary: Ends the agent run of a streamed turn before its next tool call.
+      description: >
+        The stop button of the chat. A closed connection is noticed only at the next write to it,
+        which may succeed once more; this call ends the run for certain. Possession of the
+        cancelToken of the run_started event is the authorization: it reached only the reader of
+        that stream, and it stops only a run the caller started. The mark lies in the database, so
+        the run ends whichever instance runs it and whichever instance receives this call. The run
+        makes no further tool call and no further model call, and nothing of the turn is persisted.
+        An unknown, expired, already used or foreign token is answered alike, so a token is never
+        confirmed. The call has its own rate limit and spends nothing of the caller's questions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryStreamCancelRequest"
+      responses:
+        "204":
+          description: The run, if one holds the token, ends before its next tool call.
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          description: The rate limit of the stop was reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/search/metadata-filter-options:
     get:
@@ -619,6 +695,19 @@ components:
             space of the named chat (403 otherwise, also without a persisted chat), and keeps the
             prompt's id and its current title as a snapshot on the question's message. It changes
             nothing about the model call.
+        agentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The agent chosen for this question (ADR-0070). The turn then runs as one agent run:
+            the model calls the agent's switched-on tools within the run's limits, over the
+            libraries of the chat's space the caller may read, narrowed to the agent's - the
+            chat's own useKnowledge and @-references do not apply. Requires chatId to name a chat
+            the caller authored and no new attachmentIds (400 otherwise); refused with 409 when
+            the agent cannot be used, 429 when the agent workspace is full and 503 while the
+            active chat model is not recorded as tool-capable. The stream endpoint reports the
+            run's steps as they happen (QueryStreamEvent). Absent: the ordinary turn, unchanged.
 
     QueryStreamEvent:
       type: object
@@ -629,11 +718,25 @@ components:
       properties:
         type:
           type: string
-          enum: [started, delta, reset, final, error]
+          enum:
+            - started
+            - run_started
+            - delta
+            - reset
+            - step_started
+            - step_finished
+            - limit_reached
+            - run_finished
+            - final
+            - error
           description: >
             started - the model has begun to answer. delta - text appended to the provisional
             answer. reset - the provisional answer is replaced by text, for instance once leading
-            reasoning text of the model is recognised as such. final - the turn is complete and
+            reasoning text of the model is recognised as such. run_started, step_started,
+            step_finished, limit_reached and run_finished - agent turns only
+            (QueryRequest.agentId): the run holds its place (runId, cancelToken), a tool call begins or
+            ended (step), the run reached a limit and answers with what it has (endState), the
+            run ended (endState), before its provisional answer. final - the turn is complete and
             persisted, response is the same QueryResponse POST /api/v1/query returns. error -
             the turn ended without an answer and was not persisted; error carries the envelope and
             the status the request would have been answered with, with code SHUTTING_DOWN when the
@@ -643,10 +746,72 @@ components:
           description: >
             delta and reset only. Provisional text as the model writes it, citation markers
             included and not yet validated; it must not be copied or exported as the answer.
+        runId:
+          type: string
+          format: uuid
+          description: >
+            run_started only. The run's id, the same as AgentRun.runId of the final response.
+        cancelToken:
+          type: string
+          description: >
+            run_started only. The secret that POST /api/v1/query/stream/cancel takes to end this
+            run; valid while the run lasts.
+        step:
+          description: step_started and step_finished only.
+          allOf:
+            - $ref: "#/components/schemas/AgentRunStreamStep"
+        endState:
+          description: limit_reached and run_finished only.
+          allOf:
+            - $ref: "#/components/schemas/AgentRunEndState"
         response:
           $ref: "#/components/schemas/QueryResponse"
         error:
           $ref: "#/components/schemas/ErrorResponse"
+
+    QueryStreamCancelRequest:
+      type: object
+      required: [cancelToken]
+      properties:
+        cancelToken:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: The cancelToken of the run_started event of the stream to end.
+          example: 7f9c2b1e-5d4a-4c3b-9e8f-1a2b3c4d5e6f
+
+    AgentRunStreamStep:
+      type: object
+      required: [index, tool]
+      description: >
+        One step of a running agent run, as the person may see it: never the tool's raw
+        arguments. step_started carries index, tool and, where the tool has one before it runs,
+        detail; step_finished carries the step as it is kept in AgentRun.steps at the same index,
+        with status and hits. A step refused at a limit arrives as step_finished alone.
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          description: The step's position in AgentRun.steps of the final response.
+        tool:
+          type: string
+          description: >
+            The tool's name, or unknown for a tool the model invented; a technical constant a
+            client maps to its own wording, not a text to show.
+          example: search_knowledge
+        detail:
+          type: string
+          nullable: true
+          description: What the step is about, e.g. the sub-question of a search.
+        hits:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: step_finished only. Passages the step found; null for a tool that finds none.
+        status:
+          description: step_finished only.
+          allOf:
+            - $ref: "#/components/schemas/AgentRunStepStatus"
 
     QueryResponse:
       type: object
@@ -720,6 +885,139 @@ components:
             message's attachments.
           items:
             $ref: "#/components/schemas/ChatAttachmentRef"
+        agentRun:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AgentRun"
+          description: >
+            The agent run that gave this answer; null on every answer without an agent.
+
+    AgentRun:
+      type: object
+      required: [runId, endState, steps]
+      description: >
+        What the person sees of an agent run at its answer (ADR-0070, Entscheidung 4): the run's
+        id, how it ended and each tool call. Kept with the answer's message and deleted with the
+        chat.
+      properties:
+        runId:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The agent that ran; null on runs kept before the agent was recorded.
+        agentName:
+          type: string
+          nullable: true
+          description: The agent's name at the time of the run, shown at the answer.
+        endState:
+          $ref: "#/components/schemas/AgentRunEndState"
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRunStep"
+        stamp:
+          description: >
+            The version stamp of the answer; null on runs kept before stamps were recorded. Every
+            answer with an agentRun is an unchecked draft; a client marks it so.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AgentRunStamp"
+
+    AgentRunStamp:
+      type: object
+      required: [agentRevision, libraries, templates]
+      description: >
+        With what an agent answer was made, as it was at the time of the run and kept with the
+        answer: the agent's revision, the libraries the run could search, the templates it filled
+        and the model. The agent itself is the run's agentId and agentName. Names are those at the
+        time of the run and do not follow a rename.
+      properties:
+        agentRevision:
+          type: integer
+          minimum: 1
+          description: The agent's revision ("Fassung") the run used.
+        currentAgentRevision:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: >
+            The agent's revision now, set only when a chat is loaded, the caller may still read
+            the agent and agents are switched on; null otherwise. A value other than agentRevision
+            means the agent was changed since the answer.
+        libraries:
+          type: array
+          description: The libraries the run could search, with their name at the time, sorted by name.
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+        templates:
+          type: array
+          description: The document templates the run filled, with their revision at the time.
+          items:
+            $ref: "#/components/schemas/AgentRunStampTemplate"
+        model:
+          type: string
+          nullable: true
+          description: The identifier of the chat model the run used; null when unknown.
+
+    AgentRunStampTemplate:
+      type: object
+      required: [id, name, revision]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: The template's name at the time of the run.
+        revision:
+          type: integer
+          minimum: 1
+          description: The template's revision ("Fassung") that was filled.
+
+    AgentRunEndState:
+      type: string
+      description: >
+        COMPLETED - the model answered on its own. LIMIT_CALLS, LIMIT_DURATION, LIMIT_VOLUME - the
+        run reached its limit of tool calls, of time or of collected text and answered with what
+        it had; a client shows this as a set-off state "nicht geprüft", not as an error. ASK_USER -
+        the agent asked the person back; the answer is the question and the run ended there, the
+        reply starts a new run. PLAN - the agent asks for confirmation of a plan before it works;
+        the answer is the plan and the run ended there. The next question with the same agent
+        confirms or changes the plan and starts the run that works it off, with the plan in its
+        history.
+      enum: [COMPLETED, LIMIT_CALLS, LIMIT_DURATION, LIMIT_VOLUME, ASK_USER, PLAN]
+
+    AgentRunStep:
+      type: object
+      required: [tool, status]
+      properties:
+        tool:
+          type: string
+          description: The tool's name, or unknown for a tool the model invented.
+          example: search_knowledge
+        detail:
+          type: string
+          nullable: true
+          description: What the step was about, e.g. the sub-question of a search.
+        hits:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Passages the step found; null for a tool that finds none.
+        status:
+          $ref: "#/components/schemas/AgentRunStepStatus"
+
+    AgentRunStepStatus:
+      type: string
+      description: >
+        DONE - ran and delivered. EMPTY - ran and found nothing. ARGUMENT_IGNORED - ran, but a
+        narrowing outside the run's scope was ignored. INVALID_ARGUMENTS - not run, the arguments
+        were unusable. UNKNOWN_TOOL - the model called a tool that does not exist. DENIED - refused
+        for lack of rights. LIMIT - not run, the run's limit was reached. ERROR - failed.
+      enum: [DONE, EMPTY, ARGUMENT_IGNORED, INVALID_ARGUMENTS, UNKNOWN_TOOL, DENIED, LIMIT, ERROR]
 
     SourceFreeze:
       type: object
@@ -2534,6 +2832,15 @@ components:
           description: >
             Both counts are list entries, not distinct chunks: the same chunk found by two
             sub-queries is two entries before fusion and one after.
+        durationMs:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            Wall-clock time of the stage in milliseconds, measured around the stage call. Set for
+            EXECUTED and UNAVAILABLE (time until the failure), null for DISABLED and NOT_REACHED.
+            A stage that runs once per sub-query counts all sub-queries together; they run in
+            sequence. Answer generation is not part of a diagnosis and has no entry.
         notes:
           type: array
           items:

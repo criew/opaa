@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -13,16 +13,17 @@ import {
   type ConfluenceFullSyncRhythm,
   type LibraryScheduleValues,
 } from '../../utils/librarySchedule'
-import LibraryScheduleForm from '../LibraryScheduleForm'
-import { connectionFields } from '../sources/sourceConnection'
-import type { SourceFormContext } from '../sources/types'
+import LibraryScheduleForm from '../schedule/LibraryScheduleForm'
+import { connectionFields } from '../sourceCore/sourceConnection'
+import type { SourceFormContext } from '../sourceCore/types'
 import ConnectionCheckView from './ConnectionCheckView'
 import { useConnectionCheck } from './connectionCheck'
-import { plainMessage } from '../sourceKit/plainMessage'
-import ErrorSummary, { type SummaryEntry } from './ErrorSummary'
+import { plainMessage } from '../sourceCore/plainMessage'
+import ErrorSummary, { type SummaryEntry } from '@/shared/ui/feedback/ErrorSummary'
 import { scheduleSummary } from './scheduleSummary'
-import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from './setupTypes'
+import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from '../sourceCore/setupTypes'
 import SummaryRow from './SummaryRow'
+import { fontSize } from '@/shared/theme/tokens'
 
 const ROW_TITLES: Record<SetupRowId, string> = {
   connection: 'Verbindung',
@@ -355,7 +356,9 @@ export default function SourceSetupRows<V>({
     return (
       <Box sx={{ mt: 3 }}>
         {saveError && (
-          <Typography sx={{ fontSize: 13, color: 'error.main', mb: 1.5 }}>{saveError}</Typography>
+          <Typography sx={{ fontSize: fontSize.text, color: 'error.main', mb: 1.5 }}>
+            {saveError}
+          </Typography>
         )}
         <Stack
           direction="row"
@@ -448,7 +451,7 @@ export default function SourceSetupRows<V>({
                     confluence={rhythm}
                   />
                   {issueAt(SCHEDULE_FIELD) && (
-                    <Typography sx={{ fontSize: 12, color: 'error.main' }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'error.main' }}>
                       {issueAt(SCHEDULE_FIELD)}
                     </Typography>
                   )}
@@ -456,7 +459,7 @@ export default function SourceSetupRows<V>({
                     <Box>
                       <FormControlLabel
                         control={
-                          <Switch
+                          <Checkbox
                             checked={firstRun.value}
                             onChange={(e) => firstRun.onChange(e.target.checked)}
                           />

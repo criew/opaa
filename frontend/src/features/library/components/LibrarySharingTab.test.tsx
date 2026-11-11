@@ -14,9 +14,7 @@ function render(canEdit: boolean) {
       privateLibrary={false}
       canEdit={canEdit}
       externalAccessEnabled
-      shareCapVisible={false}
       onTransferred={vi.fn(async () => {})}
-      onSaveShareCap={vi.fn(async () => {})}
       diagnosticsLockSaving={false}
       diagnosticsLockError={null}
       onToggleDiagnosticsLock={vi.fn()}

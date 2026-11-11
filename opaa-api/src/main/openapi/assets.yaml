@@ -40,9 +40,8 @@ paths:
         subjectId (ADR-0037). Its role is capped at EDITOR: MANAGER and OWNER are
         responsibilities - granting rights, ownership, succession - and are refused with 400 for
         this subject, because a responsibility is borne by a named person or group. It replaces the
-        former release level AssetVisibility, so a connector library's share cap is enforced
-        here: while the system administration forbids it, such a grant is refused with 409 - the
-        caller's own role is not in question.
+        former release level AssetVisibility; who may create an asset decides who may reach
+        everybody with it, there is no further ceiling per asset.
         .
         While the asset's succession is open (ADR-0036, Entscheidung 6) its reach is frozen: a new
         grant, a higher role and a postponed expiry are refused with 409 and the code
@@ -477,13 +476,107 @@ paths:
 
 components:
   schemas:
+    ResponsibleUnitRequest:
+      type: object
+      description: >
+        The responsible unit of an agent or a document template: an organizational unit,
+        function or group, never a single person alone. Exactly one of groupId and function is
+        set. groupId names a group of the caller's organization the caller may select; function is
+        a free designation such as "Referat Z3 - Organisation".
+      properties:
+        groupId:
+          type: string
+          format: uuid
+          nullable: true
+        function:
+          type: string
+          nullable: true
+          maxLength: 200
+          example: Referat Z3 - Organisation
+
+    AssetLockCause:
+      type: string
+      description: >
+        Why the object is locked: MANUAL by the system administration with a reason,
+        NO_RESPONSIBLE by the installation after the period without a responsible unit.
+      enum: [MANUAL, NO_RESPONSIBLE]
+
+    AssetLockRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          description: >
+            Why the object is locked; required. Delivered only to the system administration and to
+            whoever manages the object (role MANAGER or above); a reader sees only since when it is
+            locked.
+          example: Anweisung wird überarbeitet
+
+    AssetLockResponse:
+      type: object
+      required: [cause, lockedAt]
+      properties:
+        cause:
+          $ref: "#/components/schemas/AssetLockCause"
+        reason:
+          type: string
+          nullable: true
+          description: >
+            The reason of the lock; null for a caller below MANAGER who is not the system
+            administration.
+        lockedAt:
+          type: string
+          format: date-time
+
+    AssetResponsibilityResponse:
+      type: object
+      required: [missing]
+      description: >
+        Who answers for an agent or a document template and whether it is locked. The
+        responsibility is missing while neither a group nor a function is named, the named group is
+        dissolved, deactivated or deleted, or the object's ownership is in open succession; from
+        then on the period runs, and at lockDueAt the object is locked, not deleted.
+      properties:
+        groupId:
+          type: string
+          format: uuid
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+          description: >
+            The group's name; a protected group the caller may not see by name appears as
+            "Geschützte Gruppe" (ADR-0036, Entscheidung 9).
+        function:
+          type: string
+          nullable: true
+        missing:
+          type: boolean
+          description: Whether the responsibility is missing right now.
+        missingSince:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the installation counts the responsibility as missing.
+        lockDueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the object is locked unless a responsible unit is named before.
+        lock:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssetLockResponse"
+
     AssetType:
       type: string
       description: >
         The type of an asset on the asset shell.
         Grants, the Herleitung and the space association name an asset by its type plus id; a type
         without a registered definition answers 404 like an unknown asset.
-      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
+      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY, AGENT, DOCUMENT_TEMPLATE]
 
     AssetOrigin:
       type: string

@@ -1,18 +1,17 @@
 import { useEffect } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useMailStore } from '../stores/mailStore'
 import SectionHead from '@/shared/ui/SectionHead'
 import MetaBadge from '@/shared/ui/MetaBadge'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** What a template is used for — the purpose in one sentence, in the administration's language. */
 const templatePurposes: Record<string, string> = {
@@ -29,7 +28,7 @@ const templatePurposes: Record<string, string> = {
   ADMIN_REVIEW_REMINDER: 'Quartalsweise Wiedervorlage zur Prüfung der Zugänge.',
   EXTERNAL_ACCESS_TOKEN_ISSUED: 'Meldet der Person ein neu erzeugtes Zugangstoken.',
   SELF_DISCLOSURE_STARTED: 'Meldet der Person den Start einer Selbstauskunft ihrer Daten.',
-  TEST_MAIL: 'Die Nachricht, die „Testmail an mich senden“ verschickt.',
+  TEST_MAIL: 'Die Nachricht, die „Testnachricht an mich senden“ verschickt.',
 }
 
 /**
@@ -51,20 +50,19 @@ export default function MailTemplatesSection() {
   }, [loadTemplates])
 
   if (isLoading && templates.length === 0) {
-    return (
-      <Box aria-busy="true">
-        <span style={visuallyHidden}>Die Vorlagen werden geladen …</span>
-        <Skeleton variant="rounded" height={420} />
-      </Box>
-    )
+    return <LoadingState shape="detail" count={8} />
   }
 
   return (
     <Box>
       {listError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {listError}
-        </Alert>
+        <Box sx={{ mb: 2 }}>
+          <LoadError
+            message="Die E-Mail-Vorlagen konnten nicht geladen werden."
+            detail={listError}
+            onRetry={() => void loadTemplates()}
+          />
+        </Box>
       )}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: 'flex-start' }}>
@@ -101,14 +99,14 @@ export default function MailTemplatesSection() {
                       width: '100%',
                     }}
                   >
-                    <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                       {summary.label}
                     </Typography>
                     <MetaBadge>
                       {summary.source === 'DATABASE' ? 'angepasst' : 'Standard'}
                     </MetaBadge>
                   </Box>
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {templatePurposes[summary.key] ?? summary.subject}
                   </Typography>
                 </ListItemButton>
@@ -118,12 +116,7 @@ export default function MailTemplatesSection() {
         </Box>
 
         <Box sx={{ flexGrow: 1, minWidth: 0, width: '100%' }}>
-          {isLoadingTemplate && (
-            <Box aria-busy="true">
-              <span style={visuallyHidden}>Die Vorlage wird geladen …</span>
-              <Skeleton variant="rounded" height={420} />
-            </Box>
-          )}
+          {isLoadingTemplate && <LoadingState shape="detail" count={8} />}
           {!isLoadingTemplate && !template && (
             <Box
               sx={{
@@ -135,10 +128,10 @@ export default function MailTemplatesSection() {
                 textAlign: 'center',
               }}
             >
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                 Keine Vorlage ausgewählt.
               </Typography>
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+              <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                 Wählen Sie links eine Vorlage, um Betreff und Wortlaut anzupassen.
               </Typography>
             </Box>

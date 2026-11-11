@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.security.ScriptedResolution;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
@@ -50,7 +51,9 @@ class OidcDiscoveryClientRebindingTest {
   @Test
   void theJwkSetFetchReachesOnlyTheAddressTheCheckVetted() {
     OidcDiscoveryClient client =
-        new OidcDiscoveryClient(new OidcAddressPolicy(new TargetAddressValidator(true, List.of())));
+        new OidcDiscoveryClient(
+            new OidcAddressPolicy(new TargetAddressValidator(true, List.of())),
+            new SimpleMeterRegistry());
 
     OidcDiscoveryClient.OidcProbeException failure =
         catchThrowableOfType(

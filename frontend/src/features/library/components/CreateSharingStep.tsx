@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import Box from '@mui/material/Box'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -11,6 +12,7 @@ import { AssetOwnerFields } from '@/features/asset'
 import { AssetRightsFields } from '@/features/asset'
 import type { PendingGrant } from '@/features/asset'
 import type { useMyGroups } from '@/features/principal'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface CreateSharingStepProps {
   ownerType: AssetOwnerType
@@ -18,6 +20,8 @@ interface CreateSharingStepProps {
   myGroups: ReturnType<typeof useMyGroups>
   selectedGroup: GroupListResponse | null
   onSelectedGroupChange: (group: GroupListResponse | null) => void
+  groupError: string | null
+  groupInputRef: Ref<HTMLInputElement>
   /** The library is connected through a consent at the provider, which needs a responsible party. */
   connectsSource: boolean
   /** A group owns the library, so it may take that responsibility. */
@@ -35,6 +39,8 @@ export default function CreateSharingStep({
   myGroups,
   selectedGroup,
   onSelectedGroupChange,
+  groupError,
+  groupInputRef,
   connectsSource,
   groupResponsible,
   responsibleIsGroup,
@@ -43,7 +49,7 @@ export default function CreateSharingStep({
   onPendingGrantsChange,
 }: CreateSharingStepProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
       <AssetOwnerFields
         idPrefix="library-create"
         assetType="KNOWLEDGE_LIBRARY"
@@ -52,6 +58,8 @@ export default function CreateSharingStep({
         myGroups={myGroups}
         selectedGroup={selectedGroup}
         onSelectedGroupChange={onSelectedGroupChange}
+        groupError={groupError}
+        groupInputRef={groupInputRef}
       />
       {connectsSource &&
         (groupResponsible ? (
@@ -78,7 +86,7 @@ export default function CreateSharingStep({
             </FormHelperText>
           </FormControl>
         ) : (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Für die Verbindung der Quelle sind Sie verantwortlich: Sie erhalten die Warnung, bevor
             die Zustimmung beim Anbieter endet, und die Nachricht, wenn sie endet, und können die
             Quelle neu verbinden.

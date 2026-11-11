@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import AddIcon from '@mui/icons-material/Add'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { GroupListResponse } from '@/shared/api/types'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
+import CreateButton from '@/shared/ui/CreateButton'
 import CreateGroupDialog from '../components/CreateGroupDialog'
 import { PendingPlanHint } from '@/features/directory-sync'
 import GroupEditDialog from '../components/GroupEditDialog'
@@ -25,8 +23,9 @@ import { contentWidth } from '@/shared/theme/tokens'
  * Entscheidungen 2, 4 and 9).
  */
 export default function GroupManagementPage() {
-  const error = useGroupAdminListStore((s) => s.error)
   const loadGroups = useGroupAdminListStore((s) => s.loadGroups)
+  const total = useGroupAdminListStore((s) => s.total)
+  const overallTotal = useGroupAdminListStore((s) => s.overallTotal)
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<GroupListResponse | null>(null)
   const [members, setMembers] = useState<GroupListResponse | null>(null)
@@ -45,45 +44,34 @@ export default function GroupManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={GroupsOutlinedIcon}
           title="Gruppen"
           description="Alle Gruppen der Organisation. Interne Gruppen pflegen Sie hier, bei Gruppen eines Identitätsanbieters oder Verzeichnisses nur den Schutz."
+          action={<CreateButton onClick={() => setCreateOpen(true)}>Gruppe anlegen</CreateButton>}
         />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {/* As with the accounts: on the left, flush with the table, a hint - here a waiting
-           directory plan -, on the right the primary action. */}
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <PendingPlanHint />
-          </Box>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            Gruppe anlegen
-          </Button>
-        </Stack>
+        {/* As with the accounts: flush with the table, a hint - here a waiting directory plan. */}
+        <Box sx={{ minWidth: 0, mb: 1.5, '&:empty': { display: 'none' } }}>
+          <PendingPlanHint />
+        </Box>
         <GroupFilterBar />
-        {/* After a loading error only the message is shown - an empty list below it would look like
-           a filter without matches. */}
-        {!error && (
-          <GroupList
-            onEdit={setEditing}
-            onMembers={setMembers}
-            onTransfer={setTransfer}
-            onDeleted={() => void loadGroups()}
-            onChanged={() => void loadGroups()}
-          />
+        {overallTotal !== null && (
+          <AreaPageCount total={overallTotal} filtered={total} unit={['Gruppe', 'Gruppen']} />
         )}
+        <GroupList
+          onEdit={setEditing}
+          onMembers={setMembers}
+          onTransfer={setTransfer}
+          onDeleted={() => void loadGroups()}
+          onChanged={() => void loadGroups()}
+          createAction={
+            <CreateButton placement="empty" onClick={() => setCreateOpen(true)}>
+              Gruppe anlegen
+            </CreateButton>
+          }
+        />
 
         <GroupEditDialog group={editing} onClose={() => closeAndReload(() => setEditing(null))} />
         <GroupMembersDialog

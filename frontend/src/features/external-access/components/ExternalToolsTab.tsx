@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -21,17 +19,19 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import { fontFamily } from '@/shared/theme/tokens'
-import ExternalAccessSettingsPanel, {
+import { fontFamily, fontSize, readingWidth } from '@/shared/theme/tokens'
+import ExternalAccessSettingsDialog, {
   SAVED_MESSAGE,
   SWITCH_CONSEQUENCE,
-} from './ExternalAccessSettingsPanel'
+} from './ExternalAccessSettingsDialog'
 import ExternalAccessTokenAdminSection from './ExternalAccessTokenAdminSection'
 import OwnTokensLink from './OwnTokensLink'
 import ReleasedLibrariesSection from './ReleasedLibrariesSection'
 import { channelStateOf } from './externalToolsState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
-/** The query parameter that opens the settings panel, e.g. from a bookmark of the former page. */
+/** The query parameter that opens the settings dialog, e.g. from a bookmark of the former page. */
 export const PANEL_PARAM = 'panel'
 export const SETTINGS_PANEL = 'settings'
 /** Anchors of the two lists, for links into the tab. */
@@ -71,18 +71,18 @@ function Steps({ steps }: { steps: Step[] }) {
             <Typography
               component="span"
               aria-hidden="true"
-              sx={{ fontFamily: fontFamily.mono, fontSize: 12, color: 'text.secondary' }}
+              sx={{ fontFamily: fontFamily.mono, fontSize: fontSize.meta, color: 'text.secondary' }}
             >
               {String(index + 1).padStart(2, '0')}
             </Typography>
-            <Typography component="span" sx={{ fontSize: 13.5 }}>
+            <Typography component="span" sx={{ fontSize: fontSize.text }}>
               {step.text}
             </Typography>
             <Typography
               component="span"
               sx={{
                 gridColumn: { xs: 2, sm: 3 },
-                fontSize: 13,
+                fontSize: fontSize.text,
                 fontWeight: 600,
                 color: 'text.secondary',
                 whiteSpace: 'nowrap',
@@ -101,7 +101,7 @@ function Steps({ steps }: { steps: Step[] }) {
  * The „Externe KI-Werkzeuge“ tab of the connections area: the state of the access path with
  * emergency stop, the three keys that must match (switch, library release, access token),
  * the released libraries and the inventory list of access tokens. The settings are in the
- * side panel; `?panel=settings` opens it, `#libraries` and `#tokens` lead to the list.
+ * dialog; `?panel=settings` opens it, `#libraries` and `#tokens` lead to the list.
  */
 export default function ExternalToolsTab() {
   const location = useLocation()
@@ -255,7 +255,9 @@ export default function ExternalToolsTab() {
 
   return (
     <>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
+      <Typography
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2.5, maxWidth: readingWidth }}
+      >
         Externe KI-Werkzeuge, etwa ein Entwicklungsassistent oder ein eigenes Skript, lesen über
         diesen Weg Fundstellen aus freigegebenen Bibliotheken - mit den Rechten der Person, der das
         Zugangstoken gehört.
@@ -263,18 +265,13 @@ export default function ExternalToolsTab() {
 
       <Box sx={{ mb: 4 }}>
         {settingsError ? (
-          <Alert
-            severity="error"
-            action={
-              <Button color="inherit" size="small" onClick={() => void loadSettings()}>
-                Erneut laden
-              </Button>
-            }
-          >
-            {settingsError}
-          </Alert>
+          <LoadError
+            message="Die Einstellungen für externe KI-Werkzeuge konnten nicht geladen werden."
+            detail={settingsError}
+            onRetry={() => void loadSettings()}
+          />
         ) : !state || !settings ? (
-          <Skeleton variant="rounded" height={56} />
+          <LoadingState shape="lines" count={2} />
         ) : (
           <Box
             sx={{
@@ -306,10 +303,8 @@ export default function ExternalToolsTab() {
                   Ausschalten
                 </BusyButton>
               )}
-              <Button
-                variant={settings.enabled ? 'text' : 'contained'}
-                onClick={() => setPanel(true)}
-              >
+              {/* It only opens the panel, so it is never the primary surface. */}
+              <Button variant="outlined" onClick={() => setPanel(true)}>
                 Einstellungen
               </Button>
             </Stack>
@@ -331,7 +326,7 @@ export default function ExternalToolsTab() {
         <ExternalAccessTokenAdminSection onChanged={() => void loadActiveTokens()} />
       </Box>
 
-      <ExternalAccessSettingsPanel
+      <ExternalAccessSettingsDialog
         settings={panelOpen ? settings : null}
         onClose={() => setPanel(false)}
         onSaved={(stored) => {

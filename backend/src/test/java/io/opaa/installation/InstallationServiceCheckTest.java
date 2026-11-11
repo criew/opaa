@@ -19,9 +19,10 @@ import io.opaa.common.FeatureFlags;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.LlmModelService;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.mail.MailSettingsService;
 import java.time.Clock;
 import java.time.Instant;
@@ -65,8 +66,9 @@ class InstallationServiceCheckTest {
             embeddingModels,
             mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
+            mock(MalwareScanSettingsService.class),
             mock(BrandingSettingsService.class),
-            new FeatureFlags(new MockEnvironment()),
+            new OfferedSteps(new FeatureFlags(new MockEnvironment()), false),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-06
+Akzeptiert · zuletzt geändert 2026-11-09
 
 ## Kontext
 
@@ -32,7 +32,7 @@ Verbindungstypen: die API von docling-serve (ganze PDF, Schlüssel als `X-Api-Ke
 mitgelieferte OCR-Container beruht, und ein OpenAI-kompatibles Vision-Modell (je Seite ein Bild,
 Schlüssel als Bearer). Weitere Typen kommen nicht hinzu; ein anderer OCR-Dienst wird über einen der
 beiden angebunden. Adressprüfung, Schlüsselbehandlung und Protokollierung gelten unverändert. Über
-der Rolle steht ein Betriebsschalter (`opaa.ocr.enabled`, Voreinstellung aus) wie beim Virenscanner:
+der Rolle steht ein Betriebsschalter (`opaa.ocr.enabled`, Voreinstellung aus):
 ausgeschaltet wird die Rolle weder ausgewertet noch kontaktiert, weil ganze Seiten von Dokumenten
 einen eigenen Datenfluss bilden, über den der Betrieb entscheidet.
 

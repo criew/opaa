@@ -106,6 +106,7 @@ class SchemaPortabilityTest extends AbstractMigrationTest {
     assertThat(configs)
         .containsExactlyInAnyOrder(
             "asset_grants_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "opaa_agent_run_logs_maintain search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "assets_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "permission_history_next_boundary search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "account_state_issuer_key search_path=pg_catalog, " + SCHEMA + ", pg_temp",

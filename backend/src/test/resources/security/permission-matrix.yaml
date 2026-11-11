@@ -186,6 +186,9 @@ operations:
   listOwnDiagnosticContextEvents:            {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   listDiagnosticContextEvents:               {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getDiagnosticContextEvent:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getAgentRunLog:                            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getAgentRunLogRetention:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateAgentRunLogRetention:                {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listDirectorySyncStatus:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getDirectorySyncSettings:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateDirectorySyncSettings:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
@@ -287,7 +290,6 @@ operations:
   getLibrary:                                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updateLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   deleteLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
-  updateLibraryShareCap:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   disconnectLibrarySource:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   connectLibraryProfile:                     {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
   disconnectLibraryProfile:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
@@ -354,6 +356,9 @@ operations:
   getMailSettings:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateMailSettings:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   sendMailSettingsTest:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getMalwareScanSettings:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateMalwareScanSettings:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testMalwareScanSettings:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listMailTemplates:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getMailTemplate:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateMailTemplate:                        {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
@@ -365,6 +370,10 @@ operations:
   updateLlmModel:                            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   deleteLlmModel:                            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   activateLlmModel:                          {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setLlmModelToolCapability:                 {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  startLlmModelToolCheck:                    {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLatestLlmModelToolCheck:                {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLlmModelToolCheckReport:                {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   testLlmModel:                              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   discoverLlmModels:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getEmbeddingInfo:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
@@ -378,6 +387,7 @@ operations:
   getTranscriptionModelSettings:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateTranscriptionModelSettings:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   testTranscriptionModel:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testTranscriptionRealtimeModel:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getTextRecognitionModelSettings:           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateTextRecognitionModelSettings:        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   testTextRecognitionModel:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
@@ -388,14 +398,40 @@ operations:
   getPromptLibrary:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updatePromptLibrary:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   deletePromptLibrary:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listAgents:                                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createAgent:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "CREATE_AGENT is delivered to nobody; only the administration holds every right"}
+  getAgentAvailability:                      {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getAgent:                                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateAgent:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteAgent:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  lockAgent:                                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  unlockAgent:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getAgentDirectory:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "VIEW_AGENT_DIRECTORY is delivered to nobody; only the administration holds every right"}
+  exportAgentDirectory:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "VIEW_AGENT_DIRECTORY is delivered to nobody; only the administration holds every right"}
+  getAgentSettings:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateAgentSettings:                       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDocumentTemplateAvailability:           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getDocumentTemplateSettings:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateDocumentTemplateSettings:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listDocumentTemplates:                     {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createDocumentTemplate:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDocumentTemplate:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateDocumentTemplate:                    {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteDocumentTemplate:                    {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  lockDocumentTemplate:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  unlockDocumentTemplate:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  downloadDocumentTemplateFile:              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  replaceDocumentTemplateFile:               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   listPrompts:                               {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   createPrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   getPrompt:                                 {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updatePrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   deletePrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   listAvailablePrompts:                      {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  listAvailableAgents:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   submitQuery:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "503 because no chat model answers in the test; a chat the caller may not use is ignored and the query runs without it (specification of QueryRequest.chatId)"}
   submitQueryStream:                         {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "503 because no chat model answers in the test; a chat the caller may not use is ignored and the query runs without it (specification of QueryRequest.chatId); refused before the stream begins, like submitQuery"}
+  cancelQueryStream:                         {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "the cancelToken is the authorization, not a role: every caller gets 204 alike, also for an unknown token, so no token is confirmed"}
   getMetadataFilterOptions:                  {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   searchKnowledge:                           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   listSearchableLibraries:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
@@ -426,7 +462,6 @@ operations:
   previewPermissionTransfer:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "hands on another person's ownership, which only the system administration may"}
   executePermissionTransfer:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listSuccessionEntries:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  countSuccessionEntries:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getSuccessionSettings:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateSuccessionSettings:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getTranscriptionAvailability:              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}

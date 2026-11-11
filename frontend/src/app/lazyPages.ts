@@ -59,6 +59,17 @@ export const LibraryDetailPage = library('LibraryDetailPage')
 const prompt = themePages(() => import('@/features/prompt/routes'))
 export const PromptLibraryCreatePage = prompt('PromptLibraryCreatePage')
 export const PromptLibraryDetailPage = prompt('PromptLibraryDetailPage')
+const documentTemplate = themePages(() => import('@/features/document-template/routes'))
+export const DocumentTemplateCreatePage = documentTemplate('DocumentTemplateCreatePage')
+export const DocumentTemplateDetailPage = documentTemplate('DocumentTemplateDetailPage')
+export const DocumentTemplateSettingsPage = documentTemplate('DocumentTemplateSettingsPage')
+
+const agent = themePages(() => import('@/features/agent/routes'))
+export const AgentCreatePage = agent('AgentCreatePage')
+export const AgentDetailPage = agent('AgentDetailPage')
+export const AgentSettingsPage = agent('AgentSettingsPage')
+export const AgentDirectoryPage = agent('AgentDirectoryPage')
+export const AgentDirectoryDetailPage = agent('AgentDirectoryDetailPage')
 
 const group = themePages(() => import('@/features/group/routes'))
 export const GroupManagementPage = group('GroupManagementPage')
@@ -84,6 +95,9 @@ export const LlmModelManagementPage = themePages(() => import('@/features/model/
 )
 export const MailSettingsPage = themePages(() => import('@/features/mail/routes'))(
   'MailSettingsPage',
+)
+export const MalwareScanSettingsPage = themePages(() => import('@/features/malware-scan/routes'))(
+  'MalwareScanSettingsPage',
 )
 export const BrandingSettingsPage = themePages(() => import('@/features/branding/routes'))(
   'BrandingSettingsPage',

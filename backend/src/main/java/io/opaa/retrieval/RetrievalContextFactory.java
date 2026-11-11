@@ -1,6 +1,6 @@
 package io.opaa.retrieval;
 
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.metadata.MetadataFilter;
 import java.util.List;
 import java.util.Set;
@@ -61,6 +61,23 @@ public class RetrievalContextFactory {
         searchScope,
         metadataFilter,
         queryProperties,
+        RerankAvailability.of(rerankModelRole.currentStatus().state()));
+  }
+
+  /**
+   * A context for a query searched as given: no conversation window, no Gesprächsnotiz, no
+   * sub-question decomposition - the search of a tool call, whose model formulates the query
+   * itself.
+   */
+  public RetrievalContext contextAsGiven(
+      String searchQuery, Set<UUID> searchScope, MetadataFilter metadataFilter) {
+    return new RetrievalContext(
+        searchQuery,
+        List.of(),
+        List.of(),
+        searchScope,
+        metadataFilter,
+        queryProperties.withoutDecomposition(),
         RerankAvailability.of(rerankModelRole.currentStatus().state()));
   }
 }

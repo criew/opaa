@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import { getLinkTargets } from '@/shared/linkTargets/linkTargetsApi'
 import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
@@ -11,6 +11,9 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 import { updateLinkTargets } from '../api/linkTargetsApi'
+import { formWidth } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * The allowed link targets of answers: links to the application's own address and to these origins
@@ -81,22 +84,15 @@ export default function LinkTargetsSection() {
       description="Links in Antworten und Dokumentvorschau sind nur zu OPAA selbst und zu diesen Zielen klickbar; andere erscheinen als Text, Bilder werden nie geladen."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Die erlaubten Linkziele konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       ) : origins === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Erlaubte Linkziele werden geladen …
-        </Typography>
+        <LoadingState shape="lines" count={2} />
       ) : (
-        <Stack spacing={2} sx={{ maxWidth: 560 }}>
+        <Stack spacing={2} sx={{ maxWidth: formWidth.column }}>
           {origins.length === 0 ? (
             <Typography variant="body2" data-testid="link-targets-empty">
               Es ist kein Linkziel eingetragen; klickbar sind nur Links zur eigenen Adresse.
@@ -133,30 +129,26 @@ export default function LinkTargetsSection() {
               ))}
             </Box>
           )}
-          <Box
-            component="form"
-            onSubmit={(event) => void handleAdd(event)}
-            noValidate
-            sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}
-          >
-            <TextField
+          <Box component="form" onSubmit={(event) => void handleAdd(event)} noValidate>
+            <FormField
               label="Neues Linkziel"
               size="small"
               value={draft}
               placeholder="https://intranet.stadt.example"
               onChange={(event) => setDraft(event.target.value)}
               helperText="Schema, Host und optional Port, ohne Pfad. Einen Host mit Umlauten in der Form xn--… eintragen."
-              sx={{ flexGrow: 1 }}
+              action={
+                <BusyButton
+                  type="submit"
+                  variant="outlined"
+                  busy={busy}
+                  busyAnnouncement="Erlaubte Linkziele werden gespeichert"
+                  disabled={draft.trim() === '' && !busy}
+                >
+                  Hinzufügen
+                </BusyButton>
+              }
             />
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Erlaubte Linkziele werden gespeichert"
-              disabled={draft.trim() === '' && !busy}
-            >
-              Hinzufügen
-            </BusyButton>
           </Box>
           {saveError && (
             <Alert severity="error" role="alert">

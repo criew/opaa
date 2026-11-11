@@ -5,6 +5,8 @@ import { TextAction } from '@/shared/ui/DetailSection'
 import StateDot from '@/shared/ui/StateDot'
 import type { TextRecognitionBlockListResponse, TextRecognitionBlock } from '@/shared/api/types'
 import { getTextRecognitionBlocks, releaseTextRecognitionBlock } from '../api/indexingApi'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 interface TextRecognitionNoticeProps {
   libraryId: string
@@ -59,7 +61,7 @@ export default function TextRecognitionNotice({
     <Box
       role="status"
       aria-label="Texterkennung gescannter Dokumente"
-      sx={{ mb: 2, fontSize: 13, lineHeight: '22px' }}
+      sx={{ mb: 2, fontSize: fontSize.text, lineHeight: '22px' }}
       data-testid="text-recognition-notice"
     >
       {pending > 0 && (
@@ -72,7 +74,9 @@ export default function TextRecognitionNotice({
                 : `${pending} Scans warten auf die Texterkennung`
             }
           />
-          <Typography sx={{ fontSize: 13, lineHeight: '22px', color: 'text.secondary', pl: 2 }}>
+          <Typography
+            sx={{ fontSize: fontSize.text, lineHeight: '22px', color: 'text.secondary', pl: 2 }}
+          >
             Sie werden im nächsten Lauf oder beim Nachholen gelesen und sind bis dahin nicht
             durchsuchbar.
           </Typography>
@@ -110,10 +114,14 @@ export default function TextRecognitionNotice({
               sx={{ display: 'flex', alignItems: 'baseline', gap: 2, py: 0.5 }}
             >
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Typography sx={{ fontSize: 13, lineHeight: '22px', overflowWrap: 'anywhere' }}>
+                <Typography
+                  sx={{ fontSize: fontSize.text, lineHeight: '22px', overflowWrap: 'anywhere' }}
+                >
                   {block.fileName}
                 </Typography>
-                <Typography sx={{ fontSize: 13, lineHeight: '22px', color: 'text.secondary' }}>
+                <Typography
+                  sx={{ fontSize: fontSize.text, lineHeight: '22px', color: 'text.secondary' }}
+                >
                   {block.reason} · {connectionLabel(block.connectionType)} ·{' '}
                   {formatBlockedAt(block.blockedAt)}
                 </Typography>
@@ -130,7 +138,10 @@ export default function TextRecognitionNotice({
         </Box>
       )}
       {error && (
-        <Typography role="alert" sx={{ fontSize: 13, lineHeight: '22px', color: 'error.main' }}>
+        <Typography
+          role="alert"
+          sx={{ fontSize: fontSize.text, lineHeight: '22px', color: 'error.main' }}
+        >
           {error}
         </Typography>
       )}
@@ -144,11 +155,5 @@ function connectionLabel(connectionType: TextRecognitionBlock['connectionType'])
 
 /** „05.11.2026, 09:15“, the date-and-time form of the run list. */
 function formatBlockedAt(value: string): string {
-  return new Date(value).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(value)
 }

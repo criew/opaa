@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
@@ -23,6 +22,7 @@ import {
 import { forgetConsentIntent } from '@/features/connection'
 import { safeRedirectPath } from '@/shared/session/safeRedirectPath'
 import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_CALLBACK_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
+import { readingWidth } from '@/shared/theme/tokens'
 
 const NEW_LIBRARY_ROUTE = '/libraries/new'
 const ACCOUNT_CHANGED = 'ACCOUNT_CHANGED'
@@ -240,12 +240,14 @@ export default function ConnectionCallbackPage() {
       <PageHeading title={intent ? 'Quelle verbinden' : 'Konto verbinden'} />
       {outcome.kind === 'pending' ? (
         <>
-          <CircularProgress aria-hidden size={28} />
           <Typography role="status">Die Verbindung wird abgeschlossen …</Typography>
         </>
       ) : (
         <>
-          <Alert severity={offersAccountChange ? 'warning' : 'error'} sx={{ maxWidth: 560 }}>
+          <Alert
+            severity={offersAccountChange ? 'warning' : 'error'}
+            sx={{ maxWidth: readingWidth }}
+          >
             {outcome.message}
           </Alert>
           <Stack direction="row" spacing={1}>

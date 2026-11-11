@@ -99,7 +99,7 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Einschränken')
 
     await waitFor(() =>
       expect(calls).toEqual([
@@ -115,7 +115,7 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Abbrechen')
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Abbrechen')
 
     expect(calls).toEqual([])
   })
@@ -127,12 +127,8 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     await restrictSpacesTo(user, 'Referat 50', /Verzeichnis Partner/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
-    await answerConfirm(
-      user,
-      'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?',
-      'Abbrechen',
-    )
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Einschränken')
+    await answerConfirm(user, /^Für „.*“ freigeben\?$/, 'Abbrechen')
 
     expect(calls).toEqual([])
   })
@@ -175,7 +171,7 @@ describe('CapabilityManagementPage', () => {
     const user = userEvent.setup()
 
     const panel = await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
-    await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
+    await answerConfirm(user, 'Recht für alle Konten einschränken?', 'Einschränken')
 
     const alert = await within(panel).findByRole('alert')
     expect(alert).toHaveTextContent('Ausgeführt wurden 1 von 2 Schritten')
@@ -234,19 +230,31 @@ describe('CapabilityManagementPage', () => {
     expect(screen.queryByRole('dialog', { name: /alle Konten/ })).not.toBeInTheDocument()
   })
 
-  it('previews the result and keeps "Speichern" off until something changes', async () => {
+  it('previews the result and keeps „Speichern“ available: without a change it just closes', async () => {
     renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     const panel = await openPanel(user, 'Interne Gruppen')
     expect(within(panel).getByRole('status')).toHaveTextContent('Keine Änderung.')
-    expect(within(panel).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'Speichern' })).toBeEnabled()
 
     await user.click(within(panel).getByLabelText('Alle Konten'))
     expect(within(panel).getByRole('status')).toHaveTextContent(
       'Alle Konten dürfen interne Gruppen anlegen.',
     )
     expect(within(panel).getByRole('button', { name: 'Speichern' })).toBeEnabled()
+  })
+
+  it('closes the panel without a request when „Speichern“ finds nothing changed', async () => {
+    const calls = recordCalls()
+    renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Interne Gruppen')
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(panel).not.toBeInTheDocument())
+    expect(calls).toEqual([])
   })
 
   it('explains the page to an account without the system role', async () => {

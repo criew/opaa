@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -15,12 +16,21 @@ import org.yaml.snakeyaml.Yaml;
  * The security invariants of {@link SecurityInvariants} over the backend, each with its allowlist
  * of justified exceptions; an entry the code outgrew fails as well, so every list only shrinks.
  * {@link SecurityInvariantsFixtureTest} proves that each rule fires.
+ *
+ * <p>The whole-row rule sees calls, not data flow: whether an instance is new, loaded or locked is
+ * the reason's claim. {@link #SECURITY_STATE_ENTITIES} is kept by hand, guarded only by field
+ * names; a type only inserted and deleted ({@code GroupMembership}) is not asked about.
  */
 class SecurityInvariantsTest {
 
   private static final String MODEL_ADDRESS_CHECKED =
       "ModelEndpointAccess or the administration checks the address with ModelAddressPolicy before"
           + " it is stored or used; follows no redirect";
+
+  private static final String CLAMD_DAEMON =
+      "the clamd daemon is system administrator configuration (MalwareScanSettingsService), set by"
+          + " a system administrator or by the installation step, which takes only port 3310; a"
+          + " scanner in the internal network is the rule, so no address policy refuses one";
 
   private static final String SMTP_SERVER =
       "the SMTP server is system administrator configuration (MailSettingsService), checked as"
@@ -53,21 +63,33 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.indexing.source.smb.SmbShareClient$ValidatingSocketFactory#createSocket",
               "runs TargetAddressValidator#validateHost before it connects"),
-          Map.entry("io.opaa.llm.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
-              "io.opaa.query.spike.OpenSandboxClient#send",
-              "development-only spike: reaches only the sandbox server the operator configured in"
-                  + " opaa.sandbox.base-url, never an address from the model or a person; follows"
-                  + " no redirect"),
+              "io.opaa.observability.MeteredHttpClient#send",
+              "forwards a request its caller built and checked to the wrapped client unchanged;"
+                  + " the decorator only measures, its callers stand in this list or send through"
+                  + " the blocks"),
+          Map.entry(
+              "io.opaa.observability.MeteredHttpClient#sendAsync",
+              "forwards a request its caller built and checked to the wrapped client unchanged;"
+                  + " the decorator only measures"),
+          Map.entry("io.opaa.llm.embedding.HttpEmbeddingProbe#exchange", MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.query.sandbox.OpenSandboxClient#send",
+              "reaches only the sandbox server the operator configured in opaa.sandbox.base-url,"
+                  + " never an address from the model or a person; follows no redirect"),
           Map.entry("io.opaa.llm.LlmModelConnectionTester#probe", MODEL_ADDRESS_CHECKED),
           Map.entry("io.opaa.llm.LlmModelDiscoverer#send", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.llm.ModelRedirectRefusal#intercept",
               "re-issues the model client's own request with redirects off; the endpoint was"
                   + " checked with ModelAddressPolicy when it was stored"),
-          Map.entry("io.opaa.llm.RerankClient#send", MODEL_ADDRESS_CHECKED),
-          Map.entry("io.opaa.llm.TranscriptionClient#send", MODEL_ADDRESS_CHECKED),
-          Map.entry("io.opaa.llm.TextRecognitionClient#exchange", MODEL_ADDRESS_CHECKED),
+          Map.entry("io.opaa.llm.rerank.RerankClient#send", MODEL_ADDRESS_CHECKED),
+          Map.entry("io.opaa.llm.transcription.TranscriptionClient#send", MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.llm.transcription.RealtimeTranscriptionClient$Connection#connect",
+              MODEL_ADDRESS_CHECKED),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionClient#exchange", MODEL_ADDRESS_CHECKED),
           Map.entry(
               "io.opaa.audit.SyslogSender#deliver",
               "the SIEM receiver comes from the operator's configuration (opaa.siem-export.*),"
@@ -75,10 +97,8 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.audit.SyslogSender#secured",
               "wraps the socket deliver connected to the configured SIEM receiver in TLS"),
-          Map.entry(
-              "io.opaa.knowledge.ClamdClient#scan",
-              "the virus scanner comes from the operator's configuration (opaa.malware-scan.*),"
-                  + " never from a request"),
+          Map.entry("io.opaa.knowledge.ClamdClient#scan", CLAMD_DAEMON),
+          Map.entry("io.opaa.knowledge.ClamdClient#version", CLAMD_DAEMON),
           Map.entry("io.opaa.mail.MailConnectionTester#test", SMTP_SERVER),
           Map.entry("io.opaa.mail.MailService#attemptSend", SMTP_SERVER),
           Map.entry("io.opaa.mail.MailService#deliver", SMTP_SERVER),
@@ -137,13 +157,11 @@ class SecurityInvariantsTest {
                   + " leaves the method only as that comparison"),
           Map.entry(
               "io.opaa.installation.InstallationModelDiscovery#effectiveKey", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#chatModel", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#rerankModel", WIZARD_STEP_KEY),
-          Map.entry("io.opaa.installation.StepChecks#transcriptionModel", WIZARD_STEP_KEY),
           Map.entry(
               "io.opaa.installation.StepRules#apiKey",
               "turns a saved wizard step, address and key stored together, into the settings the"
-                  + " installation writes"),
+                  + " installation writes, and hands the check probe of a model step"
+                  + " (StepChecks#withKey, WIZARD_STEP_KEY) its key"),
           Map.entry(
               "io.opaa.installation.StepRules#mailSettings",
               "turns the saved mail step, server and password stored together, into the mail"
@@ -154,17 +172,38 @@ class SecurityInvariantsTest {
                   + " settings the installation writes"),
           Map.entry("io.opaa.llm.ActiveChatModelResolver#chatModelBuilder", OWN_ADDRESS_AND_KEY),
           Map.entry(
-              "io.opaa.llm.EmbeddingModelAdministration#decrypt",
+              "io.opaa.llm.embedding.EmbeddingModelAdministration#decrypt",
               "reuses the installed model's key for a draft only at the stored address"
                   + " (ModelEndpointRules#sameEndpoint)"),
-          Map.entry("io.opaa.llm.InstalledEmbeddingModel#build", OWN_ADDRESS_AND_KEY),
+          Map.entry("io.opaa.llm.embedding.InstalledEmbeddingModel#build", OWN_ADDRESS_AND_KEY),
           Map.entry(
-              "io.opaa.llm.ModelRoleAdministration#testKey",
+              "io.opaa.llm.administration.ModelRoleAdministration#decryptForTest",
+              "reuses the stored live key for a test only at the stored live address"
+                  + " (ModelEndpointRules#sameEndpoint) and the batch key only at the batch"
+                  + " address's origin (RealtimeTranscriptionEndpoint#sharesOrigin)"),
+          Map.entry(
+              "io.opaa.llm.administration.ModelRoleAdministration#testKey",
               "reuses a role's stored key for a test only at the stored address"
                   + " (ModelEndpointRules#sameEndpoint)"),
           Map.entry(
-              "io.opaa.llm.ModelRoleEndpoints#decrypt",
-              "loads the rerank and transcription endpoints with their own address and key"),
+              "io.opaa.llm.OptionalRoleEndpoints#decrypt",
+              "loads the rerank, transcription and text recognition endpoints, each with its own"
+                  + " address and key; the live upstream borrows the batch key only at its origin"),
+          Map.entry(
+              "io.opaa.llm.rerank.RerankEndpoints#load",
+              "the rerank key, bound to its row, goes into the endpoint with the stored address"),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionEndpoints#load",
+              "the text recognition key, bound to its row, goes into the endpoint with the stored"
+                  + " address"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionEndpoints#load",
+              "the transcription key, bound to its row, goes into the endpoint with the stored"
+                  + " address"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionEndpoints#realtimeOf",
+              "the live key goes to the stored live address; without one the batch key goes only"
+                  + " to the batch address's origin (RealtimeTranscriptionEndpoint#sharesOrigin)"),
           Map.entry(
               "io.opaa.mail.MailOutbox#decrypt",
               "queued mails (recipient, subject, body); no credential"),
@@ -206,6 +245,332 @@ class SecurityInvariantsTest {
           Map.entry(
               "io.opaa.format.file.markdown.MarkdownDocumentFormat#toEvents",
               "splits on one plain character: String's fast path, no pattern"));
+
+  /**
+   * The persistent types that carry security state, with that state. A save or change of one of
+   * them stands in {@link #WHOLE_ROW_WRITERS} unless {@code @Version} guards its rows.
+   */
+  static final Map<String, String> SECURITY_STATE_ENTITIES =
+      Map.ofEntries(
+          Map.entry("io.opaa.auth.User", "system role, directory lock, erasure"),
+          Map.entry(
+              "io.opaa.installation.InstallationState",
+              "whether the installation is open, and the hash of the token that completes it"),
+          Map.entry(
+              "io.opaa.audit.AuditIncidentScopeGrant",
+              "status and validity of an auditor's widened scope"),
+          Map.entry(
+              "io.opaa.auth.LocalCredentials",
+              "lock, failed-login lockout, expiry, session generation"),
+          Map.entry(
+              "io.opaa.auth.OidcProvider",
+              "whether the provider signs anyone in, the claims that decide role and groups"),
+          Map.entry("io.opaa.account.LocalRefreshToken", "revocation and end of a session family"),
+          Map.entry("io.opaa.account.LocalActionToken", "consumption and expiry of a mailed link"),
+          Map.entry("io.opaa.account.LocalRevokedToken", "the denylist of access tokens"),
+          Map.entry("io.opaa.account.LocalAuthSettings", "the lockout rules of the local sign-in"),
+          Map.entry(
+              "io.opaa.externalaccess.ExternalAccessSettings",
+              "the installation switch of the external access"),
+          Map.entry("io.opaa.externalaccess.token.ExternalAccessToken", "revocation, expiry"),
+          Map.entry("io.opaa.externalaccess.token.ServiceAccountToken", "revocation, expiry"),
+          Map.entry("io.opaa.externalaccess.token.ServiceAccount", "deactivation"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountLibraryConsent",
+              "end and expiry of a consent"),
+          Map.entry(
+              "io.opaa.diagnosticaccess.DiagnosticImpersonationGrant",
+              "revocation and validity of an impersonation grant"),
+          Map.entry(
+              "io.opaa.group.Group", "deactivation, dissolution, release, protection of a group"),
+          Map.entry("io.opaa.permission.AssetGrant", "role and expiry of a grant"),
+          Map.entry("io.opaa.space.SpaceMembership", "role in a space"),
+          Map.entry(
+              "io.opaa.knowledge.KnowledgeLibrary", "release for external access and its end"),
+          Map.entry(
+              "io.opaa.connection.oauth.ConnectionAuthorization",
+              "consumption and expiry of a pending sign-in"),
+          Map.entry("io.opaa.connection.profile.ConnectorTypePolicy", "lock of a connector type"),
+          Map.entry("io.opaa.connection.profile.ConnectionProfile", "lock of a profile"),
+          Map.entry("io.opaa.connection.profile.LibraryConnection", "end of a connection"),
+          Map.entry("io.opaa.connection.token.ConnectionToken", "expiry of a stored token"),
+          Map.entry(
+              "io.opaa.asset.AssetResponsibility",
+              "lock of an agent or a template, which refuses every run"));
+
+  /**
+   * Persistent types with a field named like security state that carry none, each with what the
+   * field means instead.
+   */
+  static final Map<String, String> NOT_SECURITY_STATE =
+      Map.ofEntries(
+          Map.entry("io.opaa.agent.AgentSettings", "enabled switches a feature, grants no access"),
+          Map.entry("io.opaa.chat.Chat", "status is the progress of an answer, grants no access"),
+          Map.entry(
+              "io.opaa.chat.ChatAttachment",
+              "status is the progress of reading an attachment, grants no access"),
+          Map.entry(
+              "io.opaa.indexing.job.IndexingJob", "status is the progress of an indexing run"),
+          Map.entry(
+              "io.opaa.knowledge.Document",
+              "status is the progress of indexing; access follows the library's grants"),
+          Map.entry(
+              "io.opaa.asset.AssetVisibilityHistory",
+              "history of the external access for the audit; no decision reads it"),
+          Map.entry(
+              "io.opaa.permission.AssetGrantHistory",
+              "history of grants for the audit; no decision reads it"),
+          Map.entry(
+              "io.opaa.space.SpaceMembershipHistory",
+              "history of memberships for the audit; no decision reads it"),
+          Map.entry("io.opaa.chat.ChatMessage", "role is the author of a chat message"),
+          Map.entry(
+              "io.opaa.chat.LockedAccountChatCleanupSetting",
+              "enabled switches the deletion of chats of locked accounts"),
+          Map.entry(
+              "io.opaa.connection.account.ConnectionPersonState",
+              "when the reconciler last saw the account deactivated or dormant; the account's own"
+                  + " state decides access"),
+          Map.entry(
+              "io.opaa.knowledge.MalwareScanSettings",
+              "enabled switches the virus scan; one administrator form, written only as a whole"),
+          Map.entry(
+              "io.opaa.mail.MailSettings",
+              "enabled switches sending; one administrator form, written only as a whole"),
+          Map.entry("io.opaa.llm.LlmModel", "active marks the model in use"),
+          Map.entry("io.opaa.llm.OptionalRoleSettings", "enabled switches a model role"),
+          Map.entry("io.opaa.llm.rerank.RerankModelSettings", "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.llm.textrecognition.TextRecognitionModelSettings",
+              "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.llm.transcription.TranscriptionModelSettings",
+              "enabled switches a model role"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheck",
+              "status is the progress of a tool check, grants no access"));
+
+  private static final String NEW_ROW =
+      "inserts an instance it constructed itself; there is no earlier read to write back";
+
+  private static final String CHANGED_COLUMNS_IN_TRANSACTION =
+      "loads and saves the instance in one transaction; @DynamicUpdate writes only the columns it"
+          + " changed";
+
+  private static final String TOWARD_REVOKED =
+      "only moves the row toward revoked or ended; what it may write back stale (use day, lapse or"
+          + " reminder marker) grants no access";
+
+  private static final String RESPONSIBILITY_ROW_LOCK =
+      "reads the row FOR UPDATE (findByIdForUpdate) and writes it in the same transaction; the"
+          + " period run changes it only by conditional updates, which wait for that lock";
+
+  private static final String ROLE_ONLY =
+      "the role is the only state that changes after creation, so the whole row is that write; a"
+          + " row deleted meanwhile fails the update instead of returning";
+
+  /**
+   * Code units that may write a stale whole row of {@link #SECURITY_STATE_ENTITIES}, each with why
+   * no security state committed by another transaction is lost.
+   */
+  static final Map<String, String> WHOLE_ROW_WRITERS =
+      Map.ofEntries(
+          Map.entry(
+              "io.opaa.account.LocalActionTokenService#issue",
+              NEW_ROW + "; consumption is a conditional update"),
+          Map.entry(
+              "io.opaa.account.LocalActionTokenService#issueHandover",
+              NEW_ROW + "; consumption is a conditional update"),
+          Map.entry(
+              "io.opaa.account.LocalRefreshTokenService#insert",
+              NEW_ROW + "; revocation and rotation are targeted updates"),
+          Map.entry("io.opaa.account.LocalTokenRevocationService#revokeAccessToken", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetGrantService#grantAtCreation", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#establish", NEW_ROW),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#change", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#lock", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetResponsibilityService#unlock", RESPONSIBILITY_ROW_LOCK),
+          Map.entry("io.opaa.asset.AssetGrantService#upsertGrant", ROLE_ONLY),
+          Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#giveOwnerGrant", ROLE_ONLY),
+          Map.entry("io.opaa.asset.AssetShellOwnershipDirectory#moveOwnerGrant", ROLE_ONLY),
+          Map.entry(
+              "io.opaa.connection.LibraryConnectionService#connect",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.connection.LibraryConnectionService#disconnect",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.connection.oauth.ConnectionAuthorizationService#start", NEW_ROW),
+          Map.entry(
+              "io.opaa.connection.profile.ConnectionProfileService#update",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#grant", NEW_ROW),
+          Map.entry(
+              "io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#revoke",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService#revokeGrantsIssuedBy",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.diagnosticaccess.LibraryDiagnosticsLockService#setLocked",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService#block", TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService#blockAllOf",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService"
+                  + "#blockAllOfServiceAccount",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenAdminService"
+                  + "#blockServiceAccountToken",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenLapseService#endTokensOfAccount",
+              TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenLapseService#recordLapse",
+              "reads the token FOR UPDATE (findForLapse) and only moves it toward revoked"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenScopeService#effectiveLibraryIds",
+              "changes only the library selection, rows of a collection table; no column of the"
+                  + " token row changes, so Hibernate writes none"),
+          Map.entry("io.opaa.externalaccess.token.ExternalAccessTokenService#issue", NEW_ROW),
+          Map.entry(
+              "io.opaa.externalaccess.token.ExternalAccessTokenService#revokeOwn", TOWARD_REVOKED),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountConsentService#revoke",
+              "reads the open consent FOR UPDATE and only ends it"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountConsentService#set",
+              "reads the open consent FOR UPDATE before it ends it; the replacing consent is a new"
+                  + " row"),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountService#deactivate", TOWARD_REVOKED),
+          Map.entry("io.opaa.externalaccess.token.ServiceAccountService#issueToken", NEW_ROW),
+          Map.entry(
+              "io.opaa.externalaccess.token.ServiceAccountService#revokeToken", TOWARD_REVOKED),
+          Map.entry("io.opaa.library.KnowledgeLibraryService#createLibrary", NEW_ROW),
+          Map.entry(
+              "io.opaa.library.KnowledgeLibraryService#generatePushSecret",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.KnowledgeLibraryService#removePushSecret",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.KnowledgeLibraryService#updateLibrary",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.LibraryExternalAccessExpiryService#runOnce",
+              "locks the due rows FOR UPDATE first; " + CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.LibraryExternalAccessReminderService#runOnce",
+              "locks the due rows FOR UPDATE first; " + CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.library.LibraryExternalAccessService#setExternalAccess",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry("io.opaa.library.PrivateLibraryCreation#create", NEW_ROW),
+          Map.entry(
+              "io.opaa.metadata.LibraryMetadataExtractionService#updateSettings",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.metadata.LibraryMetadataFieldService#updateCoreContextPrefix",
+              CHANGED_COLUMNS_IN_TRANSACTION),
+          Map.entry(
+              "io.opaa.permission.PermissionTransferService#transferGrants",
+              "reads the target group's grant FOR UPDATE (findGroupGrantForUpdate) before it"
+                  + " raises role and expiry from it; the moved grant is a new row"),
+          Map.entry(
+              "io.opaa.space.GroupSpaceMembershipDirectoryAdapter#transferSpaceMemberships",
+              ROLE_ONLY),
+          Map.entry(
+              "io.opaa.space.Space#addMembership",
+              "links a new membership to its space; no existing membership is written"),
+          Map.entry(
+              "io.opaa.space.Space#removeMembership",
+              "detaches a membership that orphan removal deletes; no row is written back"),
+          Map.entry("io.opaa.space.SpaceService#updateMemberRole", ROLE_ONLY),
+          Map.entry(
+              "io.opaa.audit.AuditIncidentScopeService#approve",
+              "reads the grant FOR UPDATE (findForApproval) before it approves it"),
+          Map.entry("io.opaa.audit.AuditIncidentScopeService#request", NEW_ROW),
+          Map.entry(
+              "io.opaa.installation.InstallationService#ensureToken",
+              "reads the installation state FOR UPDATE (lockState) before it stores the token"),
+          Map.entry(
+              "io.opaa.installation.InstallationService#markCompleted",
+              "every caller read the installation state FOR UPDATE (lockState)"));
+
+  /**
+   * Where a sign-in starts: the filter that provisions the account and the listeners of the event
+   * it publishes, which run in its thread.
+   */
+  static final List<String> SIGN_IN_ENTRIES =
+      List.of(
+          "io.opaa.auth.UserProvisioningFilter#doFilterInternal",
+          "io.opaa.auth.AuditorRoles#onRevoked",
+          "io.opaa.group.TokenGroupProvisioner#onUserProvisioned",
+          "io.opaa.space.PersonalSpaceProvisioner#onUserProvisioned");
+
+  /**
+   * Code units on the sign-in path that save a versioned row of {@link #SECURITY_STATE_ENTITIES},
+   * each with why the save cannot meet a concurrent change of that row.
+   */
+  static final Map<String, String> SIGN_IN_SAVES =
+      Map.ofEntries(
+          Map.entry("io.opaa.auth.UserService#insertUser", NEW_ROW),
+          Map.entry("io.opaa.group.TokenGroupSynchronizer#findOrCreate", NEW_ROW));
+
+  /**
+   * Code units that build a prompt in a class without {@link
+   * SecurityInvariants#PROMPT_TEXT_BLOCKS}, each with where the text it hands the model was cleaned
+   * or why it holds none from outside.
+   */
+  static final Map<String, String> PROMPTS_PAST_THE_BLOCKS =
+      Map.ofEntries(
+          Map.entry(
+              "io.opaa.query.answer.AnswerGenerationService#call",
+              "the system text holds passages from DocumentBlock and the space instruction from"
+                  + " SpaceInstructionBlock, both cleaned and fenced there"),
+          Map.entry(
+              "io.opaa.query.answer.AnswerGenerationService#stream",
+              "the system text holds passages from DocumentBlock and the space instruction from"
+                  + " SpaceInstructionBlock, both cleaned and fenced there"),
+          Map.entry(
+              "io.opaa.query.answer.AnswerGenerationService#streamAnswer",
+              "the user message is the question QueryService#query cleaned with PromptText"),
+          Map.entry(
+              "io.opaa.query.toolloop.AgentToolLoop#call",
+              "the system text is AgentPrompt's, which sets both instructions with"
+                  + " PromptText#between; tool results are fenced by DocumentBlock"),
+          Map.entry(
+              "io.opaa.query.toolloop.AgentToolLoop#runAndKeep",
+              "the user message is the question QueryService#query cleaned with PromptText; the"
+                  + " history is the conversation window, whose entrances in"
+                  + " ConversationWindowMessages clean every message"),
+          Map.entry(
+              "io.opaa.chat.ChatService#historyAsSpringAiMessages",
+              "the persisted history enters the conversation window only through"
+                  + " ConversationWindowMessages#reloaded, which cleans every message"),
+          Map.entry(
+              "io.opaa.retrieval.search.QueryDecompositionService#requestDecomposition",
+              "question and window come as messages of DecompositionContext, cleaned there"),
+          Map.entry(
+              "io.opaa.retrieval.search.DecompositionContext#promptMessages",
+              "question and window texts go through DecompositionContext#material, which cleans"
+                  + " them with PromptText"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCallingRunner#run",
+              "system prompt, user message and tool results come from the checked-in fictional"
+                  + " case base on the classpath; no text from outside enters the measurement"),
+          Map.entry(
+              "io.opaa.query.toolcheck.ToolCheckWorker#measure",
+              "the readiness probe is a constant text; the cases run through ToolCallingRunner"),
+          Map.entry(
+              "io.opaa.metadata.ModelMetadataExtractor#askModel",
+              "the prompt is ModelExtractionPrompt's, which fences title and text with"
+                  + " ContentFence"));
 
   /** The allowlist of operations without a session and without a handler check. */
   static final String OPERATION_ALLOWLIST = "/security/anonymous-allowlist.yaml";
@@ -263,8 +628,93 @@ class SecurityInvariantsTest {
   }
 
   @Test
+  void securityStateIsNeverWrittenBackAsAStaleWholeRow() {
+    assertThat(
+            SecurityInvariants.unlisted(
+                SecurityInvariants.wholeRowWriters(
+                    MainClasses.get(), SECURITY_STATE_ENTITIES.keySet()),
+                WHOLE_ROW_WRITERS))
+        .as(
+            "a loaded row with security state is changed or saved as a whole and may write back"
+                + " what another transaction changed meanwhile (a role, a lock, a revocation):"
+                + " write the changed column with a targeted @Modifying update, load under a row"
+                + " lock, or add @DynamicUpdate and save the instance in the transaction that"
+                + " loaded it; then name the code unit with its reason in WHOLE_ROW_WRITERS")
+        .isEmpty();
+  }
+
+  @Test
+  void signInSavesNoExistingVersionedRow() {
+    assertThat(
+            SecurityInvariants.unlisted(
+                SecurityInvariants.versionedSavesReachableFrom(
+                    MainClasses.get(), SIGN_IN_ENTRIES, SECURITY_STATE_ENTITIES.keySet()),
+                SIGN_IN_SAVES))
+        .as(
+            "the sign-in saves a versioned row it loaded (account, provider, group): a concurrent"
+                + " admin change makes that save fail outside any controller, so the sign-in fails;"
+                + " write the column with a targeted @Modifying update instead, or name the code"
+                + " unit with its reason in SIGN_IN_SAVES")
+        .isEmpty();
+  }
+
+  @Test
+  void foreignTextEntersAPromptOnlyThroughPromptText() {
+    assertThat(
+            SecurityInvariants.unlisted(
+                SecurityInvariants.promptBuildingUnits(MainClasses.get()), PROMPTS_PAST_THE_BLOCKS))
+        .as(
+            "prompts built past PromptText and ContentFence: clean foreign text with them, or name"
+                + " in PROMPTS_PAST_THE_BLOCKS where the text was cleaned or why none comes from"
+                + " outside")
+        .isEmpty();
+  }
+
+  @Test
+  void everyPersistentTypeWithASecurityStateFieldIsClassified() {
+    var classes = MainClasses.get();
+    Set<String> classified = new TreeSet<>(SECURITY_STATE_ENTITIES.keySet());
+    classified.addAll(NOT_SECURITY_STATE.keySet());
+
+    assertThat(SecurityInvariants.typesWithSecurityStateFields(classes))
+        .as(
+            "a persistent type has a field named like security state (role, lock, revocation,"
+                + " expiry ...): add it to SECURITY_STATE_ENTITIES, or to NOT_SECURITY_STATE with"
+                + " what the field means instead")
+        .isSubsetOf(classified);
+    assertThat(SECURITY_STATE_ENTITIES.keySet())
+        .doesNotContainAnyElementsOf(NOT_SECURITY_STATE.keySet());
+    assertThat(classified)
+        .as("classified types that are no persistent type of the backend any more")
+        .allMatch(classes::contain);
+  }
+
+  @Test
   void everyExceptionStillBreaksItsRule() {
     var classes = MainClasses.get();
+
+    assertThat(
+            SecurityInvariants.stale(
+                WHOLE_ROW_WRITERS.keySet(),
+                SecurityInvariants.wholeRowWriters(classes, SECURITY_STATE_ENTITIES.keySet())
+                    .keySet()))
+        .as("WHOLE_ROW_WRITERS entries that no longer write a whole row")
+        .isEmpty();
+    assertThat(
+            SecurityInvariants.stale(
+                SIGN_IN_SAVES.keySet(),
+                SecurityInvariants.versionedSavesReachableFrom(
+                        classes, SIGN_IN_ENTRIES, SECURITY_STATE_ENTITIES.keySet())
+                    .keySet()))
+        .as(
+            "SIGN_IN_SAVES entries that the sign-in no longer reaches or that save no versioned row")
+        .isEmpty();
+    assertThat(
+            SecurityInvariants.stale(
+                NOT_SECURITY_STATE.keySet(),
+                SecurityInvariants.typesWithSecurityStateFields(classes)))
+        .as("NOT_SECURITY_STATE entries without a field named like security state")
+        .isEmpty();
 
     assertThat(
             SecurityInvariants.stale(
@@ -295,6 +745,12 @@ class SecurityInvariantsTest {
                 PER_CALL_REGEX_IN_FORMAT.keySet(),
                 SecurityInvariants.perCallRegex(classes, "io.opaa.format").keySet()))
         .as("PER_CALL_REGEX_IN_FORMAT entries that no longer call a per-call member")
+        .isEmpty();
+    assertThat(
+            SecurityInvariants.stale(
+                PROMPTS_PAST_THE_BLOCKS.keySet(),
+                SecurityInvariants.promptBuildingUnits(classes).keySet()))
+        .as("PROMPTS_PAST_THE_BLOCKS entries that no longer build a prompt past the blocks")
         .isEmpty();
   }
 

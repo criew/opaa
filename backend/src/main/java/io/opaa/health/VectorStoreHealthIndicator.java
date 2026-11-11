@@ -2,13 +2,18 @@ package io.opaa.health;
 
 import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
-import io.opaa.llm.EmbeddingInfoService;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingInfoService;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.observability.PassiveHealthGroup;
+import java.time.Clock;
+import java.time.Duration;
+import java.util.Optional;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.boot.health.contributor.Status;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,27 +22,31 @@ import org.springframework.stereotype.Component;
  * not fit the old column, and a planned re-embedding is no outage. Without an installed embedding
  * model there is no vector table: {@code UNKNOWN} with {@code embeddingModel: NOT_CONFIGURED}, a
  * regular state of an installation that has not set its model yet; {@code DOWN} when the table
- * holds chunks without a model row.
+ * holds chunks without a model row. The result of the search is handed out again for a short time
+ * ({@link CachedProbe}), so repeated calls of the group cost one search.
  */
 @DataFlow("embedding-model")
 @Component
 @ConditionalOnProperty(name = "management.health.vectorstore.enabled", matchIfMissing = true)
-public class VectorStoreHealthIndicator implements HealthIndicator {
+public class VectorStoreHealthIndicator implements HealthIndicator, PassiveHealthGroup {
 
   private final VectorStore vectorStore;
   private final EmbeddingIndexState indexState;
   private final EmbeddingInfoService embeddingInfo;
   private final EmbeddingModelService embeddingModels;
+  private final CachedProbe search;
 
   public VectorStoreHealthIndicator(
       VectorStore vectorStore,
       EmbeddingIndexState indexState,
       EmbeddingInfoService embeddingInfo,
-      EmbeddingModelService embeddingModels) {
+      EmbeddingModelService embeddingModels,
+      Clock clock) {
     this.vectorStore = vectorStore;
     this.indexState = indexState;
     this.embeddingInfo = embeddingInfo;
     this.embeddingModels = embeddingModels;
+    this.search = new CachedProbe(this::search, clock);
   }
 
   @Override
@@ -53,9 +62,27 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
           .withDetail("vectorSearch", "SUSPENDED")
           .build();
     }
+    return search.health();
+  }
+
+  @Override
+  public String healthGroup() {
+    return ModelHealthGroupsConfiguration.VECTOR_STORE_GROUP;
+  }
+
+  /** The state without a search: the cheap states as they are, else the last search. */
+  @Override
+  public Optional<Status> lastStatus(Duration maxAge) {
+    if (!embeddingInfo.getEmbeddingInfo().installed() || !indexState.isVectorSearchAvailable()) {
+      return Optional.of(health().getStatus());
+    }
+    return search.last(maxAge).map(Health::getStatus);
+  }
+
+  private Health search() {
     try {
       vectorStore.similaritySearch(SearchRequest.builder().query("health").topK(1).build());
-      return Health.up().withDetail("provider", provider).build();
+      return Health.up().withDetail("provider", vectorStore.getClass().getSimpleName()).build();
     } catch (Exception e) {
       return Health.down(e).build();
     }

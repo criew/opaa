@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../../fixtures/a11y";
-import { createFromReview, openNewLibraryWizard } from "../../fixtures/chat";
+import { createFromReview, nameNewLibrary, openNewLibraryWizard } from "../../fixtures/chat";
 import {
   bootstrapAdmin,
   enableLocalAccounts,
@@ -214,9 +214,9 @@ test.describe.serial("Revision und Nachweis", () => {
       reason: "E2E Stichtag vor Entzug",
     });
     await submit.click();
-    await expect(
-      auditor.getByText(new RegExp(`^${libraryName} — \\d+ Zugriffszeitr`)),
-    ).toBeVisible();
+    // The object's name heads the result, the count of periods stands in the page header.
+    await expect(auditor.getByText(libraryName, { exact: true })).toBeVisible();
+    await expect(auditor.getByText(/^\d+ Zugriffszeitr(aum|äume)$/)).toBeVisible();
     await expect(readerRow).toContainText("Direkte Freigabe");
     await expect(readerRow).toContainText(/\d{1,2}\.\d{1,2}\.\d{4}/);
     await expect(readerRow).toContainText("noch wirksam");
@@ -276,6 +276,7 @@ test.describe.serial("Revision und Nachweis", () => {
     await openNewLibraryWizard(page);
     await page.getByRole("radio", { name: /Dropbox/ }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
+    await nameNewLibrary(page, libraryName);
     const consent = page.getByTestId("source-consent");
     await consent
       .getByRole("checkbox", { name: "Ich verbinde ein Dienstkonto, kein persönliches Konto" })
@@ -290,9 +291,7 @@ test.describe.serial("Revision und Nachweis", () => {
       .getByRole("checkbox", { name: /E2E-Ablage/ })
       .check();
     await page.getByRole("button", { name: "Ändern Zeitplan" }).click();
-    await page.getByRole("switch", { name: "Erste Indizierung sofort nach dem Anlegen" }).uncheck();
-    await page.getByRole("button", { name: "Weiter", exact: true }).click();
-    await page.getByLabel("Name", { exact: true }).fill(libraryName);
+    await page.getByRole("checkbox", { name: "Erste Indizierung sofort nach dem Anlegen" }).uncheck();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await createFromReview(page);
     const libraryId = new URL(page.url()).pathname.split("/").pop()!;

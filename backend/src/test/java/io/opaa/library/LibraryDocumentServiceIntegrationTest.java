@@ -410,16 +410,72 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             uploaded.document().getId().toString());
     assertThat(chunksAfter).isZero();
-    // deleteDocument runs the chunk delete from a TransactionSynchronization#afterCommit callback
-    // (see LibraryDocumentService#deleteDocument) - this proves the full-text delete actually
-    // reaches the database from that deferred callback against a real connection/transaction
-    // manager, not just against a mock.
     Long fullTextChunksAfter =
         jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM chunk_full_text WHERE document_id = ?",
             Long.class,
             uploaded.document().getId());
     assertThat(fullTextChunksAfter).isZero();
+  }
+
+  /**
+   * The chunk deletes run in the deletion's transaction: when the full-text delete fails, the
+   * document row, its vector rows, its full-text rows and its stored file all stay.
+   */
+  @Test
+  void aFailedFullTextDeleteKeepsTheRowTheVectorRowsAndTheFile() {
+    LibraryDocumentEntry uploaded =
+        documentService.uploadDocument(
+            libraryId,
+            textFile("bleibt-ganz.txt", "content that must survive"),
+            null,
+            currentUserOf(editor, false));
+    UUID documentId = uploaded.document().getId();
+    Document savedDoc = awaitDocumentStatus(documentId, DocumentStatus.INDEXED);
+    Path storedFile = Path.of(savedDoc.getFilePath());
+    long vectorRowsBefore = vectorRowsOf(documentId);
+    assertThat(vectorRowsBefore).isPositive();
+    String probe = "failing_full_text_delete_" + documentId.toString().replace("-", "");
+    jdbcTemplate.execute(
+        "CREATE FUNCTION "
+            + probe
+            + "() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN"
+            + " RAISE EXCEPTION 'full-text delete refused'; END $$");
+    jdbcTemplate.execute(
+        "CREATE TRIGGER "
+            + probe
+            + " BEFORE DELETE ON chunk_full_text FOR EACH ROW WHEN (OLD.document_id = '"
+            + documentId
+            + "') EXECUTE FUNCTION "
+            + probe
+            + "()");
+    try {
+      assertThatThrownBy(
+              () ->
+                  documentService.deleteDocument(
+                      libraryId, documentId, currentUserOf(editor, false)))
+          .hasStackTraceContaining("full-text delete refused");
+    } finally {
+      jdbcTemplate.execute("DROP TRIGGER " + probe + " ON chunk_full_text");
+      jdbcTemplate.execute("DROP FUNCTION " + probe + "()");
+    }
+
+    assertThat(documentRepository.findById(documentId)).isPresent();
+    assertThat(vectorRowsOf(documentId)).isEqualTo(vectorRowsBefore);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM chunk_full_text WHERE document_id = ?",
+                Long.class,
+                documentId))
+        .isEqualTo(vectorRowsBefore);
+    assertThat(Files.exists(storedFile)).isTrue();
+  }
+
+  private long vectorRowsOf(UUID documentId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM vector_store WHERE metadata->>'document_id' = ?",
+        Long.class,
+        documentId.toString());
   }
 
   @Test

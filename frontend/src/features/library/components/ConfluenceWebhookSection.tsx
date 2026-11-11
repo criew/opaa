@@ -2,16 +2,14 @@ import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { generatePushSecret, removePushSecret } from '../api/indexingApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { fontFamily } from '@/shared/theme/tokens'
+import SecretDialog from '@/shared/ui/dialog/SecretDialog'
+import { copyOnce } from '@/shared/utils/copyOnce'
 
 interface ConfluenceWebhookSectionProps {
   libraryId: string
@@ -120,55 +118,49 @@ export default function ConfluenceWebhookSection({
         </Alert>
       )}
 
-      <Dialog
+      <SecretDialog
         open={revealed !== null}
+        titleId="confluence-webhook-secret-title"
+        title="Webhook-Geheimnis"
+        onCopy={() => void copyOnce(revealed?.secret ?? '', 'Das Geheimnis')}
         onClose={() => setRevealed(null)}
-        aria-labelledby="confluence-webhook-secret-title"
-        fullWidth
-        maxWidth="sm"
       >
-        <DialogTitle id="confluence-webhook-secret-title">Webhook-Geheimnis</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Dieses Geheimnis wird nur jetzt angezeigt. Notieren Sie es in Confluence, bevor Sie den
-            Dialog schließen — danach lässt es sich nur noch neu erzeugen.
-          </Alert>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            Geheimnis
-          </Typography>
-          <Typography
-            component="code"
-            data-testid="confluence-webhook-secret"
-            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
-          >
-            {revealed?.secret}
-          </Typography>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            Adresse (URL) des Webhooks
-          </Typography>
-          <Typography
-            component="code"
-            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
-          >
-            {revealed?.url}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            <strong>Data Center:</strong> In der Confluence-Administration unter „Webhooks“ einen
-            Webhook mit dieser Adresse anlegen, das Geheimnis als „Secret“ hinterlegen und die
-            Seiten-Ereignisse (erstellt, aktualisiert, entfernt, in den Papierkorb verschoben) sowie
-            die Anhangs-Ereignisse auswählen. Confluence signiert jede Nachricht damit
-            (X-Hub-Signature).
-          </Typography>
-          <Typography variant="body2">
-            <strong>Cloud:</strong> Eine Automation-Regel „Web-Anfrage senden“ mit dieser Adresse
-            anlegen, den HTTP-Header <code>X-OPAA-Webhook-Secret</code> mit dem Geheimnis setzen und
-            als Inhalt die Seiten-ID mitgeben, z. B. <code>{'{"pageId": "{{page.id}}"}'}</code>.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRevealed(null)}>Schließen</Button>
-        </DialogActions>
-      </Dialog>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Dieses Geheimnis wird nur jetzt angezeigt. Notieren Sie es in Confluence, bevor Sie den
+          Dialog schließen — danach lässt es sich nur noch neu erzeugen.
+        </Alert>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Geheimnis
+        </Typography>
+        <Typography
+          component="code"
+          data-testid="confluence-webhook-secret"
+          sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
+        >
+          {revealed?.secret}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Adresse (URL) des Webhooks
+        </Typography>
+        <Typography
+          component="code"
+          sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
+        >
+          {revealed?.url}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <strong>Data Center:</strong> In der Confluence-Administration unter „Webhooks“ einen
+          Webhook mit dieser Adresse anlegen, das Geheimnis als „Secret“ hinterlegen und die
+          Seiten-Ereignisse (erstellt, aktualisiert, entfernt, in den Papierkorb verschoben) sowie
+          die Anhangs-Ereignisse auswählen. Confluence signiert jede Nachricht damit
+          (X-Hub-Signature).
+        </Typography>
+        <Typography variant="body2">
+          <strong>Cloud:</strong> Eine Automation-Regel „Web-Anfrage senden“ mit dieser Adresse
+          anlegen, den HTTP-Header <code>X-OPAA-Webhook-Secret</code> mit dem Geheimnis setzen und
+          als Inhalt die Seiten-ID mitgeben, z. B. <code>{'{"pageId": "{{page.id}}"}'}</code>.
+        </Typography>
+      </SecretDialog>
     </Box>
   )
 }

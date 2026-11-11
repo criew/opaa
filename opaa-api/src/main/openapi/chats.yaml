@@ -193,6 +193,12 @@ paths:
         opaa.chat.attachments.max-per-chat attachments, each question names at most
         opaa.chat.attachments.max-per-message.
 
+        **413:** the file is larger than opaa.upload.max-file-size, or it would exceed a storage
+        quota of chat attachments: the caller's attachments together
+        (opaa.chat.attachments.account-quota-bytes), the caller's attachments not yet sent with a
+        question (opaa.chat.attachments.unbound-quota-bytes) or the organization's
+        (opaa.chat.attachments.organization-quota-bytes). Nothing is stored then.
+
         **429:** past the upload rate limit (shared with library uploads), or while the caller
         already has opaa.chat.attachments.max-processing-per-account attachments being read or
         the reading pool of the instance is full. Nothing is stored then.
@@ -1061,6 +1067,12 @@ components:
             On an ASSISTANT message: its Belegstand as assessed when the answer was generated.
             Null on a USER message, on an answer without anything to assess and on answers from
             before the Belegstand existed.
+        agentRun:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AgentRun"
+          description: >-
+            On an ASSISTANT message an agent gave: the steps and end of its run. Null otherwise.
         privateSourcesInContext:
           type: boolean
           nullable: true

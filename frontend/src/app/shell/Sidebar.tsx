@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import ListItemText from '@mui/material/ListItemText'
@@ -30,9 +29,17 @@ import {
   spacesByRecentUse,
   useRecentSpaceIds,
 } from '@/features/space'
-import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
+import {
+  darkRoles,
+  fontFamily,
+  fontSize,
+  iconSize,
+  lightRoles,
+  shadow,
+} from '@/shared/theme/tokens'
 import { spaceMembershipLabel } from '@/features/asset'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
@@ -199,9 +206,10 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
               <Typography
                 component="span"
                 noWrap
-                sx={{ display: 'block', fontSize: 14, fontWeight: 500 }}
+                sx={{ display: 'block', fontSize: fontSize.text, fontWeight: 500 }}
               >
-                {activeSpace?.name ?? (isLoadingSpaces ? 'Wird geladen …' : 'Kein Space verfügbar')}
+                {activeSpace?.name ??
+                  (isLoadingSpaces ? <LoadingState shape="inline" /> : 'Kein Space verfügbar')}
               </Typography>
             </Box>
           </Button>
@@ -221,7 +229,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                   color: inSettings ? 'primary.main' : 'text.secondary',
                 }}
               >
-                <SettingsOutlinedIcon sx={{ fontSize: 20 }} />
+                <SettingsOutlinedIcon sx={{ fontSize: iconSize.md }} />
               </IconButton>
             </Tooltip>
           )}
@@ -242,7 +250,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                 borderColor: 'divider',
                 mb: 0.5,
                 fontFamily: fontFamily.mono,
-                fontSize: 9.5,
+                fontSize: fontSize.label,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
               }}
@@ -250,8 +258,8 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
               Zuletzt genutzt
             </ListSubheader>
             {isLoadingSpaces && spaces.length === 0 && (
-              <Box sx={{ py: 1.5, display: 'flex', justifyContent: 'center' }}>
-                <CircularProgress size={20} aria-label="Spaces werden geladen" />
+              <Box sx={{ px: 2, py: 1 }}>
+                <LoadingState shape="lines" count={3} />
               </Box>
             )}
             {menuSpaces.map((space) => (
@@ -283,7 +291,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                   </Box>
                 )}
                 {space.id === activeChatSpaceId && (
-                  <CheckIcon sx={{ ml: 1, fontSize: 15, color: 'primary.main' }} />
+                  <CheckIcon sx={{ ml: 1, fontSize: iconSize.sm, color: 'primary.main' }} />
                 )}
               </MenuItem>
             ))}
@@ -293,7 +301,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                 closeSpaceMenu()
                 navigate('/spaces', { state: SPACE_SEARCH_HANDOVER })
               }}
-              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
             >
               Alle Spaces anzeigen
             </MenuItem>
@@ -305,7 +313,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
               }}
               sx={{ fontWeight: 500, color: 'primary.main' }}
             >
-              <AddIcon sx={{ fontSize: 15, mr: 1 }} />
+              <AddIcon sx={{ fontSize: iconSize.sm, mr: 1 }} />
               Neuer Space
             </MenuItem>
           </Menu>

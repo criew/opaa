@@ -96,5 +96,29 @@ export function promptLibraryRoute(
     : `/prompts/${promptLibraryId}/${tab}`
 }
 
+/** The areas of an agent's detail page; the first one is where `/agents/:id` lands. */
+export const AGENT_TABS = ['auftrag', 'wissen', 'ablauf', 'freigaben', 'zuordnungen'] as const
+export type AgentTab = (typeof AGENT_TABS)[number]
+
+export function agentRoute(agentId: string, tab: AgentTab = AGENT_TABS[0]): string {
+  return tab === AGENT_TABS[0] ? `/agents/${agentId}` : `/agents/${agentId}/${tab}`
+}
+
 /** Where a sign-in lands when it carries no target of its own. */
 export const AFTER_SIGN_IN_ROUTE = '/chat'
+
+/** The areas of a document template's detail page; the first one is where `/templates/:id` lands. */
+export const DOCUMENT_TEMPLATE_TABS = ['platzhalter', 'freigaben', 'zuordnungen'] as const
+export type DocumentTemplateTab = (typeof DOCUMENT_TEMPLATE_TABS)[number]
+
+export function documentTemplateRoute(
+  documentTemplateId: string,
+  tab: DocumentTemplateTab = DOCUMENT_TEMPLATE_TABS[0],
+): string {
+  return tab === DOCUMENT_TEMPLATE_TABS[0]
+    ? `/templates/${documentTemplateId}`
+    : `/templates/${documentTemplateId}/${tab}`
+}
+
+/** The installation switch „Vorlagen" in the administration. */
+export const DOCUMENT_TEMPLATE_SETTINGS_ROUTE = '/admin/templates'

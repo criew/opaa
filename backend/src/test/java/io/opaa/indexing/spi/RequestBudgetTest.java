@@ -5,13 +5,18 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import java.net.URI;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
-/** The two bounds of one run - requests and waiting time - and how they end it. */
+/**
+ * The bounds of one run - requests and waiting time, which end it, and distinct hosts, which end
+ * only the fetch to a further host.
+ */
 class RequestBudgetTest {
 
   private final SourceRequestMeter meter = new SourceRequestMeter();
@@ -101,5 +106,40 @@ class RequestBudgetTest {
     RequestBudget unbounded = RequestBudget.unbounded();
     assertThat(unbounded.requestBudget()).isZero();
     assertThatCode(() -> unbounded.throttled(429, Duration.ofDays(1))).doesNotThrowAnyException();
+  }
+
+  @Test
+  void aRunContactsAtMostItsBoundOfDistinctHostsAndAKnownHostAlways() throws Exception {
+    RequestBudget budget = new RequestBudget(meter, 0, null, 2);
+
+    budget.connecting(URI.create("https://feed.example/rss"));
+    budget.connecting(URI.create("https://cdn.example/a"));
+    budget.connecting(URI.create("https://FEED.example./other"));
+
+    assertThatThrownBy(() -> budget.connecting(URI.create("https://third.example/")))
+        .isInstanceOf(RequestBudget.HostLimitExceededException.class)
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
+        .hasMessage(
+            "Der Lauf hat bereits 2 verschiedene Hosts angefragt, die Höchstzahl je Lauf; weitere"
+                + " Hosts fragt er nicht an (OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN).");
+    assertThatCode(() -> budget.connecting(URI.create("http://cdn.example:8080/b")))
+        .as("a host already contacted stays admitted on any scheme or port")
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void forRunTakesTheBoundOfHostsFromThePolicyAndUnboundedHasNone() throws Exception {
+    RequestBudget budget =
+        RequestBudget.forRun(
+            new SourceRequestPolicy("OPAA-Indexer/test", RateLimitPolicy.NONE, d -> {})
+                .withMaxHostsPerRun(1));
+    budget.connecting(URI.create("https://one.example/"));
+
+    assertThatThrownBy(() -> budget.connecting(URI.create("https://two.example/")))
+        .isInstanceOf(RequestBudget.HostLimitExceededException.class);
+    RequestBudget unbounded = RequestBudget.unbounded();
+    for (int i = 0; i < 1_000; i++) {
+      unbounded.connecting(URI.create("https://host" + i + ".example/"));
+    }
   }
 }

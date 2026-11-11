@@ -6,7 +6,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
@@ -14,6 +14,7 @@ import type { DocumentChunksResponse } from '@/shared/api/types'
 import SectionHead from '@/shared/ui/SectionHead'
 import ChunkContent from './ChunkContent'
 import { plural } from '@/shared/utils/format'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
 
 /** Lets the diagnosis result open a document here, the one navigation that reaches into this section. */
 export interface DocumentChunkSectionHandle {
@@ -24,7 +25,7 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
   const stored = document.chunks.length
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
         {document.documentTitle ?? document.documentId}
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
@@ -54,14 +55,14 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
                     spacing={1.5}
                     sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
                   >
-                    <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+                    <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                       Chunk {chunk.chunkIndex ?? '?'}
                     </Typography>
-                    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                       {plural(chunk.content.length, 'Zeichen', 'Zeichen')}
                     </Typography>
                     {typeof location === 'string' && location !== '' && (
-                      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
                         Fundort: {location}
                       </Typography>
                     )}
@@ -115,24 +116,26 @@ export default function DocumentChunkSection({
         Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein Klick
         auf einen Dokumenttitel in der Diagnose führt hierher.
       </Typography>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: 720 }}>
-        <TextField
-          label="Dokument-ID"
-          value={documentIdInput}
-          onChange={(e) => setDocumentIdInput(e.target.value)}
-          size="small"
-          fullWidth
-        />
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => showDocument(documentIdInput.trim())}
-          disabled={loading || documentIdInput.trim() === ''}
-          sx={{ flex: 'none', mt: 0.25 }}
-        >
-          {loading ? 'Lädt …' : 'Chunks laden'}
-        </Button>
-      </Stack>
+      <FormField
+        label="Dokument-ID"
+        value={documentIdInput}
+        onChange={(e) => setDocumentIdInput(e.target.value)}
+        size="small"
+        fullWidth
+        action={
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => showDocument(documentIdInput.trim())}
+            disabled={documentIdInput.trim() === ''}
+            loading={loading}
+            sx={{ flex: 'none' }}
+          >
+            Chunks laden
+          </Button>
+        }
+        sx={{ maxWidth: formWidth.column }}
+      />
       {documentChunksError && (
         <Alert severity="error" sx={{ mt: 2 }}>
           {documentChunksError}

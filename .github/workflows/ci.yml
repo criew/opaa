@@ -29,19 +29,20 @@ concurrency:
 
 jobs:
   # Path filter for PR runs: backend jobs only run when backend files
-  # changed, the frontend job only for frontend changes. The jobs below are
+  # changed, the frontend jobs only for frontend changes. The aggregating jobs are
   # required status checks, so they must exist in every run — skipped
   # required jobs count as passed for branch protection and the merge queue.
   # That cuts both ways: if this job itself failed, its dependents would all
-  # be skipped and read as passed — which is why `changes` is a required
-  # status check too, so a filter failure blocks the merge instead.
+  # be skipped and read as passed — which is why the required check `changes`
+  # below fails whenever this job did not succeed.
   # Filtering only applies to pull_request events; pushes to main or release/** and merge
-  # queue runs always execute everything.
-  changes:
+  # queue runs always execute everything. The job holds nothing but the filter, so the test
+  # jobs start without waiting for the repository checks in `changes`.
+  paths:
     runs-on: ubuntu-latest
     permissions:
-      # contents: read is required for the checkout below - a job-level permissions
-      # block replaces the defaults instead of extending them.
+      # A job-level permissions block replaces the defaults instead of extending them; the filter
+      # reads the changed files of the pull request through the API.
       contents: read
       pull-requests: read
     outputs:
@@ -53,6 +54,15 @@ jobs:
       images: ${{ steps.filter.outputs.images }}
       scripts: ${{ steps.filter.outputs.scripts }}
       seed: ${{ steps.filter.outputs.seed }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+      adrs: ${{ steps.filter.outputs.adrs }}
+      handbook: ${{ steps.filter.outputs.handbook }}
+      diagrams: ${{ steps.filter.outputs.diagrams }}
+      comments: ${{ steps.filter.outputs.comments }}
+      compose: ${{ steps.filter.outputs.compose }}
+      gradleVerification: ${{ steps.filter.outputs.gradleVerification }}
+      ratchets: ${{ steps.filter.outputs.ratchets }}
+      installationE2e: ${{ steps.filter.outputs.installationE2e }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -158,7 +168,10 @@ jobs:
             # the release wiring, the record the fixture writes and the hash-pinned seed install. The
             # Compose templates belong here because test_check_compose_defaults.py edits copies of them.
             # zap-baseline.yml and .github/zap/** belong here because test_zap_rules.py checks the
-            # suppressions, the ZAP image pin and its wiring.
+            # suppressions, the ZAP image pin and its wiring. Every Dockerfile and the sandbox
+            # configuration belong here because test_image_scan_coverage.py checks that cve-scan.yml
+            # scans each image and test_sandbox_image_pins.py reads the execd pin and the hashed
+            # packages of the sandbox image.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -186,22 +199,29 @@ jobs:
               - '**/docker-compose*.yml'
               - '.env.docker.example'
               - '.env.example'
-            # Step-level filter of the action pin guard below, not a job output.
+              - '**/Dockerfile'
+              - '**/Dockerfile.*'
+              - '**/*.Dockerfile'
+              - '**/Containerfile'
+              - '**/Containerfile.*'
+              - 'sandbox/config.toml'
+              - 'sandbox/requirements.txt'
+            # Filter of the action pin guard in the `changes` job.
             workflows:
               - '.github/workflows/**'
               - '.github/scripts/check_action_pins.sh'
               - '.github/scripts/check_workflow_hardening.sh'
-            # Step-level filter of the ADR style guard below, not a job output.
+            # Filter of the ADR style guard in the `changes` job.
             adrs:
               - 'docs/decisions/**'
               - '.github/scripts/check_adr_style.sh'
-            # Step-level filter of the handbook site build below, not a job output.
+            # Filter of the handbook site build in the `changes` job.
             handbook:
               - 'docs/handbuch/**'
               - 'mkdocs.yml'
               - '.github/requirements-docs.txt'
               - '.github/workflows/ci.yml'
-            # Step-level filter of the diagram check below, not a job output.
+            # Filter of the diagram check in the `changes` job.
             diagrams:
               - 'docs/behoerden/**'
               - 'docs/handbuch/**'
@@ -209,7 +229,7 @@ jobs:
               - '.github/scripts/package_html.py'
               - '.github/scripts/update_package.py'
               - '.github/workflows/ci.yml'
-            # Step-level filter of the comment rule guard below, not a job output.
+            # Filter of the comment rule guard in the `changes` job.
             comments:
               - 'backend/src/main/**'
               - 'backend/src/configMetadata/**'
@@ -226,6 +246,10 @@ jobs:
               - 'docker-compose*.yml'
               - '.env*.example'
               - '**/Dockerfile'
+              - '**/Dockerfile.*'
+              - '**/*.Dockerfile'
+              - '**/Containerfile'
+              - '**/Containerfile.*'
               - 'backend/gradle/**'
               - 'backend/*.gradle.kts'
               - 'opaa-api/*.gradle.kts'
@@ -234,18 +258,25 @@ jobs:
               - 'demo/**/*.py'
               - 'demo/**/*.conf'
               - '**/*.sh'
-            # Step-level filter of the Compose template check below, not a job output.
+            # Filter of the Compose template check in the `changes` job.
             compose:
               - 'docker-compose*.yml'
               - '**/docker-compose*.yml'
               - '.env.docker.example'
               - '.env.example'
               - '.github/scripts/check_compose_defaults.sh'
-            # Step-level filter of the Gradle verification guard below, not a job output.
+            # Filter of the Gradle verification guard in the `changes` job.
             gradleVerification:
               - 'backend/gradle/verification-metadata.xml'
               - '.github/scripts/check_gradle_verification_metadata.py'
-            # Step-level filter of the ratchets below, not a job output.
+            # Filter of the E2E coverage guard of the set-up assistant in the `changes` job.
+            installationE2e:
+              - 'backend/src/main/java/io/opaa/installation/InstallationStep.java'
+              - 'frontend/src/features/installation/utils/steps.ts'
+              - 'frontend/src/shared/ui/setup/setupNames.ts'
+              - 'e2e/tests/installation-assistant.spec.ts'
+              - '.github/scripts/check_installation_e2e_coverage.sh'
+            # Filter of the ratchets in the `changes` job.
             ratchets:
               - 'backend/src/main/**'
               - '.github/scripts/**'
@@ -261,6 +292,24 @@ jobs:
               - '.github/requirements-ci.txt'
               - 'keycloak/**'
               - '.github/workflows/ci.yml'
+
+  # Required status check that runs unfiltered on every PR and every push: repository-wide guards
+  # whose step filters come from `paths`. !cancelled() plus the first step turn a failed `paths`
+  # job into a red required check instead of a run of skipped, passing jobs; a cancelled run
+  # (superseded push) starts no guards.
+  changes:
+    needs: paths
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ergebnis des Pfadfilters prüfen
+        env:
+          PATHS_RESULT: ${{ needs.paths.result }}
+        run: |
+          if [ "$PATHS_RESULT" != "success" ]; then
+            echo "::error::Der Pfadfilter (Job paths) ist nicht erfolgreich: $PATHS_RESULT"
+            exit 1
+          fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -280,7 +329,7 @@ jobs:
       # Every workflow references actions by commit SHA only (docs/renovate.md). Same job as above:
       # a required check, so a tag that slips back in blocks the merge.
       - name: SHA-Pins der Actions in allen Workflows prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.workflows == 'true'
         run: .github/scripts/check_action_pins.sh
 
       # No run: or script: block interpolates github.head_ref, github.ref, github.ref_name,
@@ -289,13 +338,13 @@ jobs:
       # every workflow sets top-level permissions: and every checkout states persist-credentials
       # (AGENTS.md, "GitHub-Actions-Workflows").
       - name: Kontextwerte, Token-Rechte und Checkout-Credentials der Workflows prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.workflows == 'true'
         run: .github/scripts/check_workflow_hardening.sh
 
       # Every ADR follows docs/decisions/README.md (current state instead of appended notes, status line
       # with date).
       - name: ADR-Stil in docs/decisions prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
 
       # Every editorial document under docs/behoerden carries header block, disclaimer, only
@@ -324,54 +373,74 @@ jobs:
       - name: Seitenregeln des Handbuchs prüfen
         run: .github/scripts/check_handbuch.sh
 
+      # The site packages install from wheels only, so pip runs no build step whose build
+      # requirements would escape --require-hashes; Python 3.14, because the pinned PyYAML has no
+      # cp315 wheel (a Renovate rule in renovate.json5 keeps this below 3.15). Same setup as the
+      # site build in landing-page.yml; update-environment: false leaves the job's Python 3.15 on
+      # PATH for all other steps.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: github.event_name != 'pull_request' || needs.paths.outputs.handbook == 'true'
+        id: docs-python
+        with:
+          python-version: '3.14'
+          update-environment: false
+
       # The handbook site as published (mkdocs.yml, strict): a dead link or anchor fails here. Its
       # own virtual environment keeps the pinned site packages apart from the update package's.
       - name: Handbuch-Website bauen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.handbook == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.handbook == 'true'
+        env:
+          DOCS_PYTHON: ${{ steps.docs-python.outputs.python-path }}
         run: |
-          python -m venv "$RUNNER_TEMP/mkdocs"
-          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: --no-binary=pyyaml -r .github/requirements-docs.txt
+          "$DOCS_PYTHON" -m venv "$RUNNER_TEMP/mkdocs"
+          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: -r .github/requirements-docs.txt
           NO_MKDOCS_2_WARNING=1 "$RUNNER_TEMP/mkdocs/bin/mkdocs" build --strict
 
       # Every Mermaid diagram of docs/behoerden and docs/handbuch renders to SVG as in the release
       # run (Mermaid from .github/tools/mermaid, the runner's Google Chrome); a diagram that does
       # not render fails here instead of stopping a release.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        if: github.event_name != 'pull_request' || steps.filter.outputs.diagrams == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.diagrams == 'true'
         with:
           package_json_file: .github/tools/mermaid/package.json
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: github.event_name != 'pull_request' || steps.filter.outputs.diagrams == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.diagrams == 'true'
         with:
           node-version: 24
           package-manager-cache: false
 
       - name: Mermaid installieren
-        if: github.event_name != 'pull_request' || steps.filter.outputs.diagrams == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.diagrams == 'true'
         working-directory: .github/tools/mermaid
         run: pnpm install --frozen-lockfile --ignore-scripts --no-optional
 
       - name: Mermaid-Diagramme von Vorlagen und Handbuch rendern
-        if: github.event_name != 'pull_request' || steps.filter.outputs.diagrams == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.diagrams == 'true'
         run: python .github/scripts/update_package.py diagrams
 
       # Comments in every tree listed in the script header carry no review protocol, no history
       # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
       - name: Kommentarregel prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh
 
       # The Compose templates publish ports on loopback only, switch on no anonymous system
       # administration and carry no fixed secret outside the script's reasoned exceptions.
       - name: Sichere Vorgaben der Compose-Vorlagen prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.compose == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.compose == 'true'
         run: .github/scripts/check_compose_defaults.sh
+
+      # Every step of the set-up assistant is walked through by its E2E scenario, which runs only
+      # nightly: a new step without it fails here, on the pull request that adds it.
+      - name: E2E-Abdeckung des Einrichtungs-Assistenten prüfen
+        if: github.event_name != 'pull_request' || needs.paths.outputs.installationE2e == 'true'
+        run: .github/scripts/check_installation_e2e_coverage.sh
 
       # Counted stock that must not grow: Instant.now() in Spring beans, @Value outside *Properties
       # classes (ADR-0051, Entscheidung 6). The limits sit in the scripts and only ever go down.
       - name: Ratschen für Instant.now() und @Value prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.ratchets == 'true'
+        if: github.event_name != 'pull_request' || needs.paths.outputs.ratchets == 'true'
         run: |
           .github/scripts/check_instant_now.sh
           .github/scripts/check_value_annotations.sh
@@ -380,7 +449,7 @@ jobs:
       # new versions may add entries (docs/renovate.md, "Gradle-Prüfsummen"). Enforced for Renovate
       # branches, which merge without review; elsewhere a change is a warning for the reviewer.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: github.event_name == 'pull_request' && steps.filter.outputs.gradleVerification == 'true'
+        if: github.event_name == 'pull_request' && needs.paths.outputs.gradleVerification == 'true'
         with:
           ref: ${{ github.base_ref }}
           path: base-ref
@@ -388,7 +457,7 @@ jobs:
           persist-credentials: false
 
       - name: Bestehende Prüfsummen der Gradle-Verifikation prüfen
-        if: github.event_name == 'pull_request' && steps.filter.outputs.gradleVerification == 'true'
+        if: github.event_name == 'pull_request' && needs.paths.outputs.gradleVerification == 'true'
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
@@ -436,14 +505,14 @@ jobs:
           fail-on-scopes: runtime, development
           warn-only: true
 
-  # The backend suite runs as three parallel package shards (see `testShards` in
+  # The backend suite runs as five parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root
   # project's `test` task (spotless, compile, bootJar, SBOM, evalUnitTest, the :opaa-api tests).
   # The `backend` job below only aggregates their results so the required status check keeps
   # its name and the branch protection needs no change.
   backend-build:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -522,16 +591,16 @@ jobs:
 
   backend-test:
     name: backend-test (${{ matrix.shard }})
-    needs: changes
+    needs: paths
     if: >-
       github.event_name != 'pull_request'
-      || needs.changes.outputs.backend == 'true'
-      || needs.changes.outputs.helm == 'true'
+      || needs.paths.outputs.backend == 'true'
+      || needs.paths.outputs.helm == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [api, indexing, core]
+        shard: [api, indexing, connection, migration, core]
     defaults:
       run:
         working-directory: backend/
@@ -550,6 +619,12 @@ jobs:
       - name: Test (Shard ${{ matrix.shard }})
         run: ./gradlew :test -PtestShard=${{ matrix.shard }}
 
+      # Basis for rebalancing the package lists of `testShards` in backend/build.gradle.kts.
+      - name: Langsamste Testklassen
+        if: always()
+        working-directory: .
+        run: python3 .github/scripts/slowest_test_classes.py backend/build/test-results/test | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -562,8 +637,8 @@ jobs:
   # generated DTOs and the backend tests, the Node one the frontend types. Runs whenever either
   # bundler or the fragments change, independent of which side's job would otherwise run.
   openapi-bundle-parity:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.bundleParity == 'true'
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.bundleParity == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -604,15 +679,15 @@ jobs:
   # Required status check. Also aggregates openapi-bundle-parity, so the parity check blocks a
   # merge without a change to the branch protection.
   backend:
-    needs: [changes, backend-build, backend-test, openapi-bundle-parity]
+    needs: [paths, backend-build, backend-test, openapi-bundle-parity]
     # always(): the aggregate must run even when a shard failed, otherwise it would be skipped
     # and a skipped required check reads as passed. The path-filter condition is repeated so a
     # PR without backend, chart or bundle changes still skips this job.
     if: >-
       always() && (github.event_name != 'pull_request'
-      || needs.changes.outputs.backend == 'true'
-      || needs.changes.outputs.helm == 'true'
-      || needs.changes.outputs.bundleParity == 'true')
+      || needs.paths.outputs.backend == 'true'
+      || needs.paths.outputs.helm == 'true'
+      || needs.paths.outputs.bundleParity == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Ergebnisse von backend-build, backend-test und openapi-bundle-parity zusammenfassen
@@ -620,9 +695,9 @@ jobs:
           BUILD_RESULT: ${{ needs.backend-build.result }}
           TEST_RESULT: ${{ needs.backend-test.result }}
           PARITY_RESULT: ${{ needs.openapi-bundle-parity.result }}
-          BACKEND_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}
-          TEST_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.helm == 'true' }}
-          PARITY_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.bundleParity == 'true' }}
+          BACKEND_EXPECTED: ${{ github.event_name != 'pull_request' || needs.paths.outputs.backend == 'true' }}
+          TEST_EXPECTED: ${{ github.event_name != 'pull_request' || needs.paths.outputs.backend == 'true' || needs.paths.outputs.helm == 'true' }}
+          PARITY_EXPECTED: ${{ github.event_name != 'pull_request' || needs.paths.outputs.bundleParity == 'true' }}
         run: |
           echo "backend-build:         $BUILD_RESULT (erwartet: $BACKEND_EXPECTED)"
           echo "backend-test:          $TEST_RESULT (erwartet: $TEST_EXPECTED)"
@@ -643,8 +718,8 @@ jobs:
           fi
 
   backend-integration:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.backendCore == 'true'
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.backendCore == 'true'
     runs-on: ubuntu-latest
     env:
       OPAA_OPENAI_API_KEY: ${{ secrets.OPAA_OPENAI_API_KEY }}
@@ -677,20 +752,24 @@ jobs:
           retention-days: 14
 
   ci-scripts:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.scripts == 'true'
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.scripts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: Install pytest
-        run: pip install --require-hashes -r .github/requirements-ci.txt
+        run: |
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
 
       - name: Install the packages of the update package
         run: |
@@ -703,23 +782,26 @@ jobs:
         run: pytest .github/scripts
 
   seed-script:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.seed == 'true'
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.seed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      # Python 3.14, because the pinned PyYAML has no cp315 wheel: .github/requirements-ci.txt
+      # installs from hashed wheels only, so no sdist build fetches unhashed build requirements.
+      # A Renovate rule in renovate.json5 keeps this below 3.15.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.15'
+          python-version: '3.14'
 
       - name: Install dependencies
         # demo/seed/requirements.txt is the range the seed itself declares, so it stays outside
         # hash-checking mode; the CI tools come with hashes.
         run: |
-          pip install --require-hashes -r .github/requirements-ci.txt
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-ci.txt
           pip install -r demo/seed/requirements.txt
 
       # Der Seed-Lauf selbst wird nur vom nächtlichen Demo-Smoke ausgeübt; was ohne
@@ -727,9 +809,11 @@ jobs:
       - name: Test
         run: pytest demo/seed
 
-  frontend:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true'
+  # The frontend runs as one job for format, lint, licenses and build plus three vitest shards; the
+  # `frontend` job below only aggregates their results, so the required status check keeps its name.
+  frontend-check:
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -753,7 +837,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       # Same check as in backend-build, over the production dependencies (docs/sbom.md,
-      # "Lizenzprüfung"); the frontend job is a required check as well.
+      # "Lizenzprüfung"); the frontend aggregate is a required check as well.
       - name: Lizenzen der Abhängigkeiten prüfen
         run: |
           mkdir -p build/licenses
@@ -778,7 +862,6 @@ jobs:
       # script option), every file under src/ belongs to one theme, and no comment disables the rule.
       - name: Themengrenzen prüfen
         run: node scripts/check-theme-boundaries.mjs
-      - run: pnpm run test
       - run: pnpm run build
       - run: node scripts/bundle-report.mjs
       - name: Bundle-Report ablegen
@@ -788,14 +871,68 @@ jobs:
           path: frontend/bundle-report/
           retention-days: 14
 
+  frontend-test:
+    name: frontend-test (${{ matrix.shard }})
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    defaults:
+      run:
+        working-directory: frontend/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Installs the pnpm version pinned in the "packageManager" field of
+      # frontend/package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - name: Test (Shard ${{ matrix.shard }})
+        run: pnpm run test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+  # Required status check. always(): the aggregate must run even when a shard failed, otherwise it
+  # would be skipped and a skipped required check reads as passed.
+  frontend:
+    needs: [paths, frontend-check, frontend-test]
+    if: >-
+      always() && (github.event_name != 'pull_request'
+      || needs.paths.outputs.frontend == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ergebnisse von frontend-check und frontend-test zusammenfassen
+        env:
+          CHECK_RESULT: ${{ needs.frontend-check.result }}
+          TEST_RESULT: ${{ needs.frontend-test.result }}
+        run: |
+          echo "frontend-check: $CHECK_RESULT"
+          echo "frontend-test:  $TEST_RESULT"
+          if [ "$CHECK_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; then
+            echo "::error::Mindestens ein Frontend-Job ist nicht erfolgreich."
+            exit 1
+          fi
+
   # Builds both images on an arm64 runner, starts them hardened against PostgreSQL with pgvector
   # (.github/scripts/image_smoke_test.sh), since publish-images.yml publishes arm64 without starting
   # it, and checks the frontend nginx's hardening (.github/scripts/frontend_hardening_test.sh). Not a
   # required check; on pull requests only for the `images` paths, the image builds take minutes.
   # linux/amd64 needs no such job: helm-chart.yml and the E2E suite start those images.
   image-smoke-arm64:
-    needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.images == 'true'
+    needs: paths
+    if: github.event_name != 'pull_request' || needs.paths.outputs.images == 'true'
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 30
     steps:

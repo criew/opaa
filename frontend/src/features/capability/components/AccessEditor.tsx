@@ -11,7 +11,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, iconSize, radius } from '@/shared/theme/tokens'
 import { SubjectPicker } from '@/features/principal'
 import { emptySubjectSelection, groupLabel } from '@/features/principal'
 import {
@@ -77,11 +77,11 @@ function SelectedSubjects({
               bgcolor: 'action.hover',
             }}
           >
-            <Icon aria-hidden="true" sx={{ fontSize: 18, color: 'text.secondary' }} />
-            <Typography sx={{ fontSize: 13.5, flex: 1, minWidth: 0 }} noWrap>
+            <Icon aria-hidden="true" sx={{ fontSize: iconSize.md, color: 'text.secondary' }} />
+            <Typography sx={{ fontSize: fontSize.text, flex: 1, minWidth: 0 }} noWrap>
               {subject.name}
             </Typography>
-            <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               {subject.type === 'GROUP' ? 'Gruppe' : 'Person'}
             </Typography>
             <IconButton
@@ -90,7 +90,7 @@ function SelectedSubjects({
               aria-label={`${subject.name} entfernen`}
               onClick={() => remove(subject, index)}
             >
-              <CloseIcon sx={{ fontSize: 16 }} />
+              <CloseIcon sx={{ fontSize: iconSize.sm }} />
             </IconButton>
           </Box>
         )
@@ -153,15 +153,15 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
   return (
     <Stack ref={rootRef} spacing={2.5}>
       <Box>
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, fontWeight: 600, color: 'text.secondary' }}>
           Stand jetzt
         </Typography>
         {/* The backend's plain-text line of the state (ADR-0036, Entscheidung 5). */}
-        <Typography sx={{ fontSize: 14, mt: 0.25 }}>{entry.statement}</Typography>
+        <Typography sx={{ fontSize: fontSize.text, mt: 0.25 }}>{entry.statement}</Typography>
       </Box>
 
       <Box>
-        <Typography id={questionId} sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>
+        <Typography id={questionId} sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
           Wer soll künftig dürfen?
         </Typography>
         <RadioGroup
@@ -211,13 +211,13 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
                   <Box>
                     <Typography
                       id={`${questionId}-${choice.level}`}
-                      sx={{ fontSize: 14, fontWeight: 500 }}
+                      sx={{ fontSize: fontSize.text, fontWeight: 500 }}
                     >
                       {choice.title}
                     </Typography>
                     <Typography
                       id={`${questionId}-${choice.level}-hint`}
-                      sx={{ fontSize: 12.5, color: 'text.secondary' }}
+                      sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
                     >
                       {choice.hint}
                     </Typography>
@@ -256,7 +256,7 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
                 )}
                 {choice.level === 'ALL' && selected && subjects.length > 0 && (
                   <Stack spacing={1} sx={{ px: 1.5, pb: 1.5 }}>
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                       Zusätzlich eingetragen. Solange alle Konten dürfen, wirken diese Einträge
                       nicht; sie gelten wieder, wenn Sie das Recht einschränken. Nicht mehr
                       benötigte Einträge können Sie hier entfernen.
@@ -284,10 +284,10 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
           borderLeftColor: unchanged || missingSubject ? 'transparent' : 'primary.main',
         }}
       >
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: fontSize.meta, fontWeight: 600, color: 'text.secondary' }}>
           Danach
         </Typography>
-        <Typography sx={{ fontSize: 14, mt: 0.25 }}>
+        <Typography sx={{ fontSize: fontSize.text, mt: 0.25 }}>
           {missingSubject
             ? 'Wählen Sie mindestens eine Gruppe oder Person aus.'
             : unchanged
@@ -295,13 +295,13 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
               : resultSentence(target, phrase)}
         </Typography>
         {removedUnderAll.length > 0 && (
-          <Typography sx={{ fontSize: 13.5, mt: 0.25 }}>
+          <Typography sx={{ fontSize: fontSize.text, mt: 0.25 }}>
             Entfernt {removedUnderAll.length === 1 ? 'wird der Eintrag' : 'werden die Einträge'}{' '}
             {removedUnderAll.join(', ')}.
           </Typography>
         )}
         {!unchanged && !missingSubject && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
             Die Änderung wirkt sofort, ohne neue Anmeldung, und wird protokolliert.
           </Typography>
         )}
@@ -313,10 +313,16 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
         </Button>
         <Button
           variant="contained"
-          disabled={busy || unchanged || missingSubject}
-          onClick={() => void onSave(target)}
+          disabled={busy}
+          onClick={() => {
+            // without a subject the line under „Danach“ says what is missing
+            if (missingSubject) return
+            // nothing changed: there is nothing to save, the editor just closes
+            if (unchanged) onCancel()
+            else void onSave(target)
+          }}
         >
-          {busy ? 'Wird gespeichert …' : 'Speichern'}
+          Speichern
         </Button>
       </Stack>
     </Stack>

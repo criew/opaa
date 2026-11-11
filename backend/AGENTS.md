@@ -78,12 +78,13 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 | workspace | space, revision, diagnosticaccess | foundation, identity, rights, knowledge |
 | library | library | foundation, format, identity, rights, knowledge, connections |
 | retrieval | retrieval | foundation, format, knowledge |
-| assistant | prompt, chat, query, search, searchadmin | foundation, format, identity, rights, knowledge, workspace, library, retrieval |
+| assistant | prompt, template, agent, chat, query, search, searchadmin | foundation, format, identity, rights, knowledge, workspace, library, retrieval |
 | external | externalaccess, mcp | foundation, identity, rights, knowledge, library, assistant |
 | app | api, config, `OpaaApplication` | foundation, knowledge |
 
 `ModularArchitectureTest` erzwingt Module, Kanten, Schichtung und Zyklenfreiheit, `SourceReferenceTest` dasselbe für
-Importe und Javadoc-Verweise (ein Verweis nach oben steht als `{@code …}`). **Eine neue Kante ist eine Entscheidung**
+Importe und Javadoc-Verweise (ein Verweis nach oben steht als `{@code …}`); Zyklen zwischen Unterpaketen prüft es über
+Bytecode und Importe, ein vollqualifizierter Javadoc-Link zählt dort nicht. **Eine neue Kante ist eine Entscheidung**
 und wird im PR begründet; vorher prüfen, ob eine Schnittstelle im unteren Modul reicht. Ein neues Top-Level-Paket
 gehört in `LAYERS` (über alles, was es nutzt) und `MODULES`, ein Unterpaket von `indexing` in `INDEXING_CORE`, von
 `connection` in `CONNECTION_PACKAGES`; Entfallenes wird ausgetragen. Feinere Regeln: `PermissionPackageBoundaryTest`,

@@ -14,6 +14,25 @@ import {
 const INSTALLATION_REQUEST_TIMEOUT_MS = 30_000
 
 /**
+ * The text recognition check lets the service read a test page and waits up to three minutes in
+ * the backend (`ModelRoleAdministration.TEXT_RECOGNITION_TEST_TIMEOUT`); the client waits longer,
+ * so a cold service ends in the backend's answer, not in an aborted request.
+ */
+const TEXT_RECOGNITION_CHECK_TIMEOUT_MS = 200_000
+
+/** How long the client waits for the check of a step. */
+export function checkTimeoutMs(step: InstallationStepId): number {
+  return step === 'TEXT_RECOGNITION_MODEL'
+    ? TEXT_RECOGNITION_CHECK_TIMEOUT_MS
+    : INSTALLATION_REQUEST_TIMEOUT_MS
+}
+
+/** Whether the client gave up waiting; the backend may still finish and store the outcome. */
+export function isClientTimeout(err: unknown): boolean {
+  return axios.isAxiosError(err) && (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT')
+}
+
+/**
  * A client of its own: the installation token is the only credential, so neither the session
  * header nor the renew interceptor of the shared client may touch these requests - a 401 here
  * means a wrong token, not an expired session. A check may wait on a model, hence the timeout.
@@ -60,7 +79,7 @@ export async function checkInstallationStep(
   const { data } = await installationClient.post<InstallationStepState>(
     `/steps/${step}/check`,
     options,
-    bearer(token),
+    { ...bearer(token), timeout: checkTimeoutMs(step) },
   )
   return data
 }

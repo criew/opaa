@@ -71,12 +71,6 @@
       "type": "java.lang.Double",
       "description": "Fallback rate of the follow-up cost estimate in chunks per second, until enough embedding calls have been measured.",
       "sourceType": "io.opaa.metadata.EmbeddingRateEstimator"
-    },
-    {
-      "name": "opaa.spike.tool-loop.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Throwaway spike, never for production: a question starting with \"@test \" runs a model-driven tool-calling loop.",
-      "sourceType": "io.opaa.query.ToolLoopQueryHandler"
     }
   ]
 }

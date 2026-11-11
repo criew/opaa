@@ -19,12 +19,16 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.chat.AgentRunRecord;
+import io.opaa.chat.AgentRunRecord.EndState;
+import io.opaa.chat.AgentRunRecord.StepStatus;
 import io.opaa.chat.ChatSource;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.query.AgentRunCancellation;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
@@ -64,6 +68,7 @@ class QueryControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private QueryService queryService;
+  @MockitoBean private AgentRunCancellation cancellation;
   @MockitoBean private MetadataFilterOptionsService metadataFilterOptionsService;
   @MockitoBean private UserService userService;
 
@@ -102,7 +107,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -138,7 +143,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -155,7 +160,7 @@ class QueryControllerTest {
   void queryWithUsedPromptIdPassesItThrough() throws Exception {
     UUID promptId = UUID.randomUUID();
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(
             new QueryResult(
                 "Answer",
@@ -194,6 +199,7 @@ class QueryControllerTest {
             any(),
             promptCaptor.capture(),
             any(),
+            any(),
             any());
     assertThat(promptCaptor.getValue()).isEqualTo(promptId);
   }
@@ -210,7 +216,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -228,6 +234,7 @@ class QueryControllerTest {
             any(),
             any(),
             useKnowledgeCaptor.capture(),
+            any(),
             any(),
             any(),
             any(),
@@ -251,7 +258,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -280,6 +287,7 @@ class QueryControllerTest {
             any(),
             any(),
             any(),
+            any(),
             any());
     assertThat(useKnowledgeCaptor.getValue()).isFalse();
     assertThat(libraryIdsCaptor.getValue()).containsExactly(libraryId1, libraryId2);
@@ -301,7 +309,7 @@ class QueryControllerTest {
   @Test
   void queryWithMultilineQuestionIsAccepted() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(
             new QueryResult(
                 "Answer",
@@ -334,6 +342,7 @@ class QueryControllerTest {
             any(),
             any(),
             anyBoolean(),
+            any(),
             any(),
             any(),
             any(),
@@ -379,7 +388,7 @@ class QueryControllerTest {
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
@@ -396,7 +405,7 @@ class QueryControllerTest {
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc
@@ -424,7 +433,7 @@ class QueryControllerTest {
             null,
             null);
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -446,6 +455,7 @@ class QueryControllerTest {
             anyBoolean(),
             any(),
             filterCaptor.capture(),
+            any(),
             any(),
             any(),
             any());
@@ -592,7 +602,7 @@ class QueryControllerTest {
   void theStreamedTurnSendsStartedThenTheProvisionalTextThenTheFinalResponse() throws Exception {
     UUID chatId = UUID.randomUUID();
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
             call -> {
               AnswerStreamListener listener = listenerOf(call);
@@ -634,14 +644,169 @@ class QueryControllerTest {
                     .contains("\"answer\":\"Die Antwort.\"")
                     .contains("\"chatId\":\"" + chatId + "\""));
     verify(queryService)
-        .query(eq("Frage?"), eq(chatId), any(), eq(true), any(), any(), any(), any(), any());
+        .query(eq("Frage?"), eq(chatId), any(), eq(true), any(), any(), any(), any(), any(), any());
+  }
+
+  /**
+   * Regression guard: an ordinary turn's frames stay byte for byte what they were before agents.
+   */
+  @Test
+  void anOrdinaryStreamedTurnSendsExactlyTheFramesItSentBeforeAgentSteps() throws Exception {
+    when(queryService.query(
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              AnswerStreamListener listener = listenerOf(call);
+              listener.started();
+              listener.provisional("Die ", false);
+              listener.idle();
+              listener.provisional("Antwort.", true);
+              throw new TransientAiException("connection reset");
+            });
+
+    String body =
+        mockMvc
+            .perform(
+                post("/api/v1/query/stream")
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\": \"Frage?\"}"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(body)
+        .startsWith(
+            "event: started\ndata: {\"type\":\"started\",\"error\":null,\"response\":null,\"text\":null}\n\n"
+                + "event: delta\ndata: {\"type\":\"delta\",\"error\":null,\"response\":null,\"text\":\"Die \"}\n\n"
+                + ": ping\n\n"
+                + "event: reset\ndata: {\"type\":\"reset\",\"error\":null,\"response\":null,\"text\":\"Antwort.\"}\n\n"
+                + "event: error\ndata: {\"type\":\"error\",\"error\":{");
+  }
+
+  @Test
+  void anAgentTurnStreamsItsStepsWithoutBufferingThenItsEndAndTheProvisionalAnswer()
+      throws Exception {
+    UUID chatId = UUID.randomUUID();
+    when(queryService.query(
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              AnswerStreamListener listener = listenerOf(call);
+              listener.started();
+              listener.runStarted(
+                  UUID.fromString("00000000-0000-4000-8000-000000000001"), "geheim");
+              listener.stepStarted(0, "search_knowledge", "Dienstvereinbarung");
+              listener.stepFinished(
+                  0,
+                  new AgentRunRecord.Step(
+                      "search_knowledge", "Dienstvereinbarung", 3, StepStatus.DONE));
+              listener.limitReached(EndState.LIMIT_CALLS);
+              listener.stepFinished(
+                  1, new AgentRunRecord.Step("search_knowledge", null, null, StepStatus.LIMIT));
+              listener.runFinished(EndState.LIMIT_CALLS);
+              listener.provisional("Antwort.", true);
+              return streamedResult(chatId);
+            });
+
+    String body =
+        mockMvc
+            .perform(
+                post("/api/v1/query/stream")
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"question\": \"Frage?\", \"chatId\": \""
+                            + chatId
+                            + "\", \"agentId\": \""
+                            + UUID.randomUUID()
+                            + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("X-Accel-Buffering", "no"))
+            .andExpect(header().string("Cache-Control", "no-cache, no-transform"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(body.split("\n\n"))
+        .satisfiesExactly(
+            started -> assertThat(started).startsWith("event: started\n"),
+            runStarted ->
+                assertThat(runStarted)
+                    .isEqualTo(
+                        "event: run_started\ndata: {\"type\":\"run_started\","
+                            + "\"cancelToken\":\"geheim\",\"error\":null,\"response\":null,"
+                            + "\"runId\":\"00000000-0000-4000-8000-000000000001\","
+                            + "\"text\":null}"),
+            stepStarted ->
+                assertThat(stepStarted)
+                    .isEqualTo(
+                        "event: step_started\ndata: {\"type\":\"step_started\",\"error\":null,\"response\":null,\"step\":"
+                            + "{\"index\":0,\"tool\":\"search_knowledge\","
+                            + "\"detail\":\"Dienstvereinbarung\",\"hits\":null,\"status\":null},"
+                            + "\"text\":null}"),
+            stepFinished ->
+                assertThat(stepFinished)
+                    .isEqualTo(
+                        "event: step_finished\ndata: {\"type\":\"step_finished\",\"error\":null,\"response\":null,\"step\":"
+                            + "{\"index\":0,\"tool\":\"search_knowledge\","
+                            + "\"detail\":\"Dienstvereinbarung\",\"hits\":3,\"status\":\"DONE\"},"
+                            + "\"text\":null}"),
+            limit ->
+                assertThat(limit)
+                    .isEqualTo(
+                        "event: limit_reached\ndata: {\"type\":\"limit_reached\","
+                            + "\"endState\":\"LIMIT_CALLS\",\"error\":null,\"response\":null,\"text\":null}"),
+            refused ->
+                assertThat(refused)
+                    .isEqualTo(
+                        "event: step_finished\ndata: {\"type\":\"step_finished\",\"error\":null,\"response\":null,\"step\":"
+                            + "{\"index\":1,\"tool\":\"search_knowledge\",\"detail\":null,\"hits\":null,"
+                            + "\"status\":\"LIMIT\"},\"text\":null}"),
+            ended ->
+                assertThat(ended)
+                    .isEqualTo(
+                        "event: run_finished\ndata: {\"type\":\"run_finished\","
+                            + "\"endState\":\"LIMIT_CALLS\",\"error\":null,\"response\":null,\"text\":null}"),
+            reset ->
+                assertThat(reset)
+                    .isEqualTo(
+                        "event: reset\ndata: {\"type\":\"reset\",\"error\":null,\"response\":null,\"text\":\"Antwort.\"}"),
+            last -> assertThat(last).startsWith("event: final\n"));
+  }
+
+  @Test
+  void theStopButtonHandsTheTokenOnAndAnswersAlikeForEveryToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query/stream/cancel")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"cancelToken\": \"geheim\"}"))
+        .andExpect(status().isNoContent());
+
+    verify(cancellation).cancel(eq("geheim"), any());
+  }
+
+  @Test
+  void theStopButtonNeedsAToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query/stream/cancel")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"cancelToken\": \"\"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(cancellation);
   }
 
   /** A turn the model answered without streaming still arrives as a stream with its final event. */
   @Test
   void aTurnWithoutStreamedTextStillEndsInTheFinalEvent() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenReturn(streamedResult(UUID.randomUUID()));
 
     String body =
@@ -660,9 +825,34 @@ class QueryControllerTest {
   }
 
   @Test
+  void aQuestionToALockedAgentIsRefusedWithTheLockCode() throws Exception {
+    String message =
+        "Der Agent „Vergabeprüfung“ ist gesperrt und kann gerade nicht genutzt werden. Wenden Sie"
+            + " sich an die Systemverwaltung.";
+    when(queryService.query(
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
+        .thenThrow(new ConflictException(message, "AGENT_LOCKED"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Frage?\", \"chatId\": \""
+                        + UUID.randomUUID()
+                        + "\", \"agentId\": \""
+                        + UUID.randomUUID()
+                        + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AGENT_LOCKED"))
+        .andExpect(jsonPath("$.error").value(message));
+  }
+
+  @Test
   void aRefusalBeforeTheModelAnswersKeepsItsOwnStatus() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenThrow(new ConflictException("Der Space ist archiviert."));
 
     mockMvc
@@ -678,7 +868,7 @@ class QueryControllerTest {
   @Test
   void aFailureAfterTheModelBeganEndsTheStreamWithTheEnvelopeItWouldHaveHad() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
             call -> {
               listenerOf(call).started();
@@ -708,7 +898,7 @@ class QueryControllerTest {
   @Test
   void theShutdownEndsTheStreamWithItsCode() throws Exception {
     when(queryService.query(
-            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any()))
+            anyString(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
             call -> {
               listenerOf(call).started();

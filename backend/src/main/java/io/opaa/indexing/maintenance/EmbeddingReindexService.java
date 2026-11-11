@@ -27,7 +27,8 @@ import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.VectorTable;
-import io.opaa.llm.EmbeddingModelAdministration;
+import io.opaa.llm.embedding.EmbeddingModelAdministration;
+import io.opaa.observability.MdcTaskDecorator;
 import io.opaa.permission.PersonThreshold;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +44,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -131,12 +134,22 @@ public class EmbeddingReindexService {
   private final InstanceRegistry instanceRegistry;
 
   private final ExecutorService executor =
-      Executors.newSingleThreadExecutor(
+      new ThreadPoolExecutor(
+          1,
+          1,
+          0L,
+          TimeUnit.MILLISECONDS,
+          new LinkedBlockingQueue<>(),
           runnable -> {
             Thread thread = new Thread(runnable, "embedding-reindex");
             thread.setDaemon(true);
             return thread;
           });
+
+  /** The worker thread of the re-indexing, for its executor metrics. */
+  ExecutorService executor() {
+    return executor;
+  }
 
   /** Workers submitted or working in this process. */
   private final AtomicInteger active = new AtomicInteger();
@@ -209,6 +222,19 @@ public class EmbeddingReindexService {
               liveOwner && run.indexBuildStartedAt() != null,
               counted.withoutCurrent());
         });
+  }
+
+  /**
+   * The chunks a model change still has to embed, counted like {@link #progress}; {@code 0} without
+   * a pending change, which counts nothing.
+   */
+  public long remainingChunks() {
+    boolean stale = state.withStableColumns(snapshot -> snapshot != null && snapshot.stale());
+    if (!stale) {
+      return 0;
+    }
+    EmbeddingReindexProgress progress = progress();
+    return progress.stale() ? Math.max(0, progress.totalChunks() - progress.embeddedChunks()) : 0;
   }
 
   /** The chunks {@link #progress} reports, of the private libraries only when they are counted. */
@@ -397,7 +423,7 @@ public class EmbeddingReindexService {
   private void submit(Work work) {
     active.incrementAndGet();
     try {
-      executor.execute(() -> run(work));
+      executor.execute(MdcTaskDecorator.withCallersMdc(() -> run(work)));
     } catch (RuntimeException e) {
       active.decrementAndGet();
       throw e;

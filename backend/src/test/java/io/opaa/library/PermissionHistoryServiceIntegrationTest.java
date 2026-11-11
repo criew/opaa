@@ -59,7 +59,6 @@ import io.opaa.permission.PermissionTransferOrder;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
-import io.opaa.test.SourceTypes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
@@ -256,19 +255,6 @@ class PermissionHistoryServiceIntegrationTest {
     return response.library().getId();
   }
 
-  /** #797: a connector library, the only kind a share cap applies to. */
-  private UUID createFilesystemLibrary(UUID ownerId) {
-    LibraryDetail response =
-        libraryService.createLibrary(
-            libraryCreation("Bibliothek", SourceTypes.FILESYSTEM)
-                .ownerType(AssetOwnerType.USER)
-                .ownerId(ownerId)
-                .sourcePath("/data/dokumente")
-                .build(),
-            currentUserOf(ownerId));
-    return response.library().getId();
-  }
-
   /**
    * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
    */
@@ -280,17 +266,6 @@ class PermissionHistoryServiceIntegrationTest {
         user.getSystemRole(),
         user.getDisplayName(),
         user.getEmail());
-  }
-
-  /**
-   * A real, persisted SYSTEM_ADMIN - the audit pseudonym write updateShareCap triggers needs a
-   * genuine {@code users} row for its actor, {@code fk_audit_actor_pseudonyms_user_organization}.
-   */
-  private CurrentUser systemAdminCaller() {
-    User admin = createUserEntity();
-    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
-    userRepository.save(admin);
-    return currentUserOf(admin.getId());
   }
 
   @Test
@@ -890,9 +865,6 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put("KnowledgeLibraryService#createLibrary", this::libraryCreated);
     paths.put("AssetShellService#registerCreated", this::libraryCreated);
     paths.put("AssetGrantService#upsertGrant (granted to all accounts)", this::visibilityWidened);
-    paths.put(
-        "AssetGrantService#revokeAllAccountsGrantForLoweredCap",
-        this::shareCapLoweredClampsVisibility);
     paths.put("AssetShellService#registerDeleted", this::libraryDeleted);
     paths.put(
         "AssetGrantService#revokeGrant (all-accounts grant revoked)", this::visibilityNarrowed);
@@ -900,9 +872,6 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put(
         "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
         this::organizationWideLibraryDeleted);
-    paths.put(
-        "KnowledgeLibraryService#updateShareCap (all-accounts grant revoked)",
-        this::shareCapLoweredClampsVisibility);
     paths.put(
         "PermissionTransferService#transfer (group grant moved)", this::groupGrantTransferred);
     return paths;
@@ -1075,30 +1044,45 @@ class PermissionHistoryServiceIntegrationTest {
    * members for the person who granted it a right at an object; it writes nothing but its own audit
    * entry for a system administrator's retrieval. {@code PromptLibraryService} reads the formula to
    * list prompt libraries; the grants, reach and history of a prompt library's creation, reach
-   * change and deletion it leaves to {@code AssetShellService}, covered above. {@code
-   * PromptService} reads the formula to offer the prompts a person may insert in the chat and to
-   * check an inserted one; it writes prompts only. {@code AssetCatalogService} reads the formula
-   * only to restrict the catalog to readable entries and writes nothing. {@code AssetOwnerNames}
-   * only reads the display names of owning groups; {@code KnowledgeLibraryService} reaches groups
-   * only through it and through {@code AssetGrantService}, and its write paths are covered above.
-   * {@code AssetFavoriteService} reads the formula only to refuse a favorite on an asset the caller
-   * cannot read; it writes favorites only. {@code ProfileFullSync} only reads the grants of a
-   * library to tell its managers that a changed profile forces a full sync; it writes notifications
-   * only. {@code ConsentResponsibles} only reads the grants and groups of a library to check who
-   * may answer for its source consent and to tell them; it writes nothing. {@code
-   * McpServerProfileService} only reads a group to check that the group answering for an MCP server
-   * exists in the caller's organization; it writes no grant or membership. {@code
-   * GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}: it switches a
-   * group off or on and cuts its membership intervals, and is covered by {@link
-   * #readabilityWritePaths} through that method.
+   * change and deletion it leaves to {@code AssetShellService}, covered above; {@code
+   * DocumentTemplateService} does the same for document templates. {@code ReadableRunTemplates}
+   * reads the formula only to offer an agent run the templates the asker may read; it writes
+   * nothing. {@code PromptService} reads the formula to offer the prompts a person may insert in
+   * the chat and to check an inserted one; it writes prompts only. {@code AgentService} reads the
+   * formula to list agents and the libraries an agent may narrow to; an agent's grants, reach and
+   * history it leaves to {@code AssetShellService}. {@code AgentChoice} reads the formula to offer
+   * the agents a person may choose in a chat and to check a chosen one; it writes nothing. {@code
+   * AssetCatalogService} reads the formula only to restrict the catalog to readable entries and
+   * writes nothing. {@code AssetOwnerNames} only reads the display names of owning groups; {@code
+   * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
+   * and its write paths are covered above. {@code AssetFavoriteService} reads the formula only to
+   * refuse a favorite on an asset the caller cannot read; it writes favorites only. {@code
+   * ProfileFullSync} only reads the grants of a library to tell its managers that a changed profile
+   * forces a full sync; it writes notifications only. {@code ConsentResponsibles} only reads the
+   * grants and groups of a library to check who may answer for its source consent and to tell them;
+   * it writes nothing. {@code McpServerProfileService} only reads a group to check that the group
+   * answering for an MCP server exists in the caller's organization; it writes no grant or
+   * membership. {@code GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}:
+   * it switches a group off or on and cuts its membership intervals, and is covered by {@link
+   * #readabilityWritePaths} through that method. {@code ReadableAssetNames} only reads the formula,
+   * the group memberships and the group selection rule to decide whether a self-disclosure or an
+   * own list may show the name of an asset or group today; it writes nothing. {@code
+   * AssetResponsibilityService} resolves a group only to name and check the responsible unit of an
+   * asset and writes its own responsibility rows and locks; responsibility carries no read right,
+   * so it moves no library into or out of anybody's readable set.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
+          "ReadableAssetNames",
           "AssetAuthorization",
           "AssetCatalogService",
           "AssetFavoriteService",
           "AssetOwnerNames",
+          "AssetResponsibilityService",
+          "AgentService",
+          "AgentChoice",
+          "AgentCurrentRevisions",
           "PromptService",
           "AssetShellService",
           "SpaceAccessPolicy",
@@ -1124,6 +1108,8 @@ class PermissionHistoryServiceIntegrationTest {
           "AssetShellOwnershipDirectory",
           "AssetSuccessionSource",
           "ConsentResponsibles",
+          "DocumentTemplateService",
+          "ReadableRunTemplates",
           "LocalAccountGroupDirectoryAdapter",
           "McpServerProfileService",
           "PermissionTransferService",
@@ -1684,22 +1670,6 @@ class PermissionHistoryServiceIntegrationTest {
     UUID grantId = grantToAllAccounts(libraryId, owner);
 
     grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, currentUserOf(owner));
-
-    return new ReadabilityChange(otherUser, libraryId, false);
-  }
-
-  /**
-   * The counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN, not the
-   * owner, forbids the grant to "Alle Konten", which revokes the existing one in the very same
-   * call.
-   */
-  private ReadabilityChange shareCapLoweredClampsVisibility() {
-    UUID owner = createUser();
-    UUID libraryId = createFilesystemLibrary(owner);
-    UUID otherUser = createUser();
-    grantToAllAccounts(libraryId, owner);
-
-    libraryService.updateShareCap(libraryId, false, systemAdminCaller());
 
     return new ReadabilityChange(otherUser, libraryId, false);
   }

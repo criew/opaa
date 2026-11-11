@@ -10,13 +10,17 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderConnectionTester;
-import io.opaa.llm.EmbeddingEndpoint;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.embedding.EmbeddingEndpoint;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.llm.textrecognition.TextRecognitionClient;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.CipherFormatGate;
@@ -55,16 +59,17 @@ class StepChecksTest {
   private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final MailConnectionTester mailTester = mock(MailConnectionTester.class);
   private final ModelRoleAdministration modelRoles = mock(ModelRoleAdministration.class);
+  private final MalwareScanSettingsService malwareScans = mock(MalwareScanSettingsService.class);
   private final StepChecks checks =
       new StepChecks(
           rules,
           mock(OidcProviderConnectionTester.class),
           chatTester,
-          encryptor,
           strict,
           embeddingModels,
           mailTester,
-          modelRoles);
+          modelRoles,
+          malwareScans);
 
   // regression guard: no probe of the installation reaches a blocked address
   @Test
@@ -143,11 +148,11 @@ class StepChecksTest {
             rules,
             mock(OidcProviderConnectionTester.class),
             chatTester,
-            encryptor,
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(embeddingModels.probe(any(EmbeddingEndpoint.class)))
         .thenReturn(
             new EmbeddingModelService.ProbeOutcome(true, "Probeeinbettung erfolgreich", 768));
@@ -183,11 +188,11 @@ class StepChecksTest {
             rules,
             mock(OidcProviderConnectionTester.class),
             chatTester,
-            encryptor,
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(modelRoles.probeRerank("http://reranker:80", "bge-reranker", "geheim"))
         .thenReturn(new ModelRoleAdministration.TestOutcome(false, "HTTP 401"));
     String payload =
@@ -214,11 +219,11 @@ class StepChecksTest {
             rules,
             mock(OidcProviderConnectionTester.class),
             chatTester,
-            encryptor,
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     String payload =
         json.writeValueAsString(
             new StepRules.RerankModelPayload("http://reranker:80", "bge-reranker"));
@@ -249,7 +254,8 @@ class StepChecksTest {
   void aBlockedTranscriptionAddressFailsTheCheckWithoutAnyRequest() {
     String payload =
         json.writeValueAsString(
-            new StepRules.TranscriptionModelPayload("http://169.254.169.254/v1", "whisper", "de"));
+            new StepRules.TranscriptionModelPayload(
+                "http://169.254.169.254/v1", "whisper", "de", null));
 
     StepChecks.Outcome outcome =
         checks.check(InstallationStep.TRANSCRIPTION_MODEL, payload, null, null);
@@ -265,18 +271,19 @@ class StepChecksTest {
             rules,
             mock(OidcProviderConnectionTester.class),
             chatTester,
-            encryptor,
             ModelAddressPolicy.disabled(),
             embeddingModels,
             mailTester,
-            modelRoles);
+            modelRoles,
+            malwareScans);
     when(modelRoles.probeTranscription("http://speaches:8000/v1", "whisper", "sk-stt"))
         .thenReturn(
             new ModelRoleAdministration.TestOutcome(
                 true, "Verbindung erfolgreich, der Endpunkt hat geantwortet."));
     String payload =
         json.writeValueAsString(
-            new StepRules.TranscriptionModelPayload("http://speaches:8000/v1", "whisper", "de"));
+            new StepRules.TranscriptionModelPayload(
+                "http://speaches:8000/v1", "whisper", "de", null));
 
     StepChecks.Outcome outcome =
         open.check(
@@ -290,5 +297,89 @@ class StepChecksTest {
     assertThat(outcome.message())
         .isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
     assertThat(outcome.dimensions()).isNull();
+  }
+
+  @Test
+  void aBlockedTextRecognitionAddressFailsAtTheAddressStageWithoutAnyRequest() {
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TextRecognitionModelPayload(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://169.254.169.254:5001", null));
+
+    StepChecks.Outcome outcome =
+        checks.check(InstallationStep.TEXT_RECOGNITION_MODEL, payload, null, null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).startsWith("Gescheitert an der Stufe „Adresse“: ");
+    verifyNoInteractions(modelRoles);
+  }
+
+  @Test
+  void theTextRecognitionModelIsCheckedWithTheStagedTestOfTheAdministrationAndItsOwnKey() {
+    StepChecks open =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            ModelAddressPolicy.disabled(),
+            embeddingModels,
+            mailTester,
+            modelRoles,
+            malwareScans);
+    when(modelRoles.probeTextRecognition(
+            TextRecognitionConnectionType.DOCLING_SERVE, "http://opaa-ocr:5001", null, "ocr-key"))
+        .thenReturn(
+            new ModelRoleAdministration.TextRecognitionTestOutcome(
+                true,
+                TextRecognitionClient.TestOutcome.READY,
+                null,
+                "Verbindung erfolgreich, der Dienst hat die Testseite gelesen."));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TextRecognitionModelPayload(
+                TextRecognitionConnectionType.DOCLING_SERVE, "http://opaa-ocr:5001", null));
+    String secret =
+        encryptor.encrypt(
+            "ocr-key", InstallationEncryptedColumns.of(InstallationStep.TEXT_RECOGNITION_MODEL));
+
+    StepChecks.Outcome outcome =
+        open.check(InstallationStep.TEXT_RECOGNITION_MODEL, payload, secret, null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.message())
+        .isEqualTo(
+            "Adresse, Anmeldung und Erkennung in Ordnung. Verbindung erfolgreich, der Dienst hat"
+                + " die Testseite gelesen.");
+
+    when(modelRoles.probeTextRecognition(any(), any(), any(), any()))
+        .thenReturn(
+            new ModelRoleAdministration.TextRecognitionTestOutcome(
+                false,
+                TextRecognitionClient.TestOutcome.KEY_REJECTED,
+                TextRecognitionClient.FailedStage.AUTHENTICATION,
+                "Der Dienst hat den Zugangsschlüssel abgelehnt."));
+    StepChecks.Outcome refused =
+        open.check(InstallationStep.TEXT_RECOGNITION_MODEL, payload, secret, null);
+    assertThat(refused.succeeded()).isFalse();
+    assertThat(refused.message())
+        .isEqualTo(
+            "Gescheitert an der Stufe „Anmeldung“: Der Dienst hat den Zugangsschlüssel abgelehnt.");
+  }
+
+  @Test
+  void theMalwareScannerIsCheckedWithTheVersionRequestOfTheAdministration() {
+    when(malwareScans.test("malwareScan.", "clamav.amt.example", 3310, 30))
+        .thenReturn(
+            new MalwareScanSettingsService.TestOutcome(
+                true, "Virenscanner erreichbar: ClamAV 1.4.2/27450"));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.MalwareScanPayload(
+                "clamav.amt.example", 3310, 30, MalwareScanUnavailablePolicy.REJECT));
+
+    StepChecks.Outcome outcome = checks.check(InstallationStep.MALWARE_SCAN, payload, null, null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.message()).isEqualTo("Virenscanner erreichbar: ClamAV 1.4.2/27450");
   }
 }

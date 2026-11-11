@@ -1,17 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import CreateButton from '@/shared/ui/CreateButton'
 import type { ServiceAccountResponse } from '@/shared/api/types'
-import DetailSection, { TextAction, TextLink } from '@/shared/ui/DetailSection'
+import DetailSection, { TextLink } from '@/shared/ui/DetailSection'
 import ListSearch from '@/shared/ui/ListSearch'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import StateDot from '@/shared/ui/StateDot'
 import IssueServiceAccountTokenDialog from './IssueServiceAccountTokenDialog'
 import ServiceAccountDetailBody from './ServiceAccountDetailBody'
@@ -20,6 +20,7 @@ import { AccountState, DetailFrame } from './ServiceAccountParts'
 import { confirmDeactivate, useServiceAccountDetail } from './serviceAccountHooks'
 import { MISSING_PERSON, formatDate, soonLabel, tokenCountLabel } from './serviceAccountLabels'
 import { useServiceAccounts } from './useServiceAccounts'
+import { fieldWidth, fontSize, readingWidth } from '@/shared/theme/tokens'
 
 /** The query parameter that opens one account in the tab, so that the detail has an address. */
 const ACCOUNT_PARAM = 'account'
@@ -69,7 +70,6 @@ function AccountRow({ account, href }: { account: ServiceAccountResponse; href: 
         to={href}
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) auto',
           alignItems: 'center',
           columnGap: 1.5,
           py: 1.25,
@@ -82,14 +82,13 @@ function AccountRow({ account, href }: { account: ServiceAccountResponse; href: 
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
             {account.name}
           </Typography>
-          <Typography component="div" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography component="div" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             <RowFacts account={account} />
           </Typography>
         </Box>
-        <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary' }} aria-hidden="true" />
       </Box>
     </Box>
   )
@@ -112,7 +111,12 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
           <>
             <Typography
               component="h2"
-              sx={{ fontSize: 22, fontWeight: 600, mb: 2, overflowWrap: 'anywhere' }}
+              sx={{
+                fontSize: fontSize.detailTitle,
+                fontWeight: 600,
+                mb: 2,
+                overflowWrap: 'anywhere',
+              }}
             >
               {account.name}
             </Typography>
@@ -121,7 +125,12 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
             {account.active && (
               <DetailSection title="Deaktivieren" headingLevel="h3">
                 <Typography
-                  sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5, maxWidth: '70ch' }}
+                  sx={{
+                    fontSize: fontSize.text,
+                    color: 'text.secondary',
+                    mb: 1.5,
+                    maxWidth: readingWidth,
+                  }}
                 >
                   Widerruft alle Tokens sofort; das Dienstkonto bleibt zur Nachvollziehbarkeit
                   erhalten.
@@ -145,7 +154,7 @@ function DetailView({ id, onChanged }: { id: string; onChanged: () => void }) {
 /**
  * The tab „Dienstkonten“ in „Anbindungen“: a list with one chevron row per account, from eight
  * accounts on with a search, and a detail view inside the tab (`?account=<id>`). Creating an
- * account leads straight to its first token; „Ohne Token beenden“ leaves it without one.
+ * account leads straight to its first token; „Abbrechen“ leaves it without one.
  */
 export default function ServiceAccountsTab() {
   const [searchParams] = useSearchParams()
@@ -169,7 +178,6 @@ export default function ServiceAccountsTab() {
     <IssueServiceAccountTokenDialog
       account={firstTokenFor}
       title="Erstes Token ausstellen"
-      cancelLabel="Ohne Token beenden"
       onClose={() => setFirstTokenFor(null)}
       onIssued={() => {
         void reload()
@@ -180,54 +188,38 @@ export default function ServiceAccountsTab() {
 
   const list = (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 2,
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          mb: 2.5,
-        }}
+      <Typography
+        sx={{ fontSize: fontSize.text, color: 'text.secondary', maxWidth: readingWidth, mb: 2.5 }}
       >
-        <Typography
-          sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640, flex: '1 1 320px' }}
-        >
-          Eigene, lesende Zugänge für Verfahren, unabhängig von einzelnen Beschäftigten. Welche
-          Bibliotheken ein Dienstkonto sieht, entscheidet die Verwaltung der Bibliothek.
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreating(true)}
-          disabled={Boolean(error)}
-        >
-          Dienstkonto anlegen
-        </Button>
-      </Box>
+        Eigene, lesende Zugänge für Verfahren, unabhängig von einzelnen Beschäftigten. Welche
+        Bibliotheken ein Dienstkonto sieht, entscheidet die Verwaltung der Bibliothek.
+      </Typography>
+      <CreateButton onClick={() => setCreating(true)} disabled={Boolean(error)}>
+        Dienstkonto anlegen
+      </CreateButton>
 
       {error ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void reload()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
+        <LoadError
+          message="Die Dienstkonten konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void reload()}
+        />
       ) : accounts === null ? (
-        <ListLoading label="Dienstkonten werden geladen" />
+        <LoadingState />
       ) : accounts.length === 0 ? (
-        <ListEmptyState
-          title="Noch kein Dienstkonto."
-          hint="Ein Dienstkonto gibt einem Verfahren einen eigenen, lesenden Zugang."
+        <EmptyState
+          framed
+          message="Noch keine Dienstkonten."
+          action={
+            <CreateButton placement="empty" onClick={() => setCreating(true)}>
+              Dienstkonto anlegen
+            </CreateButton>
+          }
         />
       ) : (
         <>
           {all.length >= SEARCH_THRESHOLD && (
-            <Box sx={{ mb: 1.5, maxWidth: 360 }}>
+            <Box sx={{ mb: 1.5, maxWidth: fieldWidth.medium }}>
               <ListSearch
                 value={query}
                 onChange={setQuery}
@@ -250,10 +242,13 @@ export default function ServiceAccountsTab() {
           )}
           {shown.length === 0 ? (
             <Box sx={{ py: 1.5 }}>
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 0.5 }}>
-                {needle ? `Keine Treffer für „${query.trim()}“.` : 'Kein aktives Dienstkonto.'}
-              </Typography>
-              {needle && <TextAction onClick={() => setQuery('')}>Suche zurücksetzen</TextAction>}
+              <EmptyState
+                kind="noMatch"
+                onReset={() => {
+                  setQuery('')
+                  setShowInactive(true)
+                }}
+              />
             </Box>
           ) : (
             <Box

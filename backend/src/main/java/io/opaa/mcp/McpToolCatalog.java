@@ -3,6 +3,7 @@ package io.opaa.mcp;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
+import io.opaa.common.PromptText;
 import io.opaa.search.SearchableLibrary;
 import java.util.List;
 import java.util.Map;
@@ -20,10 +21,10 @@ import org.springframework.stereotype.Component;
  * never produce a hit outside the effective view, because the filter sits in the search.
  *
  * <p>A library description is free text from the administration surface, so it is fitted into a
- * fixed structure rather than pasted: newlines and control characters collapse into spaces, each
- * text is cut to {@link #DESCRIPTION_CHARACTERS}, and at most {@link #LISTED_LIBRARIES} libraries
- * are named before the rest becomes a count. Free text that could restructure the tool description
- * is the one thing this generation must not allow.
+ * fixed structure rather than pasted: invisible characters go, newlines and control characters
+ * collapse into spaces, each text is cut to {@link #DESCRIPTION_CHARACTERS}, and at most {@link
+ * #LISTED_LIBRARIES} libraries are named before the rest becomes a count. Free text that could
+ * restructure the tool description is the one thing this generation must not allow.
  */
 @ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
@@ -170,7 +171,11 @@ public class McpToolCatalog {
     if (text == null) {
       return "";
     }
-    String collapsed = text.replaceAll("[#`|*_]", " ").replaceAll("[\\p{Cntrl}\\s]+", " ").strip();
+    String collapsed =
+        PromptText.withoutInvisible(text)
+            .replaceAll("[#`|*_]", " ")
+            .replaceAll("[\\p{Cntrl}\\s]+", " ")
+            .strip();
     if (collapsed.length() <= limit) {
       return collapsed;
     }

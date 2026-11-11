@@ -1,0 +1,50 @@
+{
+  "agent": "Recherche",
+  "corpus": "verwaltung",
+  "note": "Die Fälle laufen gegen den synthetischen Korpus eval/corpus/verwaltung, eingespielt in eine Wissensbibliothek des Space, in dem gefragt wird. expected_documents sind Dateinamen der Dokumente, aus denen ein vollständiger Bericht Fundstellen enthalten muss; sie stammen aus den Fällen der Golden-Datei verwaltung.json.",
+  "cases": [
+    {
+      "id": "rech-001",
+      "title": "Fassungen vergleichen",
+      "kind": "mehrere Fassungen derselben Satzung plus Gebührenordnung",
+      "question": "Vergleiche die Fassungen 2023 und 2024 der Baugenehmigungsgebührensatzung und nenne, welche Gebührenordnung des Bauamts ergänzend gilt. Weise auf Widersprüche zwischen den Dokumenten hin.",
+      "plan_change": null,
+      "expected_documents": [
+        "verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md",
+        "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md",
+        "verwaltung-0011_gebuehrenordnung-bauamt.md"
+      ],
+      "expected_end_state": "COMPLETED"
+    },
+    {
+      "id": "rech-002",
+      "title": "Antrag über mehrere Dokumentarten verfolgen",
+      "kind": "Satzung, Formularhinweis, Dienstanweisungen und Vertretungsregelung",
+      "question": "Wie läuft ein Antrag auf Gebührenbefreiung wegen Bedürftigkeit bei der Kämmerei ab: Welche Voraussetzungen gelten, welchen Nachweis muss die antragstellende Person einreichen, was gilt bei einem abgelaufenen Leistungsbescheid und wer entscheidet bei Abwesenheit der Sachbearbeitung?",
+      "plan_change": null,
+      "expected_documents": [
+        "verwaltung-0038_verwaltungsgebuehrensatzung.md",
+        "verwaltung-0043_formularhinweis-kaemmerei-8.md",
+        "verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md",
+        "verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md",
+        "verwaltung-vertretungsregelung.md"
+      ],
+      "expected_end_state": "COMPLETED"
+    },
+    {
+      "id": "rech-003",
+      "title": "Plan eingrenzen",
+      "kind": "Änderung des Plans vor der Ausführung",
+      "question": "Fasse zusammen, was für die Anmeldung eines Gewerbes im Ordnungsamt gilt.",
+      "plan_change": "Beschränke dich auf die Fassung 2024 der Satzung und auf die Gebührenordnung des Ordnungsamts; die Dienstanweisungen lässt du aus.",
+      "expected_documents": [
+        "verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md",
+        "verwaltung-0019_gebuehrenordnung-ordnungsamt.md"
+      ],
+      "forbidden_documents": [
+        "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md"
+      ],
+      "expected_end_state": "COMPLETED"
+    }
+  ]
+}

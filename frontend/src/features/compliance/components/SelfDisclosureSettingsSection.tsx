@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { SelfDisclosureSettings, SelfDisclosureSettingsUpdate } from '@/shared/api/types'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import PageSection from '@/shared/ui/PageSection'
 import { getSelfDisclosureSettings, updateSelfDisclosureSettings } from '../api/selfDisclosureApi'
+import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const MIN_DAILY_LIMIT = 1
 const MAX_DAILY_LIMIT = 10
@@ -63,17 +63,17 @@ export default function SelfDisclosureSettingsSection() {
   const update: SelfDisclosureSettingsUpdate = {}
   if (current && enabled !== current.enabled) update.enabled = enabled
   if (current && valid && limit !== current.dailyLimit) update.dailyLimit = limit
-  const changed = valid && Object.keys(update).length > 0
+  const dirty =
+    current !== null && (enabled !== current.enabled || draft.trim() !== String(current.dailyLimit))
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !current || !changed) return
+  async function handleSave() {
+    if (busy || !current || !valid) return
     if (update.enabled === false) {
       const confirmed = await confirmAction({
-        question: 'Selbstauskunft abschalten?',
+        question: 'Selbstauskunft ausschalten?',
         consequence:
           'Niemand kann seine Daten dann selbst herunterladen; die Einstellungen nennen stattdessen den Auskunftsantrag bei der Behörde. Ein laufender Download läuft zu Ende. Die Änderung steht im Nachweisprotokoll.',
-        confirmLabel: 'Abschalten',
+        confirmLabel: 'Ausschalten',
         tone: 'caution',
       })
       if (!confirmed) return
@@ -106,25 +106,33 @@ export default function SelfDisclosureSettingsSection() {
       description="Jede Person lädt ihre gespeicherten Daten unter „Meine Daten“ selbst herunter. Abschalten lässt sich das nur für die ganze Installation; das Recht auf Auskunft bei der Behörde bleibt unberührt."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
+        <LoadError
+          message="Die Einstellungen konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
+      ) : current === null ? (
+        <LoadingState shape="lines" count={2} />
+      ) : (
+        <SettingsForm
+          onSave={handleSave}
+          busy={busy}
+          dirty={dirty}
+          onDiscard={() => {
+            adopt(current)
+            setSaveError(null)
+          }}
+          result={
+            saveError && (
+              <Alert severity="error" role="alert">
+                {saveError}
+              </Alert>
+            )
           }
         >
-          {loadError}
-        </Alert>
-      ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Einstellungen werden geladen …
-        </Typography>
-      ) : (
-        <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <FormControlLabel
             control={
-              <Switch
+              <Checkbox
                 checked={enabled}
                 onChange={(event) => {
                   setEnabled(event.target.checked)
@@ -134,53 +142,31 @@ export default function SelfDisclosureSettingsSection() {
             }
             label="Selbstauskunft anbieten"
           />
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, mt: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, mt: 0.5 }}>
             {enabled
-              ? 'Eingeschaltet: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
-              : 'Abgeschaltet: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}
+              ? 'Mit Haken: Alle Konten sehen in ihren Einstellungen den Download ihrer Daten.'
+              : 'Ohne Haken: Die Einstellungen verweisen auf den Auskunftsantrag bei der Behörde.'}
           </Typography>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ alignItems: { sm: 'flex-start' } }}
-          >
-            <TextField
-              label="Tagesgrenze (vollständige Downloads je Person und Tag)"
-              type="number"
-              size="small"
-              value={draft}
-              onChange={(event) => {
-                setDraft(event.target.value)
-                setSaveError(null)
-              }}
-              error={!valid}
-              helperText={
-                valid
-                  ? `Erlaubt sind ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT}. Ein abgebrochener Download zählt nicht.`
-                  : `Bitte eine ganze Zahl von ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT} eingeben.`
-              }
-              slotProps={{
-                htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
-              }}
-              sx={{ maxWidth: 420, flexGrow: 1 }}
-            />
-            <BusyButton
-              type="submit"
-              variant="outlined"
-              busy={busy}
-              busyAnnouncement="Einstellungen werden gespeichert"
-              disabled={!changed && !busy}
-              sx={{ mt: { sm: 0.25 } }}
-            >
-              Speichern
-            </BusyButton>
-          </Stack>
-          {saveError && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {saveError}
-            </Alert>
-          )}
-        </Box>
+          <FormField
+            label="Tagesgrenze (vollständige Downloads je Person und Tag)"
+            type="number"
+            size="small"
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value)
+              setSaveError(null)
+            }}
+            error={!valid}
+            helperText={
+              valid
+                ? `Erlaubt sind ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT}. Ein abgebrochener Download zählt nicht.`
+                : `Bitte eine ganze Zahl von ${MIN_DAILY_LIMIT} bis ${MAX_DAILY_LIMIT} eingeben.`
+            }
+            slotProps={{
+              htmlInput: { min: MIN_DAILY_LIMIT, max: MAX_DAILY_LIMIT, step: 1 },
+            }}
+          />
+        </SettingsForm>
       )}
     </PageSection>
   )

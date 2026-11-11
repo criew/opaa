@@ -4,7 +4,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
@@ -15,7 +14,10 @@ import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
 import type { Theme } from '@mui/material/styles'
-import { blue } from '../../theme/tokens'
+import { blue, fontSize, iconSize } from '../../theme/tokens'
+import EmptyState, { type Sentence } from '../states/EmptyState'
+import LoadError, { type LoadErrorMessage } from '../states/LoadError'
+import LoadingState from '../states/LoadingState'
 
 export interface ControlledSearch {
   value: string
@@ -58,9 +60,18 @@ export interface OverviewPageProps<T> {
   /** The search field's input, e.g. to put the cursor into it when the page opens as a search. */
   searchInputRef?: Ref<HTMLInputElement>
   isLoading?: boolean
+  /** The cause of a failed load; the overview then shows only the load notice. */
   error?: string | null
-  /** Shown instead of the list when the overview holds no items at all. */
-  emptyState?: ReactNode
+  /** „<Objekte> konnten nicht geladen werden." for the load notice. */
+  errorMessage: LoadErrorMessage
+  onRetry: () => void
+  /**
+   * The first-time empty sentence („Noch keine Spaces."), shown when the overview holds no items
+   * at all, with the create button of the head below it.
+   */
+  emptyMessage: Sentence
+  /** Clears the `filters` beyond the search; „Filter zurücksetzen" calls it with the search reset. */
+  onResetFilters?: () => void
   renderCard: (item: T) => ReactNode
   /** Rendered below the list, e.g. a button that loads the next page. */
   listFooter?: ReactNode
@@ -113,7 +124,10 @@ export default function OverviewPage<T>({
   searchInputRef,
   isLoading = false,
   error = null,
-  emptyState,
+  errorMessage,
+  onRetry,
+  emptyMessage,
+  onResetFilters,
   renderCard,
   listFooter,
 }: OverviewPageProps<T>) {
@@ -132,6 +146,9 @@ export default function OverviewPage<T>({
   const narrowed = filtered || (search !== undefined && query.trim() !== '')
   const isEmpty = items.length === 0 && !narrowed
   const firstLoad = isLoading && items.length === 0 && !narrowed
+  // A failed first load replaces the content; a later failure (a further page, a refresh) leaves
+  // the loaded entries standing and is named below them.
+  const loadFailed = error !== null && items.length === 0
   const showList = visible.length > 0
   const count = total ?? visible.length
   // Only a result that answers the text now in the field may be announced or called empty.
@@ -139,7 +156,7 @@ export default function OverviewPage<T>({
     !search || search.resultFor === undefined || (search.resultFor === query.trim() && !isLoading)
 
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
+    <Box data-list-scope="" sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box
         sx={{
           display: 'flex',
@@ -151,7 +168,7 @@ export default function OverviewPage<T>({
       >
         <PageHeading title={title} />
         {!firstLoad && (
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography component="span" sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {entryCountLabel(count)}
           </Typography>
         )}
@@ -166,12 +183,6 @@ export default function OverviewPage<T>({
           </Button>
         )}
       </Box>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       {!isEmpty && filterBar && <Box sx={{ mb: 2.5 }}>{filterBar}</Box>}
 
       {!isEmpty && !filterBar && (
@@ -195,7 +206,7 @@ export default function OverviewPage<T>({
               input: {
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16 }} />
+                    <SearchIcon sx={{ fontSize: iconSize.sm }} />
                   </InputAdornment>
                 ),
                 endAdornment: query ? (
@@ -205,12 +216,16 @@ export default function OverviewPage<T>({
                       aria-label="Suche zurücksetzen"
                       onClick={() => setQuery('')}
                     >
-                      <CloseIcon sx={{ fontSize: 16 }} />
+                      <CloseIcon sx={{ fontSize: iconSize.sm }} />
                     </IconButton>
                   </InputAdornment>
                 ) : undefined,
               },
-              htmlInput: { 'aria-label': 'Suchen', maxLength: search?.maxLength },
+              htmlInput: {
+                'aria-label': 'Suchen',
+                'data-list-search': '',
+                maxLength: search?.maxLength,
+              },
             }}
           />
           {filters}
@@ -225,16 +240,29 @@ export default function OverviewPage<T>({
           : ''}
       </Box>
 
-      {firstLoad ? (
-        <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={24} aria-label="Liste wird geladen" />
-        </Box>
+      {loadFailed ? (
+        <LoadError message={errorMessage} detail={error} onRetry={onRetry} />
+      ) : firstLoad ? (
+        <LoadingState shape="cards" count={6} />
       ) : isEmpty ? (
-        emptyState
+        <EmptyState
+          message={emptyMessage}
+          action={
+            createLabel && onCreate ? (
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={onCreate}>
+                {createLabel}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : visible.length === 0 && !isLoading && resultCurrent ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          {searchResultMessage(0, query.trim())}
-        </Typography>
+        <EmptyState
+          kind="noMatch"
+          onReset={() => {
+            setQuery('')
+            onResetFilters?.()
+          }}
+        />
       ) : null}
 
       {showList && (
@@ -249,6 +277,12 @@ export default function OverviewPage<T>({
             <Fragment key={itemKey(item)}>{renderCard(item)}</Fragment>
           ))}
         </Box>
+      )}
+
+      {error !== null && !loadFailed && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
       )}
 
       {showList && listFooter}

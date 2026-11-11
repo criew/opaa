@@ -65,8 +65,9 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.metadata.EmbeddingRateEstimator;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -107,11 +108,14 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.QueryTimeoutException;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -1155,6 +1159,35 @@ class LibraryDocumentServiceTest {
     assertThat(Files.exists(storedFile)).isFalse();
   }
 
+  /**
+   * A failed chunk delete fails the deletion itself, so its transaction rolls back and keeps the
+   * row: chunks never outlive their document and stay findable by the search.
+   */
+  @Test
+  void aFailedChunkDeleteFailsTheDeletionAndKeepsTheStoredFile() throws IOException {
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
+    Path storedFile = libraryDir.resolve("kept.pdf");
+    Files.writeString(storedFile, "content");
+    Document doc =
+        new Document(
+            "kept.pdf", storedFile.toString(), "application/pdf", 7L, SourceTypes.FILESYSTEM);
+    doc.setLibraryId(libraryId);
+    doc.setOrganizationId(organizationId);
+    doc.setSourceType(SourceType.UPLOAD);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+    doThrow(new IllegalStateException("vector store unavailable"))
+        .when(vectorStoreWriter)
+        .deleteChunksOfDocument(doc.getId());
+
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, caller))
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(Files.exists(storedFile)).isTrue();
+  }
+
   @Test
   void bulkDeleteRemovesEveryValidIdAndNamesTheOnesItCouldNot() throws IOException {
     // A stale id in the selection (deleted meanwhile, or from another library) must cost only
@@ -1378,40 +1411,6 @@ class LibraryDocumentServiceTest {
     inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(grandchildAttachment.getId());
     inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(innerMail.getId());
     inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(outerMail.getId());
-  }
-
-  @Test
-  void aFailingVectorStoreDeleteDuringCleanupStillLetsTheFileBeDeletedAndDoesNotPropagate()
-      throws IOException {
-    // By the time this afterCommit callback runs, the row deletion has already committed - the
-    // caller's request has already succeeded. A vectorStore.delete failure here must neither turn
-    // that success into a 500 the caller never asked for, nor skip the file deletion for a reason
-    // that has nothing to do with the file.
-    grantEditor();
-    UUID documentId = UUID.randomUUID();
-    Path libraryDir =
-        Files.createDirectories(
-            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
-    Path storedFile = libraryDir.resolve("stored.pdf");
-    Files.writeString(storedFile, "content");
-
-    Document doc =
-        new Document(
-            "report.pdf", storedFile.toString(), "application/pdf", 7L, SourceTypes.FILESYSTEM);
-    doc.setLibraryId(libraryId);
-    doc.setOrganizationId(organizationId);
-    doc.setSourceType(SourceType.UPLOAD);
-    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
-    doThrow(new RuntimeException("pgvector unavailable"))
-        .when(vectorStoreWriter)
-        .deleteChunksOfDocument(doc.getId());
-
-    service.deleteDocument(libraryId, documentId, caller);
-
-    verify(documentRepository).delete(doc);
-    assertThat(Files.exists(storedFile))
-        .as("The file must still be deleted even though the vector store cleanup failed")
-        .isFalse();
   }
 
   @Test
@@ -1870,6 +1869,8 @@ class LibraryDocumentServiceTest {
     when(library.getSourceCredentials()).thenReturn(sourceCredentials);
     // the credentials only reach originals on the origin of the library's own address
     lenient().when(library.getSourceUrl()).thenReturn(remoteBaseUrl + "/");
+    // the connector type names the kind of the measured outbound call
+    lenient().when(library.getSourceType()).thenReturn(SourceTypes.HTTP_DIRECTORY);
     return library;
   }
 
@@ -1878,6 +1879,55 @@ class LibraryDocumentServiceTest {
     document.setLibraryId(libraryId);
     document.setOrganizationId(organizationId);
     return document;
+  }
+
+  @Test
+  void anUnknownDocumentIsRefusedBeforeAnyFetchAndMarkedSo() {
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/documents/x");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      UUID documentId = UUID.randomUUID();
+      when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
+
+      assertThatThrownBy(() -> service.loadContent(documentId, caller))
+          .isInstanceOf(NotFoundException.class);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+
+    assertThat(java.util.Collections.list(request.getAttributeNames()))
+        .as("the refusal before the fetch gives back the global rate-limit token")
+        .anyMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
+  }
+
+  @Test
+  void aFetchThatFailsIsAnsweredNotFoundWithoutTheMarkOfARefusalBeforeTheWork() throws IOException {
+    startRemoteServer();
+    remoteServer.createContext(
+        "/original.pdf",
+        exchange -> {
+          exchange.sendResponseHeaders(500, -1);
+          exchange.close();
+        });
+    grantViewerOnUploadLibrary();
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
+    Document document = remoteDocument(SourceTypes.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/documents/x");
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    try {
+      assertThatThrownBy(() -> service.loadContent(documentId, caller))
+          .isInstanceOf(NotFoundException.class);
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+
+    assertThat(java.util.Collections.list(request.getAttributeNames()))
+        .as("the outbound fetch was made, so the request keeps its global rate-limit token")
+        .noneMatch(name -> name.startsWith(RefusedBeforeWork.class.getName()));
   }
 
   @Test

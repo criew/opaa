@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.common.HeaderValues;
 import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.security.TargetAddressValidator.Scope;
@@ -22,10 +23,11 @@ import org.slf4j.LoggerFactory;
  * redirect implementation every source-access caller uses, since every client this package builds
  * uses {@code Redirect.NEVER}. A protocol downgrade is never followed; an origin change is governed
  * by {@link RedirectPolicy}. {@code targetAddressValidator} runs against the current URI at the top
- * of every iteration, before a single further byte is requested. A {@code 429} is waited out and
- * retried under the caller's {@link RateLimitHandling}; once its retries are spent, the last {@code
- * 429} is returned as-is. {@link #sendWithBody} sends a request with a body under the same rules
- * but follows no redirect.
+ * of every iteration, before a single further byte is requested, right after the listener's {@link
+ * RateLimitListener#connecting} may still refuse the hop. A {@code 429} is waited out and retried
+ * under the caller's {@link RateLimitHandling}; once its retries are spent, the last {@code 429} is
+ * returned as-is. {@link #sendWithBody} sends a request with a body under the same rules but
+ * follows no redirect.
  *
  * <p>Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received also
  * checked against the original URL, closing the gap a caller-supplied auto-following {@link
@@ -156,7 +158,8 @@ public final class RedirectFollowingFetcher {
                 headers,
                 targetAddressValidator,
                 policy,
-                authorizationScope),
+                authorizationScope,
+                rateLimit.listener()),
         rateLimit);
   }
 
@@ -184,10 +187,13 @@ public final class RedirectFollowingFetcher {
     URI uri = URI.create(url);
     return retryingThrottled(
         () -> {
+          rateLimit.listener().connecting(uri);
           targetAddressValidator.validate(uri, Scope.PER_CONNECTION);
           HttpRequest.Builder builder =
               HttpRequest.newBuilder().uri(uri).timeout(timeout).method(method, body);
-          headers.forEach(builder::header);
+          headers.forEach(
+              (name, value) ->
+                  builder.header(name, HeaderValues.requireSafe(value, "value of header " + name)));
           builder.setHeader("Content-Type", contentType);
           HttpResponse<InputStream> response =
               httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
@@ -241,17 +247,21 @@ public final class RedirectFollowingFetcher {
       Map<String, String> headers,
       TargetAddressValidator targetAddressValidator,
       RedirectPolicy policy,
-      Predicate<URI> authorizationScope)
+      Predicate<URI> authorizationScope,
+      RateLimitListener listener)
       throws IOException, InterruptedException {
     URI originalUri = URI.create(url);
     URI currentUri = originalUri;
     Map<String, String> currentHeaders = new LinkedHashMap<>(headers);
 
     for (int hop = 0; ; hop++) {
+      listener.connecting(currentUri);
       targetAddressValidator.validate(currentUri, Scope.PER_CONNECTION);
       HttpRequest.Builder reqBuilder =
           HttpRequest.newBuilder().uri(currentUri).timeout(timeout).GET();
-      currentHeaders.forEach(reqBuilder::header);
+      currentHeaders.forEach(
+          (name, value) ->
+              reqBuilder.header(name, HeaderValues.requireSafe(value, "value of header " + name)));
 
       HttpResponse<InputStream> response =
           httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());

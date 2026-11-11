@@ -169,7 +169,7 @@ describe('OidcProviderManagementPage', () => {
     expect(within(zeilen[1]).queryByLabelText('Standardanbieter')).not.toBeInTheDocument()
     expect(within(zeilen[0]).getByText('Erreichbar')).toBeInTheDocument()
     expect(within(zeilen[1]).getByText('Nicht erreichbar')).toBeInTheDocument()
-    expect(within(zeilen[1]).getByText('Rollen aus dem Token')).toBeInTheDocument()
+    expect(within(zeilen[1]).getByText(/^Rollen aus dem Token: /)).toBeInTheDocument()
   })
 
   /**
@@ -375,7 +375,7 @@ describe('OidcProviderManagementPage', () => {
 
     await clickRowAction(user, 'Partnerportal', 'Zum Standard machen')
     const standardfrage = await screen.findByRole('dialog', {
-      name: /zum Standardanbieter machen\?/,
+      name: /zum Standard machen\?/,
     })
     expect(standardfrage).toHaveTextContent(/weder deaktiviert noch gelöscht/)
     await user.click(within(standardfrage).getByRole('button', { name: 'Zum Standard machen' }))
@@ -391,7 +391,7 @@ describe('OidcProviderManagementPage', () => {
     ).toBeInTheDocument()
 
     await clickRowAction(user, 'Landesportal', 'Zum Standard machen')
-    await answerConfirm(user, /zum Standardanbieter machen\?/, 'Zum Standard machen')
+    await answerConfirm(user, /zum Standard machen\?/, 'Zum Standard machen')
     await waitFor(() => {
       expect(within(rowOf('Landesportal')).getByLabelText('Standardanbieter')).toBeInTheDocument()
     })
@@ -576,8 +576,9 @@ describe('OidcProviderManagementPage', () => {
 
     const partner = rowOf('Partnerportal')
     expect(within(partner).queryByText('Rollen in OPAA verwaltet')).not.toBeInTheDocument()
-    expect(within(partner).getByText('Rollen aus dem Token')).toBeInTheDocument()
-    expect(within(partner).getByText('SYSTEM_ADMIN = opaa-admin')).toBeInTheDocument()
+    expect(
+      within(partner).getByText('Rollen aus dem Token: SYSTEM_ADMIN = opaa-admin'),
+    ).toBeInTheDocument()
     expect(within(partner).getByText('Gruppen aus groups')).toBeInTheDocument()
   })
 

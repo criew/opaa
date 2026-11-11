@@ -8,6 +8,7 @@ import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator.Result;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
+import io.opaa.observability.RequestIds;
 import io.opaa.ratelimit.OwnQuotaAuthentication;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,7 +19,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -184,16 +184,10 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
         HttpHeaders.WWW_AUTHENTICATE,
         "Bearer error=\"invalid_token\", error_description=\"" + rejection.marker() + "\"");
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    // The shape of ErrorResponse in the specification: error, status and timestamp.
     jsonMapper.writeValue(
         response.getOutputStream(),
-        Map.of(
-            "error",
-            UNAUTHENTICATED_MESSAGE,
-            "status",
-            HttpStatus.UNAUTHORIZED.value(),
-            "timestamp",
-            Instant.now(clock).toString()));
+        RequestIds.errorResponse(
+            UNAUTHENTICATED_MESSAGE, HttpStatus.UNAUTHORIZED.value(), Instant.now(clock)));
   }
 
   /**

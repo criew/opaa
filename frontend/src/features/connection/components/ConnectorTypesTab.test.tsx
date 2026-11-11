@@ -23,7 +23,7 @@ function render(route = '/admin/connections/source-types') {
 
 /** Opens the side panel of a source type from its row. */
 async function openType(user: ReturnType<typeof userEvent.setup>, name: string) {
-  await user.click(await screen.findByRole('button', { name: `Details: ${name}` }))
+  await user.click(await screen.findByRole('button', { name }))
   return screen.findByRole('dialog', { name })
 }
 
@@ -107,11 +107,11 @@ describe('ConnectorTypesTab', () => {
 
     const panel = await openType(user, 'Nextcloud')
     await user.click(within(panel).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
-    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Abbrechen')
+    await answerConfirm(user, /^„Nextcloud“ sperren\?/, 'Abbrechen')
     expect(sent).toEqual([])
 
     await user.click(within(panel).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
-    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Sperren')
+    await answerConfirm(user, /^„Nextcloud“ sperren\?/, 'Sperren')
     expect(await screen.findByText('Die Quellart „Nextcloud“ ist gesperrt.')).toBeVisible()
     expect(sent).toEqual([{ type: 'NEXTCLOUD', locked: true }])
   })
@@ -154,7 +154,7 @@ describe('ConnectorTypesTab', () => {
       await within(dialog).findByTestId('profile-requirement-not-switchable'),
     ).toHaveTextContent('keinen nicht gesperrten Zugang')
     expect(within(dialog).queryByRole('button', { name: 'Einschalten' })).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
     expect(sent).toEqual([])
   })
 
@@ -236,7 +236,7 @@ describe('ConnectorTypesTab', () => {
     const dialog = await screen.findByRole('dialog', { name: /Bestand von Nextcloud/ })
     expect(await within(dialog).findByRole('radio', { name: /Weiterlaufen lassen/ })).toBeChecked()
     await user.click(within(dialog).getByRole('radio', { name: /Sperren – sie laufen nicht mehr/ }))
-    await user.click(within(dialog).getByRole('button', { name: 'Wahl speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => expect(sent).toEqual([{ required: true, ownAddressStock: 'LOCKED' }]))
   })

@@ -3,7 +3,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import Typography from '@mui/material/Typography'
 import RowMenu from '@/shared/ui/RowMenu'
 import type { DocumentStatus, SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
@@ -30,6 +29,8 @@ import LibraryDocumentUploadArea from './LibraryDocumentUploadArea'
 import LibraryFolderBreadcrumb from './LibraryFolderBreadcrumb'
 import LibraryFolderDialogs from './LibraryFolderDialogs'
 import TextRecognitionNotice from './TextRecognitionNotice'
+import { fontSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
 
 export { ACCEPTED_FILE_EXTENSIONS } from '../hooks/useDocumentUpload'
 
@@ -253,8 +254,9 @@ export default function LibraryDocumentsSection({
 
   async function handleDelete(document: LibraryDocumentResponse) {
     const confirmed = await confirmAction({
-      question: `Dokument "${document.fileName}" löschen?`,
-      consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+      question: `„${document.fileName}“ löschen?`,
+      consequence:
+        'Das Dokument verschwindet mit seinen Anhängen aus der Bibliothek; Antworten finden es nicht mehr.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })
@@ -319,10 +321,13 @@ export default function LibraryDocumentsSection({
         {isUploadLibrary && canManage ? (
           <LibraryDocumentUploadArea upload={upload} />
         ) : (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-            {/* the one action is the head's main action; the sentence names no second one */}
-            Noch keine Dokumente.
-          </Typography>
+          <EmptyState
+            message={
+              isUploadLibrary
+                ? 'Noch keine Dokumente. Hochladen kann, wer die Bibliothek verwaltet.'
+                : 'Noch keine Dokumente. Sie erscheinen nach der ersten Indizierung der Quelle.'
+            }
+          />
         )}
         {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
       </Box>
@@ -426,7 +431,11 @@ export default function LibraryDocumentsSection({
         pageState={pageState}
         isLoading={isLoading}
         confluenceSpaces={confluenceSpaces}
-        emptyMessage="Kein Dokument entspricht diesem Filter."
+        narrowed={Boolean(searchInput || missingFieldParam || statusParam)}
+        onResetFilters={() => {
+          if (searchInput) handleSearchChange('')
+          if (missingFieldParam || statusParam) setStatusFilter(null)
+        }}
         breadcrumb={
           // The Ordnerpfad stands directly above the search field, where the list it
           // describes begins - not above the Pflege-Anker, which is bibliotheksweit.
@@ -542,7 +551,11 @@ function FilterSelect({
       displayEmpty
       onChange={(e) => onChange(String(e.target.value))}
       inputProps={{ 'aria-label': label }}
-      sx={{ flex: { xs: '1 1 120px', sm: 'none' }, minWidth: { xs: 0, sm: 150 }, fontSize: 13.5 }}
+      sx={{
+        flex: { xs: '1 1 120px', sm: 'none' },
+        minWidth: { xs: 0, sm: 150 },
+        fontSize: fontSize.text,
+      }}
     >
       {options.map(([key, text]) => (
         <MenuItem key={key} value={key}>

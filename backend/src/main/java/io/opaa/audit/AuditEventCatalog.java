@@ -139,8 +139,17 @@ public final class AuditEventCatalog {
     put(keys, Set.of("name"), PROMPT_LIBRARY_CREATED);
     put(keys, Set.of("changedFields"), PROMPT_LIBRARY_CHANGED);
     put(keys, Set.of("name", "promptsRemoved"), PROMPT_LIBRARY_DELETED);
+    put(keys, Set.of("name"), AGENT_CREATED, AGENT_DELETED);
+    put(keys, Set.of("changedFields"), AGENT_CHANGED);
+    put(keys, Set.of("responsibleGroupId", "responsibleFunction"), ASSET_RESPONSIBILITY_CHANGED);
+    put(keys, Set.of("cause"), ASSET_LOCKED, ASSET_UNLOCKED);
+    put(keys, Set.of("enabled", "enabledTools"), AGENT_SETTINGS_CHANGED);
+    put(keys, Set.of("form"), AGENT_DIRECTORY_ACCESSED);
     put(keys, Set.of("name", "promptLibraryId"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields", "promptLibraryId"), PROMPT_CHANGED);
+    put(keys, Set.of("name"), DOCUMENT_TEMPLATE_CREATED, DOCUMENT_TEMPLATE_DELETED);
+    put(keys, Set.of("changedFields"), DOCUMENT_TEMPLATE_CHANGED);
+    put(keys, Set.of("enabled"), DOCUMENT_TEMPLATE_SETTINGS_CHANGED);
     put(keys, Set.of("changedFields", "serviceAccountConfirmed"), LIBRARY_SOURCE_UPDATED);
     put(keys, Set.of("externalId", "provider"), GROUP_CREATED);
     put(keys, Set.of("changedFields"), GROUP_CHANGED);
@@ -216,6 +225,10 @@ public final class AuditEventCatalog {
         CONNECTION_LOG_RETENTION_CHANGED);
     put(
         keys,
+        Set.of("sandboxLogRetentionDays", "stepLogRetentionDays"),
+        AGENT_RUN_LOG_RETENTION_CHANGED);
+    put(
+        keys,
         Set.of("archiveAfterDays", "deleteAfterDays", "overridden"),
         CHAT_AUTO_CLEANUP_PERIODS_CHANGED);
     put(
@@ -228,6 +241,7 @@ public final class AuditEventCatalog {
     put(keys, Set.of("ownQuotaBytes", "quotaBytes"), SHARED_LIBRARY_QUOTA_CHANGED);
     put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);
     put(keys, Set.of("agingThresholdMonths", "overridden"), SUCCESSION_AGING_THRESHOLD_CHANGED);
+    put(keys, Set.of("responsibleLockDays", "overridden"), RESPONSIBILITY_LOCK_PERIOD_CHANGED);
     put(
         keys,
         Set.of("changeThresholdPercent", "overridden"),
@@ -326,6 +340,10 @@ public final class AuditEventCatalog {
     put(keys, Set.of("signature", "sourceType"), MALWARE_DETECTED);
     put(
         keys,
+        Set.of("enabled", "host", "onUnavailable", "port", "timeoutSeconds"),
+        MALWARE_SCAN_SETTINGS_CHANGED);
+    put(
+        keys,
         Set.of(
             "confidence",
             "datePrecision",
@@ -400,7 +418,11 @@ public final class AuditEventCatalog {
             "displayName",
             "maxTokens",
             "modelIdentifier",
-            "temperature"),
+            "temperature",
+            "toolCapability",
+            "toolCapabilityAssessedAt",
+            "toolCapabilityBasis",
+            "toolCapabilityMeasurementRun"),
         LLM_MODEL_CREATED,
         LLM_MODEL_CHANGED);
     put(
@@ -412,7 +434,11 @@ public final class AuditEventCatalog {
             "displayName",
             "maxTokens",
             "modelIdentifier",
-            "temperature"),
+            "temperature",
+            "toolCapability",
+            "toolCapabilityAssessedAt",
+            "toolCapabilityBasis",
+            "toolCapabilityMeasurementRun"),
         LLM_MODEL_DELETED);
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
@@ -422,7 +448,19 @@ public final class AuditEventCatalog {
     put(
         keys,
         Set.of(
-            "apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model", "vocabulary"),
+            "apiKeyChange",
+            "apiKeySet",
+            "baseUrl",
+            "enabled",
+            "language",
+            "model",
+            "realtimeApiKeyChange",
+            "realtimeApiKeySet",
+            "realtimeMaxSessions",
+            "realtimeModel",
+            "realtimeProtocol",
+            "realtimeUrl",
+            "vocabulary"),
         TRANSCRIPTION_MODEL_CHANGED);
     put(
         keys,
@@ -476,6 +514,7 @@ public final class AuditEventCatalog {
             "apiKeySet",
             "baseUrl",
             "claim",
+            "connectionType",
             "defaultColorScheme",
             "encryption",
             "fromAddress",
@@ -483,19 +522,25 @@ public final class AuditEventCatalog {
             "issuerUri",
             "language",
             "model",
+            "onUnavailable",
             "passwordSet",
             "port",
             "primaryColor",
             "productName",
+            "realtimeApiKeySet",
+            "realtimeModel",
+            "realtimeProtocol",
+            "realtimeUrl",
             "signInMode",
             "step",
+            "timeoutSeconds",
             "username"),
         INSTALLATION_STEP_SAVED);
     put(keys, Set.of("step", "succeeded", "testMail"), INSTALLATION_STEP_CHECKED);
     put(keys, Set.of("discarded", "step"), INSTALLATION_STEP_SKIPPED);
     put(
         keys,
-        Set.of("mailEnabled", "signInMode", "skippedSteps", "source"),
+        Set.of("mailEnabled", "malwareScanEnabled", "signInMode", "skippedSteps", "source"),
         INSTALLATION_COMPLETED);
     put(keys, Set.of("passwordSource", "state"), LOCAL_ADMIN_SEEDED);
     put(keys, Set.of("passwordSource", "recreated"), LOCAL_ADMIN_RESET);

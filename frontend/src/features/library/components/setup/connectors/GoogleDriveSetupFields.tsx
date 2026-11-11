@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormFieldLabel from '@/shared/ui/form/FormFieldLabel'
 import { readGoogleDriveKey } from '@/features/connection'
 import {
   GOOGLE_DRIVE_API,
@@ -12,9 +12,10 @@ import {
 } from '../../../utils/googleDriveSource'
 import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
-import type { SetupFieldsProps } from '../setupTypes'
-import { ALL_SCOPE_HINT } from './common'
+import type { SetupFieldsProps } from '../../sourceCore/setupTypes'
+import { ALL_SCOPE_HINT } from '../../sourceCore/common'
 import { driveItem, driveScopeOfItem, driveSelectionSource } from '../../sourceKit/selectionSources'
+import { controlHeight, fontSize } from '@/shared/theme/tokens'
 
 export function GoogleDriveConnectionFields({
   values,
@@ -32,7 +33,7 @@ export function GoogleDriveConnectionFields({
       ? `Dienstkonto ${values.keyAccount}`
       : serves
         ? 'gesetzt'
-        : 'Noch keine Datei gewählt'
+        : 'Keine Datei gewählt'
 
   async function onFile(file: File | undefined) {
     if (!file) return
@@ -53,17 +54,19 @@ export function GoogleDriveConnectionFields({
     <Stack spacing={2}>
       {fields.asksSecret && (
         <Box>
-          <FieldLabel htmlFor={fieldId('keyFile')}>Schlüsseldatei</FieldLabel>
+          <FormFieldLabel htmlFor={fieldId('keyFile')}>Schlüsseldatei</FormFieldLabel>
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: 1.5,
-              minHeight: 40,
+              minHeight: controlHeight.regular,
             }}
           >
-            <Typography sx={{ fontSize: 13.5, overflowWrap: 'anywhere' }}>{status}</Typography>
+            <Typography sx={{ fontSize: fontSize.text, overflowWrap: 'anywhere' }}>
+              {status}
+            </Typography>
             <Button
               size="small"
               variant="outlined"
@@ -84,7 +87,11 @@ export function GoogleDriveConnectionFields({
           </Box>
           <Typography
             id={`${fieldId('keyFile')}-error`}
-            sx={{ fontSize: 12, mt: 0.5, color: error ? 'error.main' : 'text.secondary' }}
+            sx={{
+              fontSize: fontSize.meta,
+              mt: 0.5,
+              color: error ? 'error.main' : 'text.secondary',
+            }}
           >
             {error ?? 'In der Google Cloud Console unter IAM › Dienstkonten › Schlüssel.'}
           </Typography>

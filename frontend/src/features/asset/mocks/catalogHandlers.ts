@@ -14,6 +14,7 @@ import {
   mockPromptLibraries,
   mockUnreadablePromptLibraryIds,
 } from '@/features/prompt/mocks/promptLibraryFixtures'
+import { mockDocumentTemplateState } from '@/features/document-template/mocks/documentTemplateFixtures'
 
 /**
  * A knowledge library's own state, see CatalogEntryStatus. Upload libraries are approximated by
@@ -87,8 +88,30 @@ function readableEntries(): CatalogEntryResponse[] {
       favorite: mockFavoriteAssets.has(favoriteKey('PROMPT_LIBRARY', library.id)),
       succession: library.succession ?? null,
     }))
+  const templates: CatalogEntryResponse[] = mockDocumentTemplateState.settings.enabled
+    ? Object.values(mockDocumentTemplateState.templates).map((template) => ({
+        assetType: 'DOCUMENT_TEMPLATE',
+        assetId: template.id,
+        name: template.name,
+        description: template.description ?? null,
+        ownerType: template.ownerType,
+        ownerId: template.ownerId,
+        ownerLabel: template.ownerName ?? null,
+        origin: 'LOCAL',
+        visibility: visibilityOf(template.reach.allAccounts),
+        myRole: template.myRole,
+        status: template.succession ? 'SUCCESSION_OPEN' : 'READY',
+        updatedAt: template.updatedAt,
+        itemCount: template.placeholders.length,
+        spaceCount: 0,
+        favorite: mockFavoriteAssets.has(favoriteKey('DOCUMENT_TEMPLATE', template.id)),
+        succession: template.succession ?? null,
+      }))
+    : []
   // Like the backend (ADR-0044): a switched-off feature's type is not in the catalog at all.
-  return mockAuthConfig.features?.promptLibraries === false ? knowledge : [...knowledge, ...prompts]
+  return mockAuthConfig.features?.promptLibraries === false
+    ? [...knowledge, ...templates]
+    : [...knowledge, ...prompts, ...templates]
 }
 
 /**

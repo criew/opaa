@@ -4,13 +4,13 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.UserRepository;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.common.ConflictException;
-import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
@@ -20,10 +20,11 @@ import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.installation.InstallationState.TokenSource;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.knowledge.MalwareScanSettingsService;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
-import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.mail.MailSettingsRules;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.organization.Organization;
@@ -31,7 +32,6 @@ import io.opaa.ratelimit.RateLimitService;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -103,6 +103,16 @@ public class InstallationService {
   private static final String MAIL_CHECK_BUDGET_KEY = "installation-mail-check";
   private static final String TEST_RECIPIENT = "testRecipient";
 
+  static final int MAX_MALWARE_SCAN_CHECKS = 30;
+  static final int MALWARE_SCAN_CHECK_WINDOW_SECONDS = 600;
+
+  /** The code of a refusal by the budget of checks of the malware scanner. */
+  static final String MALWARE_SCAN_CHECK_LIMIT_CODE = "MALWARE_SCAN_CHECK_LIMIT";
+
+  private static final String MALWARE_SCAN_CHECK_LIMIT_MESSAGE =
+      "Zu viele Prüfungen des Virenscanners. Bitte später erneut versuchen.";
+  private static final String MALWARE_SCAN_CHECK_BUDGET_KEY = "installation-malware-scan-check";
+
   private static final Logger log = LoggerFactory.getLogger(InstallationService.class);
 
   private final InstallationStateRepository states;
@@ -115,8 +125,9 @@ public class InstallationService {
   private final EmbeddingModelService embeddingModels;
   private final ModelRoleAdministration modelRoles;
   private final MailSettingsService mailSettings;
+  private final MalwareScanSettingsService malwareScans;
   private final BrandingSettingsService brandingSettings;
-  private final FeatureFlags features;
+  private final OfferedSteps offered;
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
@@ -127,6 +138,8 @@ public class InstallationService {
       new RateLimitService(MAX_TEST_MAILS, TEST_MAIL_WINDOW_SECONDS);
   private final RateLimitService mailCheckBudget =
       new RateLimitService(MAX_MAIL_CHECKS, MAIL_CHECK_WINDOW_SECONDS);
+  private final RateLimitService malwareScanCheckBudget =
+      new RateLimitService(MAX_MALWARE_SCAN_CHECKS, MALWARE_SCAN_CHECK_WINDOW_SECONDS);
   private final ModelCheckBudget modelCheckBudget = new ModelCheckBudget();
 
   InstallationService(
@@ -140,8 +153,9 @@ public class InstallationService {
       EmbeddingModelService embeddingModels,
       ModelRoleAdministration modelRoles,
       MailSettingsService mailSettings,
+      MalwareScanSettingsService malwareScans,
       BrandingSettingsService brandingSettings,
-      FeatureFlags features,
+      OfferedSteps offered,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
@@ -158,8 +172,9 @@ public class InstallationService {
     this.embeddingModels = embeddingModels;
     this.modelRoles = modelRoles;
     this.mailSettings = mailSettings;
+    this.malwareScans = malwareScans;
     this.brandingSettings = brandingSettings;
-    this.features = features;
+    this.offered = offered;
     this.audit = audit;
     this.users = users;
     this.status = status;
@@ -228,6 +243,9 @@ public class InstallationService {
     if (step == InstallationStep.MAIL) {
       acquireMailCheck();
     }
+    if (step == InstallationStep.MALWARE_SCAN) {
+      acquireMalwareScanCheck();
+    }
     if (recipient != null) {
       RateLimitService.Decision decision = testMailBudget.tryAcquire(TEST_MAIL_BUDGET_KEY);
       if (!decision.allowed()) {
@@ -270,8 +288,9 @@ public class InstallationService {
 
   /**
    * Completes the installation from its checked steps; a skipped optional step leaves its model
-   * out, a skipped rerank step leaves reranking off, a skipped transcription step speech input. A
-   * step saved while its feature was on and offered no longer is left out as well.
+   * out, a skipped rerank step leaves reranking off, a skipped transcription step speech input, a
+   * skipped text recognition step text recognition. A step saved while its limit of the operation
+   * was on and offered no longer is left out as well.
    *
    * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
    *     optional step is saved but not successfully checked
@@ -289,7 +308,8 @@ public class InstallationService {
    * refused as invalid or stop at a failed check.
    *
    * @throws ConflictException naming the step whose check failed; nothing is saved then
-   * @throws TooManyRequestsException past the budget of model or mail checks; nothing is counted
+   * @throws TooManyRequestsException past the budget of model, mail or malware scan checks; the
+   *     model checks are not counted then
    */
   public InstallationOverview applyAnswers(List<StepInput> answers, CompletionSource source) {
     List<StepInput> inputs = offeredAnswers(answers);
@@ -298,6 +318,14 @@ public class InstallationService {
     if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MAIL)) {
       try {
         acquireMailCheck();
+      } catch (TooManyRequestsException e) {
+        modelChecks.release();
+        throw e;
+      }
+    }
+    if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MALWARE_SCAN)) {
+      try {
+        acquireMalwareScanCheck();
       } catch (TooManyRequestsException e) {
         modelChecks.release();
         throw e;
@@ -361,45 +389,39 @@ public class InstallationService {
             }));
   }
 
-  /**
-   * The steps this installation offers, in their order ({@link InstallationStep#isOfferedWith}).
-   */
+  /** Whether this installation offers {@code step} ({@link OfferedSteps}). */
+  public boolean offers(InstallationStep step) {
+    return offered.isOffered(step);
+  }
+
+  /** The steps this installation offers, in their order ({@link OfferedSteps}). */
   private List<InstallationStep> offeredSteps() {
-    return Arrays.stream(InstallationStep.values())
-        .filter(step -> step.isOfferedWith(features))
-        .toList();
+    return offered.steps();
   }
 
   /**
-   * @throws ValidationException for a step of a switched-off feature
+   * @throws ValidationException for a step whose limit of the operation is off
    */
   private void requireOffered(InstallationStep step) {
-    if (!step.isOfferedWith(features)) {
-      throw new ValidationException(notOffered(step));
+    if (!offered.isOffered(step)) {
+      throw new ValidationException(OfferedSteps.notOffered(step));
     }
   }
 
-  static String notOffered(InstallationStep step) {
-    return "Den Schritt "
-        + step.name()
-        + " gibt es in dieser Installation nicht: Die Spracheingabe ist im Betrieb abgeschaltet"
-        + " (OPAA_FEATURES_SPEECH_INPUT_ENABLED).";
-  }
-
-  /** The answers without the parts of a switched-off feature, which are ignored, not refused. */
+  /** The answers without the parts of a switched-off limit, which are ignored, not refused. */
   private List<StepInput> offeredAnswers(List<StepInput> answers) {
-    List<StepInput> offered =
-        answers.stream().filter(input -> input.step().isOfferedWith(features)).toList();
-    if (offered.size() < answers.size()) {
+    List<StepInput> kept =
+        answers.stream().filter(input -> offered.isOffered(input.step())).toList();
+    if (kept.size() < answers.size()) {
       log.info(
           "The answers name steps this installation does not offer; they are ignored: {}",
           answers.stream()
               .map(StepInput::step)
-              .filter(step -> !step.isOfferedWith(features))
+              .filter(step -> !offered.isOffered(step))
               .map(Enum::name)
               .toList());
     }
-    return offered;
+    return kept;
   }
 
   /** The values of a saved step as a check read them. */
@@ -453,6 +475,22 @@ public class InstallationService {
     if (!decision.allowed()) {
       throw new TooManyRequestsException(
           MAIL_CHECK_LIMIT_MESSAGE, decision.retryAfterSeconds(), MAIL_CHECK_LIMIT_CODE);
+    }
+  }
+
+  /**
+   * Takes one connection to a malware scanner from the budget of this instance, for all clients.
+   *
+   * @throws TooManyRequestsException past the budget
+   */
+  private void acquireMalwareScanCheck() {
+    RateLimitService.Decision decision =
+        malwareScanCheckBudget.tryAcquire(MALWARE_SCAN_CHECK_BUDGET_KEY);
+    if (!decision.allowed()) {
+      throw new TooManyRequestsException(
+          MALWARE_SCAN_CHECK_LIMIT_MESSAGE,
+          decision.retryAfterSeconds(),
+          MALWARE_SCAN_CHECK_LIMIT_CODE);
     }
   }
 
@@ -653,8 +691,19 @@ public class InstallationService {
       installRerankModel(rerankStep);
     }
     InstallationStepRecord transcriptionStep = saved.get(InstallationStep.TRANSCRIPTION_MODEL);
-    if (transcriptionStep != null && InstallationStep.TRANSCRIPTION_MODEL.isOfferedWith(features)) {
+    if (transcriptionStep != null && offered.isOffered(InstallationStep.TRANSCRIPTION_MODEL)) {
       installTranscriptionModel(transcriptionStep);
+    }
+    InstallationStepRecord textRecognitionStep = saved.get(InstallationStep.TEXT_RECOGNITION_MODEL);
+    if (textRecognitionStep != null && offered.isOffered(InstallationStep.TEXT_RECOGNITION_MODEL)) {
+      installTextRecognitionModel(textRecognitionStep);
+    }
+    InstallationStepRecord malwareScanStep = saved.get(InstallationStep.MALWARE_SCAN);
+    if (malwareScanStep != null) {
+      malwareScans.install(
+          Organization.DEFAULT_ID,
+          SYSTEM_ACTOR,
+          StepRules.malwareScanUpdate(rules.malwareScanPayload(malwareScanStep.getPayload())));
     }
     InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
     if (mailStep != null) {
@@ -684,7 +733,9 @@ public class InstallationService {
             "skippedSteps",
             skipped,
             "mailEnabled",
-            mailStep != null));
+            mailStep != null,
+            "malwareScanEnabled",
+            malwareScanStep != null));
     return new InstallationOverview(false, true, List.of());
   }
 
@@ -753,7 +804,34 @@ public class InstallationService {
         model.baseUrl(),
         model.model(),
         rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, step.getSecret()),
-        model.language());
+        model.language(),
+        model.realtime() == null
+            ? null
+            : ModelRoleAdministration.RealtimeChange.installed(
+                model.realtime().protocol(),
+                model.realtime().url(),
+                model.realtime().model(),
+                model.realtime().apiKeyCiphertext() == null
+                    ? null
+                    : rules.apiKey(
+                        InstallationStep.TRANSCRIPTION_MODEL,
+                        model.realtime().apiKeyCiphertext())));
+  }
+
+  /**
+   * The text recognition model of the step through the write path of the model administration,
+   * which switches the role on and records it under the installation (ADR-0060, Entscheidung 18).
+   */
+  private void installTextRecognitionModel(InstallationStepRecord step) {
+    StepRules.TextRecognitionModelPayload model =
+        rules.textRecognitionModelPayload(step.getPayload());
+    modelRoles.installTextRecognition(
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        model.connectionType(),
+        model.baseUrl(),
+        model.model(),
+        rules.apiKey(InstallationStep.TEXT_RECOGNITION_MODEL, step.getSecret()));
   }
 
   /**
@@ -877,6 +955,26 @@ public class InstallationService {
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());
         summary.put("language", model.language());
+        if (model.realtime() != null) {
+          summary.put("realtimeProtocol", model.realtime().protocol().name());
+          summary.put("realtimeUrl", ModelEndpointUri.withoutSecrets(model.realtime().url()));
+          summary.put("realtimeModel", model.realtime().model());
+          summary.put("realtimeApiKeySet", model.realtime().apiKeySet());
+        }
+      }
+      case InstallationOverview.TextRecognitionModel model -> {
+        summary.put("connectionType", model.connectionType().name());
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        if (model.connectionType() == TextRecognitionConnectionType.OPENAI_VISION) {
+          summary.put("model", orDash(model.model()));
+        }
+        summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.MalwareScan scan -> {
+        summary.put("host", scan.host());
+        summary.put("port", scan.port());
+        summary.put("timeoutSeconds", scan.timeoutSeconds());
+        summary.put("onUnavailable", scan.onUnavailable().name());
       }
       case InstallationOverview.Mail mail -> {
         summary.put("host", mail.host());

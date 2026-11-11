@@ -71,7 +71,8 @@ describe('ReleasedLibrariesSection', () => {
   })
 
   it('zeigt im schmalen Fenster dieselben Angaben als Liste', () => {
-    window.matchMedia = originalMatchMedia
+    window.matchMedia = (query: string) =>
+      ({ ...desktopMatchMedia(query), matches: false }) as MediaQueryList
     render([released])
 
     const list = screen.getByRole('list', { name: 'Freigegebene Bibliotheken' })
@@ -83,7 +84,7 @@ describe('ReleasedLibrariesSection', () => {
   it('sagt es, wenn derzeit keine Bibliothek freigegeben ist', () => {
     render([])
 
-    expect(screen.getByText('Derzeit ist keine Bibliothek freigegeben.')).toBeVisible()
+    expect(screen.getByText(/^Noch keine freigegebenen Bibliotheken\./)).toBeVisible()
   })
 
   it('zeigt einen Fehler mit erneutem Laden statt einer leeren Liste', async () => {
@@ -91,7 +92,7 @@ describe('ReleasedLibrariesSection', () => {
     render(null, 'Keine Berechtigung', onRetry)
 
     expect(screen.getByText('Keine Berechtigung')).toBeVisible()
-    expect(screen.queryByText(/keine Bibliothek freigegeben/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/keine freigegebenen Bibliotheken/)).not.toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Erneut laden' }))
     expect(onRetry).toHaveBeenCalledOnce()
   })

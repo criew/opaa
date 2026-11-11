@@ -1,11 +1,17 @@
 import { create } from 'zustand'
-import type { EmbeddingInfoResponse, LlmModelRequest, LlmModelResponse } from '@/shared/api/types'
+import type {
+  EmbeddingInfoResponse,
+  LlmModelRequest,
+  LlmModelResponse,
+  LlmModelToolCapabilityRequest,
+} from '@/shared/api/types'
 import {
   activateLlmModel,
   createLlmModel,
   deleteLlmModel,
   getEmbeddingInfo,
   getLlmModels,
+  setLlmModelToolCapability,
   updateLlmModel,
 } from '../api/modelApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
@@ -23,6 +29,7 @@ interface LlmModelState {
   updateExistingModel: (modelId: string, request: LlmModelRequest) => Promise<LlmModelResponse>
   deleteExistingModel: (modelId: string) => Promise<void>
   activateExistingModel: (modelId: string) => Promise<void>
+  setToolCapability: (modelId: string, request: LlmModelToolCapabilityRequest) => Promise<void>
 }
 
 function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
@@ -34,7 +41,7 @@ function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
  *
  * **Mutations patch `models` locally from the server's own response, they never call {@link
  * loadModels} again.** `loadModels` sets `isLoading: true` while it runs, and
- * `LlmModelManagementPage` swaps the whole list for a "wird geladen" message whenever that flag is
+ * `LlmModelManagementPage` swaps the whole list for its loading state whenever that flag is
  * set - a full reload after every save, activate or delete would therefore blank the list for a
  * moment, right after the action that caused it. Each mutation below already gets back everything
  * it needs from its own response (or, for delete, needs nothing back at all) to keep `models`
@@ -104,6 +111,11 @@ export const useLlmModelStore = create<LlmModelState>((set, get) => ({
     set({
       models: get().models.map((m) => (m.id === modelId ? activated : { ...m, active: false })),
     })
+  },
+
+  setToolCapability: async (modelId, request) => {
+    const updated = await setLlmModelToolCapability(modelId, request)
+    set({ models: get().models.map((m) => (m.id === modelId ? updated : m)) })
   },
 }))
 

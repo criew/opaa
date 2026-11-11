@@ -63,7 +63,7 @@ test.describe('Metadaten einer Bibliothek', () => {
     await page.getByRole('tab', { name: 'Metadaten' }).click()
     await page.getByRole('button', { name: 'Feld anlegen' }).click()
     const createDialog = page.getByRole('dialog', {
-      name: 'Metadatenfeld anlegen',
+      name: 'Feld anlegen',
     })
     await createDialog.getByLabel('Feldschlüssel').fill('fassung')
     await createDialog.getByLabel('Feldname').fill('Fassung')

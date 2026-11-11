@@ -5,6 +5,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
 import io.opaa.llm.ReasoningTextStrippingChatModel;
 import io.opaa.llm.StreamedAnswerFailures;
+import io.opaa.observability.ModelCallPurpose;
 import io.opaa.retrieval.ConversationNoteBlock;
 import java.io.IOException;
 import java.time.Duration;
@@ -160,7 +161,7 @@ public class AnswerGenerationService {
    * form drift. Present together with {@link #ANSWER_RULES}; it carries no marker of its own, so it
    * cannot be cited.
    */
-  static final String CITATION_REMINDER =
+  public static final String CITATION_REMINDER =
       "\n\n---\n\nBelege jede Aussage aus den Kontextdokumenten mit der Zitiermarke ihres"
           + " Abschnitts, unverändert aus der Zeile „Zitiermarke:“ übernommen, ohne Link, Klammer"
           + " oder Zusatz darum. Was die Kontextdokumente nicht enthalten, benenne als nicht"
@@ -171,7 +172,7 @@ public class AnswerGenerationService {
    * model from copying an English passage into its answer; a reminder after what it read last does.
    * It carries no citation marker, so standing under {@link #CONTEXT_SECTION} is harmless.
    */
-  static final String LANGUAGE_REMINDER =
+  public static final String LANGUAGE_REMINDER =
       "\n\n---\n\nAntworte auf Deutsch; gib fremdsprachige Inhalte der Kontextdokumente auf Deutsch"
           + " wieder.";
 
@@ -179,7 +180,7 @@ public class AnswerGenerationService {
    * Replaces {@link #LANGUAGE_REMINDER} while a space instruction is part of the prompt: language
    * is no citation rule, so the space may set another one, and the reminder must not contradict it.
    */
-  static final String SPACE_LANGUAGE_REMINDER =
+  public static final String SPACE_LANGUAGE_REMINDER =
       "\n\n---\n\nAntworte auf Deutsch, sofern die Anweisung dieses Space keine andere"
           + " Antwortsprache vorgibt; gib fremdsprachige Inhalte der Kontextdokumente in der"
           + " Antwortsprache wieder.";
@@ -286,6 +287,7 @@ public class AnswerGenerationService {
         listener == null
             ? call(chatClient, systemText, messages)
             : stream(chatClient, systemText, messages, listener);
+    activeChatModelResolver.recordUsage(ModelCallPurpose.ANSWER, chatClient, response);
 
     chatMemory.add(conversationId, new UserMessage(question));
     // The window gets the answer without its citation markers, and nothing at all when only

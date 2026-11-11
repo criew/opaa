@@ -135,6 +135,7 @@ Parameter stehen unter `opaa.indexing.crawl.*` und `opaa.indexing.http.*`
 | Datei | `opaa.indexing.crawl.max-file-size-bytes` | Datei abgewiesen; geprüft an `Content-Length` und während des Downloads |
 | Verzeichnisseite | 8 MiB, fest | Unterverzeichnis nicht abrufbar; an der Wurzel scheitert der Lauf |
 | Anfragen je Lauf | `opaa.indexing.http.request-budget-per-run` | „unvollständig, wird fortgesetzt" |
+| Verschiedene Hosts je Lauf, Redirects eingeschlossen | `opaa.indexing.http.max-hosts-per-run` | Seite oder Datei auf einem weiteren Host übersprungen |
 | Summe der 429-Wartezeiten je Lauf | `opaa.indexing.http.max-rate-limit-wait-per-run` | „unvollständig, wird fortgesetzt" |
 
 Timeouts: 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei. Grenzen gegen

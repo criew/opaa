@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-06 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
+Akzeptiert · zuletzt geändert 2026-11-10 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), [ADR-0071](0071-betriebsbeobachtung.md), [ADR-0072](0072-live-transkript-ueber-websocket.md)
 
 ## Kontext
 
@@ -14,8 +14,8 @@ Speicherkontingent privater Bibliotheken (`PersonalStorageQuota`) oder der Volla
 Confluence, Google Drive, SharePoint/OneDrive und Dropbox. Für Betrieb und Verwaltung ist so schwer
 zu erkennen, welcher Wert gilt; `OPAA_OIDC_BOOTSTRAP=force` existiert nur als Notbehelf dafür.
 
-Die Vektordimension steht als Flyway-Platzhalter (`VectorStoreMigrationPlaceholders`) in der
-Migration, die `vector_store` anlegt. Das Schema entsteht damit, bevor jemand ein Embedding-Modell
+Die Vektordimension steht als Flyway-Platzhalter in der Migration, die `vector_store` anlegt.
+Das Schema entsteht damit, bevor jemand ein Embedding-Modell
 gewählt hat. Die Erstinstallation verlangt eine `.env` mit Startwerten, deren Wirkung nach dem
 ersten Start endet.
 
@@ -73,7 +73,7 @@ lesen (ADR-0053). Solange die Installation nicht abgeschlossen ist, läuft jede 
 **Installationsmodus**: Erreichbar sind nur die Installations-API, die öffentliche Konfiguration der
 Oberfläche und die Health-Endpunkte; jeder andere Endpunkt antwortet `503`. Die Readiness bleibt
 `UP`, damit der Assistent erreichbar ist; der Modus erscheint als eigene Health-Komponente und
-Metrik. Es gibt keinen Rückweg aus der Oberfläche in den Installationsmodus.
+Metrik (Health- und Probe-Modell: ADR-0071, Entscheidung 5). Es gibt keinen Rückweg aus der Oberfläche in den Installationsmodus.
 
 ### 5. Installations-Token
 
@@ -89,12 +89,12 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
 Pflichtschritte sind erstes Systemverwaltungskonto und Anmeldeverfahren, jeweils mit erfolgreicher
 Prüfung. Alle übrigen Schritte sind optional und später in der Verwaltung erreichbar: Chat-Modell,
-Embedding-Modell, Rerank-Modell, Transkriptionsmodell (Entscheidung 16), E-Mail-Versand und Branding
-(Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
+Embedding-Modell, Rerank-Modell, Transkriptionsmodell (Entscheidung 16), Texterkennung
+(Entscheidung 18), E-Mail-Versand und Branding (Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
 Zwischenstand samt Prüfung verwirft (`POST …/skip`); das ist ein Revisionsereignis. Ein
 übersprungener optionaler Schritt hält den Abschluss nicht auf, ein gespeicherter erst, wenn seine
-Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Rerank-Probe, Probe des Transkriptionsmodells, Verbindung zum
-Mailserver): Der Abschluss
+Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Rerank-Probe, Probe des Transkriptionsmodells,
+gestufter Verbindungstest der Texterkennung, Verbindung zum Mailserver): Der Abschluss
 übernimmt nie ungeprüfte Werte; das Branding prüft ohne Verbindung die Regeln der
 Branding-Verwaltung erneut, das Transkriptionsmodell mit der Probe der Modellverwaltung. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
 gelingt nur, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein
@@ -115,8 +115,8 @@ der MCP-Endpunkt bei geschlossenem Kanal.
 ### 7. Antwortdatei: Installation ohne Browser
 
 Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten; fehlt ein
-optionaler Teil (`chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`, `mail`,
-`branding`), ist sein Schritt übersprungen. Sie wird auf
+optionaler Teil (`chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`,
+`textRecognitionModel`, `mail`, `branding`), ist sein Schritt übersprungen. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort des ersten Kontos, Modellschlüssel,
@@ -168,15 +168,14 @@ erreichbar wird.
 Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell sind Einträge der
 Modellverwaltung; ihre Adressen, Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration,
 ihre Timeouts und Lastgrenzen schon, bei der Texterkennung auch ihr Betriebsschalter
-([ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md), Entscheidung 1). Chat-, Embedding-, Rerank- und Transkriptionsmodell lassen sich schon in der Installation
-festlegen (Entscheidung 6; das Transkriptionsmodell nur bei eingeschalteter Spracheingabe,
-Entscheidung 16). `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
+([ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md), Entscheidung 1). Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell lassen sich schon in der
+Installation festlegen (Entscheidung 6; das Transkriptionsmodell nur bei eingeschalteter
+Spracheingabe, Entscheidung 16, die Texterkennung nur mit `OPAA_OCR_ENABLED`, Entscheidung 18). `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
 Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
 die Probeeinbettung des gewählten Modells liefert, oder, wenn die Installation den Schritt
 übersprungen hat, beim Festlegen des ersten Modells in der Modellverwaltung
-([ADR-0061](0061-wechsel-des-embedding-modells.md), Entscheidung 8). `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-Baseline legt
-`vector_store` weiterhin an, weil ein ausgeführtes Skript unverändert bleibt; eine spätere Migration
-entfernt die leere Tabelle auf einer Datenbank, auf der noch keine Instanz gestartet ist. Eine
+([ADR-0061](0061-wechsel-des-embedding-modells.md), Entscheidung 8). `OPAA_PGVECTOR_DIMENSIONS` entfällt. Keine Migration legt
+`vector_store` an, auch nicht vorläufig mit fester Dimension. Eine
 Übernahme des Embedding-Modells aus der Umgebung gibt es nicht: Das Update von `v0.1.0-rc.4` setzt die
 Datenbank ohnehin neu auf (ADR-0056), jede Installation danach wählt ihr Modell in der Installation.
 Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). Nach dem Abschluss
@@ -206,7 +205,7 @@ Entscheidung 8).
 Jede Modelladresse, die Installation oder Modellverwaltung speichern, testen oder nach Modellen
 abfragen, prüft eine eigene Adressprüfung der Modelle mit eigenem Schalter und eigener Allowlist
 (`OPAA_MODEL_TARGET_VALIDATION_ENABLED`, `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, Einträge `host`
-oder `host:port`), eine Grenze des Betriebs nach Entscheidung 2, für alle vier Rollen gleich, das
+oder `host:port`), eine Grenze des Betriebs nach Entscheidung 2, für alle fünf Rollen gleich, das
 Chat-Modell eingeschlossen. Sie ist von der Zielprüfung der Quellen getrennt: Ein Modell-Host wird
 kein erlaubtes Ziel der Konnektoren, ein Quell-Host kein erlaubtes Modell. In der Modellverwaltung
 bleibt eine gespeicherte Adresse unverändert speicher- und testbar; die Installation prüft jede.
@@ -220,7 +219,7 @@ können, nur weil der Betrieb ihn für die Modelle freigegeben hat.
 
 In der Installation haben Modellabruf und Prüfung der Modellschritte je Instanz ein eigenes Budget
 für alle Clients zusammen (ADR-0053, Entscheidung 12); das Budget der Prüfungen teilen sich alle
-vier Modellschritte, und die Antwortdatei über die API zählt jedes Modell darin als eine Prüfung,
+fünf Modellschritte, und die Antwortdatei über die API zählt jedes Modell darin als eine Prüfung,
 die Datei beim Start nicht. Die Prüfung nennt weiter die Fehlertexte der Modellverwaltung.
 Begründung: In der Installation ist das Token die einzige Hürde, und jede Probe bindet einen
 Anfrage-Thread bis zu ihrer Wartezeit; ohne Budget hielte eine Schleife gegen einen Host, der nie
@@ -272,6 +271,8 @@ festlegen, wer sich mit welcher Rolle anmeldet:
   verwerfen alle Geheimnisse und beenden die verbundenen Konten aller Personen.
 - **Konnektor-Freigabe** (die Anlegerechte je Quellart und Zugang): Sie verweist auf Gruppen und
   Zugänge dieser Installation, die es in einer anderen so nicht gibt.
+- **Virenscanner**: Seine Adresse empfängt jede aufgenommene Datei; ein Import lenkte sie an ein
+  neues Ziel (Entscheidung 19).
 - **Bilder des Brandings**: Sie dürfen größer sein als eine Einstellungsdatei und werden in der
   Verwaltung hochgeladen.
 
@@ -342,7 +343,13 @@ die Adresse wie bei Chat- und Embedding-Modell bei jedem Speichern und vor jeder
 Adressprüfung der Modelle (Entscheidung 10). Der Schlüssel liegt verschlüsselt im Zwischenstand und
 gilt nur für dieselbe Basis-Adresse. Der Abschluss schaltet die Rolle über den Schreibweg der
 Modellverwaltung ein (`ModelRoleAdministration#installTranscription`), protokolliert unter dem
-Systemprozess der Installation; übersprungen bleibt die Spracheingabe aus.
+Systemprozess der Installation; übersprungen bleibt die Spracheingabe aus. Wahlweise nimmt der
+Schritt zusätzlich ein Live-Transkript mit Protokoll aus fester Liste, WebSocket-Adresse und Modell
+([ADR-0072](0072-live-transkript-ueber-websocket.md), Entscheidungen 3 und 4); geprüft wird es nach
+der Probe des Transkriptionsmodells mit einer Sitzung ohne Audio. Ein eigener Live-Schlüssel liegt
+verschlüsselt im Zwischenstand und gilt nur für dieselbe Live-Adresse; ohne ihn sendet Live den
+Schlüssel des Transkriptionsmodells, nur an dessen Origin. OpenAI und Mistral lehnt der Schritt ohne
+einen dieser Schlüssel ab.
 
 Der Schritt hängt an der Grenze des Betriebs `OPAA_FEATURES_SPEECH_INPUT_ENABLED` (Entscheidung 2).
 Ist sie aus, listet die API den Schritt nicht, lehnt Speichern, Prüfen, Überspringen und Modellabruf
@@ -407,6 +414,55 @@ wer eine Sperre sofort aufheben will, hat „Entsperren“. Das Revisionsprotoko
 er ein eigener ist; Export und Import übertragen den gespeicherten Wert, leer für die
 Werkseinstellung, und prüfen ihn gegen die Grenzen der Zielinstallation (Entscheidungen 11 und 12).
 
+### 18. Texterkennung im Assistenten: nur mit Freigabe des Betriebs
+
+Der optionale Schritt Texterkennung nimmt die Angaben und Regeln des Reiters „Texterkennung“ der
+Modellverwaltung (`ModelRoleAdministration#textRecognitionErrors`): beide Verbindungstypen,
+docling-serve und Vision-Modell (OpenAI-kompatibel), Basis-Adresse, beim Vision-Modell die
+Modell-Kennung, Zugangsschlüssel. Der Assistent stellt den mitgelieferten Dienst voran und trägt
+dessen Adresse im Compose-Stapel ein (`http://opaa-ocr:5001`), im Helm-Chart `<Release>-ocr:5001`;
+ein eigener Endpunkt ist docling-serve oder ein Vision-Modell. Eine Modellliste ruft der Schritt
+nicht ab. Den Schlüssel trägt die Person von Hand ein, auch beim mitgelieferten Dienst: Das Backend
+bekommt `OPAA_OCR_API_KEY` nie, nur der Dienst. Er liegt verschlüsselt im Zwischenstand und gilt nur
+für dieselbe Basis-Adresse; die Adresse prüft wie bei den anderen Modellen jedes Speichern und jede
+Prüfung gegen die Adressprüfung der Modelle (Entscheidung 10). Geprüft wird mit dem gestuften
+Verbindungstest der Verwaltung, der eine mitgelieferte Testseite lesen lässt; ein Fehler nennt die
+Stufe (Adresse, Anmeldung, Erkennung). Der Abschluss trägt den Dienst über den Schreibweg der
+Modellverwaltung ein und schaltet die Rolle ein (`ModelRoleAdministration#installTextRecognition`),
+protokolliert unter dem Systemprozess der Installation; übersprungen legt er nichts an, und die
+Texterkennung bleibt aus.
+
+Der Schritt hängt an der Grenze des Betriebs `OPAA_OCR_ENABLED` (Entscheidung 2), die ab Werk aus
+ist. Ohne sie listet die API den Schritt nicht, lehnt Speichern, Prüfen und Überspringen mit `400` ab
+und übergeht `textRecognitionModel` in Antwortdatei und Antworten, ohne sie abzulehnen; die
+Antwortdatei liest dann auch die Schlüsseldatei des Abschnitts nicht, ebenso die eines übergangenen
+`transcriptionModel`. Ein vorher gespeicherter Schritt hält den Abschluss nicht auf und wird mit dem
+Zwischenstand verworfen. Begründung: Ganze Seiten von Dokumenten an einen weiteren Dienst zu geben,
+entscheidet der Betrieb; das Token darf diese Freigabe nicht ersetzen. Eine
+Antwortdatei soll dennoch in allen Umgebungen gelten, auch dort, wo der Dienst fehlt, und ein
+Secret, das dort nicht eingehängt ist, darf sie nicht scheitern lassen. Den Schlüssel trägt die
+Person ein, statt ihn aus der Umgebung zu lesen, weil sonst ein Geheimnis des Dienstes in den
+Prozess des Backends käme, das es zur Laufzeit ohnehin aus der Modellverwaltung liest.
+
+### 19. Virenscanner: externer Dienst, eingerichtet in Assistent und Verwaltung
+
+OPAA liefert keinen Virenscanner aus, weder als Image noch als Zusatzdatei für Compose oder Helm;
+es bindet den clamd-Dienst des Betriebs an wie ein Modell. Host, Port, Zeitlimit und Verhalten bei
+Ausfall (`REJECT`, `ACCEPT`) liegen in der Einzeilentabelle `malware_scan_settings`; ohne Zeile ist
+die Prüfung aus. Gesetzt werden sie im optionalen Schritt `MALWARE_SCAN` des Assistenten, über
+`malwareScan` der Antwortdatei oder unter „Administration → Virenprüfung“
+(`MalwareScanSettingsService`), jede Änderung als `MALWARE_SCAN_SETTINGS_CHANGED` im
+Revisionsprotokoll. `MalwareScanService` liest die Zeile für jede Datei, ohne Cache; eine Änderung
+wirkt so ohne Benachrichtigung auf allen Instanzen. Die Variablen `OPAA_MALWARE_SCAN_*` entfallen,
+ein Start, der eine davon noch setzt, nennt sie im Log als wirkungslos. Die Prüfung fragt den Dienst
+mit `VERSION` und sendet keine Datei. Im Assistenten gilt nur Port 3310, mit eigenem Budget von 30
+Prüfungen in 10 Minuten je Instanz; eine Adressprüfung gibt es weder dort noch in der Verwaltung.
+
+Begründung: Wie OCR oder ein Modell ist der Scanner ein Dienst des Hauses, den die Behörde stellt;
+ob und wo er läuft, ist eine fachliche Einstellung, keine Grenze des Betriebs. Ein Scanner im
+internen Netz ist der Regelfall, eine Adressprüfung schlösse ihn aus; den Port fest zu halten
+verhindert, dass das Token allein interne Dienste abtastet.
+
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
@@ -425,6 +481,10 @@ Werkseinstellung, und prüfen ihn gegen die Grenzen der Zielinstallation (Entsch
 
 ## Verworfene Alternativen
 
+- ClamAV als Zusatzdatei für Compose oder Helm mitliefern — Signaturpflege und Betrieb des Scanners
+  gehören der Behörde, die ihn ohnehin für andere Fachverfahren betreibt (Entscheidung 19).
+- Virenscanner weiter über Variablen konfigurieren — zwei Orte, und die Installation könnte ihn
+  nicht einrichten (Entscheidung 19).
 - Vorgaben aus der Konfiguration, die die Datenbank überschreibt — zwei Orte für einen Wert, genau
   das Problem dieses ADR.
 - Eine entfallene Fristvariable beim ersten Start in die Datenbank übernehmen — wäre ein Startwert

@@ -141,6 +141,155 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/admin/models/{modelId}/tool-capability:
+    put:
+      operationId: setLlmModelToolCapability
+      tags: [model]
+      summary: Record whether a chat model calls tools reliably (system admin only)
+      description: >
+        Records the tool capability of this model for its current endpoint and runtime, with the
+        basis of the statement and its date (set by the server). UNVERIFIED resets the statement
+        and clears basis, measurement run and date. CAPABLE and NOT_CAPABLE require a basis:
+        MANUAL without measurementRun, or MEASURED with measurementRun naming the measurement run
+        (its identifier or date and the measured combination). Neither a person nor a group is
+        recorded with the statement; who changed it is recorded in the audit log as
+        LLM_MODEL_CHANGED. A change of baseUrl or modelIdentifier via updateLlmModel resets the
+        statement to UNVERIFIED; a request naming another baseUrl or modelIdentifier than the
+        stored ones is answered with 409, so a statement never lands on a combination it was not
+        made for. A turn that needs tool calls is refused while the active model is not CAPABLE;
+        the ordinary chat works with any value.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelToolCapabilityRequest"
+      responses:
+        "200":
+          description: Tool capability recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/models/{modelId}/tool-checks:
+    post:
+      operationId: startLlmModelToolCheck
+      tags: [model]
+      summary: Measure whether a chat model calls tools reliably (system admin only)
+      description: >
+        Starts a run of the tool-calling case base against this model entry, with its address,
+        key, model identifier, length limit and temperature, offering the agent loop's own
+        search_knowledge definition. The run takes minutes; poll getLatestLlmModelToolCheck. It
+        measures only: the tool capability stays as it is until the administration records it via
+        setLlmModelToolCapability. Only offered while agents are switched on; otherwise 404, as for
+        an unknown model. At most one check runs per installation at a time (409).
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelToolCheckRequest"
+      responses:
+        "202":
+          description: Check started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelToolCheckResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/models/{modelId}/tool-checks/latest:
+    get:
+      operationId: getLatestLlmModelToolCheck
+      tags: [model]
+      summary: The latest tool check of a chat model (system admin only)
+      description: >
+        The most recent check of this model, running or finished. 404 when there is none or while
+        agents are switched off.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Latest check
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelToolCheckResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/models/{modelId}/tool-checks/{checkId}/report:
+    get:
+      operationId: getLlmModelToolCheckReport
+      tags: [model]
+      summary: The full report of a completed tool check as Markdown (system admin only)
+      description: >
+        Combination, result per case category, capability floor, durations and every run with
+        its tool calls and answer, to file with the operating records. The cases are fictional;
+        the report holds no personal data. 404 while the check runs, after it failed, when it
+        does not belong to the model or while agents are switched off.
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: checkId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Report
+          content:
+            text/markdown:
+              schema:
+                type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/models/test:
     post:
       operationId: testLlmModel
@@ -508,6 +657,36 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/models/transcription/realtime/test:
+    post:
+      operationId: testTranscriptionRealtimeModel
+      tags: [model]
+      summary: Probe a live transcription upstream, saved or not yet saved (system admin only)
+      description: >
+        Opens the WebSocket of the draft with the dialect of its protocol, starts a session and
+        closes it again without sending audio. apiKey omitted uses the stored live key, only for
+        the stored live address (otherwise 400), and, when no live key is stored, the key of the
+        batch endpoint, only to the origin (scheme, host, port) of the batch address; an empty
+        string sends none. An address other than the stored one is checked
+        against the address check of models right before the connection (400 with code BLOCKED).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptionRealtimeTestRequest"
+      responses:
+        "200":
+          description: Test result - a 200 either way; success carries the outcome.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/models/text-recognition:
     get:
       operationId: getTextRecognitionModelSettings
@@ -602,6 +781,7 @@ components:
           maxTokens,
           apiKeySet,
           active,
+          toolCapability,
           createdAt,
           updatedAt,
         ]
@@ -633,6 +813,8 @@ components:
         active:
           type: boolean
           description: Whether this is the one systemwide active chat model.
+        toolCapability:
+          $ref: "#/components/schemas/LlmModelToolCapability"
         createdAt:
           type: string
           format: date-time
@@ -690,6 +872,205 @@ components:
           description: >
             Write-only. Omitted (null) on update leaves the stored key unchanged; an empty string
             clears it; any other value replaces it. On create, omitted or empty means no key.
+
+    ToolCapability:
+      type: string
+      description: >
+        Whether a chat model calls tools reliably, for its endpoint and runtime. UNVERIFIED is the
+        default and behaves like NOT_CAPABLE: a turn that needs tool calls is refused.
+      enum: [UNVERIFIED, CAPABLE, NOT_CAPABLE]
+
+    ToolCapabilityBasis:
+      type: string
+      description: >
+        How the tool capability was established: MEASURED by a measurement run, or MANUAL - set by
+        hand without a measurement.
+      enum: [MEASURED, MANUAL]
+
+    LlmModelToolCapability:
+      type: object
+      description: >
+        The tool capability of a chat model, valid for this endpoint and this runtime. Carries no
+        person or group: who changed it is recorded in the audit log.
+      required: [value, basis, assessedAt, measurementRun]
+      properties:
+        value:
+          $ref: "#/components/schemas/ToolCapability"
+        basis:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ToolCapabilityBasis"
+          description: Null while value is UNVERIFIED.
+        assessedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the statement was recorded; null while value is UNVERIFIED.
+        measurementRun:
+          type: string
+          nullable: true
+          description: >
+            The measurement run the statement rests on (its identifier or date and the measured
+            combination); set only for basis MEASURED.
+          example: "Lauf 2026-11-09, qwen2.5:14b auf Ollama 0.6, num_ctx 16384"
+
+    LlmModelToolCapabilityRequest:
+      type: object
+      description: >
+        UNVERIFIED takes neither basis nor measurementRun. CAPABLE and NOT_CAPABLE take a basis;
+        measurementRun is required for MEASURED and refused for MANUAL. baseUrl and
+        modelIdentifier name the combination the statement was made for; they must equal the
+        model's stored ones, otherwise 409.
+      required: [value, baseUrl, modelIdentifier]
+      properties:
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: The model's base URL as the caller saw it, compared verbatim.
+          example: http://ollama:11434/v1
+        modelIdentifier:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: The model identifier as the caller saw it, compared verbatim.
+          example: qwen2.5:14b
+        value:
+          $ref: "#/components/schemas/ToolCapability"
+        basis:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ToolCapabilityBasis"
+        measurementRun:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 300
+          example: "Lauf 2026-11-09, qwen2.5:14b auf Ollama 0.6, num_ctx 16384"
+
+    LlmModelToolCheckRequest:
+      type: object
+      required: [repetitions]
+      properties:
+        repetitions:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: >
+            Runs per case. 1 is a quick check; 3 smooths out chance and is what the published
+            measurements use.
+          example: 1
+
+    ToolCheckStatus:
+      type: string
+      description: >
+        RUNNING while cases are measured; COMPLETED with a result; FAILED when the endpoint did not
+        answer at all; ABORTED when it gave no sign of life for too long, e.g. after a restart of its instance.
+      enum: [RUNNING, COMPLETED, FAILED, ABORTED]
+
+    LlmModelToolCheckCategory:
+      type: object
+      required: [category, summary, runs, passed, failed, notReached, followed, notFollowed,
+        truncated, errors]
+      properties:
+        category:
+          type: string
+          description: Case category, e.g. calls_when_needed.
+          example: calls_when_needed
+        summary:
+          type: string
+          example: 4 von 4 Läufen bestanden
+        runs:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        notReached:
+          type: integer
+        followed:
+          type: integer
+          description: Only ignores_injected_instruction counts the runs where the instruction took effect.
+        notFollowed:
+          type: integer
+        truncated:
+          type: integer
+        errors:
+          type: integer
+
+    LlmModelToolCheckResponse:
+      type: object
+      required: [id, status, baseUrl, modelIdentifier, currentCombination, repetitions, startedAt,
+        finishedAt, completedRuns, totalRuns, runId, failure, categories, floorMet, floorStatement,
+        medianModelCallMillis, totalSeconds, measurementRun]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ToolCheckStatus"
+        baseUrl:
+          type: string
+          description: The address the check measured, without credentials.
+        modelIdentifier:
+          type: string
+        currentCombination:
+          type: boolean
+          description: >
+            Whether the model still has the address and model identifier the check measured; a
+            result for another combination must not be recorded as its capability.
+        repetitions:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedRuns:
+          type: integer
+        totalRuns:
+          type: integer
+        runId:
+          type: string
+          nullable: true
+          description: Identifier of the measurement run, set once completed.
+          example: tc-20261110T201500Z-qwen2-5-7b-instruct
+        failure:
+          type: string
+          nullable: true
+          description: Why a FAILED check failed, in German.
+        categories:
+          type: array
+          description: Result per case category; empty until completed.
+          items:
+            $ref: "#/components/schemas/LlmModelToolCheckCategory"
+        floorMet:
+          type: boolean
+          nullable: true
+          description: >
+            Whether every run of calls_when_needed, valid_arguments and respects_limit passed - the
+            precondition for recording CAPABLE on basis MEASURED, never a decision by itself. Null
+            until completed.
+        floorStatement:
+          type: string
+          nullable: true
+        medianModelCallMillis:
+          type: integer
+          format: int64
+          nullable: true
+        totalSeconds:
+          type: number
+          format: double
+          nullable: true
+        measurementRun:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: >
+            The text to record as measurementRun with setLlmModelToolCapability: run identifier,
+            date and combination. Null until completed.
 
     LlmModelTestRequest:
       type: object
@@ -947,7 +1328,16 @@ components:
     TranscriptionModelSettingsResponse:
       type: object
       required:
-        [enabled, apiKeySet, language, vocabulary, state, speechInputAvailable, retiredVariables]
+        [
+          enabled,
+          apiKeySet,
+          language,
+          vocabulary,
+          state,
+          speechInputAvailable,
+          retiredVariables,
+          realtime,
+        ]
       properties:
         enabled:
           type: boolean
@@ -975,6 +1365,8 @@ components:
             The installation's vocabulary list, sent as prompt with every transcription ahead of
             the person's own list; empty when none is stored.
           example: Einspruchsfrist, Grunderwerbsteuer, AO, BZSt
+        realtime:
+          $ref: "#/components/schemas/TranscriptionRealtimeSettingsResponse"
         state:
           $ref: "#/components/schemas/SearchModelRoleState"
         speechInputAvailable:
@@ -1037,6 +1429,120 @@ components:
             Terms and abbreviations the model should recognise, comma-separated or as an example
             sentence; an empty string removes the list, omitted (null) keeps the stored one.
           example: Einspruchsfrist, Grunderwerbsteuer, AO, BZSt
+        realtime:
+          $ref: "#/components/schemas/TranscriptionRealtimeSettingsRequest"
+
+    RealtimeTranscriptionProtocol:
+      type: string
+      description: >
+        The dialect of the live transcription upstream. OPENAI is the OpenAI Realtime API in
+        transcription mode (PCM16 at 24 kHz), VLLM the /v1/realtime endpoint of vLLM, e.g. with
+        Voxtral Realtime (16 kHz), MISTRAL the realtime transcription API of Mistral (16 kHz).
+      enum: [OPENAI, VLLM, MISTRAL]
+      example: OPENAI
+
+    TranscriptionRealtimeSettingsResponse:
+      type: object
+      description: >
+        The live transcription of the role: text appears while the person speaks. Optional on top
+        of the batch endpoint, which stays the fallback.
+      required: [enabled, apiKeySet, maxSessions, state]
+      properties:
+        enabled:
+          type: boolean
+          description: Whether a live upstream is stored; false means dictation by recording only.
+        protocol:
+          allOf:
+            - $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+          nullable: true
+        url:
+          type: string
+          nullable: true
+          description: The WebSocket address of the upstream (ws:// or wss://).
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          nullable: true
+          example: gpt-live-transcribe
+        apiKeySet:
+          type: boolean
+          description: >
+            Whether a key of its own is stored for the live upstream - never the key itself.
+            Without one, the key of the batch endpoint is sent, but only when the live address has
+            the origin (scheme, host, port) of the batch address.
+        maxSessions:
+          type: integer
+          minimum: 1
+          description: How many live sessions the whole installation holds at the same time.
+          example: 1
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+
+    TranscriptionRealtimeSettingsRequest:
+      type: object
+      description: >
+        The live transcription of the role. Omitted (null) keeps what is stored; enabled false
+        removes the live upstream together with its key.
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        protocol:
+          allOf:
+            - $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+          nullable: true
+          description: Required while enabled.
+        url:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: ws:// or wss://, without userinfo. Required while enabled.
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required while enabled.
+          example: gpt-live-transcribe
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Write-only. Omitted (null) keeps the stored live key for an unchanged address; an empty
+            string removes it, so the key of the batch endpoint is sent to the same origin only; any
+            other value replaces it. OPENAI and MISTRAL need a key: this one, or the batch key on the
+            same origin; without either the change is refused (400, field
+            transcription.realtime.apiKey).
+        maxSessions:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 100
+          description: Omitted (null) keeps the stored number; 1 is the factory default.
+          example: 1
+
+    TranscriptionRealtimeTestRequest:
+      type: object
+      required: [protocol, url, model]
+      properties:
+        protocol:
+          $ref: "#/components/schemas/RealtimeTranscriptionProtocol"
+        url:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: wss://api.openai.com/v1/realtime?intent=transcription
+        model:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: gpt-live-transcribe
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Plaintext key for this test only, never stored.
 
     ModelRoleTestRequest:
       type: object

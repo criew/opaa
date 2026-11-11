@@ -6,11 +6,14 @@ import io.opaa.api.dto.InstallationChatModel;
 import io.opaa.api.dto.InstallationEmbeddingModel;
 import io.opaa.api.dto.InstallationFirstAdmin;
 import io.opaa.api.dto.InstallationMail;
+import io.opaa.api.dto.InstallationMalwareScan;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationRerankModel;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationStepRequest;
+import io.opaa.api.dto.InstallationTextRecognitionModel;
 import io.opaa.api.dto.InstallationTranscriptionModel;
+import io.opaa.api.dto.InstallationTranscriptionRealtime;
 import io.opaa.common.FieldValidationException;
 import io.opaa.installation.InstallationStep;
 import io.opaa.installation.StepInput;
@@ -36,6 +39,8 @@ final class InstallationRequestMapper {
       case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
       case RERANK_MODEL -> rerankModel(request.getRerankModel());
       case TRANSCRIPTION_MODEL -> transcriptionModel(request.getTranscriptionModel());
+      case TEXT_RECOGNITION_MODEL -> textRecognitionModel(request.getTextRecognitionModel());
+      case MALWARE_SCAN -> malwareScan(request.getMalwareScan());
       case MAIL -> mail(request.getMail());
       case BRANDING -> branding(request.getBranding());
     };
@@ -59,6 +64,12 @@ final class InstallationRequestMapper {
     }
     if (body.getTranscriptionModel() != null) {
       inputs.add(transcriptionModel(body.getTranscriptionModel()));
+    }
+    if (body.getTextRecognitionModel() != null) {
+      inputs.add(textRecognitionModel(body.getTextRecognitionModel()));
+    }
+    if (body.getMalwareScan() != null) {
+      inputs.add(malwareScan(body.getMalwareScan()));
     }
     if (body.getMail() != null) {
       InstallationMail mail = body.getMail();
@@ -127,8 +138,35 @@ final class InstallationRequestMapper {
     if (model == null) {
       throw missing("transcriptionModel");
     }
+    InstallationTranscriptionRealtime realtime = model.getRealtime();
     return new StepInput.TranscriptionModel(
-        model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getLanguage());
+        model.getBaseUrl(),
+        model.getModel(),
+        model.getApiKey(),
+        model.getLanguage(),
+        realtime == null
+            ? null
+            : new StepInput.TranscriptionRealtime(
+                realtime.getProtocol(),
+                realtime.getUrl(),
+                realtime.getModel(),
+                realtime.getApiKey()));
+  }
+
+  private static StepInput textRecognitionModel(InstallationTextRecognitionModel model) {
+    if (model == null) {
+      throw missing("textRecognitionModel");
+    }
+    return new StepInput.TextRecognitionModel(
+        model.getConnectionType(), model.getBaseUrl(), model.getModel(), model.getApiKey());
+  }
+
+  private static StepInput malwareScan(InstallationMalwareScan scan) {
+    if (scan == null) {
+      throw missing("malwareScan");
+    }
+    return new StepInput.MalwareScan(
+        scan.getHost(), scan.getPort(), scan.getTimeoutSeconds(), scan.getOnUnavailable());
   }
 
   private static StepInput mail(InstallationMail mail) {

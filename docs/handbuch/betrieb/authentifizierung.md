@@ -261,7 +261,7 @@ will, legt eine gewöhnliche Anbieterzeile an und schaltet ihn dort ein.
 | Handlungsbedarf | **Entscheidung nötig** (ein Plan wartet), **Letzter Lauf gescheitert** oder **Verzeichniszugang fehlt** |
 
 Zeilen mit Handlungsbedarf sind farbig markiert; ab sechs Anbietern lässt sich die Übersicht
-eingrenzen und durchsuchen. **Details** bzw. **Entscheiden** öffnet ein Seitenpanel mit dem
+eingrenzen und durchsuchen. **Details** bzw. **Entscheiden** öffnet einen Dialog mit dem
 ausstehenden Plan (falls einer wartet), dem letzten Lauf samt „Trockenlauf" und „Jetzt abgleichen",
 dem Zeitplan (Schalter und Intervall, voreingestellt **aus**; Vorgabe und Grenzen des Intervalls
 in der [Konfiguration](../referenz/konfiguration.md#grenzwerte-im-überblick)), dem
@@ -277,7 +277,7 @@ Hand.
 **Gescheiterter Lauf.** Bricht ein Lauf beim Lesen des Verzeichnisses oder danach mit einem Fehler
 ab, der nicht „Verzeichnis nicht erreichbar" ist, etwa weil die Datenbank einen gelieferten Wert
 ablehnt, schreibt er nichts; der letzte bekannte Stand
-bleibt in Kraft. Das Seitenpanel zeigt **Abgleich fehlgeschlagen** mit Zeitpunkt und Meldung, die
+bleibt in Kraft. Der Dialog zeigt **Abgleich fehlgeschlagen** mit Zeitpunkt und Meldung, die
 Übersicht **Letzter Lauf gescheitert**. Die Ursache steht nur im Log des Backends;
 das Nachweisprotokoll erhält wie bei einem unerreichbaren Verzeichnis einen Kopfeintrag mit dem
 Ergebnis „fehlgeschlagen", ohne Ursache.
@@ -301,7 +301,8 @@ Ergebnis „fehlgeschlagen", ohne Ursache.
   Entsperren nicht zurückholt.
 
 **Der Bestätigungsweg.** Ein wartender Plan steht mit seinem **Alter** in der Übersicht. Ein neuer
-Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen. **Bestätigt wird gegen einen frischen
+Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen; das Alter läuft dabei weiter, denn es
+misst, wie lange die Entscheidung schon aussteht. **Bestätigt wird gegen einen frischen
 Stand**, mit Pflichtangabe eines Anlasses: OPAA liest das Verzeichnis erneut und wendet nur an, was
 dem vorgelegten Plan noch entspricht; weicht es ab, wird nichts angewendet, und der neue Plan tritt an
 die Stelle des alten. **Verwerfen** entscheidet über diesen Plan, nicht über den Befund — der nächste
@@ -381,7 +382,7 @@ Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.
    die Admin-API nur Tokens mit der Audience dieses Scopes durch; Keycloak weist ihn von sich aus nur
    seinen eigenen Admin-Clients zu. Ohne ihn wird das Dienstkonto trotz der Rollen abgewiesen.
 
-In OPAA wird der Zugang im Seitenpanel des Anbieters unter **Verzeichniszugang** hinterlegt, getestet
+In OPAA wird der Zugang im Dialog des Anbieters unter **Verzeichniszugang** hinterlegt, getestet
 und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: Realm „haus" mit 14
 Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden Rollen und den Client-Scope. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel `http://keycloak:8180` statt
@@ -491,7 +492,12 @@ andere Hände kommen könnte ([Rollen](../administration/systemrollen.md)), und 
 sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert. Ebenso verlangt sie jede
 Änderung an Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim oder Gruppen-Claim eines bestehenden
 Anbieters: Diese Angaben entscheiden, wessen Tokens gelten und was sie gewähren. Anzeigename und
-Anzeigenamen-Claim ändern sich ohne Bestätigung.
+Anzeigenamen-Claim ändern sich ohne Bestätigung. Verlangt wird sie außerdem, bevor die
+Systemverwaltung den [E-Mail-Versand](../administration/e-mail.md) (SMTP-Zugang oder eine Vorlage)
+oder die Regeln der lokalen Anmeldung ändert, denn darüber laufen Einladungen und Links zum
+Zurücksetzen von Passwörtern, und bevor sie einen
+[Einstellungsimport](../administration/einstellungen-uebertragen.md) übernimmt, der diese
+Einstellungen oder einen anderen sicherheitsrelevanten Wert ändert. Die Vorschau eines Imports kommt ohne Bestätigung aus.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.

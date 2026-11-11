@@ -4,10 +4,11 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import AutoFixHighOutlinedIcon from '@mui/icons-material/AutoFixHighOutlined'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import PasswordField from './PasswordField'
 import PasswordStrengthMeter from './PasswordStrengthMeter'
+import SecretField from '@/shared/ui/form/SecretField'
 import { copyToClipboard } from '@/shared/utils/clipboard'
 import { generateStrongPassword } from '@/shared/session/passwordStrength'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface NewPasswordFieldProps {
   id: string
@@ -55,17 +56,16 @@ export default function NewPasswordField({
 
   return (
     <Box>
-      <PasswordField
+      <SecretField
         id={id}
         label={label}
         value={value}
         onChange={onChange}
-        autoComplete="new-password"
         disabled={disabled}
-        errorMessage={errorMessage}
+        error={errorMessage}
         inputRef={inputRef}
-        visible={visible}
-        onVisibleChange={setVisible}
+        shown={visible}
+        onShownChange={setVisible}
       />
       <PasswordStrengthMeter password={value} minLength={minLength} />
       <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
@@ -75,7 +75,7 @@ export default function NewPasswordField({
           startIcon={<AutoFixHighOutlinedIcon />}
           onClick={generate}
           disabled={disabled}
-          sx={{ fontSize: 12.5 }}
+          sx={{ fontSize: fontSize.meta }}
         >
           Sicheres Passwort erzeugen
         </Button>
@@ -86,7 +86,7 @@ export default function NewPasswordField({
             startIcon={<ContentCopyOutlinedIcon />}
             onClick={() => void copyToClipboard(value, 'Passwort')}
             disabled={disabled}
-            sx={{ fontSize: 12.5 }}
+            sx={{ fontSize: fontSize.meta }}
           >
             Kopieren
           </Button>

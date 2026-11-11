@@ -3,7 +3,8 @@
 **Ziel:** Eine Antwort mit Belegen aus dem Wissen Ihres Space.
 {: .kopf }
 
-1. Die Frage ins Eingabefeld tippen. `@` wählt, wo gesucht wird, `/` setzt einen Prompt ein
+1. Die Frage ins Eingabefeld tippen. `@` wählt, wo gesucht wird, oder einen Agenten
+   ([Agenten verwenden](agenten-verwenden.md)), `/` setzt einen Prompt ein
    ([Prompts verwenden](prompts-verwenden.md)).
 2. Mit Enter senden.
 3. Unter der fertigen Antwort öffnet der Belegstand die Belege ([Belege prüfen](belege-pruefen.md)).
@@ -15,6 +16,8 @@
 | `@Space-Wissen` (Standard) | allen Bibliotheken des Space, die Sie lesen dürfen |
 | eine oder mehrere Bibliotheken | genau diesen |
 | leer | nirgends: Das Modell antwortet ohne Belege |
+
+Im `@`-Menü stehen Bibliotheken unter „Wissen“, Agenten getrennt darunter unter „Agenten“.
 
 Welche Bibliotheken ein Space hat, legen seine Kuratoren und Administratoren fest. Findet der Chat
 kein Wissen, sagt ein Hinweis über dem Eingabefeld, ob dem Space nichts zugeordnet ist oder ob Ihnen

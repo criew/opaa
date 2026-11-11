@@ -82,7 +82,7 @@ function render(route = '/admin/connections/external-tools') {
 
 async function openSettings(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Einstellungen' }))
-  return screen.findByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' })
+  return screen.findByRole('dialog', { name: 'Einstellungen' })
 }
 
 /**
@@ -163,7 +163,7 @@ describe('ExternalToolsTab', () => {
 
     const panel = await openSettings(user)
     expect(
-      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+      within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }),
     ).not.toBeChecked()
     expect(within(panel).getByText(/Gespeichert: aus — zuletzt geändert am/)).toBeVisible()
     expect(within(panel).getByText(/Beteiligung der Personalvertretung/)).toBeVisible()
@@ -178,9 +178,7 @@ describe('ExternalToolsTab', () => {
   it('öffnet die Einstellungen direkt über den Verweis mit ?panel=settings', async () => {
     render('/admin/connections/external-tools?panel=settings')
 
-    expect(
-      await screen.findByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' }),
-    ).toBeVisible()
+    expect(await screen.findByRole('dialog', { name: 'Einstellungen' })).toBeVisible()
   })
 
   it('schaltet ein, speichert die geänderten Werte und zeigt danach den neuen Zustand', async () => {
@@ -188,7 +186,7 @@ describe('ExternalToolsTab', () => {
     render()
 
     const panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     const lifetime = within(panel).getByLabelText(/höchstens gültig/)
     await user.clear(lifetime)
     await user.type(lifetime, '30')
@@ -235,22 +233,22 @@ describe('ExternalToolsTab', () => {
     await answerConfirm(
       user,
       'Erinnerung auf die Werkseinstellung von 14 Tage zurücksetzen?',
-      'Werkseinstellung übernehmen',
+      'Zurücksetzen',
     )
     expect(within(panel).getByLabelText('Erinnerung vor Ablauf (Tage)')).toHaveValue(14)
     await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
-    const shorter = 'Erinnerung erst 14 Tage vor Ablauf einer Freigabe?'
+    const shorter = 'Erinnerung auf 14 Tage vor Ablauf einer Freigabe ändern?'
     expect(await screen.findByRole('dialog', { name: shorter })).toHaveTextContent(
       'Bisher kommt sie 21 Tage vorher.',
     )
     expect(useConfirmStore.getState().request?.tone).toBe('danger')
-    await answerConfirm(user, shorter, 'Speichern')
+    await answerConfirm(user, shorter, 'Ändern')
 
     await waitForDialogClosed()
     expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)
   })
 
-  it('zeigt einen Vorlauf über der längsten Befristung am Feld und als Meldung', async () => {
+  it('zeigt einen Vorlauf über der längsten Befristung nur am Feld und setzt den Fokus hinein', async () => {
     const user = userEvent.setup()
     render()
 
@@ -261,11 +259,9 @@ describe('ExternalToolsTab', () => {
     await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
 
     expect(await within(panel).findByText('Der Wert muss zwischen 0 und 364 liegen.')).toBeVisible()
-    expect(
-      within(panel)
-        .getAllByRole('alert')
-        .some((alert) => /außerhalb der zulässigen Grenzen/.test(alert.textContent ?? '')),
-    ).toBe(true)
+    // a field error is told at the field only (guidelines 5.6, P28), no message above or below
+    await waitFor(() => expect(lead).toHaveFocus())
+    expect(within(panel).queryByText(/außerhalb der zulässigen Grenzen/)).not.toBeInTheDocument()
     expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)
   })
 
@@ -301,11 +297,11 @@ describe('ExternalToolsTab', () => {
     render()
 
     const panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
     await answerConfirm(user, 'Ungespeicherte Änderungen verwerfen?', 'Weiter bearbeiten')
     expect(
-      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+      within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }),
     ).toBeChecked()
 
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
@@ -377,7 +373,9 @@ describe('ExternalToolsTab', () => {
     expect(
       await within(panel).findByText('Bitte eine ganze Zahl von 0 bis 364 eingeben.'),
     ).toBeVisible()
-    expect(within(panel).getByText(/Die Erinnerung vor Ablauf ist nicht gespeichert/)).toBeVisible()
+    // told at the field only, and the focus goes into it (guidelines 5.6, P28)
+    expect(within(panel).queryByText(/nicht gespeichert/)).not.toBeInTheDocument()
+    await waitFor(() => expect(lead).toHaveFocus())
     expect(puts).toEqual([])
   })
 
@@ -388,7 +386,7 @@ describe('ExternalToolsTab', () => {
     renderInHistory()
 
     const panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     act(() => navigateRef.current?.(-1))
 
     expect(await screen.findByText('Vorherige Seite')).toBeInTheDocument()
@@ -399,14 +397,14 @@ describe('ExternalToolsTab', () => {
     renderInHistory()
 
     let panel = await openSettings(user)
-    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    await user.click(within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }))
     // A link to the tab without ?panel closes the panel without its own close button.
     act(() => navigateRef.current?.('/admin/connections/external-tools'))
     await waitForDialogClosed()
 
     panel = await openSettings(user)
     expect(
-      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+      within(panel).getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' }),
     ).not.toBeChecked()
     await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
     await waitForDialogClosed()

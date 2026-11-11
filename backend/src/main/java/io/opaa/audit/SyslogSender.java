@@ -11,9 +11,9 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
@@ -34,8 +34,9 @@ class SyslogSender {
   /** How long a delivery waits for the receiver to close after the last message. */
   static final int CLOSE_WAIT_MILLIS = 2_000;
 
-  private static final ScheduledExecutorService WATCHDOG =
-      Executors.newSingleThreadScheduledExecutor(
+  static final ScheduledExecutorService WATCHDOG =
+      new ScheduledThreadPoolExecutor(
+          1,
           runnable -> {
             Thread thread = new Thread(runnable, "siem-export-watchdog");
             thread.setDaemon(true);

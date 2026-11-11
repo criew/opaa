@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -154,9 +155,7 @@ describe('CatalogPage (ADR-0039)', () => {
 
     await user.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'nichts dergleichen')
 
-    expect(
-      await screen.findByText('Kein Eintrag passt zu „nichts dergleichen“.', { selector: 'p' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Keine Treffer.')).toBeInTheDocument()
     expect(requestedUrls.at(-1)?.searchParams.get('q')).toBe('nichts dergleichen')
     expect(screen.getByRole('searchbox', { name: 'Suchen' })).toBeInTheDocument()
   })
@@ -365,6 +364,8 @@ describe('CatalogPage (ADR-0039)', () => {
   it('shows no prompt library and no type filter while prompt libraries are switched off', async () => {
     setMockAuthState({ features: { promptLibraries: false } })
     setMockFeatures({ promptLibraries: false })
+    server.use(http.get('/api/v1/agents/availability', () => HttpResponse.json({ enabled: false })))
+    useRuntimeSwitchStore.setState({ agents: false })
     renderCatalog('/catalog?type=prompts')
 
     expect(await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()

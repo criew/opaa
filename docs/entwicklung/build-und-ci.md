@@ -3,6 +3,19 @@
 Nachschlagewerk zu Befehlen außerhalb des täglichen Builds. Die Grundbefehle (Build, Test, Formatierung,
 Start von Backend und Frontend) und die Pre-Push-Checkliste stehen in [AGENTS.md](../../AGENTS.md#build--test).
 
+## Aufbau der CI und Shards
+
+`ci.yml` startet zuerst den Job `paths`, der nur den Pfadfilter enthält; alle Test- und Build-Jobs hängen
+an ihm und starten ohne Warten auf die Repo-Prüfungen. Die Pflicht-Checks sind Aggregatoren:
+
+- `changes` führt die Repo-Prüfungen aus und scheitert auch, wenn `paths` scheitert.
+- `backend` sammelt `backend-build`, `openapi-bundle-parity` und die Testshards `backend-test (api | indexing |
+  connection | migration | core)`. Die Paketlisten stehen in `testShards` in `backend/build.gradle.kts`, `core`
+  ist das Komplement. Jeder Shard schreibt seine langsamsten Testklassen ins Job-Summary
+  (`.github/scripts/slowest_test_classes.py`); danach die Listen ausbalancieren.
+- `frontend` sammelt `frontend-check` (Format, Lint, Lizenzen, Themengrenzen, Build) und drei
+  vitest-Shards `frontend-test (1…3)`. Einen Shard lokal nachstellen: `pnpm run test --shard=1/3`.
+
 ## Frontend mit Mocks
 
 ```bash
@@ -22,6 +35,15 @@ beliebigen URL wählt den Fixture-Satz, z. B. viele Einträge mit langen Namen (
 `?mockScenario=default` setzt zurück. Bisher folgen die Wissensbibliotheken samt Konnektoren und
 die Gruppen dem Szenario. Tabelle und Erweiterung um weitere Bereiche:
 [e2e/ui-lab/README.md](../../e2e/ui-lab/README.md#mock-szenarien).
+
+**Mock-Profile.** `?mockProfile=admin|user|auditor|signed-out` wählt, wer im Mock angemeldet ist;
+die Wahl bleibt wie das Szenario für den Tab bestehen, `?mockProfile=admin` setzt zurück. `user` ist
+ein Konto ohne Verwaltung, `auditor` die Rolle Revision mit ihren Seiten unter `/revision/…`, und
+`signed-out` meldet niemanden an und bietet zwei Identitätsanbieter sowie lokale Konten mit
+Selbstregistrierung und Passwort-Rücksetzung an, sodass Anmelde-, Registrier- und Passwortseiten
+erreichbar sind. Den Einrichtungs-Assistenten öffnet `?mockInstallation=pending`, mit allen
+optionalen Schritten `?mockInstallation=embedding`; `?mockInstallation=done` kehrt zurück. Im
+Szenario `slow` läuft die Chat-Antwort nach zwei Sekunden Wort für Wort ein.
 
 **UI-Lab.** Werkzeuge für Screenshots, Kennzahlen, Videos und Variantenvergleiche gegen dieses
 Frontend liegen unter [`e2e/ui-lab/`](../../e2e/ui-lab/README.md); den Ablauf für die
@@ -218,7 +240,10 @@ startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisie
    startet deshalb einmal mit einem Stand ab dem Merge von #3206 oder wird neu aufgesetzt), ebenso
    wenig eine mit Liquibase migrierte
    ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2). Ab dieser
-   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei.
+   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei. Liegt der letzte Stand,
+   der eine Baseline umschreibt ([Baselines](../../backend/docs/migrationen.md#baselines)), später,
+   ist er die Untergrenze: Keine ältere Historie passt zu den neuen Prüfsummen. Auf einem solchen
+   Stand und in den 24 Stunden danach prüft Szenario 05 also das Update der Version auf sich selbst.
 
 Solange kein Release ein Versionsfenster nennt, prüft die Suite also den Sprung über einen Tag
 Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten Sprung.
@@ -434,6 +459,23 @@ die ihn auslöst, als Probe in den Generator. Jazzer ist bewusst nicht eingebund
 bringt einen nativen Agenten und eine eigene JUnit-Anbindung mit, und die bekannten
 Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
 
+## Löschvollständigkeit (Sentinel-Tests)
+
+`DocumentDeletionSentinelIntegrationTest` und `ChatDeletionSentinelIntegrationTest` laufen mit den
+Integrationstests (Docker). Sie schreiben einen eindeutigen Markertext überall hin, wo ein Dokument
+bzw. ein Chat abgeleitete Daten hinterlässt (Dateiname, Inhalt, Vektor- und Volltext-Chunks,
+Metadatenwert, Schlagwort und verworfener Modellvorschlag; Frage, Antwort, erzeugter Titel,
+Notiz und gelesener Anhang mit seinem Text), prüfen vorab, dass der Marker in diesen Spalten
+angekommen ist, löschen das Objekt über den Dienst der Anwendung und durchsuchen danach mit
+`io.opaa.test.SentinelScan` jede Text-, JSON-, Array-, `tsvector`- und `bytea`-Spalte jeder
+Tabelle des Schemas, Partitionen über ihre Elterntabelle. Die Spalten kommen aus
+`information_schema`; eine neue Tabelle oder Spalte ist ohne Pflege erfasst. Was den Marker nach
+dem Löschen behalten darf, steht mit Begründung in der Liste `RETAINED` des Tests (heute nur das
+Revisionsprotokoll); ein neuer Treffer ist eine Löschlücke und wird behoben, nicht in die Liste
+eingetragen. Geprüft wird nur die Datenbank: Die Ablage der Originale (Dateisystem oder S3) und
+der Gesprächsspeicher im Prozess liegen außerhalb des Scans; das Löschen des Originals sichern
+die Tests von `LibraryDocumentService` ab.
+
 ## Sicherheitsinvarianten als Architekturtests
 
 `io.opaa.architecture.SecurityInvariantsTest` läuft in jedem Build und prüft mit ArchUnit:
@@ -455,7 +497,17 @@ Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
 - `io.opaa.format` kompiliert kein Muster je Aufruf oder je Objekt (`String.matches`, `replaceAll`,
   `replaceFirst`, `split`, `Pattern.matches`, `Pattern.compile` außerhalb des statischen
   Initialisierers, auch in Konstruktoren); ein `split` an einem einzelnen Zeichen und der
-  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste.
+  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste;
+- Text, den eine Person, ein Dokument oder eine frühere Antwort bestimmt, kommt nur über
+  `PromptText` (unsichtbare Zeichen und Marker bis zum Fixpunkt entfernen, zwischen Marker setzen)
+  oder `ContentFence` (Zaun mit Kennung je Aufruf) in einen Prompt. Als Prompt-Bau zählen
+  `UserMessage`, `SystemMessage` und `Prompt` (Konstruktor und Builder) sowie `system` und `user`
+  einer `ChatClient`-Anfrage; gemeldet wird eine Methode (samt ihrer Lambdas), die selbst keinen
+  der beiden Bausteine aufruft. Woher ein Text stammt, sieht der Bytecode nicht: Die Ausnahmeliste
+  (`PROMPTS_PAST_THE_BLOCKS`) nennt je Methode, wo ihr Text bereinigt wurde, eine neue Stelle muss
+  diese Entscheidung ausdrücklich treffen. Grenze: Ruft eine Methode einen Baustein auf, prüft die
+  Regel nicht, ob gerade der bereinigte Text in der Nachricht landet;
+- Sicherheitszustand wird nicht als veraltete ganze Zeile zurückgeschrieben (siehe unten).
 
 Gezählt werden Aufrufe und Methodenreferenzen (`client::send`, `encryptor::decrypt`), gemeldet
 wird die Methode, in der sie stehen; ein Lambda zählt zu seiner umgebenden Methode. Jede Regel hat
@@ -474,6 +526,124 @@ prüft die Angriffsfläche ohne Anmeldung.
 Feld oder einem Feld einer Enum-Konstante steht, mit faulem, verschachteltem oder mehr als einem
 unbeschränkten Quantor mit gepumpten Eingaben gegen eine Zeitgrenze; jedes solche Muster nennt dort
 seine Angriffseingaben.
+
+### Kein Ganzzeilen-Schreiben von Sicherheitszustand
+
+Hibernate schreibt eine geänderte Entity ohne `@DynamicUpdate` mit allen Spalten zurück. Liest ein
+Pfad eine Zeile, ändert ein Feld und speichert, überschreibt er alles, was eine andere Transaktion
+zwischen Lesen und Schreiben festgeschrieben hat – etwa eine entzogene Rolle, eine Sperre durch den
+Verzeichnisabgleich oder einen abgeschalteten Anbieter. `securityStateIsNeverWrittenBackAsAStaleWholeRow`
+meldet für jede Entity in `SECURITY_STATE_ENTITIES` ohne `@Version` jeden Aufruf von `save`,
+`saveAll`, `saveAndFlush` und `saveAllAndFlush` ihres Repositorys; fehlt auch `@DynamicUpdate`,
+zusätzlich jeden Aufruf einer Methode der Entity, die ein eigenes Feld setzt. Der Code der Entity
+selbst ist ausgenommen. Jede gemeldete Methode steht in `WHOLE_ROW_WRITERS` mit einem Satz
+Begründung: neue Zeile, nur geänderte Spalten in einer Transaktion (`@DynamicUpdate`), Zustand
+bewegt sich nur Richtung widerrufen, die Rolle ist der einzige änderbare Zustand, oder eine
+Zeilensperre (`FOR UPDATE`). Die Übertragung von Berechtigungen liest die Berechtigung der
+Zielgruppe unter Zeilensperre; Änderung und Widerruf einer Dienstkonto-Zustimmung sperren zuerst
+die Zeile des Dienstkontos, dann die offene Zustimmung.
+
+`User`, `OidcProvider`, `Group` und `ConnectorTypePolicy` tragen `@Version` und fallen damit aus der
+Regel: Ein Schreiben aus einem veralteten Stand, auch das `save` einer abgelösten Instanz, scheitert
+mit `OptimisticLockingFailureException`, statt zurückzuschreiben, was es gelesen hat; die
+Schreibwege der Verwaltung antworten dann mit `409` und der Bitte, neu zu laden
+(`GlobalExceptionHandler`). Die Schreibwege des Systems scheitern daran nicht:
+
+- Die Anmeldung schreibt `lastLoginAt` und die Angaben des Anbieters gezielt
+  (`UserRepository#recordLastLogin`, `#recordProviderClaims`) und erhöht die Version dabei nicht;
+  eine Anmeldung lässt keine Bearbeitung der Verwaltung scheitern.
+- Die Rolle aus dem Token schreibt ein bedingtes `UPDATE` ohne Versionsprüfung
+  (`#changeRoleIfStill`), das die Version erhöht; zwei gleichzeitige Anmeldungen derselben Person
+  scheitern nicht aneinander, eine Bearbeitung, die die Rolle vorher gelesen hat, dagegen schon.
+- Gruppenmitgliedschaften sind eigene Zeilen, die die Verbindung zur Gruppe selbst tragen
+  (`mappedBy`); sie schreiben die Gruppe nicht und erhöhen ihre Version nicht
+  (`GroupRowWriteIntegrationTest`). Die Gruppen aus dem Token schreiben nur sie.
+- Der Verzeichnisabgleich wendet seinen Stand bis zu dreimal an, wenn seine Transaktion auf eine
+  zwischenzeitlich geänderte Gruppe oder ein Konto trifft (`DirectorySyncService#STALE_ROW_ATTEMPTS`),
+  und liest dabei jedes Mal neu.
+
+Dass die Anmeldung so bleibt, prüft `signInSavesNoExistingVersionedRow`: Von den Einstiegen in
+`SIGN_IN_ENTRIES` (`UserProvisioningFilter#doFilterInternal` und die Empfänger von
+`UserProvisionedEvent` und `AuditorRoleRevokedEvent`) aus folgt sie den Aufrufen und Methodenreferenzen in OPAAs eigenem Code,
+Lambdas eingeschlossen, bei einer Schnittstelle in jede Implementierung, und meldet jedes `save`,
+`saveAll`, `saveAndFlush` und `saveAllAndFlush` auf dem Repository einer Entity aus
+`SECURITY_STATE_ENTITIES` mit `@Version`. Ein solches `save` scheitert an einer gleichzeitigen
+Bearbeitung der Verwaltung, und zwar vor jedem Controller, also ohne `409`: Die Anmeldung schlüge
+fehl. Ausgenommen sind in `SIGN_IN_SAVES` nur die Neuanlagen `UserService#insertUser` und
+`TokenGroupSynchronizer#findOrCreate`. Ein Ereignis, das ein erreichter Code veröffentlicht, verfolgt
+die Regel nicht; ein neuer Empfänger, der in der Anmeldung läuft, gehört deshalb in
+`SIGN_IN_ENTRIES`. Die Regel sieht nur `save`-Aufrufe: Eine geladene Instanz, die ein Aufrufer mit
+eigener Transaktion ändert und beim Commit ohne `save` schreibt, und `delete` einer Instanz meldet
+sie nicht.
+
+`@DynamicUpdate` bleibt an den vier Entities: Es hält, was ein Schreiber ohne Versionserhöhung
+festgeschrieben hat – die gezielten Updates der Anmeldung und die Vorgängerversion während eines
+Rolling Updates, die die Spalte nicht kennt.
+Wettlauftests mit einer fremden Transaktion zwischen Lesen und Schreiben (`ForeignCommit`) stehen in
+`AccountRowWriteIntegrationTest`, `GroupRowWriteIntegrationTest`,
+`ConnectorTypePolicyRowWriteIntegrationTest`, `UserServiceStaleRowIntegrationTest`,
+`DirectorySyncStaleRowIntegrationTest`, `GroupGrantTransferRowWriteIntegrationTest` und
+`ServiceAccountConsentRowWriteIntegrationTest`.
+
+Damit die Liste nicht still veraltet, verlangt `everyPersistentTypeWithASecurityStateFieldIsClassified`
+für jede Entity und jeden Repository-Typ mit einem Feld, dessen Name nach Sicherheitszustand klingt
+(`role`, `revoked…`, `locked…`, `…LockedAt`, `enabled`, `active`, `status`, `…ExpiresAt`,
+`validUntil`, `usableUntil`, `…TokenHash`, `sessionGeneration` u. a., Muster `SECURITY_STATE_FIELD`), einen Eintrag in
+`SECURITY_STATE_ENTITIES` oder, begründet, in `NOT_SECURITY_STATE`.
+
+**Grenzen:** Die Regel sieht Aufrufe, keinen Datenfluss; eine Ausnahme gilt für die ganze Methode.
+`@DynamicUpdate` schützt nur eine verwaltete Instanz: `save` einer abgelösten Instanz schreibt jede
+abweichende Spalte. Ohne `@DynamicUpdate` schreibt auch das Dirty Checking eine geänderte verwaltete
+Entity ohne `save` als ganze Zeile; die Regel meldet dann jeden Aufruf einer ändernden Methode.
+Vollen Schutz gibt nur `@Version`. Auch dort prüft die Version nur, wer sie mitschreibt: Ein gezieltes
+`UPDATE` ohne Versionserhöhung und die Vorgängerversion während eines Rolling Updates lassen ein
+späteres Schreiben aus altem Stand durch; dann hält nur `@DynamicUpdate` die übrigen Spalten.
+Typen, die nur eingefügt und gelöscht werden (`GroupMembership`, `CapabilityGrant`), fragt die Regel
+nicht ab; ein Feld, dessen Name nicht nach Sicherheitszustand klingt, erfasst die Abdriftprüfung
+nicht.
+
+## Kein Geheimnis im Log
+
+Wächter-Tests schicken erkennbare Geheimnisse durch echte Anfragen und hängen dabei mit
+`io.opaa.test.LogCapture` einen Appender an den Root-Logger auf TRACE; keine Zeile darf einen der
+Werte nennen, wörtlich, Base64- oder URL-kodiert, auch nicht in Meldung, Ursache, unterdrückter
+Exception oder Stacktrace. Ein Logger mit eigener Stufe (Festlegung in `application.yml`) bleibt
+auf dieser Stufe; geprüft wird, was er im Betrieb schreiben würde:
+
+- `SecretLogSentinelIntegrationTest`: Modellschlüssel (eingegeben, mit Steuerzeichen, gespeichert
+  und wiederverwendet) beim Verbindungstest gegen einen Server, der mit 401 abweist, gegen einen
+  unauflösbaren Host und beim abgewiesenen Anlegen (400); SMTP-Passwort beim Speichern, beim
+  fehlschlagenden Test und beim abgewiesenen Speichern; Zugangsdaten einer Quelle beim
+  Verbindungstest, auch ein Confluence-Data-Center-Token mit Zeilenumbruch; Code und State einer
+  Verbindungszustimmung;
+- `McpServerIntegrationTest#noBearerValueReachesALogLine`: Personen-Token, Dienstkonto-Token, ein
+  erfundenes Token und ein erfundenes JWT im `Authorization`-Header, erfolgreich und mit 401;
+- `LocalAuthLogPrivacyIntegrationTest`: Passwörter (auch falsche), Refresh-Token, lokales
+  Zugangs-JWT und die Token der Mail-Links.
+
+Der Logger `org.apache.coyote.http11.Http11InputBuffer` ist in `application.yml` auf INFO
+festgelegt: Auf DEBUG schreibt Tomcat jeden Anfragekopf samt `Authorization`. Der HTTP-Client des
+JDK zitiert einen ungültigen Header-Wert samt Geheimnis in seiner Exception; deshalb prüft
+`io.opaa.common.HeaderValues#requireSafe` den Wert vorher, ohne ihn zu nennen: in
+`RedirectFollowingFetcher` für jeden Header (alle Konnektoren), in `ModelEndpointAccess#headerSafe`
+für Modellschlüssel, in `KeycloakAdminApi` und `OAuthClient` für Bearer-Token, in
+`OpenSandboxClient` für den Schlüssel des Sandbox-Servers. Als zweite
+Sicherung ersetzt `ErrorSanitizer` in der WARN-Zeile einer abgewiesenen Anfrage den Wert hinter
+`Bearer` und `Basic`, in Anführungszeichen bis zum schließenden Zeichen.
+
+Im Frontend prüft `src/app/secretQueryRoutes.test.ts`, dass jede Seite, die `token`, `code` oder
+`state` aus der Query liest (selbst oder über einen exportierten Hook oder eine eingebundene
+Komponente), und jede `redirect_uri`
+der Anmeldung in den Maskierungs-Maps `$opaa_logged_uri` und `$opaa_logged_referer` von
+`frontend/nginx.conf` steht; `.github/scripts/frontend_hardening_test.sh` prüft am laufenden
+Image, dass das Zugriffslog diese Query weder in der Anfragezeile noch im Referer schreibt.
+
+**Grenzen:** Geprüft sind die genannten Wege, nicht jeder Logaufruf; ein Geheimnis in einem neuen
+Weg braucht seinen Wächterwert. Die Prüfung sieht das Log im Prozess, nicht das Log von
+Datenbank, Proxy oder Modellserver. Ein Header, den ein Client außerhalb von
+`RedirectFollowingFetcher` ohne `HeaderValues` setzt, ist nicht geschützt. Die Routenprüfung im
+Frontend sieht nur die Parameter `token`, `code` und `state` in der Query, kein Geheimnis im Pfad
+(`useParams`) oder im Fragment, und nur Seiten, die `App.tsx` als `<Route path element>` einbindet.
 
 ## Angriffsfläche ohne Anmeldung
 

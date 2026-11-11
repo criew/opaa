@@ -20,6 +20,9 @@ import { sharedLibraryQuotaHandlers } from '@/features/library/mocks/sharedLibra
 import { fullSyncRhythmHandlers } from '@/features/library/mocks/fullSyncRhythmHandlers'
 // prompt
 import { promptLibraryHandlers } from '@/features/prompt/mocks/promptLibraryHandlers'
+import { agentHandlers } from '@/features/agent/mocks/agentHandlers'
+// document-template
+import { documentTemplateHandlers } from '@/features/document-template/mocks/documentTemplateHandlers'
 // group
 import { groupHandlers } from '@/features/group/mocks/groupHandlers'
 import { groupAdminHandlers } from '@/features/group/mocks/groupAdminHandlers'
@@ -40,6 +43,8 @@ import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 import { modelRoleHandlers } from '@/features/model/mocks/modelRoleHandlers'
 // mail
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
+// malware-scan
+import { malwareScanHandlers } from '@/features/malware-scan/mocks/malwareScanHandlers'
 // branding
 import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // link-targets
@@ -51,6 +56,7 @@ import { connectionProfileHandlers } from '@/features/connection/mocks/connectio
 import { connectedAccountHandlers } from '@/features/connection/mocks/connectedAccountHandlers'
 import { auditorRoleRequestHandlers } from '@/features/audit/mocks/auditorRoleRequestHandlers'
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
+import { rightsHistoryHandlers } from '@/features/audit/mocks/rightsHistoryHandlers'
 import { outboundProxyHandlers } from '@/features/connection/mocks/outboundProxyHandlers'
 import { connectionLifecycleHandlers } from '@/features/connection/mocks/connectionLifecycleHandlers'
 // external-access
@@ -75,6 +81,7 @@ import { quickTourHintHandlers } from '@/features/auth/mocks/quickTourHintHandle
 import { installationHandlers } from '@/features/installation/mocks/installationHandlers'
 // app
 import { healthHandlers } from '@/shared/mocks/healthHandlers'
+import { scenarioHandler } from './scenarioHandler'
 
 /**
  * All MSW handlers, one module per topic of the OpenAPI spec, for the browser worker and the test
@@ -83,7 +90,7 @@ import { healthHandlers } from '@/shared/mocks/healthHandlers'
  * of a parameter at the same position (`GET /groups/selectable` before `GET /groups/:groupId`). A
  * handler whose path could match another topic's belongs into that topic's module.
  */
-export const handlers = [
+const topicHandlers = [
   // chat
   ...chatHandlers,
   ...chatAttachmentHandlers,
@@ -106,6 +113,9 @@ export const handlers = [
   ...fullSyncRhythmHandlers,
   // prompt
   ...promptLibraryHandlers,
+  ...agentHandlers,
+  // document-template
+  ...documentTemplateHandlers,
   // group
   ...groupHandlers,
   ...groupAdminHandlers,
@@ -126,6 +136,8 @@ export const handlers = [
   ...modelHandlers,
   // mail
   ...mailHandlers,
+  // malware-scan
+  ...malwareScanHandlers,
   // branding
   ...brandingHandlers,
   // link-targets
@@ -136,6 +148,7 @@ export const handlers = [
   ...connectionProfileHandlers,
   ...connectedAccountHandlers,
   ...connectionLogHandlers,
+  ...rightsHistoryHandlers,
   ...auditorRoleRequestHandlers,
   ...outboundProxyHandlers,
   ...connectionLifecycleHandlers,
@@ -162,3 +175,6 @@ export const handlers = [
   // app
   ...healthHandlers,
 ]
+
+/** The topic handlers behind the scenario handler, which answers first for every topic. */
+export const handlers = [scenarioHandler(topicHandlers), ...topicHandlers]

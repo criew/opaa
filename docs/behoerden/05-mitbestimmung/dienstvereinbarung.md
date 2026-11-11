@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-31
+stand: 2026-11-11
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -143,7 +143,7 @@ Datenbank, Sicherungen, Originalablage, Anwendungslog, Logs von Reverse-Proxy un
 Monitoring und Tracing, Anmeldedaten beim Identitätsanbieter einschließlich Anmeldezeiten und
 erneuter Anmeldung, Logs beim Modellanbieter sowie Kopien in Test- und Entwicklungssystemen.
 
-(2) Direkten Zugriff auf Datenbank, Sicherungen und Logs haben nur die in Anlage 4 benannten
+(2) Direkten Zugriff auf Datenbank, Sicherungen, Logs und Traces haben nur die in Anlage 4 benannten
 Personen, und nur für Betrieb, Sicherung und Fehlerbehebung.
 
 (3) Ein Zugriff, bei dem Inhalte oder Daten bestimmter Beschäftigter sichtbar werden können, geschieht
@@ -158,6 +158,36 @@ Anwendung es dafür vollständig der Reihe nach und sendet es ohne Pseudonyme vo
 [benannte Stelle] betreibt es und bewahrt die Meldungen [Frist] auf. Ausgeleitetes Protokoll und
 Anwendungslog werden nicht miteinander verknüpft, um eine Person zu bestimmen, außer in einer
 Klärung nach Nummer 8.
+
+(6) Jede Anfrage trägt eine Kennung (Request-ID). Sie steht im Zugriffslog des Frontends zusammen
+mit der Client-Adresse, im Anwendungslog und im Nachweisprotokoll. Ist das Tracing eingeschaltet,
+erhält der Trace-Collector eine weitere Kennung (Trace-ID), die auch im Anwendungslog steht. Die
+Kennungen nennen niemanden, sind aber personenbeziehbar über Verknüpfung: Über sie lassen sich
+Client-Adresse, Logzeilen mit Konto und die handelnde Person im Nachweisprotokoll verbinden. Für
+diese Kennungen gilt:
+
+1. Einträge verschiedener Quellen werden über die Kennungen nur verbunden
+   a) zur Behebung eines Fehlers an einer einzelnen Anfrage, deren Kennung die betroffene Person
+      selbst gemeldet hat oder die eine Fehlermeldung des Systems ohne Personenbezug nennt, oder
+   b) in einer Klärung nach Nummer 8.
+2. Im Fall a) wird nur von der gemeldeten Kennung zu den Einträgen dieser Anfrage gesucht. Eine
+   Suche nach Person, Konto oder Client-Adresse, um deren Kennungen zu finden, und die Ausweitung
+   auf weitere Anfragen derselben Person oder Adresse sind ausgeschlossen. Das Nachweisprotokoll
+   wird im Fall a) nicht einbezogen.
+3. Eine Verbindung des Nachweisprotokolls mit dem Zugriffslog oder dem Trace-Collector ist ein
+   Zugriff nach Absatz 3 und geschieht nur in einer Klärung nach Nummer 8.
+4. Vorgelagerte Komponenten der Dienststelle setzen als Request-ID nur je Anfrage neu erzeugte
+   Kennungen, keine Kennung einer Person, eines Geräts oder einer Sitzung.
+5. Der Trace-Collector ist ein Zugriffsweg nach Absatz 1. [Benannte Stelle] betreibt ihn; Zugriff
+   haben nur die in Anlage 4 benannten Personen. Er wird nicht mit Daten anderer Verfahren über
+   Beschäftigte zusammengeführt.
+6. Die Aufbewahrungsfristen für Zugriffslog, Anwendungslog und Traces stehen in Anlage 3 und
+   betragen höchstens [14] Tage für Logs und [7] Tage für Traces, auch in zentralen Log-Sammlungen
+   und Sicherungen.
+
+[Vermerk für die Verhandlung, zu prüfen: Ob die eindeutige Verknüpfbarkeit eine
+mitbestimmungspflichtige Änderung einer technischen Einrichtung zur Überwachung von Verhalten oder
+Leistung ist (BPersVG § 80 Abs. 1 Nr. 21, in den Ländern das jeweilige Personalvertretungsgesetz).]
 
 #### 8. Anlassbezogene Klärung
 
@@ -200,7 +230,8 @@ Ausgeschlossen sind insbesondere:
 4. Auswertungen von Anmelde- und Abmeldezeiten, außer der Kontenpflege und der Sperre wegen
    Inaktivität nach Nummer 6,
 5. jede Einsicht in die Chats Dritter,
-6. Rückschlüsse auf Anwesenheit oder Arbeitsort, etwa über Netzadressen,
+6. Rückschlüsse auf Anwesenheit oder Arbeitsort, etwa über Netzadressen, auch über die Verknüpfung
+   von Protokoll- oder Logeinträgen über Request-ID oder Trace-ID,
 7. Statistiken unterhalb der Mindestgruppengröße; sie beträgt [Wert, nicht kleiner als die
    Voreinstellung der Version, {{faktenblatt:voreinstellungen#opaa-permission-minimum-group-size}}],
 8. die Verknüpfung mit anderen Systemen über Beschäftigte, etwa Zeiterfassung oder
@@ -209,7 +240,10 @@ Ausgeschlossen sind insbesondere:
 10. die Nutzung geteilter Inhalte für Beurteilungen,
 11. das Training von Modellen mit Fragen und Chats, auch beim Modellanbieter,
 12. die Weitergabe von Protokoll- oder Nutzungsdaten an Vorgesetzte außerhalb einer anlassbezogenen
-    Klärung.
+    Klärung,
+13. Auswertungen, wer wann welchen Agenten in welcher Fassung genutzt hat, und die Verknüpfung des
+    Schritt- oder Sandboxprotokolls eines Agentenlaufs mit dem Chat einer Person, außer zur
+    Fehlersuche an genau dem Lauf, den die Person selbst meldet.
 
 #### 11. Selbstauskunft
 
@@ -280,6 +314,23 @@ Datenfluss oder ein neues Ziel bedarf der Zustimmung.
 Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
 
 (3) Systemverwaltung und Revision werden vor Aufnahme ihrer Aufgabe zu dieser Vereinbarung geschult.
+
+(4) Für Agenten gilt, soweit die eingesetzte Version sie anbietet und sie eingeschaltet sind:
+
+1. Agenten und Vorlagen legt nur an, wem die Dienststelle das Anlegerecht gibt; die Empfänger stehen
+   in Anlage 4.
+2. Der Personalrat erhält das Recht „Agentenverzeichnis einsehen“ für [die Mitglieder des
+   Personalrats / die Gruppe des Personalrats]. Das Verzeichnis in OPAA nennt jeden Agenten und
+   jede Vorlage der Dienststelle mit Zweck, Anweisung, Bibliotheksnamen, Werkzeugen, Grenzen,
+   verantwortlicher Stelle, Fassung und Sperrzustand, ohne Inhalte der Bibliotheken und ohne
+   Angaben zur Nutzung. Jedes Ansehen und jeder Export steht im Protokoll. Den Export des
+   Verzeichnisses fügt die Dienststelle dieser Vereinbarung [vierteljährlich / bei jeder Änderung]
+   als Stand bei.
+3. Jede Antwort eines Agenten und jede Datei daraus ist ein Entwurf. Wer sie verwendet, prüft sie
+   vorher; eine Entscheidung stützt sich nie allein auf sie.
+4. Die Nutzung je Person, je Space und je angelegtem Agenten wird nicht erhoben; die
+   Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis, getrennt nach
+   mitgeliefertem und angelegten Agenten. Es gilt Nummer 10 Nr. 13.
 
 #### 15. Änderungen und Updates
 

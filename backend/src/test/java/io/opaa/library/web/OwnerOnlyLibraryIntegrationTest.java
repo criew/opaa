@@ -33,7 +33,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -144,7 +143,6 @@ class OwnerOnlyLibraryIntegrationTest {
     unknown(grant(library, devAdmin(), "ALL_ACCOUNTS", null));
     unknown(transfer(library, devAdmin(), adminId));
     unknown(release(library, devAdmin()));
-    unknown(shareCap(library, false));
     unknown(mockMvc.perform(delete("/api/v1/libraries/" + library).with(devAdmin())));
     mockMvc
         .perform(
@@ -214,7 +212,8 @@ class OwnerOnlyLibraryIntegrationTest {
   }
 
   private static String withoutTimestamp(String body) {
-    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "");
+    return body.replaceAll("\"timestamp\":\"[^\"]*\"", "")
+        .replaceAll("\"requestId\":\"[^\"]*\"", "");
   }
 
   private UUID insertDocument(UUID libraryId, String fileName) {
@@ -242,7 +241,6 @@ class OwnerOnlyLibraryIntegrationTest {
     refusedByTheRule(grant(library, devAdmin(), "ALL_ACCOUNTS", null));
     refusedByTheRule(transfer(library, devAdmin(), ownerId));
     refusedByTheRule(release(library, devAdmin()));
-    refusedByTheRule(shareCap(library, true));
 
     assertThat(grantCount(library)).isEqualTo(1);
     mockMvc
@@ -378,14 +376,6 @@ class OwnerOnlyLibraryIntegrationTest {
         put("/api/v1/libraries/" + library + "/external-access")
             .with(caller)
             .content("{\"enabled\":true,\"expiresAt\":\"" + expiresAt + "\"}"));
-  }
-
-  private ResultActions shareCap(UUID library, boolean allowed) throws Exception {
-    MockHttpServletRequestBuilder request =
-        put("/api/v1/libraries/" + library + "/share-cap")
-            .with(devAdmin())
-            .content("{\"allAccountsGrantAllowed\":" + allowed + "}");
-    return mockMvc.perform(request);
   }
 
   private static void refusedByTheRule(ResultActions result) throws Exception {

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-11-11 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md),
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) und
 [ADR-0065](0065-hybride-suche-reranking-und-diagnose.md) · ersetzt Entscheidung 6 von
@@ -155,9 +155,12 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
 | `CREATE_CONNECTOR_LIBRARY` | „Alle Konten", je Geltungsbereich (unten) |
 | `CREATE_PROMPT_LIBRARY` | „Alle Konten": ein Prompt bindet kein Wissen und erreicht keine Quelle |
 | `CREATE_INTERNAL_GROUP` | niemand |
+| `CREATE_AGENT`, `CREATE_TEMPLATE` | niemand; nur angeboten, solange der Schalter „Agenten“ bzw. „Vorlagen“ an ist |
+| `VIEW_AGENT_DIRECTORY` | niemand; nur angeboten, solange der Schalter „Agenten“ an ist |
 
 Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsweit freigeben",
-„Fremdzugang freigeben") — dafür sind `MANAGER`/`OWNER` und die Freigabe-Obergrenze (#797) zuständig.
+„Fremdzugang freigeben") — dafür sind `MANAGER`/`OWNER` zuständig; wer sie bei Konnektorbibliotheken
+überhaupt erhält, entscheidet das Anlegerecht.
 
 - **Datenmodell:** `capability_grants` mit Subjekt `USER` | `GROUP` | `ALL_ACCOUNTS`
   (`CapabilitySubjectType`), Eindeutigkeit je (Organisation, Fähigkeit, Subjekt, Geltungsbereich),
@@ -174,7 +177,16 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
   je Eintrag (nur noch nutzbare). Entzug wirkt nur auf die Neuanlage — das Anlegen einer
   Bibliothek und das erstmalige Verbinden eines Kontos auf einem Profil; neu verbinden, trennen und
   löschen zählen nicht dazu. Läufe stoppt allein die Sperre von Typ oder Profil in connections.
-- **Verhältnis:** `SYSTEM_ADMIN` besitzt jede Fähigkeit implizit; Fähigkeiten sind nie Leserechte;
+- **Einzige lesende Fähigkeit:** `VIEW_AGENT_DIRECTORY` öffnet das Agentenverzeichnis, eine
+  Beschreibung aller Agenten und Vorlagen der Organisation (Zweck, Anweisung, Bibliotheks*namen*,
+  Werkzeuge, Grenzen, verantwortliche Stelle, Fassung, Sperrzustand) ohne Bibliotheksinhalt,
+  Eigentümer, Sperrgrund und Nutzungsangaben; jeder Zugriff ist ein Revisionsereignis
+  (`AGENT_DIRECTORY_ACCESSED`). Sie ist eine Fähigkeit und keine Systemrolle, weil sie an Person
+  und Gruppe (Personalrat) vergeben wird und dieselbe Vergabe, Historie und Oberfläche braucht wie
+  die Anlegerechte. Sie öffnet keinen Inhalt im Sinn des nächsten Punkts: `readableLibraryIds`
+  bleibt unberührt. Die Oberfläche nennt sie „Recht“, nicht „Anlegerecht“.
+- **Verhältnis:** `SYSTEM_ADMIN` besitzt jede Fähigkeit implizit; Fähigkeiten sind nie Leserechte auf
+  Inhalte (Wissen, Chats, Protokolle);
   `AUDITOR` verleiht keine Fähigkeit; „Sicht als" und Vorfallsbereich bleiben Vollmachten; keine neue
   Systemrolle — ein „Bibliotheksverwalter" ist eine Gruppe mit Fähigkeiten.
 - **Durchsetzung:** im Service (`SpaceService#createSpace`, `KnowledgeLibraryService#createLibrary`,
@@ -189,12 +201,12 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
 - **Nur-Besitzerin-Regel**: `assets.owner_only`, beim Anlegen gesetzt, unveränderlich,
   verlangt `owner_type = USER`; rights erzwingt sie an jedem Grant, an der Freigabestufe, bei der
   Eigentumsübertragung und in der Nachfolge (eine private Bibliothek wird nie „Nachfolge offen", sie
-  folgt ADR-0041). Keine Stufe der Freigabe-Obergrenze, auch die Systemverwaltung kann sie nicht lockern;
+  folgt ADR-0041). Auch die Systemverwaltung kann sie nicht lockern;
   Space-Zuordnungen privater Bibliotheken sieht nur die Besitzerin. „Sicht als" liefert eine private
   Bibliothek nie. Einen Vorfallszugriff auf private Bibliotheken gibt es nicht (#2171): OPAA hält nur eine
   Kopie, ein Vorfall wird in der Originalquelle untersucht.
 - **Das Verbindungsprotokoll liest `AUDITOR`** über `AuditAccessGate` (Anlass, begrenzter
-  Zeitraum, eigener Zugriffseintrag); `SYSTEM_ADMIN` liest es nicht. Keine Fähigkeit (nie ein Leserecht),
+  Zeitraum, eigener Zugriffseintrag); `SYSTEM_ADMIN` liest es nicht. Keine Fähigkeit (nie ein Leserecht auf Inhalte),
   keine neue Systemrolle (`SystemRole` ist einwertig). In Kauf genommen: `AUDITOR` kann aus dem
   Rollen-Claim stammen (ADR-0025, Entscheidung 4).
 
@@ -212,7 +224,8 @@ Vorgänge unterliegen der Aufbewahrungsfrist des Protokolls, nicht der Rechtehis
 - **Wirkung:** Das Objekt bleibt nutzbar, Rechte bleiben, die **Reichweite ist eingefroren** (keine neuen
   Grants, keine höhere Freigabestufe, keine neue Bereitstellung, keine neuen Space-Mitglieder). Nichts
   wird gelöscht.
-- **Betriebsliste** (`GET /api/v1/admin/succession`, Zahl je Reiter `GET /api/v1/admin/succession/counts`, `SuccessionKind`): vollständig ab dem ersten Tag,
+- **Betriebsliste** (`GET /api/v1/admin/succession`, `SuccessionKind`; die Zahl der Einträge nennt die Liste des
+  gezeigten Reiters, einen eigenen Zählendpunkt gibt es nicht): vollständig ab dem ersten Tag,
   drei Reiter mit derselben Mechanik — **Offene Nachfolgen** (Objekt, derzeitiger Adressat, Alter;
   Stufung Space → übrige handlungsfähige `ADMIN`, Asset einer internen Gruppe → deren Verantwortliche,
   sonst Systemverwaltung — eine Zuständigkeitsangabe, keine Zugangsbeschränkung), **Freigaben ohne

@@ -2,6 +2,8 @@ import { useId, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SectionHead from './SectionHead'
+import { fontSize, readingWidth } from '../theme/tokens'
+import { SECTION_GAP_SELECTOR } from './sectionGap'
 
 interface PageSectionProps {
   /** The section's head - monospace, spaced, on a hairline. Names the section for assistive tech. */
@@ -39,7 +41,11 @@ export default function PageSection({
   // two sections carry the same title.
   const headId = useId()
   return (
-    <Box component="section" aria-labelledby={headId} sx={{ mb: 4 }}>
+    <Box
+      component="section"
+      aria-labelledby={headId}
+      sx={{ mb: 4, [SECTION_GAP_SELECTOR]: { mt: 4 } }}
+    >
       {action ? (
         <Box
           sx={{
@@ -67,7 +73,9 @@ export default function PageSection({
         </Box>
       )}
       {description && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2, maxWidth: '80ch' }}>
+        <Typography
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2, maxWidth: readingWidth }}
+        >
           {description}
         </Typography>
       )}

@@ -1,14 +1,14 @@
 import { useEffect } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import { useSpaceStore } from '@/features/space'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { lastUsedSpace } from '@/features/space'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import { fieldWidth } from '@/shared/theme/tokens'
 
 /**
  * Resolves the global `/chat` entry point: it always lands on an empty, not-yet-persisted chat
@@ -48,8 +48,8 @@ export default function ChatRedirect() {
 
   if (isLoadingSpaces && spaces.length === 0) {
     return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <LoadingState shape="detail" count={4} />
       </Box>
     )
   }
@@ -57,15 +57,19 @@ export default function ChatRedirect() {
   if (!defaultSpace) {
     return (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center', maxWidth: 400 }}>
+        <Stack
+          spacing={2}
+          sx={{ alignItems: 'center', textAlign: 'center', maxWidth: fieldWidth.medium }}
+        >
           {spacesError ? (
-            <Alert severity="error">{spacesError}</Alert>
+            <LoadError
+              message="Spaces konnten nicht geladen werden."
+              detail={spacesError}
+              onRetry={() => void loadSpaces()}
+            />
           ) : (
-            <Typography sx={{ color: 'text.secondary' }}>Kein Arbeitsraum verfügbar.</Typography>
+            <EmptyState message="Kein Arbeitsraum verfügbar." />
           )}
-          <Button variant="outlined" onClick={() => void loadSpaces()}>
-            Erneut versuchen
-          </Button>
         </Stack>
       </Box>
     )

@@ -85,6 +85,7 @@ public class ChatService {
   private final ChatMetrics chatMetrics;
   private final ChatAutoCleanupSettings chatAutoCleanup;
   private final ChatAttachmentService attachmentService;
+  private final AgentRevisions agentRevisions;
   private final Clock clock;
 
   public ChatService(
@@ -105,7 +106,9 @@ public class ChatService {
       ChatMetrics chatMetrics,
       ChatAutoCleanupSettings chatAutoCleanup,
       ChatAttachmentService attachmentService,
+      AgentRevisions agentRevisions,
       Clock clock) {
+    this.agentRevisions = agentRevisions;
     this.chatAutoCleanup = chatAutoCleanup;
     this.attachmentService = attachmentService;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
@@ -450,8 +453,8 @@ public class ChatService {
   /**
    * The last {@code maxMessages} persisted messages as Spring AI messages, in turn order - ordered
    * by the application-assigned {@code sequence} (see {@link ChatMessage}'s Javadoc), not {@code
-   * created_at}. The content is the persisted text verbatim; the conversation window's own
-   * normalization happens at its entrance, in {@code QueryService}.
+   * created_at}. The content is the persisted text as is; the conversation window normalizes it at
+   * its entrance, {@code ConversationWindowMessages#reloaded}.
    */
   @Transactional(readOnly = true)
   public List<Message> historyAsSpringAiMessages(UUID chatId, int maxMessages) {
@@ -470,6 +473,32 @@ public class ChatService {
   }
 
   /**
+   * The agent run that gave the chat's latest message, empty when that message is a question, an
+   * answer without an agent, or the chat has none. A follow-up run reads how the previous one
+   * ended, e.g. with a plan to confirm (ADR-0070, Entscheidung 1).
+   */
+  @Transactional(readOnly = true)
+  public Optional<AgentRunRecord> latestAgentRun(UUID chatId) {
+    return chatMessageRepository.findByChatIdOrderBySequenceDesc(chatId, Limit.of(1)).stream()
+        .findFirst()
+        .filter(message -> message.getRole() == ChatRole.ASSISTANT)
+        .map(message -> parseAgentRun(message.getAgentRun()));
+  }
+
+  /**
+   * The agent run kept with the assistant answer before the latest one, if that answer has one;
+   * together with {@link #latestAgentRun} it shows two plans in a row.
+   */
+  @Transactional(readOnly = true)
+  public Optional<AgentRunRecord> previousAgentRun(UUID chatId) {
+    return chatMessageRepository.findByChatIdOrderBySequenceDesc(chatId, Limit.of(4)).stream()
+        .filter(message -> message.getRole() == ChatRole.ASSISTANT)
+        .skip(1)
+        .findFirst()
+        .map(message -> parseAgentRun(message.getAgentRun()));
+  }
+
+  /**
    * The search scope for a query run in this chat: the space's associated knowledge libraries are a
    * hard boundary. With {@code useKnowledge} on (@Space-Wissen) the scope is associated ∩ readable;
    * with it off, the sticky @-references ∩ associated ∩ readable. A space without an associated
@@ -483,6 +512,19 @@ public class ChatService {
     if (!chat.isUseKnowledge()) {
       scoped.retainAll(chat.getReferencedLibraryIds());
     }
+    scoped.retainAll(readableLibraryIds);
+    return scoped;
+  }
+
+  /**
+   * The libraries of the chat's space that the caller may read, whatever the chat's own chip bar
+   * says: the scope an agent run narrows further by the agent's libraries, since a chosen agent
+   * replaces the chat's search scope.
+   */
+  public Set<UUID> spaceLibraryScope(Chat chat, Set<UUID> readableLibraryIds) {
+    Set<UUID> scoped =
+        new LinkedHashSet<>(
+            spaceAssetAssociationRepository.findLibraryIdsBySpaceId(chat.getSpaceId()));
     scoped.retainAll(readableLibraryIds);
     return scoped;
   }
@@ -595,11 +637,39 @@ public class ChatService {
       AnswerEvidence evidence,
       List<UUID> attachmentIds,
       List<UUID> answerAttachmentIds) {
+    return appendTurn(
+        chat,
+        question,
+        usedPrompt,
+        answer,
+        sources,
+        evidence,
+        attachmentIds,
+        answerAttachmentIds,
+        null);
+  }
+
+  /**
+   * The same turn, keeping {@code agentRun} - the steps and end of the agent run that gave the
+   * answer, {@code null} for any other answer - on the answer's message.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public String appendTurn(
+      Chat chat,
+      String question,
+      UsedPrompt usedPrompt,
+      String answer,
+      List<ChatSource> sources,
+      AnswerEvidence evidence,
+      List<UUID> attachmentIds,
+      List<UUID> answerAttachmentIds,
+      AgentRunRecord agentRun) {
     // An archived space accepts no new turn; QueryService#query checks this early, this call
     // guards a space archived in between.
     requireSpaceNotArchived(chat.getSpaceId());
     String serializedSources = serializeSources(sources);
     String serializedEvidence = serializeEvidence(evidence);
+    String serializedAgentRun = serializeJson(agentRun, "agent run");
     String derivedTitle = deriveTitle(question);
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
@@ -615,6 +685,7 @@ public class ChatService {
                 answer,
                 serializedSources,
                 serializedEvidence,
+                serializedAgentRun,
                 derivedTitle,
                 attachmentIds,
                 answerAttachmentIds);
@@ -662,17 +733,46 @@ public class ChatService {
     return new ChatConversation(chat, messages, chatNoteService.points(chat.getId()));
   }
 
-  /** {@link #toConversation(Chat)} carrying the requesting person's own archive mark. */
+  /**
+   * {@link #toConversation(Chat)} carrying the requesting person's own archive mark and, at every
+   * stamped answer, the stamped agent's current revision as far as the person may still read it.
+   */
   private ChatConversation toConversation(Chat chat, UUID userId) {
     ChatConversation conversation = toConversation(chat);
     Instant archivedAt =
         chatPersonalMarkRepository.findArchivedAt(chat.getId(), userId).orElse(null);
     return new ChatConversation(
         chat,
-        conversation.getMessages(),
+        withCurrentAgentRevisions(conversation.getMessages(), chat.getOrganizationId(), userId),
         conversation.getNoteItems(),
         archivedAt,
         deletionDueAt(chat, archivedAt));
+  }
+
+  private List<ChatTurn> withCurrentAgentRevisions(
+      List<ChatTurn> turns, UUID organizationId, UUID userId) {
+    Set<UUID> agentIds = new LinkedHashSet<>();
+    for (ChatTurn turn : turns) {
+      if (isStamped(turn)) {
+        agentIds.add(turn.getAgentRun().agentId());
+      }
+    }
+    if (agentIds.isEmpty()) {
+      return turns;
+    }
+    Map<UUID, Integer> current = agentRevisions.current(agentIds, organizationId, userId);
+    return turns.stream()
+        .map(
+            turn ->
+                isStamped(turn)
+                    ? turn.withCurrentAgentRevision(current.get(turn.getAgentRun().agentId()))
+                    : turn)
+        .toList();
+  }
+
+  private static boolean isStamped(ChatTurn turn) {
+    AgentRunRecord run = turn.getAgentRun();
+    return run != null && run.stamp() != null && run.agentId() != null;
   }
 
   /** When the automatic chat cleanup deletes the chat archived at {@code archivedAt}, if ever. */
@@ -699,7 +799,32 @@ public class ChatService {
         parseSources(message.getSources()),
         message.getUsedPrompt(),
         message.getCreatedAt(),
-        parseEvidence(message.getAnswerEvidence()));
+        parseEvidence(message.getAnswerEvidence()),
+        parseAgentRun(message.getAgentRun()));
+  }
+
+  private AgentRunRecord parseAgentRun(String agentRunJson) {
+    if (agentRunJson == null || agentRunJson.isBlank()) {
+      return null;
+    }
+    try {
+      return objectMapper.readValue(agentRunJson, AgentRunRecord.class);
+    } catch (JacksonException e) {
+      log.warn("Failed to parse persisted agent run, treating as absent", e);
+      return null;
+    }
+  }
+
+  private String serializeJson(Object value, String what) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return objectMapper.writeValueAsString(value);
+    } catch (JacksonException e) {
+      log.warn("Failed to serialize {}, storing none", what, e);
+      return null;
+    }
   }
 
   private AnswerEvidence parseEvidence(String evidenceJson) {

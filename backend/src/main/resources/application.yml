@@ -95,7 +95,8 @@ spring:
     # driven by an environment variable: with the native Ollama starter gone, "openai" is the only
     # autoconfiguration Spring AI can wire here.
     # The embedding model is no autoconfiguration either: it is the row of embedding_model, chosen
-    # in the installation (ADR-0060, Entscheidung 10) and served by io.opaa.llm.InstalledEmbeddingModel.
+    # in the installation (ADR-0060, Entscheidung 10) and served by
+    # io.opaa.llm.embedding.InstalledEmbeddingModel.
     model:
       chat: openai
       embedding: none
@@ -124,7 +125,26 @@ spring:
           resource: false
           prompt: false
           completion: false
+    # Observations carry no content (ADR-0071): no prompt, answer, retrieved chunk or tool argument
+    # goes into a log, span or metric. Set explicitly so a changed library default cannot switch
+    # one on; SpringAiContentPropertiesTest requires every such property Spring AI declares here.
+    chat:
+      observations:
+        log-prompt: false
+        log-completion: false
+      client:
+        observations:
+          log-prompt: false
+          log-completion: false
+    image:
+      observations:
+        log-prompt: false
+    tools:
+      observations:
+        include-content: false
     vectorstore:
+      observations:
+        log-query-response: false
       pgvector:
         # vector_store and its indexes are created once, with the dimension of the probe embedding,
         # when the embedding model is installed (io.opaa.knowledge.VectorTableCreator), so no
@@ -237,22 +257,37 @@ opaa:
       excerpt-max-chars: ${OPAA_CHAT_ATTACHMENTS_EXCERPT_MAX_CHARS:40000}
       unbound-retention: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_RETENTION:24h}
       read-wait: ${OPAA_CHAT_ATTACHMENTS_READ_WAIT:8s}
-  # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
-  # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
-  # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
-  # behind it (io.opaa.query.spike) only exist while this is set.
-  spike:
-    tool-loop:
-      enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
-  # SPIKE, development only: the tool run_code of the tool loop above, a Python script in an
-  # OpenSandbox sandbox without network (docker-compose.sandbox.yml). Needs both switches; the
-  # beans behind it (io.opaa.query.spike) only exist while both are set.
+      # Storage quotas (bytes, 0 = unlimited) over the size of every attachment until it is deleted:
+      # per account, bound and unbound (default 2 GiB); per account for those no question has named
+      # yet (default 512 MiB, at most the account quota); per organization (default unlimited).
+      account-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ACCOUNT_QUOTA_BYTES:2147483648}
+      unbound-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_QUOTA_BYTES:536870912}
+      organization-quota-bytes: ${OPAA_CHAT_ATTACHMENTS_ORGANIZATION_QUOTA_BYTES:0}
+  # Limits of an agent run and of the runs at the same time (ADR-0070, Entscheidung 6). The four
+  # run limits are the ceiling: an agent without limits of its own gets less (5 calls, 3 searches,
+  # 120s, 60000 characters), one with its own never goes above them. workspace-capacity is the
+  # installation's absolute figure, the same on every instance; a request beyond it is refused
+  # before its run begins.
+  # workspace-capacity-per-person is one person's share of it (at least 1, at most the capacity).
+  agent:
+    max-tool-calls: ${OPAA_AGENT_MAX_TOOL_CALLS:12}
+    max-search-calls: ${OPAA_AGENT_MAX_SEARCH_CALLS:8}
+    max-duration: ${OPAA_AGENT_MAX_DURATION:240s}
+    max-collected-chars: ${OPAA_AGENT_MAX_COLLECTED_CHARS:200000}
+    workspace-capacity: ${OPAA_AGENT_WORKSPACE_CAPACITY:2}
+    workspace-capacity-per-person: ${OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON:1}
+    closing-call-allowance: ${OPAA_AGENT_CLOSING_CALL_ALLOWANCE:60s}
+  # The isolated execution environment behind the agent tools run_code and fill_template
+  # (ADR-0073): an OpenSandbox server that starts one sandbox without network per agent run. Off by
+  # default; switched on, the start fails without base-url and api-key. max-lifetime must not
+  # exceed the server's max_sandbox_timeout_seconds.
   sandbox:
     enabled: ${OPAA_SANDBOX_ENABLED:false}
     base-url: ${OPAA_SANDBOX_BASE_URL:http://opensandbox-server:8090}
     api-key: ${OPAA_SANDBOX_API_KEY:}
     image: ${OPAA_SANDBOX_IMAGE:opaa/sandbox-python:1}
     run-timeout: ${OPAA_SANDBOX_RUN_TIMEOUT:60s}
+    max-lifetime: ${OPAA_SANDBOX_MAX_LIFETIME:15m}
     cpu: ${OPAA_SANDBOX_CPU:1}
     memory: ${OPAA_SANDBOX_MEMORY:1Gi}
   # Installation-wide feature flags (ADR-0044, io.opaa.common.FeatureFlags): every flag is on
@@ -382,16 +417,6 @@ opaa:
     call-timeout: ${OPAA_OCR_CALL_TIMEOUT:45m}
     # Pause before the first and between two passes catching up on uploaded scans, at least 20s.
     catch-up-interval: ${OPAA_OCR_CATCH_UP_INTERVAL:5m}
-  # Malware scan of every file before a library takes it in: a clamd daemon over TCP (INSTREAM).
-  # Off by default; enabled without a host refuses the start. on-unavailable: REJECT keeps a file
-  # the scanner could not judge out, ACCEPT takes it in unscanned. clamd's StreamMaxLength must
-  # cover the largest file, or such a file counts as not judged. timeout bounds one whole scan.
-  malware-scan:
-    enabled: ${OPAA_MALWARE_SCAN_ENABLED:false}
-    host: ${OPAA_MALWARE_SCAN_HOST:}
-    port: ${OPAA_MALWARE_SCAN_PORT:3310}
-    timeout: ${OPAA_MALWARE_SCAN_TIMEOUT:30s}
-    on-unavailable: ${OPAA_MALWARE_SCAN_ON_UNAVAILABLE:REJECT}
   # Export of the audit log to a SIEM (ADR-0055): syslog/CEF over TCP, TLS by default, without
   # pseudonyms and, unless include-labels, without object names, from the moment it is switched
   # on. Off by default; enabled without a host refuses the start. An entry waits for every older
@@ -425,14 +450,17 @@ opaa:
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
     # What every request to a source OPAA does not operate carries and tolerates - RSS feed, web
     # directory and Confluence alike; see SourceHttpProperties. Confluence keeps its own
-    # rate-limit numbers below. The two per-run bounds apply to the feed and web-directory
-    # connectors only; Confluence and S3 keep their own request budgets.
+    # rate-limit numbers below. The request budget and the wait cap per run apply to the feed and
+    # web-directory connectors only; Confluence and S3 keep their own request budgets.
     http:
       user-agent: ${OPAA_INDEXING_HTTP_USER_AGENT:OPAA-Indexer/1.0}
       max-rate-limit-retries: ${OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES:6}
       max-retry-after: ${OPAA_INDEXING_HTTP_MAX_RETRY_AFTER:2m}
       request-budget-per-run: ${OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN:0}
       max-rate-limit-wait-per-run: ${OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN:15m}
+      # Distinct hosts one feed, web-directory or Confluence run may contact; see
+      # SourceRequestPolicy.DEFAULT_MAX_HOSTS_PER_RUN.
+      max-hosts-per-run: ${OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN:100}
     rss:
       max-entries: ${OPAA_INDEXING_RSS_MAX_ENTRIES:200}
       max-feed-size-bytes: ${OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES:10485760}
@@ -644,7 +672,8 @@ opaa:
     orphan-grace-minutes: ${OPAA_UPLOAD_ORPHAN_GRACE_MINUTES:60}
   library:
     # Upper limit (bytes) of the total size, summed across every document a library holds, that one
-    # library may occupy - enforced at every path that stores document content. The house-wide quota
+    # library may occupy - enforced at every path that stores library content; chat attachments have
+    # their own quotas under opaa.chat.attachments.*-quota-bytes. The house-wide quota
     # of shared libraries is set below it in the administration. Default 10 GiB; 0 or negative
     # lifts the upper limit - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
@@ -655,6 +684,9 @@ opaa:
     # Days the last sign-in of an account of an identity provider may lie back for its access tokens
     # to work; deactivation and groups at the provider reach OPAA only with a sign-in.
     provider-sign-in-max-age-days: ${OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS:30}
+    # Personal access tokens one account may hold at once; every token has its own hour quota, all
+    # tokens of one person share a second window of the same size.
+    max-active-tokens-per-account: ${OPAA_EXTERNAL_ACCESS_MAX_ACTIVE_TOKENS_PER_ACCOUNT:10}
   documents:
     # The synchronous remote-content proxy path (GET /api/v1/documents/{documentId}/content for an
     # HTTP_DIRECTORY/RSS_FEED document) has its own, smaller bound, a short timeout per hop and a
@@ -682,12 +714,15 @@ opaa:
     # query to document-upload: max-requests per client, global-max-requests across all clients;
     # past either the answer is 429. Both count only requests the security chain authenticated (the
     # push intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
-    # max-requests-per-account (query, chat-search, search, transcription, document-upload) counts
-    # per signed-in account, per access token and per person over all her access tokens, whatever
-    # address they use; checked behind the security chain, 0 switches it off, an empty value fails
-    # the start. An access token gives back its address token; any 429 of a later limit that
-    # refuses before the actual work (the token quota, the busy answer of the attachment
-    # extraction) gives back the global token.
+    # max-requests-per-account counts per signed-in account, per access token and per person over
+    # all her access tokens, whatever address they use; checked behind the security chain, 0
+    # switches it off (not for write, where it must be at least 1), an empty value fails the start.
+    # Every shipped global ceiling has one below it (the push intake and the sign-in excepted: no
+    # account there), so one account alone never spends a ceiling. An access token gives back its
+    # address token; any 429 of a later limit that refuses before the actual work (the token quota,
+    # the busy answer of the attachment extraction) and a refusal of the operation's rights or
+    # existence checks before its work (RefusedBeforeWork) give back the global token - the budgets
+    # per client and per account stay spent.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -697,6 +732,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS:1}
       window-seconds: ${OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS:5}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT:3}
     # The source connection test is a synchronous probe with its own outbound connections - looser
     # than the indexing trigger (a caller is expected to test a few configurations while filling out
     # the create dialog) but still capped, so it cannot be used to tie up worker threads or as a
@@ -705,6 +741,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS:30}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS_PER_ACCOUNT:10}
     # GET /api/v1/documents/{documentId}/content is, for a HTTP_DIRECTORY/ RSS_FEED document, a
     # synchronous proxy fetch with its own outbound connection - the same reason source-test above
     # is limited, except this one is reachable by any VIEWER on routine "Im Dokument öffnen" clicks
@@ -714,6 +751,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS:20}
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS_PER_ACCOUNT:20}
     # The push intake is reachable without a session; the limiter bounds the secret checks an
     # unauthenticated caller can cause. Per library (capture group, a well-formed library id only),
     # generous enough for a busy source - an author saving every few seconds - and the intake
@@ -757,6 +795,22 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS:600}
       max-requests-per-account: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT:60}
+    # Opening a live dictation (the WebSocket upgrade GET /api/v1/transcriptions/stream): every
+    # session opens an upstream session of the transcription model. The session itself is bounded
+    # in length, in audio and in pace (TranscriptionStreamHandler).
+    transcription-stream:
+      max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS:10}
+      window-seconds: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS_PER_ACCOUNT:10}
+    # Every POST, PUT, PATCH and DELETE under /api/v1 that none of the rules above covers, one
+    # budget for all of them: it bounds how fast one account can change things and fill the audit
+    # trail. No global ceiling - a shared one over every write would let a few accounts block all
+    # changes of the installation.
+    write:
+      max-requests: ${OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS:600}
+      window-seconds: ${OPAA_RATE_LIMIT_WRITE_WINDOW_SECONDS:60}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS_PER_ACCOUNT:120}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email (the confirm-registration endpoint)
     # are keyed by client address in RateLimitFilter; change-password by the authenticated
@@ -881,13 +935,45 @@ opaa:
       keyed: ${OPAA_ENCRYPTION_KEYED_FORMAT:true}
 
 management:
+  # Optional OpenTelemetry tracing (ADR-0071): off unless OPAA_TRACING_ENABLED, then spans go to
+  # OPAA_TRACING_OTLP_ENDPOINT over OTLP/HTTP (the only transport of the JDK sender on the
+  # classpath). io.opaa.observability.RequestIdFilter hides a caller's traceparent, so every request
+  # starts its own trace and the ratio decides on an id OPAA drew; TracingConfiguration keeps only
+  # allowlisted span attributes. No trace id becomes an exemplar of a metric.
+  tracing:
+    export:
+      enabled: ${OPAA_TRACING_ENABLED:false}
+    sampling:
+      probability: ${OPAA_TRACING_SAMPLING_PROBABILITY:0.05}
+    exemplars:
+      include: none
+    # A trace ends at the installation's edge: no outgoing call carries a traceparent, so no model
+    # provider, source or mail server gets an id that the own log ties to a request.
+    propagation:
+      produce: ""
+  opentelemetry:
+    # No OTEL_* variable of the container switches an export on behind the OPAA_* keys.
+    map-environment-variables: false
+    tracing:
+      sampler: trace-id-ratio
+      export:
+        otlp:
+          endpoint: ${OPAA_TRACING_OTLP_ENDPOINT:}
+          transport: http
+  logging:
+    export:
+      otlp:
+        enabled: false
   endpoints:
     web:
       exposure:
         include: health,info,prometheus,metrics
   endpoint:
     health:
+      # Details (provider, endpoint, error) only for the system administration; every other
+      # signed-in account sees the status (ADR-0071).
       show-details: when-authorized
+      roles: SYSTEM_ADMIN
       # Spring Boot enables the two probes in a web application anyway; set here so the paths a
       # load balancer and a container health check rely on stay a deliberate choice.
       probes:
@@ -899,11 +985,36 @@ management:
         # rotation while sign-in, library management and document access keep working.
         readiness:
           include: readinessState,db
+  metrics:
+    # On every series: which application and which instance (the host name, a pod's name under
+    # Kubernetes). Not "instance": Prometheus sets that label itself and would rename ours.
+    tags:
+      application: ${spring.application.name}
+      host: ${HOSTNAME:unknown}
+    # Histogram buckets at the SLO thresholds of the latency timers (ADR-0071); comma-separated
+    # durations, each list replaceable through its variable.
+    distribution:
+      slo:
+        "[http.server.requests]": ${OPAA_METRICS_SLO_HTTP:100ms,250ms,500ms,1s,2500ms,5s,10s,30s}
+        "[opaa.query.duration]": ${OPAA_METRICS_SLO_QUERY:1s,2500ms,5s,10s,20s,30s,60s,120s}
+        "[opaa.query.time_to_first_token]": ${OPAA_METRICS_SLO_TTFT:500ms,1s,2s,3s,5s,10s,20s,30s}
+        "[opaa.ocr.duration]": ${OPAA_METRICS_SLO_OCR:1s,5s,10s,30s,60s,120s,300s,600s}
+        "[opaa.agent.run.duration]": ${OPAA_METRICS_SLO_AGENT:10s,30s,60s,120s,180s,240s,300s}
+        "[gen_ai.client.operation]": ${OPAA_METRICS_SLO_MODEL:250ms,500ms,1s,2500ms,5s,10s,30s,60s}
+        "[opaa.outbound.requests]": ${OPAA_METRICS_SLO_OUTBOUND:100ms,250ms,500ms,1s,2500ms,5s,10s,30s,60s}
+        "[tasks.scheduled.execution]": ${OPAA_METRICS_SLO_SCHEDULED:100ms,1s,10s,60s,300s,900s}
+        "[opaa.indexing.run.duration]": ${OPAA_METRICS_SLO_INDEXING_RUN:10s,60s,300s,900s,1800s,3600s,7200s,14400s}
+        "[opaa.indexing.stage.duration]": ${OPAA_METRICS_SLO_INDEXING_STAGE:10ms,100ms,500ms,1s,5s,10s,30s,60s,300s}
 
 logging:
   # The stack trace of the plain-text log with every exception message unable to forge an entry;
   # the conversion word is registered by io.opaa.observability.SafeLogMessages.
   exception-conversion-word: "%opaaEx"
+  pattern:
+    # The request id of the plain-text log, "[<id>] " before the logger name, nothing outside a
+    # request; the structured formats carry every MDC field (requestId, indexingRunId, traceId,
+    # spanId) as its own field. An id has at least 8 characters, so only the empty "[] " has 3.
+    correlation: "%replace([%X{requestId}] ){'^...$', ''}"
   level:
     org.hibernate.orm.connections.pooling: WARN
     # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included - and the
@@ -925,6 +1036,11 @@ logging:
     org.springframework.web.method.HandlerMethod: INFO
     org.hibernate.validator.internal.engine.resolver.JPATraversableResolver: INFO
     org.postgresql.core.v3.QueryExecutorImpl: INFO
+    # Tomcat prints every received request head and the start of its body at DEBUG - the
+    # Authorization header with a bearer token, a password in a sign-in body. Pinned so raising
+    # org.apache or the root logger for diagnosis never prints one; guarded by
+    # McpServerIntegrationTest#noBearerValueReachesALogLine.
+    org.apache.coyote.http11.Http11InputBuffer: INFO
 
 ---
 spring:

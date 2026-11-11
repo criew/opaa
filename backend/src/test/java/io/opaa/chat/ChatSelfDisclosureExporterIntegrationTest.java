@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.compliance.SelfDisclosureSubject;
 import io.opaa.test.CapturingSelfDisclosureSink;
@@ -140,6 +141,61 @@ class ChatSelfDisclosureExporterIntegrationTest {
     assertThat(valuesOtherThanIdsAndTimestamps(sink)).noneMatch(value -> value.contains("9917"));
   }
 
+  /**
+   * A chat source from a library the person no longer reads keeps its file name, but the library's
+   * name today is replaced by a neutral placeholder.
+   */
+  @Test
+  void aSourceFromALibraryWithoutReadRightAppearsWithoutTheLibraryName() throws Exception {
+    UUID left = data.library("Neuer Name ohne Leserecht", other, false, "UPLOAD");
+    UUID document =
+        data.document(left, "erlass.pdf", "org/lib/left-original", null, "UPLOAD", other, "y");
+    UUID chat = chat("Chat mit alter Quelle", person);
+    message(chat, 1, "USER", "Was regelt der Erlass?", null);
+    message(
+        chat,
+        2,
+        "ASSISTANT",
+        "Er regelt die Frist.",
+        "[{\"fileName\":\"erlass.pdf\",\"documentId\":\""
+            + document
+            + "\",\"relevanceScore\":1.0,\"matchCount\":1,\"cited\":true}]");
+
+    CapturingSelfDisclosureSink sink = export();
+
+    assertThat(sink.records("messages").get(1))
+        .containsEntry("sources", List.of("erlass.pdf · Bibliothek: (kein Leserecht) · zitiert"));
+    assertThat(sink.text()).doesNotContain("Neuer Name ohne Leserecht");
+  }
+
+  /**
+   * A chat in a space the person has left stays hers, but the space's name today is replaced by a
+   * neutral placeholder; the space she owns keeps its name.
+   */
+  @Test
+  void aChatInASpaceThePersonLeftAppearsWithoutTheSpaceName() throws Exception {
+    UUID left = data.space("Umbenannt nach dem Austritt", other);
+    chat("Chat im eigenen Space", person);
+    UUID chat = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO chats (id, space_id, author_id, organization_id, use_knowledge, status,"
+            + " title, created_at, updated_at) VALUES (?, ?, ?, ?, true, 'PRIVATE',"
+            + " 'Chat im verlassenen Space', now(), now())",
+        chat,
+        left,
+        person,
+        data.organizationId());
+
+    CapturingSelfDisclosureSink sink = export();
+
+    assertThat(sink.records("chats"))
+        .extracting(r -> r.get("title"), r -> r.get("space"))
+        .containsExactlyInAnyOrder(
+            tuple("Chat im eigenen Space", "Fachbereich Bau"),
+            tuple("Chat im verlassenen Space", "(kein Leserecht)"));
+    assertThat(sink.text()).doesNotContain("Umbenannt nach dem Austritt");
+  }
+
   @Test
   void leavesOutTheChatsOfAnotherPersonInTheSameSpace() throws Exception {
     UUID mine = chat("Mein Chat", person);
@@ -199,6 +255,30 @@ class ChatSelfDisclosureExporterIntegrationTest {
         .extracting(r -> r.get("sequence"))
         .isSorted()
         .doesNotHaveDuplicates();
+  }
+
+  /** An agent answer leaves with its steps and one line for its version stamp. */
+  @Test
+  void anAgentRunLeavesWithItsStepsAndItsStamp() {
+    String run =
+        "{\"runId\":\"00000000-0000-0000-0000-000000000001\",\"endState\":\"COMPLETED\","
+            + "\"steps\":[{\"tool\":\"search_knowledge\",\"detail\":\"Fristen\",\"hits\":2,"
+            + "\"status\":\"DONE\"}],\"agentId\":\"00000000-0000-0000-0000-0000000000a1\","
+            + "\"agentName\":\"Prüfhilfe\",\"stamp\":{"
+            + "\"agentRevision\":3,\"libraries\":[{\"id\":\"00000000-0000-0000-0000-0000000000b1\","
+            + "\"name\":\"Erlasse\"}],\"templates\":[{\"id\":"
+            + "\"00000000-0000-0000-0000-0000000000c1\",\"name\":\"Bescheid\",\"revision\":2}],"
+            + "\"model\":\"modell-a\"}}";
+
+    assertThat(ChatSelfDisclosureExporter.agentRunOf(run))
+        .containsExactly(
+            "search_knowledge: Fristen (2 Treffer)",
+            "Fassungsstempel: Agent „Prüfhilfe“, Fassung 3; Bibliotheken: Erlasse;"
+                + " Vorlagen: „Bescheid“, Fassung 2; Modell: modell-a");
+    assertThat(
+            ChatSelfDisclosureExporter.agentRunOf(
+                "{\"runId\":\"00000000-0000-0000-0000-000000000001\",\"steps\":[]}"))
+        .isEmpty();
   }
 
   /** Only numbered positions leave a location; headings, sheet names and slide titles stay. */

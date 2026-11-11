@@ -29,6 +29,16 @@ io.opaa.api.types.AssetGrantSubjectType:
   assessment: SECURITY
   readable: [ALL_ACCOUNTS, GROUP, USER]
   pending: []
+io.opaa.api.types.AgentPlanStep:
+  attributes: [Agent.planStep]
+  assessment: STATE
+  readable: [CONFIRM, "OFF"]
+  pending: []
+io.opaa.api.types.AssetLockCause:
+  attributes: [AssetResponsibility.lockCause]
+  assessment: SECURITY
+  readable: [MANUAL, NO_RESPONSIBLE]
+  pending: []
 io.opaa.api.types.AssetOrigin:
   attributes: [Asset.origin]
   assessment: STATE
@@ -48,9 +58,13 @@ io.opaa.api.types.AuditEventType:
   attributes: [AuditLogEntry.eventType]
   assessment: AUDIT
   readable: [
-    ACCOUNT_DEACTIVATED, ACCOUNT_ERASED, ACCOUNT_REAUTHENTICATION_FORCED, API_TOKEN_EXPIRED,
+    ACCOUNT_DEACTIVATED, ACCOUNT_ERASED, ACCOUNT_REAUTHENTICATION_FORCED, AGENT_CHANGED,
+    AGENT_DIRECTORY_ACCESSED,
+    AGENT_CREATED, AGENT_DELETED, AGENT_RUN_LOG_RETENTION_CHANGED, AGENT_SETTINGS_CHANGED,
+    API_TOKEN_EXPIRED,
     API_TOKEN_ISSUED,
-    API_TOKEN_REVOKED, ASSET_DETACHED_FROM_SPACE, ASSET_EXTERNAL_ACCESS_CHANGED,
+    API_TOKEN_REVOKED, ASSET_DETACHED_FROM_SPACE, ASSET_EXTERNAL_ACCESS_CHANGED, ASSET_LOCKED,
+    ASSET_RESPONSIBILITY_CHANGED, ASSET_UNLOCKED, RESPONSIBILITY_LOCK_PERIOD_CHANGED,
     ASSET_EXTERNAL_ACCESS_EXPIRED, ASSET_GRANT_CHANGED, ASSET_GRANT_EXPIRED, ASSET_GRANT_GRANTED,
     ASSET_GRANT_REVOKED, ASSET_OWNERSHIP_CLAIMED, ASSET_OWNER_CHANGED, ASSET_SHARED_TO_SPACE,
     ASSET_SUCCESSION_OPENED, ASSET_VISIBILITY_CHANGED, AUDITOR_ROLE_GRANTED, AUDITOR_ROLE_REQUESTED,
@@ -67,6 +81,8 @@ io.opaa.api.types.AuditEventType:
     CONNECTOR_PROFILE_REQUIRED, CONNECTOR_UNLOCKED, DATA_COLLECTION_DISCLOSURE_EXPORTED,
     DIAGNOSTIC_CONTEXT_RETENTION_CHANGED, DIAGNOSTIC_IMPERSONATION_GRANTED,
     DIAGNOSTIC_IMPERSONATION_REVOKED, DIRECTORY_ACCOUNT_LOCKED, DIRECTORY_ACCOUNT_UNLOCKED,
+    DOCUMENT_TEMPLATE_CHANGED, DOCUMENT_TEMPLATE_CREATED, DOCUMENT_TEMPLATE_DELETED,
+    DOCUMENT_TEMPLATE_SETTINGS_CHANGED,
     DIRECTORY_SYNC_CHANGE_APPLIED, DIRECTORY_SYNC_CHANGE_THRESHOLD_CHANGED,
     DIRECTORY_SYNC_PLAN_DISCARDED, DIRECTORY_SYNC_REPORT_READ,
     DIRECTORY_SYNC_RUN_COMPLETED, DOCUMENT_METADATA_CHANGED, EMBEDDING_MODEL_CHANGED,
@@ -94,7 +110,7 @@ io.opaa.api.types.AuditEventType:
     LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED, LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED,
     MAIL_SETTINGS_CHANGED, MAIL_TEMPLATE_CHANGED,
     MAIL_TEMPLATE_RESET,
-    MAIL_TEST_SENT, MALWARE_DETECTED, MODEL_POLICY_CHANGED, OIDC_PROVIDER_CHANGED, OIDC_PROVIDER_CREATED,
+    MAIL_TEST_SENT, MALWARE_DETECTED, MALWARE_SCAN_SETTINGS_CHANGED, MODEL_POLICY_CHANGED, OIDC_PROVIDER_CHANGED, OIDC_PROVIDER_CREATED,
     OIDC_PROVIDER_DELETED, OIDC_PROVIDER_DISABLED, OIDC_PROVIDER_ENABLED, OUTBOUND_PROXY_CHANGED,
     PERMISSION_HISTORY_ACCESSED, PERMISSION_HISTORY_RETENTION_CHANGED, PERMISSION_TRANSFER_EXECUTED,
     PERMISSION_TRANSFER_PREVIEWED, PRIVATE_LIBRARY_ERASED, PRIVATE_STORAGE_QUOTA_CHANGED,
@@ -132,7 +148,8 @@ io.opaa.api.types.AuditObjectType:
   attributes: [AuditLogEntry.objectType, Notification.objectType]
   assessment: AUDIT
   readable: [
-    API_TOKEN, ASSET_GRANT, AUDIT_LOG, DIRECTORY_SYNC_RUN, GROUP, KNOWLEDGE_LIBRARY, PROMPT,
+    AGENT, API_TOKEN, ASSET_GRANT, AUDIT_LOG, DIRECTORY_SYNC_RUN, DOCUMENT_TEMPLATE, GROUP,
+    KNOWLEDGE_LIBRARY, PROMPT,
     PROMPT_LIBRARY, SERVICE_ACCOUNT, SPACE, SYSTEM_SETTING, USER_ACCOUNT
   ]
   pending: []
@@ -150,8 +167,8 @@ io.opaa.api.types.Capability:
   attributes: [CapabilityGrant.capability, CapabilityGrantHistory.capability]
   assessment: SECURITY
   readable: [
-    CREATE_CONNECTOR_LIBRARY, CREATE_INTERNAL_GROUP, CREATE_LIBRARY, CREATE_PROMPT_LIBRARY,
-    CREATE_SPACE
+    CREATE_AGENT, CREATE_CONNECTOR_LIBRARY, CREATE_INTERNAL_GROUP, CREATE_LIBRARY,
+    CREATE_PROMPT_LIBRARY, CREATE_SPACE, CREATE_TEMPLATE, VIEW_AGENT_DIRECTORY
   ]
   pending: []
 io.opaa.api.types.CapabilitySubjectType:
@@ -297,6 +314,11 @@ io.opaa.api.types.NotificationType:
     SOURCE_CONNECTION_EXPIRED, SOURCE_CONNECTION_EXPIRING, SOURCE_FULL_SYNC_FORCED
   ]
   pending: []
+io.opaa.api.types.MalwareScanUnavailablePolicy:
+  attributes: [MalwareScanSettings.onUnavailable]
+  assessment: SECURITY
+  readable: [ACCEPT, REJECT]
+  pending: []
 io.opaa.api.types.OwnAddressStock:
   attributes: [ConnectorTypePolicy.ownAddressStock]
   assessment: SECURITY
@@ -316,6 +338,11 @@ io.opaa.api.types.ProviderType:
   attributes: [OidcProvider.providerType]
   assessment: SECURITY
   readable: [LOCAL, OIDC]
+  pending: []
+io.opaa.api.types.RealtimeTranscriptionProtocol:
+  attributes: [TranscriptionModelSettings.realtimeProtocol]
+  assessment: STATE
+  readable: [MISTRAL, OPENAI, VLLM]
   pending: []
 io.opaa.api.types.SpaceRole:
   attributes: [SpaceMembership.role, SpaceMembershipHistory.role]
@@ -341,6 +368,21 @@ io.opaa.api.types.TextRecognitionConnectionType:
   attributes: [TextRecognitionModelSettings.connectionType]
   assessment: STATE
   readable: [DOCLING_SERVE, OPENAI_VISION]
+  pending: []
+io.opaa.api.types.ToolCapability:
+  attributes: [LlmModel.toolCapability]
+  assessment: STATE
+  readable: [CAPABLE, NOT_CAPABLE, UNVERIFIED]
+  pending: []
+io.opaa.api.types.ToolCapabilityBasis:
+  attributes: [LlmModel.toolCapabilityBasis]
+  assessment: STATE
+  readable: [MANUAL, MEASURED]
+  pending: []
+io.opaa.api.types.ToolCheckStatus:
+  attributes: [ToolCheck.status]
+  assessment: STATE
+  readable: [ABORTED, COMPLETED, FAILED, RUNNING]
   pending: []
 io.opaa.asset.AssetVisibilityHistoryCause:
   attributes: [AssetVisibilityHistory.cause]
@@ -418,8 +460,8 @@ io.opaa.installation.InstallationStep:
   attributes: [InstallationStepRecord.step]
   assessment: STATE
   readable: [
-    BRANDING, CHAT_MODEL, EMBEDDING_MODEL, FIRST_ADMIN, MAIL, RERANK_MODEL, SIGN_IN,
-    TRANSCRIPTION_MODEL
+    BRANDING, CHAT_MODEL, EMBEDDING_MODEL, FIRST_ADMIN, MAIL, MALWARE_SCAN, RERANK_MODEL, SIGN_IN,
+    TEXT_RECOGNITION_MODEL, TRANSCRIPTION_MODEL
   ]
   pending: []
 io.opaa.knowledge.ErasureCause:

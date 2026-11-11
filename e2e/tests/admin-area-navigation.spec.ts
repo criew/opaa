@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/auth'
+import { headerCreateButton } from '../fixtures/pageHeader'
 
 /**
  * Navigation durch den Verwaltungsbereich (#787/#800) - hierher aus accessibility.spec.ts
@@ -50,16 +51,16 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     await expect(page.getByRole('heading', { level: 1, name: 'Branding' })).toBeVisible()
   })
 
-  // Die 320-px-Zusage aus #800 ("ein 320px-Viewport zeigt jedes Ziel") als Geometrie-
-  // Zusicherung statt als Durchklick - Klicks beweisen hier nichts, weil Playwright vor jedem
-  // Klick scrollt. Rot, sobald der Mobil-Umbruch der Sekundärspalte zurückgebaut wird.
-  test('320 px: kein horizontaler Überlauf, jedes Ziel im Viewport', async ({
+  // Unter 900 px steht die Bereichsnavigation als eine waagerecht scrollbare Zeile über der Seite
+  // (Leitlinie 4.7). Geometrie statt Durchklick: Playwright scrollt vor jedem Klick, ein Klick
+  // bewiese hier nichts.
+  test('320 px: kein horizontaler Überlauf, Navigation in einer Zeile, aktiver Eintrag sichtbar', async ({
     authenticatedPage: page,
   }) => {
     await page.setViewportSize({ width: 320, height: 640 })
     await page.goto('/admin/groups')
-    const column = page.getByRole('navigation', { name: 'Administration' })
-    await expect(column).toBeVisible()
+    const nav = page.getByRole('navigation', { name: 'Administration' })
+    await expect(nav).toBeVisible()
 
     // String form on purpose: the suite's tsconfig has no DOM lib (tests run in Node,
     // only this expression runs in the browser).
@@ -68,22 +69,34 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
       320,
     )
 
-    // "Suche & Indexierung" is the longest of the four labels and therefore the one that
-    // decides whether the column still fits into 320 px.
-    for (const label of [
-      'Allgemein & Branding',
-      'Benutzer',
-      'Gruppen',
-      'Modelle',
-      'E-Mail',
-      'Suche & Indexierung',
-    ]) {
-      const box = await column
-        .getByRole('link', { name: label, exact: true })
-        .boundingBox()
-      expect(box, `Ziel "${label}" ist gerendert`).not.toBeNull()
-      expect(box!.x, `Ziel "${label}" beginnt im Viewport`).toBeGreaterThanOrEqual(0)
-      expect(box!.x + box!.width, `Ziel "${label}" endet im Viewport`).toBeLessThanOrEqual(320)
-    }
+    const links = nav.getByRole('link')
+    const count = await links.count()
+    expect(count, 'alle Einträge der Verwaltung stehen in der Zeile').toBeGreaterThan(10)
+    const firstBox = await links.first().boundingBox()
+    const lastBox = await links.last().boundingBox()
+    expect(firstBox, 'erster Eintrag gerendert').not.toBeNull()
+    expect(lastBox, 'letzter Eintrag gerendert').not.toBeNull()
+    expect(Math.abs(lastBox!.y - firstBox!.y), 'alle Einträge in einer Zeile').toBeLessThan(2)
+
+    const current = nav.getByRole('link', { name: 'Gruppen', exact: true })
+    await expect(current).toHaveAttribute('aria-current', 'page')
+    const box = await current.boundingBox()
+    expect(box, 'aktiver Eintrag gerendert').not.toBeNull()
+    expect(box!.x, 'aktiver Eintrag beginnt im Viewport').toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width, 'aktiver Eintrag endet im Viewport').toBeLessThanOrEqual(320)
+
+    const heading = await page.getByRole('heading', { level: 1, name: 'Gruppen' }).boundingBox()
+    expect(heading, 'Seitentitel gerendert').not.toBeNull()
+    expect(heading!.y, 'Inhalt beginnt oben (Leitlinie 4.7)').toBeLessThanOrEqual(200)
+
+    // Unter 600 px steht der Anlege-Knopf in voller Breite unter dem Titel, unter 900 px ist jede
+    // Liste eine Kartenliste.
+    const create = await headerCreateButton(page, 'Gruppe anlegen').boundingBox()
+    expect(create, 'Anlege-Knopf gerendert').not.toBeNull()
+    expect(create!.y, 'Anlege-Knopf unter dem Titel').toBeGreaterThanOrEqual(
+      heading!.y + heading!.height - 1,
+    )
+    expect(create!.width, 'Anlege-Knopf in voller Breite').toBeGreaterThan(320 - 2 * 24 - 1)
+    await expect(page.locator('table:visible')).toHaveCount(0)
   })
 })

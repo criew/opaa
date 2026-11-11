@@ -14,12 +14,14 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.account.LocalAdminReset;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.instance.CurrentInstance;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,6 +57,7 @@ class InstallationStartupTest {
     when(status.isPending()).thenReturn(true);
     when(installation.completeAtStartupIfDue(anyBoolean()))
         .thenReturn(new InstallationService.StartupDecision(false, null));
+    when(installation.offers(any())).thenReturn(true);
     logs = new ListAppender<>();
     logs.start();
     ((Logger) LoggerFactory.getLogger(InstallationStartup.class)).addAppender(logs);
@@ -401,6 +404,46 @@ class InstallationStartupTest {
   }
 
   @Test
+  void theLiveKeyOfAnAnswerFileComesFromItsFileAndNeverInPlainText() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path key = Files.writeString(directory.resolve("live-key"), "sk-live\n");
+    String live =
+        "\"realtime\":{\"protocol\":\"OPENAI\","
+            + "\"url\":\"wss://api.openai.com/v1/realtime?intent=transcription\","
+            + "\"model\":\"gpt-live-transcribe\",";
+    String head =
+        "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+            + "\"passwordFile\":\""
+            + password
+            + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+            + "\"transcriptionModel\":{\"baseUrl\":\"http://speaches:8000/v1\","
+            + "\"model\":\"whisper\",";
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            head + live + "\"apiKeyFile\":\"" + key + "\"}}}");
+
+    startup("oidc", null, answers.toString()).decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.getLast() instanceof StepInput.TranscriptionModel model
+                        && model.realtime() != null
+                        && "sk-live".equals(model.realtime().apiKey())
+                        && model.realtime().protocol() == RealtimeTranscriptionProtocol.OPENAI));
+
+    Path plain =
+        Files.writeString(
+            directory.resolve("plain.json"), head + live + "\"apiKey\":\"sk-live-klar\"}}}");
+    assertThat(startup("oidc", null, plain.toString()).decide()).isFalse();
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("nicht im Klartext"))
+        .noneMatch(message -> message.contains("sk-live-klar"));
+  }
+
+  @Test
   void aTranscriptionKeyInPlainTextRefusesTheAnswerFile() throws Exception {
     Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
     Path answers =
@@ -420,5 +463,114 @@ class InstallationStartupTest {
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .anyMatch(message -> message.contains("nicht im Klartext"))
         .noneMatch(message -> message.contains("sk-stt-im-klartext"));
+  }
+
+  @Test
+  void anAnswerFileWithATextRecognitionModelReadsItsKeyFromTheFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path key = Files.writeString(directory.resolve("ocr-key"), "ocr-schluessel\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"textRecognitionModel\":{\"connectionType\":\"DOCLING_SERVE\","
+                + "\"baseUrl\":\"http://opaa-ocr:5001\",\"apiKeyFile\":\""
+                + key
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 3
+                        && inputs
+                            .getLast()
+                            .equals(
+                                new StepInput.TextRecognitionModel(
+                                    TextRecognitionConnectionType.DOCLING_SERVE,
+                                    "http://opaa-ocr:5001",
+                                    null,
+                                    "ocr-schluessel"))));
+  }
+
+  @Test
+  void aTextRecognitionKeyInPlainTextRefusesTheAnswerFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"textRecognitionModel\":{\"baseUrl\":\"http://opaa-ocr:5001\","
+                + "\"apiKey\":\"ocr-im-klartext\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    assertThat(startup.decide()).isFalse();
+
+    verify(installation, never()).applyAnswersAtStartup(any());
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("nicht im Klartext"))
+        .noneMatch(message -> message.contains("ocr-im-klartext"));
+  }
+
+  @Test
+  void aTextRecognitionPartNotOfferedIsLeftOutWithoutReadingItsKeyFile() throws Exception {
+    when(installation.offers(InstallationStep.TEXT_RECOGNITION_MODEL)).thenReturn(false);
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"textRecognitionModel\":{\"baseUrl\":\"http://opaa-ocr:5001\","
+                + "\"apiKeyFile\":\""
+                + directory.resolve("missing-ocr-key")
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation).applyAnswersAtStartup(argThat(inputs -> inputs.size() == 2));
+  }
+
+  @Test
+  void aTranscriptionPartWithoutSpeechInputIsLeftOutWithoutReadingItsKeyFile() throws Exception {
+    when(installation.offers(InstallationStep.TRANSCRIPTION_MODEL)).thenReturn(false);
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"transcriptionModel\":{\"baseUrl\":\"http://speaches:8000/v1\","
+                + "\"model\":\"whisper\",\"apiKeyFile\":\""
+                + directory.resolve("missing-stt-key")
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    assertThat(startup.decide()).isTrue();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 2
+                        && inputs.stream()
+                            .noneMatch(input -> input instanceof StepInput.TranscriptionModel)));
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(
+            message -> message.contains("TRANSCRIPTION_MODEL") && message.contains("ignored"));
   }
 }

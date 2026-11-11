@@ -19,7 +19,6 @@ import io.opaa.api.dto.LibraryFolderResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
-import io.opaa.api.dto.LibraryShareCapRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.PushSecretResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
@@ -170,20 +169,6 @@ public class LibraryController {
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
-  }
-
-  /**
-   * Sets a connector library's share cap - SYSTEM_ADMIN only, enforced in {@code
-   * KnowledgeLibraryService#updateShareCap}, not here.
-   */
-  @PutMapping("/{libraryId}/share-cap")
-  public LibraryResponse updateLibraryShareCap(
-      @PathVariable UUID libraryId,
-      @Valid @RequestBody LibraryShareCapRequest request,
-      @Caller CurrentUser caller) {
-    return LibraryResponseMapper.toResponse(
-        libraryService.updateShareCap(
-            libraryId, Boolean.TRUE.equals(request.getAllAccountsGrantAllowed()), caller));
   }
 
   /** Connects the library through a connection profile; see the service. */

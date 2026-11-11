@@ -19,7 +19,8 @@ defaults:
     deletion: >-
       Automatisch über die Datenbankfunktion opaa_audit_delete_expired_partitions (ganze
       Monatspartitionen); einzelne Einträge sind nicht löschbar. Mit dem Konto entfällt die
-      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug. Ausnahme: Nennt eine Freigabe der
+      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug; nach „Personenbezug entfernen“
+      zeigt sie auf die namenlose Kontozeile. Ausnahme: Nennt eine Freigabe der
       anlassbezogenen Klärung die Person, bleibt dort ihr Protokollpseudonym bis zur Löschfrist der
       Freigabe; bis dahin lassen sich ihre Protokolleinträge über die Freigabe (mit Begründung und
       Zeitraum) wieder ihr zuordnen
@@ -63,6 +64,10 @@ defaults:
         im Protokoll, nie mit ihrem Namen, auch nicht in den Angaben des Eintrags: private
         Bibliothek („Private Bibliothek“), Prompt einer privaten Prompt-Bibliothek („Privater
         Prompt“) und persönlicher Bereich („Persönlicher Bereich“)
+      - >-
+        correlation_ref trägt, wo kein eigener Vorgang benannt ist, die Request-ID der Anfrage
+        („request:“ und die ID); sie verbindet den Eintrag mit Anwendungslog und Zugriffslog
+        derselben Anfrage und geht nicht in die Ausleitung an das Sicherheitsmonitoring
 data:
   - id: audit-log
     title: Revisionssicheres Protokoll
@@ -147,12 +152,15 @@ data:
             erzwingt, hätte den ausgeschlossenen Personeneinstieg
     storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
     retention:
-      rule: Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet
+      rule: >-
+        Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet; nach
+        „Personenbezug entfernen“ bleibt die Zuordnung zur namenlosen Kontozeile bestehen
       settings: []
     visibility: [AUDITOR nur innerhalb der anlassbezogenen Klärung]
     accessPaths: [DATABASE]
     deletion: >-
-      Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE); nennt eine
+      Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE), nicht beim
+      Entfernen des Personenbezugs, das die Kontozeile namenlos stehen lässt; nennt eine
       Freigabe der anlassbezogenen Klärung die Person, übernimmt sie vorher deren Pseudonym
     evaluations: keine eigene Auswertung
   - id: audit-incident-scopes
@@ -320,7 +328,7 @@ auditEvents:
     details: before und after tragen Rolle und Befristung
     payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_REVOKED
-    trigger: Ein Recht an einem Asset wird entzogen, auch durch eine gesenkte Freigabe-Obergrenze
+    trigger: Ein Recht an einem Asset wird entzogen
     details: before trägt Rolle und Befristung
     payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_EXPIRED
@@ -428,6 +436,44 @@ auditEvents:
   - id: PROMPT_LIBRARY_DELETED
     trigger: Eine Prompt-Bibliothek wird mit ihren Prompts gelöscht
     payloadKeys: [name, promptsRemoved]
+  - id: AGENT_CREATED
+    trigger: Ein Agent wird angelegt, auch der mitgelieferte Agent „Recherche“ beim Einschalten der Agenten
+    payloadKeys: [name]
+  - id: AGENT_CHANGED
+    trigger: Name, Zweck, Anweisung, Bibliotheken, Werkzeuge, Vorlagen, Planschritt oder Grenzen eines Agenten ändern sich
+    details: Nur die Namen der geänderten Felder, nie die Anweisung oder andere Werte
+    payloadKeys: [changedFields]
+  - id: AGENT_DELETED
+    trigger: Ein Agent wird gelöscht
+    payloadKeys: [name]
+  - id: ASSET_RESPONSIBILITY_CHANGED
+    trigger: Die verantwortliche Stelle eines Agenten oder einer Dokumentvorlage ändert sich
+    details: Vorher/Nachher der Stelle, eine Gruppe nur als Kennung, eine Funktion als eingegebener Text
+    payloadKeys: [responsibleGroupId, responsibleFunction]
+  - id: ASSET_LOCKED
+    trigger: >-
+      Die Systemverwaltung sperrt einen Agenten oder eine Dokumentvorlage, oder die Installation
+      sperrt ihn nach Ablauf der Frist ohne verantwortliche Stelle
+    details: Ursache (MANUAL oder NO_RESPONSIBLE) und der Grund als Begründung des Eintrags
+    payloadKeys: [cause]
+  - id: ASSET_UNLOCKED
+    trigger: Die Systemverwaltung hebt die Sperre eines Agenten oder einer Dokumentvorlage auf
+    details: Ursache der aufgehobenen Sperre; die Nutzung eines Agenten erzeugt keinen Eintrag
+    payloadKeys: [cause]
+  - id: DOCUMENT_TEMPLATE_CREATED
+    trigger: Eine Dokumentvorlage wird angelegt
+    payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_CHANGED
+    trigger: Name, Beschreibung oder Datei einer Dokumentvorlage ändert sich
+    details: Nur die Namen der geänderten Felder, nie der Inhalt der Datei
+    payloadKeys: [changedFields]
+  - id: DOCUMENT_TEMPLATE_DELETED
+    trigger: Eine Dokumentvorlage wird mit ihrer Datei gelöscht
+    payloadKeys: [name]
+  - id: DOCUMENT_TEMPLATE_SETTINGS_CHANGED
+    trigger: Der Schalter „Vorlagen“ wird ein- oder ausgeschaltet
+    details: Vorher/Nachher des Schalters
+    payloadKeys: [enabled]
   - id: PROMPT_CREATED
     trigger: Ein Prompt wird einer Bibliothek hinzugefügt
     details: Bibliothek und Kurzname des Prompts, nie Titel oder Text
@@ -648,7 +694,9 @@ auditEvents:
   - id: MODEL_POLICY_CHANGED
     trigger: Modellvorgaben oder die Freigabe externer Modelle ändern sich (noch nicht verdrahtet)
   - id: CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED
-    trigger: Die Freigabe-Obergrenze einer konnektor-gespeisten Bibliothek wird gesetzt oder geändert
+    trigger: >-
+      Nicht mehr geschrieben; frühere Freigabe-Obergrenze einer Konnektorbibliothek, lesbar bis zum
+      Fristablauf
     payloadKeys: [allAccountsGrantAllowed]
   - id: PRIVATE_STORAGE_QUOTA_CHANGED
     trigger: Das hausweite Speicherkontingent privater Bibliotheken ändert sich
@@ -662,6 +710,12 @@ auditEvents:
   - id: FULL_SYNC_RHYTHM_CHANGED
     trigger: Der hausweite Vollabgleich-Rhythmus einer Quellart ändert sich
     payloadKeys: [intervalDays, overridden, sourceType]
+  - id: RESPONSIBILITY_LOCK_PERIOD_CHANGED
+    trigger: >-
+      Die Systemverwaltung ändert, nach wie vielen Tagen ohne verantwortliche Stelle ein Agent oder
+      eine Dokumentvorlage gesperrt wird
+    details: Vorher/Nachher der Tage und ob ein eigener Wert gilt
+    payloadKeys: [responsibleLockDays, overridden]
   - id: SUCCESSION_AGING_THRESHOLD_CHANGED
     trigger: >-
       Die Schwelle, ab der ein Eintrag der Liste „Ohne Zuständigkeit“ als lange offen hervorgehoben
@@ -787,6 +841,14 @@ auditEvents:
       Dateiname noch die Person, die die Datei hochgeladen hat. Dieselbe unveränderte Datei erzeugt
       keinen weiteren Eintrag
     payloadKeys: [signature, sourceType]
+  - id: MALWARE_SCAN_SETTINGS_CHANGED
+    trigger: >-
+      Die Einstellungen der Virenprüfung ändern sich in der Administration oder beim Abschluss der
+      Installation (Systemvorgang)
+    details: >-
+      Ein- oder ausgeschaltet, Adresse und Port des Virenscanners, Frist eines Scans und Verhalten
+      bei nicht geprüften Dateien, vorher und nachher
+    payloadKeys: [enabled, host, onUnavailable, port, timeoutSeconds]
   - id: DOCUMENT_METADATA_CHANGED
     trigger: Eine Person setzt, ändert oder entfernt einen Kernmetadatenwert von Hand
     details: Dokument, Feld, alter und neuer Wert; Sammelzuweisungen über correlation_ref
@@ -888,17 +950,59 @@ auditEvents:
     trigger: Ein Chatmodell wird in der Modellverwaltung angelegt
     details: Der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“ (apiKeyChange)
     payloadKeys:
-      [active, apiKeyChange, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+      [
+        active,
+        apiKeyChange,
+        apiKeySet,
+        baseUrl,
+        displayName,
+        maxTokens,
+        modelIdentifier,
+        temperature,
+        toolCapability,
+        toolCapabilityAssessedAt,
+        toolCapabilityBasis,
+        toolCapabilityMeasurementRun,
+      ]
   - id: LLM_MODEL_CHANGED
-    trigger: Ein Chatmodell wird geändert
+    trigger: >-
+      Ein Chatmodell wird geändert, auch seine Werkzeugfähigkeit oder deren Rücksetzen nach einer
+      Änderung von Adresse oder Modell-Kennung
     details: >-
       Der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert, als „gesetzt“,
-      „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
+      „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert. Die Werkzeugfähigkeit mit Wert,
+      Grundlage, Datum und Verweis auf den Messlauf, ohne Person
     payloadKeys:
-      [active, apiKeyChange, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+      [
+        active,
+        apiKeyChange,
+        apiKeySet,
+        baseUrl,
+        displayName,
+        maxTokens,
+        modelIdentifier,
+        temperature,
+        toolCapability,
+        toolCapabilityAssessedAt,
+        toolCapabilityBasis,
+        toolCapabilityMeasurementRun,
+      ]
   - id: LLM_MODEL_DELETED
     trigger: Ein Chatmodell wird gelöscht
-    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+    payloadKeys:
+      [
+        active,
+        apiKeySet,
+        baseUrl,
+        displayName,
+        maxTokens,
+        modelIdentifier,
+        temperature,
+        toolCapability,
+        toolCapabilityAssessedAt,
+        toolCapabilityBasis,
+        toolCapabilityMeasurementRun,
+      ]
   - id: LLM_MODEL_ACTIVATED
     trigger: Ein Chatmodell wird zum systemweit aktiven Modell
     payloadKeys: [active]
@@ -915,14 +1019,17 @@ auditEvents:
     payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, model]
   - id: TRANSCRIPTION_MODEL_CHANGED
     trigger: >-
-      Schalter, Adresse, Modell, Sprache, Begriffsliste oder Zugangsschlüssel des
+      Schalter, Adresse, Modell, Sprache, Begriffsliste, Zugangsschlüssel oder Live-Dienst des
       Transkriptionsmodells werden geändert, durch die Systemverwaltung oder beim Abschluss der
       Installation
     details: >-
-      Vorher und nachher, die Begriffsliste der Installation im Wortlaut; der Zugangsschlüssel nur
-      als „gesetzt ja/nein“ und, wenn er sich ändert, als „gesetzt“, „geändert“ oder „entfernt“
-      (apiKeyChange), nie mit dem Wert
-    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, language, model, vocabulary]
+      Vorher und nachher, die Begriffsliste der Installation im Wortlaut; beim Live-Dienst
+      Protokoll, Adresse, Modell und Höchstzahl der Sitzungen; die Zugangsschlüssel nur als
+      „gesetzt ja/nein“ und, wenn sie sich ändern, als „gesetzt“, „geändert“ oder „entfernt“
+      (apiKeyChange, realtimeApiKeyChange), nie mit dem Wert
+    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, language, model, realtimeApiKeyChange,
+      realtimeApiKeySet, realtimeMaxSessions, realtimeModel, realtimeProtocol, realtimeUrl,
+      vocabulary]
   - id: TEXT_RECOGNITION_MODEL_CHANGED
     trigger: >-
       Schalter, Verbindungstyp, Adresse, Modell oder Zugangsschlüssel der Texterkennung werden
@@ -990,6 +1097,9 @@ auditEvents:
   - id: CONNECTION_LOG_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
     payloadKeys: [retentionMonths]
+  - id: AGENT_RUN_LOG_RETENTION_CHANGED
+    trigger: Die Aufbewahrungsfristen des Schrittprotokolls oder des Sandbox-Protokolls der Agenten ändern sich
+    payloadKeys: [sandboxLogRetentionDays, stepLogRetentionDays]
   - id: CHAT_AUTO_CLEANUP_PERIODS_CHANGED
     trigger: >-
       Die Fristen der automatischen Bereinigung der Chats in Spaces ändern sich oder kehren zur
@@ -1035,10 +1145,14 @@ auditEvents:
       Benutzername des Mailservers und Absenderadresse; beim Branding Produktname, Claim,
       Akzentfarbe (in älteren Einträgen auch die Farbschema-Vorgabe), vom Hinweis zur KI-Nutzung nur,
       ob ein eigener gesetzt ist;
-      beim Transkriptionsmodell Adresse, Modell und Sprache
-    payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, defaultColorScheme, encryption,
-      fromAddress, host, issuerUri, language, model, passwordSet, port, primaryColor, productName,
-      signInMode, step, username]
+      beim Transkriptionsmodell Adresse, Modell und Sprache, beim Live-Dienst Protokoll, Adresse,
+      Modell und ob ein Schlüssel gesetzt ist; bei der Texterkennung Verbindungstyp,
+      Adresse und, bei einem Vision-Modell, das Modell; beim Virenscanner Adresse, Port, Frist und
+      Verhalten bei nicht geprüften Dateien
+    payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, connectionType, defaultColorScheme,
+      encryption, fromAddress, host, issuerUri, language, model, onUnavailable, passwordSet, port,
+      primaryColor, productName, realtimeApiKeySet, realtimeModel, realtimeProtocol, realtimeUrl,
+      signInMode, step, timeoutSeconds, username]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
     details: >-
@@ -1053,8 +1167,8 @@ auditEvents:
     trigger: Die Erstinstallation wird abgeschlossen, genau einmal je Installation
     details: >-
       Herkunft, Anmeldeverfahren, die übersprungenen optionalen Schritte und ob der Abschluss den
-      E-Mail-Versand einschaltete
-    payloadKeys: [mailEnabled, signInMode, skippedSteps, source]
+      E-Mail-Versand und die Virenprüfung einschaltete
+    payloadKeys: [mailEnabled, malwareScanEnabled, signInMode, skippedSteps, source]
   - id: LOCAL_ACCOUNTS_ENABLED
     trigger: Die lokale Kontenverwaltung wird eingeschaltet, durch die Systemverwaltung oder beim Abschluss der Installation
     payloadKeys: [enabled]
@@ -1161,6 +1275,15 @@ auditEvents:
       - revokedSessions
       - spaceMemberships
       - systemRole
+  - id: AGENT_SETTINGS_CHANGED
+    trigger: Die Systemverwaltung schaltet Agenten oder einzelne Werkzeuge ein oder aus
+    details: Vorher/Nachher der geänderten Schlüssel
+    payloadKeys: [enabled, enabledTools]
+  - id: AGENT_DIRECTORY_ACCESSED
+    trigger: >-
+      Das Agentenverzeichnis wird angesehen oder als CSV-Datei exportiert, auch abgewiesen
+    details: Die Form (VIEW oder CSV); nie der Inhalt des Verzeichnisses
+    payloadKeys: [form]
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
     trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
     details: >-

@@ -28,34 +28,51 @@ class SettingsSectionRegistryTest {
    * this installation to its own services, or decide who signs in and with which role.
    */
   static final Map<String, String> NOT_TRANSFERRED =
-      Map.of(
-          "llm_models",
+      Map.ofEntries(
+          Map.entry(
+              "llm_models",
               "chat models: the address receives every chat; no stable key, the access key of this"
-                  + " installation never follows a new address",
-          "embedding_model",
+                  + " installation never follows a new address"),
+          Map.entry(
+              "embedding_model",
               "the embedding model: its vectors fill this installation's index; set by the"
-                  + " installation, never changed by an import (ADR-0060, Entscheidung 10)",
-          "rerank_model",
+                  + " installation, never changed by an import (ADR-0060, Entscheidung 10)"),
+          Map.entry(
+              "rerank_model",
               "the rerank model: address and key of this installation, the key never follows a"
-                  + " new address",
-          "transcription_model",
+                  + " new address"),
+          Map.entry(
+              "transcription_model",
               "the transcription model: the address receives speech input, the key never follows"
-                  + " a new address",
-          "text_recognition_model",
+                  + " a new address"),
+          Map.entry(
+              "text_recognition_model",
               "the text recognition model: the address receives whole pages of documents, the key"
-                  + " never follows a new address",
-          "oidc_providers",
+                  + " never follows a new address"),
+          Map.entry(
+              "malware_scan_settings",
+              "the malware scanner: its address receives every file taken in (ADR-0060,"
+                  + " Entscheidung 12)"),
+          Map.entry(
+              "oidc_providers",
               "identity providers: the sign-in procedure and the mapping of claims to system"
-                  + " roles; an import could lock the administration out or widen who is admin",
-          "directory_connectors",
+                  + " roles; an import could lock the administration out or widen who is admin"),
+          Map.entry(
+              "directory_connectors",
               "directory access with the secret of a service account, bound to an identity"
-                  + " provider that is not transferred either",
-          "capability_grants",
+                  + " provider that is not transferred either"),
+          Map.entry(
+              "capability_grants",
               "capabilities granted to groups, the connector release per source type and profile"
-                  + " among them; they name groups and profiles of this installation",
-          "connection_profiles",
+                  + " among them; they name groups and profiles of this installation"),
+          Map.entry(
+              "agent_settings",
+              "the switch for agents: switching on delivers the agent \"Recherche\" with the person"
+                  + " switching on as owner, which an import has no one for"),
+          Map.entry(
+              "connection_profiles",
               "connection profiles: app registration and secret of this installation; a changed"
-                  + " address, tenant or scope discards every connected account");
+                  + " address, tenant or scope discards every connected account"));
 
   @Autowired private SettingsTransferService transfer;
 

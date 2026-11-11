@@ -85,12 +85,37 @@ dataFlows:
     settings:
       [transcription_model.enabled, transcription_model.base_url, opaa.features.speech-input.enabled,
       installation_steps.payload]
+  - id: transcription-realtime
+    group: MODEL
+    viaOutboundProxy: true
+    target: >-
+      Der Live-Dienst (WebSocket, Protokoll OpenAI, vLLM oder Mistral), den die Systemverwaltung in
+      der Modellverwaltung hinterlegt, und im Installationsassistenten der Dienst, den die
+      einrichtende Person angibt
+    data: >-
+      Die Sprachaufnahme einer Person fortlaufend während des Diktats, als PCM-Audio, dazu Sprache
+      und die Begriffslisten der Installation und der Person, soweit hinterlegt;
+      Statusprüfung, Verbindungstest und die Prüfung im Assistenten eröffnen nur eine Sitzung ohne
+      Audio
+    trigger: >-
+      Spracheingabe im Chat mit Live-Transkript, Statusprüfung (beim Start, nach jeder Änderung und
+      höchstens einmal je Minute von einer Instanz), Verbindungstest in der Modellverwaltung; im
+      Installationsassistenten die Prüfung des Schritts Transkriptionsmodell, nur mit dem
+      Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
+    switchOff: >-
+      Ohne Live-Dienst in der Modellverwaltung (Voreinstellung) findet er nicht statt; er setzt
+      die eingeschaltete Spracheingabe voraus und endet mit ihr und mit dem Feature-Flag der
+      Spracheingabe
+    settings:
+      [transcription_model.realtime_protocol, transcription_model.realtime_url,
+      transcription_model.enabled, opaa.features.speech-input.enabled, installation_steps.payload]
   - id: text-recognition-model
     group: MODEL
     viaOutboundProxy: true
     target: >-
-      Der Texterkennungsdienst, den die Systemverwaltung in der Modellverwaltung hinterlegt: ein
-      docling-serve, etwa der mitgelieferte Container, oder ein OpenAI-kompatibles Vision-Modell
+      Der Texterkennungsdienst, den die Systemverwaltung in der Modellverwaltung hinterlegt, und im
+      Installationsassistenten der Dienst, den die einrichtende Person angibt: ein docling-serve,
+      etwa der mitgelieferte Container, oder ein OpenAI-kompatibles Vision-Modell
     data: >-
       Ganze Seiten gescannter PDF-Dokumente der Bibliotheken, als PDF (docling-serve) oder als
       Seitenbild (Vision-Modell), mit allem, was darauf steht; Verbindungstest nur die mitgelieferte
@@ -98,17 +123,22 @@ dataFlows:
       oder der Modellliste
     trigger: >-
       Indizierung eines gescannten PDF-Dokuments ohne Textebene, auch das Nachholen wartender Scans
-      hochgeladener Dokumente alle fünf Minuten, solange die Texterkennung eingeschaltet ist, höchstens
+      hochgeladener Dokumente im Takt opaa.ocr.catch-up-interval (Voreinstellung fünf Minuten,
+      mindestens 20 Sekunden), solange die Texterkennung eingeschaltet ist, höchstens
       opaa.ocr.max-pages-per-run Seiten je Lauf oder Durchgang; nie bei einer Neuindizierung
       unveränderter Dokumente, die den gespeicherten Erkennungsstand nutzt; Statusprüfung und
-      Verbindungstest in der Modellverwaltung ohne Dokumentseiten
+      Verbindungstest in der Modellverwaltung ohne Dokumentseiten; im Installationsassistenten die
+      Prüfung des Schritts Texterkennung mit der Testseite, nur mit dem Installations-Token oder
+      beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Zweistufig, beide Stufen Voreinstellung aus: der Betriebsschalter opaa.ocr.enabled, ohne den
       die Rolle weder ausgewertet noch kontaktiert wird, und der Schalter der Rolle in der
-      Modellverwaltung
+      Modellverwaltung. Der Abschluss der Installation schaltet die Rolle nur ein, wenn der Schritt
+      Texterkennung geprüft und nicht übersprungen ist
     settings:
-      [opaa.ocr.enabled, text_recognition_model.enabled, text_recognition_model.connection_type,
-      text_recognition_model.base_url]
+      [opaa.ocr.enabled, opaa.ocr.catch-up-interval, opaa.ocr.max-pages-per-run,
+      text_recognition_model.enabled, text_recognition_model.connection_type,
+      text_recognition_model.base_url, installation_steps.payload]
   - id: model-endpoint
     group: MODEL
     viaOutboundProxy: true
@@ -316,8 +346,10 @@ dataFlows:
       Zugangslinks, Sperre mit Sperrgrund und bei einer Sperre durch die Systemverwaltung Hinweis auf
       die Löschung der Chats, Freischaltung, Ablaufdatum des Kontos, Kontoübergabe, Zeitpunkt einer
       gestarteten Selbstauskunft, Zeitpunkt der Anmeldung des Bootstrap-Kontos, Name des erzeugten
-      oder ablaufenden Zugangstokens, Name der Bibliothek bei einer ablaufenden Freigabe, bei der
-      Erinnerung an die Prüfung der Zugänge nur deren Anzahl, Testmail); bei der Prüfung im
+      oder ablaufenden Zugangstokens, Name der Bibliothek bei einer ablaufenden Freigabe, bei den
+      Erinnerungen zu einem Dienstkonto dessen Name, Name des ablaufenden Tokens oder der
+      Bibliothek, deren Zustimmung endet, und das Ablaufdatum, bei der Erinnerung an die Prüfung
+      der Zugänge nur deren Anzahl, Testmail); bei der Prüfung im
       Assistenten nur Verbindungsaufbau und Anmeldung, eine Testmail nur an die dort angegebene
       Adresse
     trigger: >-
@@ -325,8 +357,10 @@ dataFlows:
       durch die Systemverwaltung oder wegen Inaktivität und Freischaltung, bevorstehender Ablauf
       eines Kontos, angefragte und erfolgte Kontoübergabe, Erinnerung der Systemverwaltung an die
       Prüfung der Zugänge, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende Freigaben
-      für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, Start einer Selbstauskunft,
-      Testmail; im Installationsassistenten die Prüfung des Schritts E-Mail-Versand, nur mit dem
+      für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, bevorstehender Ablauf eines
+      Tokens eines Dienstkontos oder der Zustimmung einer Bibliothek zu ihm (an die verantwortliche
+      Person und die Systemverwaltung), Start einer Selbstauskunft, Testmail; im
+      Installationsassistenten die Prüfung des Schritts E-Mail-Versand, nur mit dem
       Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Abschaltbar, Voreinstellung aus; der Abschluss der Installation schaltet den Versand nur ein,
@@ -345,13 +379,16 @@ dataFlows:
   - id: malware-scanner
     group: SECURITY
     viaOutboundProxy: false
-    target: Der Virenscanner (clamd), den der Betrieb konfiguriert, meist im eigenen Netz
+    target: >-
+      Der Virenscanner (clamd), den der Betrieb stellt und die Systemverwaltung oder der
+      Installationsassistent einträgt, meist im eigenen Netz
     data: >-
-      Der vollständige Inhalt jeder Datei, die eine Bibliothek aufnehmen soll (Upload, Datei einer
-      Quelle, Anhang), ohne Dateiname, Bibliothek oder Person
+      Der vollständige Inhalt jeder Datei, die eine Bibliothek oder ein Chat aufnehmen soll
+      (Upload, Datei einer Quelle, Anhang), ohne Dateiname, Bibliothek oder Person; bei der Prüfung
+      der Verbindung nur die Frage nach der Version
     trigger: Jede Aufnahme einer Datei bei eingeschalteter Virenprüfung
     switchOff: Abschaltbar, Voreinstellung aus
-    settings: [opaa.malware-scan.enabled, opaa.malware-scan.host]
+    settings: [malware_scan_settings.enabled, malware_scan_settings.host]
   - id: siem-export
     group: SECURITY
     viaOutboundProxy: false
@@ -371,11 +408,68 @@ dataFlows:
     group: SECURITY
     viaOutboundProxy: false
     target: >-
-      Erprobung, nur Entwicklung: ein OpenSandbox-Server neben dem Backend, der je Lauf einen
-      Container ohne Netz startet
+      Der Sandbox-Dienst des Betriebs (OpenSandbox-Server) neben dem Backend, der je Agentenlauf
+      einen Container ohne Netz startet und am Ende des Laufs löscht
     data: >-
-      Das Python-Skript, das das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
-      es aus den gefundenen Textstellen übernimmt; zurück kommen Ausgaben und erzeugte Dateien
-    trigger: Ein Werkzeugaufruf run_code in einer Frage mit Präfix „@test “
-    switchOff: Abschaltbar, Voreinstellung aus; braucht zusätzlich opaa.spike.tool-loop.enabled
+      Die Python-Skripte, die das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
+      es aus den gefundenen Textstellen übernimmt; beim Werkzeug fill_template die DOCX-Datei einer
+      Dokumentvorlage, die die fragende Person lesen darf, und die Werte, die das Chat-Modell für
+      ihre Platzhalter liefert, gefüllt von einem festen Skript des Images. Zurück kommen Ausgaben
+      und die erzeugten Dateien, die als Anhang der fragenden Person an die Antwort gehen. Keine
+      Kontokennung, kein Zugriff auf Index, Datenbank oder Dateiablage
+    trigger: >-
+      Ein Werkzeugaufruf run_code oder fill_template eines Agenten, dem das Werkzeug zugeordnet und
+      eingeschaltet ist; fill_template zusätzlich nur bei eingeschaltetem Schalter „Vorlagen“
+    switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse oder Schlüssel bricht der Start ab
     settings: [opaa.sandbox.enabled, opaa.sandbox.base-url]
+  - id: trace-export
+    group: OPERATIONS
+    viaOutboundProxy: true
+    target: >-
+      Der Trace-Collector des Betriebs (OpenTelemetry, OTLP/HTTP), meist im eigenen Netz; ist ein
+      Ausgangsproxy eingestellt, geht die Verbindung über ihn, außer die Adresse steht in seinen
+      Ausnahmen
+    data: >-
+      Je erfasster Anfrage und Hintergrundaufgabe Spans mit Zeitpunkt, Dauer, Trace- und Span-ID und
+      nur den freigegebenen Merkmalen: Methode, Routenvorlage ohne Kennungen und Suchparameter,
+      Status, Ergebnisklasse, Fehlerklasse, Zieldienst, Modell, Tokenzahlen. Keine Adresse mit Pfad
+      oder Abfrage, kein Konto, keine Anmeldedaten, kein SQL, keine Frage, Antwort, Suchtext oder
+      Fehlermeldung. Ein Trace endet an der Installation: Kein ausgehender Aufruf an Modelle,
+      Quellen oder Mailserver trägt einen Kopf traceparent, auch nicht bei eingeschaltetem Tracing,
+      und ein mitgeschickter traceparent eines Aufrufers wird verworfen
+    trigger: >-
+      Jede Anfrage und Hintergrundaufgabe, die die Stichprobe trifft (Voreinstellung 5 Prozent),
+      gezogen über eine Trace-ID, die OPAA selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
+    switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse bricht der Start ab
+    settings:
+      - management.tracing.export.enabled
+      - management.opentelemetry.tracing.export.otlp.endpoint
+      - management.tracing.sampling.probability
+settings:
+  - key: management.tracing.export.enabled
+    source: PROPERTY
+    defaultValue: "false"
+    effect: Ob Traces an den Trace-Collector des Betriebs gehen
+    bearings: [DATA_FLOW]
+    helm:
+      values: tracing.enabled
+      defaultValue: "false"
+  - key: management.opentelemetry.tracing.export.otlp.endpoint
+    source: PROPERTY
+    defaultValue: ""
+    effect: Adresse des Trace-Collectors; Pflicht bei eingeschaltetem Tracing
+    bearings: [DATA_FLOW]
+    helm:
+      values: tracing.otlpEndpoint
+      defaultValue: ""
+  - key: management.tracing.sampling.probability
+    source: PROPERTY
+    defaultValue: "0.05"
+    range: 0.0 bis 1.0
+    effect: >-
+      Anteil der Anfragen, die als Trace erfasst werden; bei 1.0 entsteht beim Collector ein
+      lückenloses Ablaufprotokoll jeder Anfrage mit Zeitstempel
+    bearings: [DATA, EVALUATION]
+    helm:
+      values: tracing.samplingProbability
+      defaultValue: ""

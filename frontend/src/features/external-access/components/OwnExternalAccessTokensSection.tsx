@@ -1,17 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type {
   CreatedExternalAccessTokenResponse,
@@ -23,12 +15,15 @@ import {
   listOwnExternalAccessTokens,
   revokeOwnExternalAccessToken,
 } from '../api/externalAccessApi'
+import CreateButton from '@/shared/ui/CreateButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { consumeRecentLoginReturn } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
-import { fontFamily } from '@/shared/theme/tokens'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
+import RowMenu from '@/shared/ui/RowMenu'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import CreateExternalAccessTokenDialog from './CreateExternalAccessTokenDialog'
 import ExternalAccessTokenValueDialog from './ExternalAccessTokenValueDialog'
 import {
@@ -39,6 +34,9 @@ import {
   expiryWarning,
   formatDate,
 } from './tokenLabels'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /**
  * A suspended selection is shown, not omitted: the person should see what a new
@@ -53,7 +51,7 @@ function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryRespo
           <Typography
             component="span"
             sx={{
-              fontSize: 13,
+              fontSize: fontSize.text,
               color: library.suspended ? 'text.secondary' : 'text.primary',
             }}
           >
@@ -64,7 +62,7 @@ function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryRespo
               <Stack direction="row" spacing={0.25} component="span" sx={{ alignItems: 'center' }}>
                 <WarningAmberIcon
                   aria-hidden="true"
-                  sx={{ fontSize: 14, color: 'warning.main', flex: 'none' }}
+                  sx={{ fontSize: iconSize.xs, color: 'warning.main', flex: 'none' }}
                 />
                 <MetaBadge>Freigabe ausgesetzt</MetaBadge>
               </Stack>
@@ -105,7 +103,6 @@ export default function OwnExternalAccessTokensSection() {
           setError(null)
         })
         .catch((err: unknown) => {
-          setTokens([])
           setError(
             err instanceof Error ? err.message : 'Die Zugangstokens konnten nicht geladen werden.',
           )
@@ -129,7 +126,7 @@ export default function OwnExternalAccessTokensSection() {
 
   async function handleRevoke(token: OwnExternalAccessTokenResponse) {
     const confirmed = await confirmAction({
-      question: `Token „${token.name}“ widerrufen?`,
+      question: `„${token.name}“ widerrufen?`,
       consequence: REVOKE_CONSEQUENCE,
       confirmLabel: 'Widerrufen',
       tone: 'danger',
@@ -152,99 +149,113 @@ export default function OwnExternalAccessTokensSection() {
       <PageSection
         title="Zugangstokens"
         description="Mit einem Zugangstoken erhält ein externes KI-Werkzeug Zugriff auf Wissensbibliotheken, die Sie mit ihm teilen."
-        action={
-          /* With a closed channel the issuance rejects every request and the selectable set is
-            empty - the button would lead to a refusal instead of a token. */
-          <Tooltip title={channelEnabled === false ? CHANNEL_OFF_HINT : ''}>
-            <Box component="span">
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => setIsCreating(true)}
-                disabled={maxLifetimeDays === null || channelEnabled !== true}
-              >
-                Token erzeugen
-              </Button>
-            </Box>
-          </Tooltip>
-        }
       >
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+        {/* With a closed channel the issuance rejects every request and the selectable set is
+           empty - the button would lead to a refusal instead of a token. */}
+        <CreateButton
+          onClick={() => setIsCreating(true)}
+          disabled={maxLifetimeDays === null || channelEnabled !== true}
+          disabledReason={channelEnabled === false ? CHANNEL_OFF_HINT : undefined}
+        >
+          Token erzeugen
+        </CreateButton>
         {channelEnabled === false && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             {CHANNEL_OFF_HINT}
           </Alert>
         )}
 
-        {tokens === null ? (
-          <Skeleton variant="rounded" height={160} />
+        {error ? (
+          <LoadError
+            message="Die Zugangstokens konnten nicht geladen werden."
+            detail={error}
+            onRetry={() => void load()}
+          />
+        ) : tokens === null ? (
+          <LoadingState />
         ) : tokens.length === 0 ? (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-            Sie haben noch kein Zugangstoken. „Token erzeugen“ legt eines an; die Auswahl der
-            Bibliotheken treffen Sie dabei.
-          </Typography>
+          <EmptyState message="Noch keine Zugangstokens. „Token erzeugen“ legt eines an; die Auswahl der Bibliotheken treffen Sie dabei." />
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Präfix</TableCell>
-                <TableCell>Bibliotheken</TableCell>
-                <TableCell>Erstellt</TableCell>
-                <TableCell>Läuft ab</TableCell>
-                <TableCell>Zuletzt benutzt</TableCell>
-                <TableCell>Zustand</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tokens.map((token) => {
-                const warning = expiryWarning(token.status, token.expiresAt)
-                return (
-                  <TableRow key={token.id}>
-                    <TableCell sx={{ fontWeight: 500 }}>{token.name}</TableCell>
-                    <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: 12.5 }}>
+          <AdminList
+            label="Zugangstokens"
+            rows={tokens}
+            rowKey={(token) => token.id}
+            rowLabel={(token) => token.name}
+            minWidth={900}
+            columns={[
+              {
+                id: 'name',
+                head: 'Name',
+                cell: (token) => (
+                  <>
+                    <ListText strong>{token.name}</ListText>
+                    <ListText mono secondary>
                       {token.prefix}
-                    </TableCell>
-                    <TableCell>
-                      <LibraryList libraries={token.libraries} />
-                    </TableCell>
-                    <TableCell>{formatDate(token.createdAt)}</TableCell>
-                    <TableCell>
+                    </ListText>
+                  </>
+                ),
+              },
+              {
+                id: 'libraries',
+                head: 'Bibliotheken',
+                width: '26%',
+                cell: (token) => <LibraryList libraries={token.libraries} />,
+              },
+              {
+                id: 'created',
+                head: 'Erstellt',
+                width: 104,
+                cell: (token) => formatDate(token.createdAt),
+              },
+              {
+                id: 'expires',
+                head: 'Läuft ab',
+                width: 136,
+                cell: (token) => {
+                  const warning = expiryWarning(token.status, token.expiresAt)
+                  return (
+                    <>
                       <Box>{formatDate(token.expiresAt)}</Box>
                       {warning && <MetaBadge>{warning}</MetaBadge>}
-                    </TableCell>
-                    <TableCell>{formatDate(token.lastUsedOn)}</TableCell>
-                    <TableCell>
-                      {TOKEN_STATUS_LABEL[token.status]}
-                      {token.status === 'ACTIVE' && channelEnabled === false && (
-                        <Box>
-                          <MetaBadge>wirkt derzeit nicht</MetaBadge>
-                        </Box>
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      {token.status === 'ACTIVE' && (
-                        <Button
-                          size="small"
-                          color="error"
-                          aria-label={`Token „${token.name}“ widerrufen`}
-                          onClick={() => void handleRevoke(token)}
-                        >
-                          Widerrufen
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </>
+                  )
+                },
+              },
+              {
+                id: 'lastUsed',
+                head: 'Zuletzt benutzt',
+                width: 148,
+                cell: (token) => formatDate(token.lastUsedOn),
+              },
+              {
+                id: 'state',
+                head: 'Zustand',
+                width: 152,
+                cell: (token) => (
+                  <>
+                    <Box>{TOKEN_STATUS_LABEL[token.status]}</Box>
+                    {token.status === 'ACTIVE' && channelEnabled === false && (
+                      <MetaBadge>wirkt derzeit nicht</MetaBadge>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+            rowActions={(token) =>
+              token.status === 'ACTIVE' ? (
+                <RowMenu
+                  name={token.name}
+                  items={[
+                    {
+                      label: 'Widerrufen',
+                      onClick: () => void handleRevoke(token),
+                      danger: true,
+                    },
+                  ]}
+                />
+              ) : null
+            }
+          />
         )}
       </PageSection>
 

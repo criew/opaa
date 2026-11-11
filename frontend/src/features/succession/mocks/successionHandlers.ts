@@ -8,9 +8,12 @@ import { mockSuccessionEntries } from './successionFixtures'
 
 /** The months the administration set; `null` while the factory default applies. */
 let ownMonths: number | null = null
+/** The days until the lock without a responsible unit; `null` while the factory default applies. */
+let ownLockDays: number | null = null
 
 export function resetMockSuccessionSettings() {
   ownMonths = null
+  ownLockDays = null
 }
 
 function successionSettings(): SuccessionSettingsResponse {
@@ -20,6 +23,11 @@ function successionSettings(): SuccessionSettingsResponse {
     minAgingThresholdMonths: 1,
     maxAgingThresholdMonths: 120,
     overridden: ownMonths !== null,
+    responsibleLockDays: ownLockDays ?? 30,
+    defaultResponsibleLockDays: 30,
+    minResponsibleLockDays: 1,
+    maxResponsibleLockDays: 365,
+    responsibleLockDaysOverridden: ownLockDays !== null,
   }
 }
 
@@ -27,8 +35,8 @@ function successionSettings(): SuccessionSettingsResponse {
 export const successionHandlers = [
   http.get('/api/v1/admin/succession/settings', () => HttpResponse.json(successionSettings())),
   http.put('/api/v1/admin/succession/settings', async ({ request }) => {
-    const months =
-      ((await request.json()) as SuccessionSettingsRequest).agingThresholdMonths ?? null
+    const body = (await request.json()) as SuccessionSettingsRequest
+    const months = body.agingThresholdMonths ?? null
     if (months !== null && (!Number.isInteger(months) || months < 1 || months > 120)) {
       return HttpResponse.json(
         {
@@ -45,15 +53,9 @@ export const successionHandlers = [
       )
     }
     ownMonths = months
+    ownLockDays = body.responsibleLockDays ?? null
     return HttpResponse.json(successionSettings())
   }),
-  http.get('/api/v1/admin/succession/counts', () =>
-    HttpResponse.json({
-      openSuccession: mockSuccessionEntries.OPEN_SUCCESSION.length,
-      grantsWithoutRecipient: mockSuccessionEntries.GRANTS_WITHOUT_RECIPIENT.length,
-      groupWithoutEffect: mockSuccessionEntries.GROUP_WITHOUT_EFFECT.length,
-    }),
-  ),
   http.get('/api/v1/admin/succession', ({ request }) => {
     const params = new URL(request.url).searchParams
     const kind = (params.get('kind') ?? 'OPEN_SUCCESSION') as SuccessionKind

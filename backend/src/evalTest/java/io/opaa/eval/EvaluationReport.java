@@ -114,8 +114,12 @@ public record EvaluationReport(
    * their common heading and the row groups of very wide tables keep half the target size -
    * markdown 2 -> 3, docx, odt, html, confluence, pdf, tabular, pptx and odp moved.
    * Fingerprint-only: no corpus section is combined, every corpus chunk stays byte-identical.
+   *
+   * <p><b>Bumped to 17:</b> {@code PdfOcrDocumentFormat} ({@code pdf-ocr:1}) joined the registry,
+   * shifting the collective fingerprint. Fingerprint-only: it only cuts a stored text recognition,
+   * and the harness configures no recognition service, so no corpus document reaches it.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 16;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 17;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

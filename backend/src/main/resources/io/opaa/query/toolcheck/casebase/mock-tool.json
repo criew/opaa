@@ -1,0 +1,24 @@
+{
+  "name": "search_knowledge",
+  "description": "Durchsucht die Wissensbasis der Stadtverwaltung Lindenhain (Satzungen, Gebührenordnungen, Dienstanweisungen, Merkblätter, Geschäftsverteilungsplan) nach Textstellen zu einem Suchbegriff und liefert die gefundenen Textstellen als Text.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Suchbegriff oder Frage auf Deutsch, in eigenen Worten formuliert."
+      },
+      "max_results": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "description": "Höchstzahl der gelieferten Textstellen, 1 bis 10. Ohne Angabe 5."
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  },
+  "limit_reached_notice": "Grenze erreicht: Für diese Frage sind keine weiteren Aufrufe von search_knowledge möglich. Antworte jetzt mit dem, was vorliegt.",
+  "unknown_tool_result": "Fehler: Ein Werkzeug mit diesem Namen gibt es nicht. Verfügbar ist nur search_knowledge.",
+  "invalid_arguments_result": "Fehler: Die Argumente passen nicht zum Schema von search_knowledge. Erlaubt sind query (Text, Pflicht) und max_results (ganze Zahl von 1 bis 10)."
+}

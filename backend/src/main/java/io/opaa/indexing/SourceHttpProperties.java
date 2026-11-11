@@ -34,6 +34,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxRateLimitWaitPerRun how long one feed or web-directory run may wait on {@code 429}
  *     answers in total before it ends in an orderly way as incomplete. Default 15 minutes; zero
  *     falls back to the default.
+ * @param maxHostsPerRun how many distinct host names one feed, web-directory or Confluence run may
+ *     contact, every hop of a redirect counted; a request to a further host is refused as a blocked
+ *     target and the run goes on. Default 100; zero falls back to the default.
  */
 @PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
@@ -43,7 +46,8 @@ public record SourceHttpProperties(
     int maxRateLimitRetries,
     @NoDataImpact("pacing of retries") Duration maxRetryAfter,
     int requestBudgetPerRun,
-    @NoDataImpact("pacing of retries") Duration maxRateLimitWaitPerRun) {
+    @NoDataImpact("pacing of retries") Duration maxRateLimitWaitPerRun,
+    int maxHostsPerRun) {
 
   public SourceHttpProperties {
     if (userAgent == null || userAgent.isBlank()) {
@@ -58,6 +62,9 @@ public record SourceHttpProperties(
     requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
     maxRateLimitWaitPerRun =
         positiveOr(maxRateLimitWaitPerRun, SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN);
+    maxHostsPerRun =
+        notNegativeOr(
+            "maxHostsPerRun", maxHostsPerRun, SourceRequestPolicy.DEFAULT_MAX_HOSTS_PER_RUN);
   }
 
   /**
@@ -71,6 +78,7 @@ public record SourceHttpProperties(
         RateLimitPolicy.of(maxRateLimitRetries, maxRetryAfter),
         Sleeper.threadSleep(),
         requestBudgetPerRun,
-        maxRateLimitWaitPerRun);
+        maxRateLimitWaitPerRun,
+        maxHostsPerRun);
   }
 }

@@ -13,11 +13,14 @@ import {
   type InstallationEmbeddingModel,
   type InstallationFirstAdmin,
   type InstallationMail,
+  type InstallationMalwareScan,
   type InstallationModelDiscoveryRequest,
   type InstallationRerankModel,
   type InstallationStepCheckRequest,
   type InstallationStepState,
+  type InstallationTextRecognitionModel,
   type InstallationTranscriptionModel,
+  type InstallationTranscriptionModelView,
 } from '../api/types'
 import {
   MOCK_EMBEDDING_DIMENSIONS,
@@ -125,16 +128,53 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
     return { chatModel: { ...rest, maxTokens: maxTokens ?? 8000, apiKeySet: keySet } }
   }
   if (step.step === 'TRANSCRIPTION_MODEL') {
-    const { apiKey, language, ...rest } = part as InstallationTranscriptionModel
+    const { apiKey, language, realtime, ...rest } = part as InstallationTranscriptionModel
     const keySet =
       apiKey === undefined || apiKey === null
         ? Boolean(step.transcriptionModel?.apiKeySet)
         : apiKey !== ''
+    let live: InstallationTranscriptionModelView['realtime']
+    if (realtime) {
+      const { apiKey: liveKey, ...liveRest } = realtime
+      const liveKeySet =
+        liveKey === undefined || liveKey === null
+          ? Boolean(step.transcriptionModel?.realtime?.apiKeySet)
+          : liveKey !== ''
+      live = { ...liveRest, apiKeySet: liveKeySet }
+    }
     return {
       transcriptionModel: {
         ...rest,
         language: (language ?? 'de').trim().toLowerCase(),
         apiKeySet: keySet,
+        ...(live ? { realtime: live } : {}),
+      },
+    }
+  }
+  if (step.step === 'TEXT_RECOGNITION_MODEL') {
+    const { apiKey, connectionType, model, ...rest } = part as InstallationTextRecognitionModel
+    const keySet =
+      apiKey === undefined || apiKey === null
+        ? Boolean(step.textRecognitionModel?.apiKeySet)
+        : apiKey !== ''
+    const type = connectionType ?? 'DOCLING_SERVE'
+    return {
+      textRecognitionModel: {
+        ...rest,
+        connectionType: type,
+        model: type === 'OPENAI_VISION' ? (model ?? null) : null,
+        apiKeySet: keySet,
+      },
+    }
+  }
+  if (step.step === 'MALWARE_SCAN') {
+    const values = part as InstallationMalwareScan
+    return {
+      malwareScan: {
+        host: values.host.trim(),
+        port: values.port ?? 3310,
+        timeoutSeconds: values.timeoutSeconds ?? 30,
+        onUnavailable: values.onUnavailable ?? 'REJECT',
       },
     }
   }
@@ -180,6 +220,8 @@ function checkMessageOf(step: InstallationStepState): string | null {
       step.embeddingModel ??
       step.rerankModel ??
       step.transcriptionModel ??
+      step.textRecognitionModel ??
+      step.malwareScan ??
       step.signIn ??
       step.mail ??
       {},
@@ -187,6 +229,12 @@ function checkMessageOf(step: InstallationStepState): string | null {
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
   if (step.step === 'MAIL') {
     return 'Die Verbindung zum Mailserver ist fehlgeschlagen: ConnectException: Connection refused'
+  }
+  if (step.step === 'MALWARE_SCAN') {
+    return `Der Virenscanner ist unter ${step.malwareScan?.host}:${step.malwareScan?.port} nicht erreichbar oder antwortet nicht rechtzeitig.`
+  }
+  if (step.step === 'TEXT_RECOGNITION_MODEL') {
+    return 'Gescheitert an der Stufe „Adresse“: Die Verbindung wurde vom Server abgelehnt.'
   }
   return step.step === 'SIGN_IN'
     ? 'Die Discovery-Adresse des Anbieters ist nicht erreichbar. Prüfen Sie die Issuer-URI.'
@@ -309,7 +357,11 @@ export const installationHandlers = [
             ? 'Verbindung erfolgreich, der Endpunkt hat die Probe bewertet.'
             : step.step === 'TRANSCRIPTION_MODEL'
               ? 'Verbindung erfolgreich, der Endpunkt hat geantwortet.'
-              : 'Prüfung erfolgreich.'
+              : step.step === 'TEXT_RECOGNITION_MODEL'
+                ? 'Adresse, Anmeldung und Erkennung in Ordnung. Verbindung erfolgreich, der Dienst hat die Testseite gelesen.'
+                : step.step === 'MALWARE_SCAN'
+                  ? 'Virenscanner erreichbar: ClamAV 1.4.2/27450/mock'
+                  : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? success,
@@ -340,6 +392,8 @@ export const installationHandlers = [
       embeddingModel: undefined,
       rerankModel: undefined,
       transcriptionModel: undefined,
+      textRecognitionModel: undefined,
+      malwareScan: undefined,
       mail: undefined,
       branding: undefined,
     })

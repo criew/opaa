@@ -79,7 +79,7 @@ export async function signOut(page: Page): Promise<void> {
  * what keeps the promise scenario-wide - Playwright runs it whenever the overlay stands between it
  * and an action or an auto-waiting assertion - so no scenario has to know which of its steps asks.
  *
- * The accepting button carries the verb of the action ("Löschen", "Abschalten", ...), so it is
+ * The accepting button carries the verb of the action ("Löschen", "Ausschalten", ...), so it is
  * addressed by its fixed id, not by a name. Playwright's default wait for the overlay to be hidden
  * again after the handler is kept on purpose: the click really does close it, and the wait turns a
  * confirmation that stays open into a failure here rather than into a puzzling one later.
@@ -89,6 +89,29 @@ export async function acceptConfirmDialogs(page: Page): Promise<void> {
     page.getByRole("dialog").filter({ has: page.locator("#confirm-question") }),
     async (overlay) => {
       await overlay.locator("#confirm-accept").click();
+    },
+  );
+}
+
+const recentLoginConfirmed = new WeakSet<Page>();
+
+/**
+ * Confirms „Anmeldung bestätigen" with the bootstrap administrator's password whenever it opens on
+ * this page. Mail settings and the rules of the local sign-in demand a recent sign-in, and a page
+ * that was reloaded after signing in holds a refreshed token, which never counts as one. Only for
+ * pages of the bootstrap administrator; a scenario about the dialog itself drives it by hand.
+ */
+export async function confirmRecentLoginAsBootstrapAdmin(page: Page): Promise<void> {
+  if (recentLoginConfirmed.has(page)) return;
+  recentLoginConfirmed.add(page);
+  await page.addLocatorHandler(
+    page.getByRole("dialog", { name: "Anmeldung bestätigen" }).getByLabel("Ihr Passwort"),
+    async (password) => {
+      await password.fill(bootstrapAdmin.password);
+      await page
+        .getByRole("dialog", { name: "Anmeldung bestätigen" })
+        .getByRole("button", { name: "Bestätigen" })
+        .click();
     },
   );
 }
@@ -113,6 +136,7 @@ export async function openAccountList(page: Page): Promise<void> {
 
 /** The settings area of the administration's user page, waited for until its card has loaded. */
 export async function openLocalAuthSettings(page: Page): Promise<void> {
+  await confirmRecentLoginAsBootstrapAdmin(page);
   await page.goto("/admin/users/settings");
   await expect(page.getByRole("switch", { name: "Lokale Anmeldung aktiv" })).toBeVisible({
     timeout: 20_000,
@@ -127,30 +151,44 @@ export async function openLocalAuthSettings(page: Page): Promise<void> {
  * takes effect without a restart.
  */
 export async function configureSmtp(page: Page): Promise<void> {
+  await confirmRecentLoginAsBootstrapAdmin(page);
   await page.goto("/admin/mail/server");
-  await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeVisible({
+  await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeVisible({
     timeout: 20_000,
   });
-  await page.getByLabel("Server").fill(smtp.host);
-  await page.getByLabel("Port").fill(smtp.port);
+  await page.getByLabel("Server", { exact: true }).fill(smtp.host);
+  await page.getByLabel("Port", { exact: true }).fill(smtp.port);
   // The form defaults to STARTTLS, which the mail catcher does not offer - and the backend requires
   // STARTTLS rather than merely offering it, so leaving the default fails every send with
   // "STARTTLS is required but host does not support STARTTLS".
-  await page.getByLabel("Verschlüsselung").click();
-  await page.getByRole("option", { name: "Keine" }).click();
-  await page.getByLabel("Absenderadresse").fill(smtp.fromAddress);
-  const active = page.getByRole("switch", { name: "Versand aktiv" });
+  await page
+    .getByRole("radiogroup", { name: "Verschlüsselung" })
+    .getByRole("radio", { name: /Keine/ })
+    .check();
+  await page.getByLabel("Absenderadresse", { exact: true }).fill(smtp.fromAddress);
+  const active = page.getByRole("checkbox", { name: "Versand aktiv" });
   if (!(await active.isChecked())) {
     await active.click();
   }
+  // After the installation's step „E-Mail" the stored settings may already be exactly these;
+  // „Speichern" then saves nothing and says so (guidelines 5.16), the reload below checks them.
   await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByText("Die E-Mail-Einstellungen wurden gespeichert.")).toBeVisible();
+  await expect(
+    page.getByText(
+      /^(Die E-Mail-Einstellungen wurden gespeichert\.|Es gibt keine Änderungen zu speichern\.)$/,
+    ),
+  ).toBeVisible();
 
   // Asserted after a reload, not just from the snackbar: everything downstream depends on delivery
   // being on, and a mail that is merely skipped looks exactly like one that was never triggered.
   await page.reload();
-  await expect(page.getByRole("switch", { name: "Versand aktiv" })).toBeChecked();
-  await expect(page.getByLabel("Server")).toHaveValue(smtp.host);
+  await expect(page.getByRole("checkbox", { name: "Versand aktiv" })).toBeChecked();
+  await expect(page.getByLabel("Server", { exact: true })).toHaveValue(smtp.host);
+  await expect(page.getByLabel("Port", { exact: true })).toHaveValue(smtp.port);
+  await expect(page.getByLabel("Absenderadresse", { exact: true })).toHaveValue(smtp.fromAddress);
+  await expect(
+    page.getByRole("radiogroup", { name: "Verschlüsselung" }).getByRole("radio", { name: /Keine/ }),
+  ).toBeChecked();
 }
 
 /**
@@ -189,7 +227,7 @@ export async function createActiveAccount(
 ): Promise<void> {
   await openAccountList(adminPage);
   await adminPage.getByRole("button", { name: "Konto anlegen" }).click();
-  const dialog = adminPage.getByRole("dialog", { name: "Lokales Konto anlegen" });
+  const dialog = adminPage.getByRole("dialog", { name: "Konto anlegen" });
   await expect(dialog).toBeVisible();
   await dialog.locator("#user-form-email").fill(email);
   await dialog.locator("#user-form-display-name").fill(displayName);
@@ -213,7 +251,7 @@ export async function createActiveAccount(
   await page.locator("#change-password-current").fill(initial);
   await page.locator("#change-password-new").fill(password);
   await page.locator("#change-password-repeat").fill(password);
-  await page.getByRole("button", { name: "Passwort speichern" }).click();
+  await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).not.toHaveURL(/\/account\/password/, { timeout: 20_000 });
   await context.close();
 }

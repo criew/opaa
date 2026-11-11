@@ -19,6 +19,13 @@ jackson2 = "2.22.4"
 # 2.22.0-2.22.2 are affected by CVE-2026-89407 and CVE-2026-89425; remove this entry, its
 # [libraries] entry and the buildscript platforms once every plugin resolves jackson >= 2.22.3.
 jackson2-buildscript = "2.22.4"
+# Libraries of the Gradle build plugins, lifted on the buildscript classpath like Jackson above:
+# openapi-generator brings guava 32.1.3 and cyclonedx-bom 33.7.1 (GHSA-xxph-c9ww-hj94, fixed in
+# 33.7.2), spring-boot-gradle-plugin brings commons-lang3 3.16.0 (GHSA-j288-q9x7-2f5v, fixed in
+# 3.18.0). Remove each entry, its [libraries] entry and its buildscript line once every plugin
+# resolves the fixed version itself.
+guava-buildscript = "33.7.2-jre"
+commons-lang3-buildscript = "3.20.0"
 spotless = "8.10.4"
 caffeine = "3.3.1"
 openapi-generator = "7.26.0"
@@ -138,6 +145,7 @@ spring-boot-starter-validation = { module = "org.springframework.boot:spring-boo
 spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
+spring-boot-starter-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 # Spring Boot 4 splits the test slices into dedicated starters (@WebMvcTest)
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
@@ -195,6 +203,13 @@ spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-st
 flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+# Optional OpenTelemetry tracing over OTLP, off unless OPAA_TRACING_ENABLED (ADR-0071). The
+# exporter's OkHttp sender is excluded in build.gradle.kts: it needs okhttp-jvm 5 beside the okhttp
+# 4 pinned above, so the JDK HttpClient sender takes its place. Versions from the Spring Boot BOM.
+spring-boot-micrometer-tracing-opentelemetry = { module = "org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry" }
+micrometer-tracing-bridge-otel = { module = "io.micrometer:micrometer-tracing-bridge-otel" }
+opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp" }
+opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk" }
 postgresql = { module = "org.postgresql:postgresql" }
 shedlock-spring = { module = "net.javacrumbs.shedlock:shedlock-spring", version.ref = "shedlock" }
 shedlock-provider-jdbc-template = { module = "net.javacrumbs.shedlock:shedlock-provider-jdbc-template", version.ref = "shedlock" }
@@ -224,6 +239,8 @@ tomcat-embed-websocket = { module = "org.apache.tomcat.embed:tomcat-embed-websoc
 jackson3-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson3" }
 jackson2-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2" }
 jackson2-buildscript-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2-buildscript" }
+guava-buildscript = { module = "com.google.guava:guava", version.ref = "guava-buildscript" }
+commons-lang3-buildscript = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3-buildscript" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
@@ -238,6 +255,7 @@ spring-boot = [
     "spring-boot-starter-security",
     "spring-boot-starter-oauth2-resource-server",
     "spring-boot-starter-mail",
+    "spring-boot-starter-websocket",
 ]
 spring-ai = [
     "spring-ai-vector-store-advisor",
@@ -248,6 +266,12 @@ spring-ai = [
     "spring-ai-starter-mcp-server-webmvc",
 ]
 runtime = ["micrometer-registry-prometheus"]
+tracing = [
+    "spring-boot-micrometer-tracing-opentelemetry",
+    "micrometer-tracing-bridge-otel",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-exporter-sender-jdk",
+]
 aws-sdk = ["aws-sdk-s3", "aws-sdk-apache5-client"]
 shedlock = ["shedlock-spring", "shedlock-provider-jdbc-template"]
 test-deps = [

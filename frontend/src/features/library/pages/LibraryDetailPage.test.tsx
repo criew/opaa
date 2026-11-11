@@ -660,7 +660,7 @@ describe('LibraryDetailPage', () => {
 
     await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, 'Bibliothek "Rechtsquellen Soziales" löschen?', 'Löschen')
+    await answerConfirm(user, '„Rechtsquellen Soziales“ löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
@@ -680,7 +680,7 @@ describe('LibraryDetailPage', () => {
     await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
 
-    const question = 'Bibliothek "Rechtsquellen Soziales" löschen?'
+    const question = '„Rechtsquellen Soziales“ löschen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /indizierten dokumente/i,
     )
@@ -834,7 +834,6 @@ describe('LibraryDetailPage', () => {
           sourceUrl: 'https://cloud.intern.example',
           diagnosticsLocked: true,
           diagnosticsLockToggleable: false,
-          allAccountsGrantAllowed: true,
         }),
       )
       const user = userEvent.setup()
@@ -849,89 +848,6 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Herleitung' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Übergeben/ })).not.toBeInTheDocument()
-      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
-    })
-  })
-
-  // The share cap control - visible only to a system administrator on a connector
-  // library, never to the library's own owner/manager, who only sees its consequence (the 409
-  // below).
-  describe('Freigabe-Obergrenze (#797)', () => {
-    it('is hidden for UPLOAD, even for a system-admin OWNER bypass', async () => {
-      setSystemAdmin()
-      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        adminBypassLibrary,
-        detailsOf(adminBypassLibrary, { allAccountsGrantAllowed: true }),
-      )
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
-
-      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText('Freigabe an Alle erlaubt')).not.toBeInTheDocument()
-    })
-
-    it('is hidden from a MANAGER of a connector library, not being a system administrator', async () => {
-      const managerOfFilesystem = { ...managerLibrary, myRole: 'MANAGER' as const }
-      setLibraryState(
-        managerOfFilesystem,
-        detailsOf(managerOfFilesystem, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          allAccountsGrantAllowed: true,
-        }),
-      )
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
-
-      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText('Freigabe an Alle erlaubt')).not.toBeInTheDocument()
-    })
-
-    it('lets a system administrator lower the cap on a connector library', async () => {
-      setSystemAdmin()
-      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(
-        adminBypassLibrary,
-        detailsOf(adminBypassLibrary, {
-          sourceType: 'FILESYSTEM',
-          sourcePath: '/data/dokumente',
-          reach: { allAccounts: true, groupCount: 0, userCount: 1 },
-          allAccountsGrantAllowed: true,
-        }),
-      )
-      // The button is disabled whether or not a PUT ever went out, so the request itself is
-      // captured and asserted on, not just the button state afterwards.
-      let putRequestBody: { allAccountsGrantAllowed: boolean } | null = null
-      server.use(
-        http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
-          putRequestBody = (await request.json()) as { allAccountsGrantAllowed: boolean }
-          return HttpResponse.json({
-            ...detailsOf(adminBypassLibrary, {
-              sourceType: 'FILESYSTEM',
-              sourcePath: '/data/dokumente',
-            }),
-            id: String(params.libraryId),
-            allAccountsGrantAllowed: putRequestBody.allAccountsGrantAllowed,
-          })
-        }),
-      )
-      const user = userEvent.setup()
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
-      await user.click(
-        await screen.findByRole('button', {
-          name: 'Obergrenze speichern: Freigabe an Alle erlaubt',
-        }),
-      )
-
-      await waitFor(() => {
-        expect(putRequestBody).toEqual({ allAccountsGrantAllowed: false })
-      })
     })
   })
 
@@ -1410,7 +1326,7 @@ describe('LibraryDetailPage', () => {
       screen.getByRole('button', { name: 'Weitere Aktionen für „dienstanweisung-2024.pdf“' }),
     )
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
-    await answerConfirm(user, 'Dokument "dienstanweisung-2024.pdf" löschen?', 'Löschen')
+    await answerConfirm(user, '„dienstanweisung-2024.pdf“ löschen?', 'Löschen')
 
     await waitFor(() => {
       expect(mockDeleteLibraryDocument).toHaveBeenCalledWith('library-team', 'document-1')
@@ -2703,7 +2619,9 @@ describe('LibraryDetailPage', () => {
     }))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/konnten nicht vollständig geladen werden/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Die Angaben zu dieser Bibliothek konnten nicht geladen werden.'),
+    ).toBeInTheDocument()
     expect(screen.getByText(managerLibrary.name)).toBeInTheDocument()
   })
 
@@ -2719,18 +2637,20 @@ describe('LibraryDetailPage', () => {
     }))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/konnten nicht vollständig geladen werden/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Die Angaben zu dieser Bibliothek konnten nicht geladen werden.'),
+    ).toBeInTheDocument()
     expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Quelle' })).toBeInTheDocument()
 
     mockGetLibrary.mockResolvedValueOnce(
       detailsOf(connectorLibrary, { sourcePath: '/data/dokumente' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
 
     await waitFor(() =>
       expect(
-        screen.queryByText(/konnten nicht vollständig geladen werden/i),
+        screen.queryByText(/Angaben zu dieser Bibliothek konnten nicht geladen werden/),
       ).not.toBeInTheDocument(),
     )
   })
@@ -3105,7 +3025,8 @@ describe('LibraryDetailPage', () => {
           documentIds: ['doc-1', 'doc-2'],
         }),
       )
-      await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+      const result = await screen.findByRole('dialog', { name: 'Feld für 2 Dokumente setzen' })
+      await user.click(await within(result).findByRole('button', { name: 'Schließen' }))
       expect(
         await screen.findByText('Feld gesetzt: 2 Dokumente aktualisiert, 0 unverändert.'),
       ).toBeInTheDocument()
@@ -3832,7 +3753,7 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
-      await answerConfirm(user, 'Ordner "Protokolle" und 7 Dokumente löschen?', 'Löschen')
+      await answerConfirm(user, '„Protokolle“ löschen?', 'Löschen')
 
       await waitFor(() => {
         expect(mockDeleteLibraryFolder).toHaveBeenCalledWith('library-mine', 'folder-protokolle')
@@ -3864,7 +3785,7 @@ describe('LibraryDetailPage', () => {
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
-      await answerConfirm(user, 'Ordner "Protokolle" und 3 Dokumente löschen?', 'Abbrechen')
+      await answerConfirm(user, '„Protokolle“ löschen?', 'Abbrechen')
 
       expect(mockDeleteLibraryFolder).not.toHaveBeenCalled()
     })

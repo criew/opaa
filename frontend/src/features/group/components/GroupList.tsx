@@ -1,32 +1,29 @@
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { GroupEffectsResponse, GroupListResponse } from '@/shared/api/types'
 import type { GroupSortField } from '../api/groupAdminApi'
-import { useGroupAdminListStore } from '../stores/groupAdminListStore'
-import MetaBadge from '@/shared/ui/MetaBadge'
 import {
-  ListEmptyState,
-  ListLoading,
-  ListPager,
-  SortableHeadCell,
+  INITIAL_GROUP_FILTERS,
+  narrowsGroups,
+  useGroupAdminListStore,
+} from '../stores/groupAdminListStore'
+import MetaBadge from '@/shared/ui/MetaBadge'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import AdminList, {
   StateLabel,
+  type AdminListColumn,
   type SortBinding,
 } from '@/shared/ui/list/AdminList'
-import { adminTableSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import GroupOriginTag from './GroupOriginTag'
 import GroupRowMenu from './GroupRowMenu'
 import { GROUP_STATE_COLOR, GROUP_STATE_LABEL, groupStateReason } from './groupListLabels'
 import { GROUP_UNUSED_DETAIL, groupUsageDetails, groupUsageShort } from './groupUsageLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 const SORT_LABEL: Record<GroupSortField, string> = {
   name: 'Name',
@@ -68,11 +65,6 @@ export interface GroupRowHandlers {
   onChanged: () => void
 }
 
-interface RowProps extends GroupRowHandlers {
-  group: GroupListResponse
-  effects: GroupEffectsResponse | undefined
-}
-
 /**
  * Name and the one line that identifies the group besides it: the source path of a directory
  * group, otherwise its description. The marks that change how a group may be used sit by the name.
@@ -85,7 +77,7 @@ function GroupNameCell({ group }: { group: GroupListResponse }) {
         <Typography
           title={group.name}
           sx={{
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             fontWeight: 600,
             minWidth: 0,
             overflow: 'hidden',
@@ -109,7 +101,7 @@ function GroupNameCell({ group }: { group: GroupListResponse }) {
       {secondLine && (
         <Typography
           sx={{
-            fontSize: 12,
+            fontSize: fontSize.meta,
             color: 'text.secondary',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -135,17 +127,14 @@ function GroupStateCell({ group }: { group: GroupListResponse }) {
   )
 }
 
-function memberText(count: number): string {
-  return count === 1 ? '1 Mitglied' : `${count} Mitglieder`
-}
-
 /**
  * What the group is used for in one line - libraries, spaces, ownership, create rights - with every
  * figure spelled out in the tooltip. Answers the question before cleaning up: does anything hang on
  * this group?
  */
 function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
-  if (!effects) return <Typography sx={{ fontSize: 13, color: 'text.disabled' }}>–</Typography>
+  if (!effects)
+    return <Typography sx={{ fontSize: fontSize.text, color: 'text.disabled' }}>–</Typography>
   const short = groupUsageShort(effects)
   const details = groupUsageDetails(effects)
   const unused = details.length === 0
@@ -156,7 +145,7 @@ function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
         tabIndex={0}
         aria-label={`Verwendung: ${tooltip}`}
         sx={{
-          fontSize: 12.5,
+          fontSize: fontSize.meta,
           color: unused ? 'text.secondary' : 'text.primary',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -171,131 +160,109 @@ function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
   )
 }
 
-function GroupTableRow({ group, effects, ...handlers }: RowProps) {
-  return (
-    <TableRow>
-      <TableCell>
-        <GroupNameCell group={group} />
-      </TableCell>
-      <TableCell>
-        <GroupOriginTag group={group} />
-      </TableCell>
-      <TableCell align="right">{group.memberCount}</TableCell>
-      <TableCell>
-        <GroupStateCell group={group} />
-      </TableCell>
-      <TableCell>
-        <UsageCell effects={effects} />
-      </TableCell>
-      <TableCell align="right">
-        <GroupRowMenu group={group} {...handlers} />
-      </TableCell>
-    </TableRow>
-  )
-}
-
-/** One group as a list entry - the layout below tablet width (guidelines 5.3). */
-function GroupCard({ group, effects, ...handlers }: RowProps) {
-  return (
-    <Box component="article" aria-label={group.name} sx={listCardSx}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-          <GroupNameCell group={group} />
-          <Box sx={{ mt: 0.5 }}>
-            <GroupOriginTag group={group} />
-          </Box>
-        </Box>
-        <GroupRowMenu group={group} {...handlers} />
-      </Stack>
-      <Box sx={{ mt: 1 }}>
-        <GroupStateCell group={group} />
-      </Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
-        {memberText(group.memberCount)}
-        {effects ? ` · ${groupUsageShort(effects)}` : ''}
-      </Typography>
-    </Box>
-  )
-}
-
-function Pager() {
-  const total = useGroupAdminListStore((s) => s.total)
-  const size = useGroupAdminListStore((s) => s.size)
-  const page = useGroupAdminListStore((s) => s.filters.page)
-  const setFilters = useGroupAdminListStore((s) => s.setFilters)
-  return (
-    <ListPager
-      total={total}
-      size={size}
-      page={page}
-      onPage={(next) => void setFilters({ page: next })}
-      countLabel={total === 1 ? '1 Gruppe' : `${total} Gruppen`}
-    />
-  )
-}
-
 /**
  * The list of all groups of the organization, built like the account list: on desktop a
  * table, below tablet width a list, searched, filtered, sorted and paged server-side.
  * What a group is used for is shown as a summary; the member list is not -
  * its retrieval is an audit event and happens only in the „Mitglieder" dialog (ADR-0036/4, /9).
  */
-export default function GroupList(handlers: GroupRowHandlers) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
+export default function GroupList({
+  createAction,
+  ...handlers
+}: GroupRowHandlers & {
+  /** The create button of the page header, repeated by the first-time empty state. */
+  createAction: ReactNode
+}) {
   const groups = useGroupAdminListStore((s) => s.groups)
   const effects = useGroupAdminListStore((s) => s.effects)
+  const total = useGroupAdminListStore((s) => s.total)
+  const size = useGroupAdminListStore((s) => s.size)
   const isLoading = useGroupAdminListStore((s) => s.isLoading)
+  const error = useGroupAdminListStore((s) => s.error)
+  const filters = useGroupAdminListStore((s) => s.filters)
+  const loadGroups = useGroupAdminListStore((s) => s.loadGroups)
+  const setFilters = useGroupAdminListStore((s) => s.setFilters)
   const sort = useGroupSort()
 
-  if (isLoading && groups.length === 0) {
-    return <ListLoading label="Gruppen werden geladen …" />
-  }
-
-  if (groups.length === 0) {
+  // After a loading error only the notice stands - an empty list below it would look like a
+  // filter without matches.
+  if (error) {
     return (
-      <ListEmptyState
-        title="Keine Gruppe entspricht den gewählten Filtern."
-        hint="Interne Gruppen und Gruppen der Identitätsanbieter stehen hier gemeinsam; die Herkunft steht an jeder Zeile."
+      <LoadError
+        message="Gruppen konnten nicht geladen werden."
+        detail={error}
+        onRetry={() => void loadGroups()}
       />
     )
   }
 
+  if (isLoading && groups.length === 0) {
+    return <LoadingState />
+  }
+
+  if (groups.length === 0) {
+    const { query, origin, providerId, kind, state } = INITIAL_GROUP_FILTERS
+    const narrowed = narrowsGroups(filters)
+    return narrowed ? (
+      <EmptyState
+        framed
+        kind="noMatch"
+        onReset={() => void setFilters({ query, origin, providerId, kind, state })}
+      />
+    ) : (
+      <EmptyState framed message="Noch keine Gruppen." action={createAction} />
+    )
+  }
+
+  const columns: AdminListColumn<GroupListResponse, GroupSortField>[] = [
+    {
+      id: 'name',
+      head: 'Name',
+      sortFields: ['name'],
+      cell: (group) => <GroupNameCell group={group} />,
+    },
+    {
+      id: 'origin',
+      head: 'Herkunft',
+      sortFields: ['origin'],
+      width: '17%',
+      card: 'line',
+      cell: (group) => <GroupOriginTag group={group} />,
+    },
+    {
+      id: 'memberCount',
+      head: 'Mitglieder',
+      sortFields: ['memberCount'],
+      width: '15%',
+      align: 'right',
+      cell: (group) => group.memberCount,
+    },
+    {
+      id: 'state',
+      head: 'Zustand',
+      sortFields: ['state'],
+      width: '17%',
+      cell: (group) => <GroupStateCell group={group} />,
+    },
+    {
+      id: 'usage',
+      head: 'Verwendung',
+      width: '18%',
+      cell: (group) => <UsageCell effects={effects[group.id]} />,
+    },
+  ]
+
   return (
-    <>
-      {isDesktop ? (
-        <Table size="small" aria-label="Gruppen" sx={adminTableSx}>
-          <TableHead>
-            <TableRow>
-              <SortableHeadCell fields={['name']} binding={sort} />
-              <SortableHeadCell fields={['origin']} binding={sort} width="19%" />
-              <SortableHeadCell fields={['memberCount']} binding={sort} width="10%" align="right" />
-              <SortableHeadCell fields={['state']} binding={sort} width="19%" />
-              <TableCell sx={{ width: '18%' }}>Verwendung</TableCell>
-              <TableCell align="right" sx={{ width: 56 }}>
-                <span style={visuallyHidden}>Aktionen</span>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {groups.map((group) => (
-              <GroupTableRow
-                key={group.id}
-                group={group}
-                effects={effects[group.id]}
-                {...handlers}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <Stack spacing={0}>
-          {groups.map((group) => (
-            <GroupCard key={group.id} group={group} effects={effects[group.id]} {...handlers} />
-          ))}
-        </Stack>
-      )}
-      <Pager />
-    </>
+    <AdminList
+      label="Gruppen"
+      rows={groups}
+      minWidth={880}
+      rowKey={(group) => group.id}
+      rowLabel={(group) => group.name}
+      columns={columns}
+      sort={sort}
+      rowActions={(group) => <GroupRowMenu group={group} {...handlers} />}
+      pager={{ total, size, page: filters.page, onPage: (page) => void setFilters({ page }) }}
+    />
   )
 }

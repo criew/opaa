@@ -4,6 +4,7 @@ import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatMessageRepository;
 import io.opaa.directory.sync.DirectorySyncStatusRecorder;
+import io.opaa.query.toolcheck.ToolCheckGate;
 import io.opaa.succession.SuccessionCaseRepository;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -112,7 +113,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       UserRepository.class,
       ChatMessageRepository.class,
       DirectorySyncStatusRecorder.class,
-      SuccessionCaseRepository.class
+      SuccessionCaseRepository.class,
+      ToolCheckGate.class
     })
 // A derived signature must not declare @TestExecutionListeners of its own: like
 // @ContextConfiguration, it is resolved by nearest declaration, so the listeners below would

@@ -197,7 +197,7 @@ export function profileRow(page: Page, profileName: string): Locator {
 /** Öffnet das Seitenpanel eines Zugangs aus seiner Zeile und gibt das Panel zurück. */
 export async function openProfilePanel(page: Page, profileName: string): Promise<Locator> {
   await profileRow(page, profileName)
-    .getByRole('button', { name: new RegExp(`^(Details|Beheben): ${profileName}$`) })
+    .getByRole('button', { name: profileName, exact: true })
     .click()
   const panel = page.getByRole('dialog', { name: profileName })
   await expect(panel).toBeVisible()
@@ -206,7 +206,7 @@ export async function openProfilePanel(page: Page, profileName: string): Promise
 
 /** Öffnet das Seitenpanel einer Quellart aus ihrer Zeile und gibt das Panel zurück. */
 export async function openSourceTypePanel(page: Page, displayName: string): Promise<Locator> {
-  await page.getByRole('button', { name: `Details: ${displayName}` }).click()
+  await page.getByRole('button', { name: displayName, exact: true }).click()
   const panel = page.getByRole('dialog', { name: displayName })
   await expect(panel).toBeVisible()
   return panel
@@ -285,7 +285,7 @@ export async function triggerIndexingInUi(page: Page, libraryId: string): Promis
  * ein.
  */
 export async function referenceLibrary(page: Page, libraryName: string): Promise<void> {
-  await page.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(`@${libraryName}`)
+  await page.getByRole('textbox', { name: 'Nachricht eingeben' }).fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
   await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 }

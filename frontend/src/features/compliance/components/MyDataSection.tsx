@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import type { SelfDisclosureStatus } from '@/shared/api/types'
 import { apiErrorCode, apiErrorStatus } from '@/shared/api/apiErrorDetails'
@@ -30,6 +28,8 @@ import {
   completedText,
   formatMoment,
 } from '../utils/selfDisclosureMessages'
+import LoadError from '@/shared/ui/states/LoadError'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** How often the page asks for the status while a download it started may still run. */
 export const STATUS_POLL_MS = 4000
@@ -301,41 +301,35 @@ export default function MyDataSection() {
   }
 
   return (
-    <Box sx={{ maxWidth: 640 }}>
-      <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
+    <Box sx={{ maxWidth: contentWidth.form }}>
+      <Typography sx={{ fontSize: fontSize.text, mb: 1.5 }}>
         Laden Sie die zu Ihnen in {productName} gespeicherten Daten als ZIP-Datei herunter: Konto,
         Chats, Rechte, Gruppen, Spaces und weitere, lesbar und maschinenlesbar.
       </Typography>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
         Nicht enthalten sind Dokumentinhalte, Sicherungen, das Betriebslog und anlassbezogene
         Klärungen; darüber gibt die oder der Datenschutzbeauftragte Auskunft.
       </Typography>
-      <Typography sx={{ fontSize: 13.5, fontWeight: 600, mb: 2.5 }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 2.5 }}>
         {PERSONAL_ONLY_NOTICE}
       </Typography>
 
       {loadError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {loadError}
-        </Alert>
+        <LoadError
+          message="Der Stand der Selbstauskunft konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
       )}
 
       {disabled ? (
-        <Typography role="status" sx={{ fontSize: 13.5 }}>
+        <Typography role="status" sx={{ fontSize: fontSize.text }}>
           {DISABLED_MESSAGE}
         </Typography>
       ) : (
         <>
           {status?.lastCompletedAt && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 1.5 }}>
               Zuletzt vollständig heruntergeladen: {formatMoment(status.lastCompletedAt)}.
             </Typography>
           )}

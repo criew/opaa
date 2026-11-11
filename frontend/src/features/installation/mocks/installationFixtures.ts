@@ -39,6 +39,13 @@ const TRANSCRIPTION_STEP: InstallationStepState = {
   checked: false,
 }
 
+const TEXT_RECOGNITION_STEP: InstallationStepState = {
+  step: 'TEXT_RECOGNITION_MODEL',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
 /** What a rerank endpoint with a model list offers; the reranker first, a stray model after. */
 export const mockRerankDiscoveredModels: DiscoveredLlmModel[] = [
   { identifier: 'BAAI/bge-reranker-v2-m3', capabilities: [], chatSuitable: false },
@@ -52,6 +59,13 @@ export const mockTranscriptionDiscoveredModels: DiscoveredLlmModel[] = [
   { identifier: 'gpt-4.1', capabilities: [], chatSuitable: true },
 ]
 
+const MALWARE_SCAN_STEP: InstallationStepState = {
+  step: 'MALWARE_SCAN',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
 const BRANDING_STEP: InstallationStepState = {
   step: 'BRANDING',
   mandatory: false,
@@ -60,11 +74,11 @@ const BRANDING_STEP: InstallationStepState = {
 }
 
 /**
- * The mock's steps. With `withEmbedding` the full list of the API, embedding, rerank and
- * transcription model and branding included, as `?mockInstallation=embedding` and {@link
+ * The mock's steps. With `withEmbedding` the full list of the API, embedding, rerank, transcription
+ * and text recognition model, malware scan and branding included, as `?mockInstallation=embedding` and {@link
  * withMockEmbeddingStep} set it up; without, the shorter list most tests are written against, to
- * which {@link withMockBrandingStep}, {@link withMockRerankStep} and {@link
- * withMockTranscriptionStep} add their steps.
+ * which {@link withMockBrandingStep}, {@link withMockRerankStep}, {@link withMockTranscriptionStep}
+ * and {@link withMockTextRecognitionStep} add their steps.
  */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
@@ -78,6 +92,8 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
         { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
         RERANK_STEP,
         TRANSCRIPTION_STEP,
+        TEXT_RECOGNITION_STEP,
+        MALWARE_SCAN_STEP,
         MAIL_STEP,
         BRANDING_STEP,
       ]
@@ -144,6 +160,26 @@ export function withMockTranscriptionStep() {
   if (!mockSteps.some((s) => s.step === 'TRANSCRIPTION_MODEL')) {
     const mail = mockSteps.findIndex((s) => s.step === 'MAIL')
     mockSteps = [...mockSteps.slice(0, mail), TRANSCRIPTION_STEP, ...mockSteps.slice(mail)]
+  }
+  remember(mockSteps)
+}
+
+/** Adds the text recognition step before the mail step, as the API lists it with OCR released. */
+export function withMockTextRecognitionStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'TEXT_RECOGNITION_MODEL')) {
+    const mail = mockSteps.findIndex((s) => s.step === 'MAIL')
+    mockSteps = [...mockSteps.slice(0, mail), TEXT_RECOGNITION_STEP, ...mockSteps.slice(mail)]
+  }
+  remember(mockSteps)
+}
+
+/** Adds the malware scan step before the mail step, as the API lists it. */
+export function withMockMalwareScanStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'MALWARE_SCAN')) {
+    const mail = mockSteps.findIndex((s) => s.step === 'MAIL')
+    mockSteps = [...mockSteps.slice(0, mail), MALWARE_SCAN_STEP, ...mockSteps.slice(mail)]
   }
   remember(mockSteps)
 }

@@ -46,7 +46,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
 
-    const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
+    const dialog = admin.getByRole("dialog", { name: "Konto anlegen" });
     await expect(dialog).toBeVisible();
     await dialog.locator("#user-form-email").fill(invited);
     await dialog.locator("#user-form-display-name").fill(invitedName);
@@ -130,7 +130,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     const address = uniqueAddress("thomas.kranz");
     await openAccountList(admin);
     await admin.getByRole("button", { name: "Konto anlegen" }).click();
-    const dialog = admin.getByRole("dialog", { name: "Lokales Konto anlegen" });
+    const dialog = admin.getByRole("dialog", { name: "Konto anlegen" });
     await dialog.locator("#user-form-email").fill(address);
     await dialog.locator("#user-form-display-name").fill("Thomas Kranz");
     await dialog.locator("#user-form-created-reason").fill("Hospitation Bauamt, drei Monate");
@@ -166,7 +166,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await user.locator("#change-password-current").fill(initialPassword);
     await user.locator("#change-password-new").fill(chosen);
     await user.locator("#change-password-repeat").fill(chosen);
-    await user.getByRole("button", { name: "Passwort speichern" }).click();
+    await user.getByRole("button", { name: "Speichern" }).click();
 
     // change-password mints a new access token without `pcr` right away (Entscheidung 8), so the
     // person is not sent back to the sign-in form.

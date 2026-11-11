@@ -1,17 +1,16 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import ToggleButton from '@mui/material/ToggleButton'
@@ -46,6 +45,11 @@ import {
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from './assetLabels'
+import { fieldWidth, fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -79,13 +83,11 @@ function isValidUuid(value: string): boolean {
 export interface AssetGrantsSectionProps {
   assetType: AssetType
   assetId: string
-  /** The system administration's upper bound, below the list — only where there is one. */
-  capControl?: ReactNode
 }
 
 function formatExpiry(expiresAt: string | null | undefined): string {
   if (!expiresAt) return 'unbefristet'
-  return `bis ${new Date(expiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+  return `bis ${formatDate(expiresAt)}`
 }
 
 function isExpired(expiresAt: string | null | undefined): boolean {
@@ -120,14 +122,9 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
 
 /**
  * The permissions of an asset as a section of the page — list, role change, revocation
- * and the form for sharing, without a dialog in front. The section knows only the type's word;
- * whatever a type has beyond that comes in as a slot.
+ * and the form for sharing, without a dialog in front. The section knows only the type's word.
  */
-export default function AssetGrantsSection({
-  assetType,
-  assetId,
-  capControl,
-}: AssetGrantsSectionProps) {
+export default function AssetGrantsSection({ assetType, assetId }: AssetGrantsSectionProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
   const grants = useGrantStore((s) => s.grantsByAsset[assetKey(assetType, assetId)]) ?? []
   const isLoading = useGrantStore((s) => s.isLoading)
@@ -196,11 +193,11 @@ export default function AssetGrantsSection({
     // wording does not say.
     const isSelf = grant.subjectType === 'USER' && grant.subjectId === currentUserId
     const confirmed = await confirmAction({
-      question: `Freigabe für "${subjectDisplayName(grant)}" entziehen?`,
+      question: `Freigabe für „${subjectDisplayName(grant)}“ widerrufen?`,
       consequence: isSelf
-        ? 'Das ist Ihre eigene Freigabe - Sie verlieren dadurch möglicherweise selbst den Zugriff auf diese Rechteansicht. Diese Aktion kann nicht rückgängig gemacht werden.'
-        : 'Diese Aktion kann nicht rückgängig gemacht werden.',
-      confirmLabel: 'Entziehen',
+        ? 'Das ist Ihre eigene Freigabe: Sie verlieren damit möglicherweise selbst den Zugriff auf diese Rechteansicht.'
+        : `„${subjectDisplayName(grant)}“ verliert sofort die Rolle „${assetRoleLabel(grant.role)}“, sofern kein anderer Weg sie gewährt.`,
+      confirmLabel: 'Widerrufen',
       tone: 'danger',
     })
     if (!confirmed) {
@@ -295,7 +292,7 @@ export default function AssetGrantsSection({
 
   const form = (
     <Stack spacing={2} sx={{ mt: 1 }}>
-      <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
+      <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
         Neue Freigabe
       </Typography>
       {formError && <Alert severity="error">{formError}</Alert>}
@@ -306,7 +303,7 @@ export default function AssetGrantsSection({
             <Typography
               id="grant-manual-id-kind-label"
               component="span"
-              sx={{ fontSize: 13, fontWeight: 600 }}
+              sx={{ fontSize: fontSize.text, fontWeight: 600 }}
             >
               Art der Kennung
             </Typography>
@@ -328,9 +325,9 @@ export default function AssetGrantsSection({
               <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
             </RadioGroup>
           </FormControl>
-          <TextField
+          <FormField
             label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
-            placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
+            helperText={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
             size="small"
@@ -365,33 +362,31 @@ export default function AssetGrantsSection({
         </Link>
       </Typography>
 
-      <FormControl size="small">
-        <InputLabel id="grant-role-label">Rolle</InputLabel>
-        <Select
-          labelId="grant-role-label"
-          label="Rolle"
-          value={role}
-          onChange={(e) => setRole(e.target.value as AssetRole)}
-        >
-          {rolesFor(subject.type).map((option) => (
-            <MenuItem key={option} value={option}>
-              {assetRoleLabel(option)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FormField
+        select
+        label="Rolle"
+        size="small"
+        value={role}
+        onChange={(e) => setRole(e.target.value as AssetRole)}
+      >
+        {rolesFor(subject.type).map((option) => (
+          <MenuItem key={option} value={option}>
+            {assetRoleLabel(option)}
+          </MenuItem>
+        ))}
+      </FormField>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         {assetRoleDescription(role, assetType)}
       </Typography>
 
-      <TextField
-        label="Befristung (optional)"
+      <FormField
+        label="Befristung"
+        optional
         type="date"
         value={expiryInput}
         onChange={(e) => setExpiryInput(e.target.value)}
-        slotProps={{ inputLabel: { shrink: true } }}
         size="small"
-        sx={{ maxWidth: 220 }}
+        sx={{ maxWidth: fieldWidth.short }}
       />
 
       <Stack direction="row" spacing={1}>
@@ -425,11 +420,6 @@ export default function AssetGrantsSection({
       }
     >
       {showForm && <Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>{form}</Box>}
-      {loadError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {loadError}
-        </Alert>
-      )}
       {rowError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRowError(null)}>
           {rowError}
@@ -463,14 +453,16 @@ export default function AssetGrantsSection({
         </Stack>
       )}
 
-      {isLoading ? (
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
-          Berechtigungen werden geladen …
-        </Typography>
+      {loadError ? (
+        <LoadError
+          message="Die Berechtigungen konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void loadGrants(assetType, assetId)}
+        />
+      ) : isLoading ? (
+        <LoadingState shape="lines" count={3} />
       ) : listed.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
-          Noch keine Freigaben.
-        </Typography>
+        <EmptyState message="Noch keine Freigaben." />
       ) : (
         <Box
           component="ul"
@@ -478,9 +470,15 @@ export default function AssetGrantsSection({
           sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
         >
           {matching.length === 0 && (
-            <Typography component="li" sx={{ py: 1.25, color: 'text.secondary', fontSize: 13.5 }}>
-              Keine Freigabe entspricht dieser Suche.
-            </Typography>
+            <Box component="li" sx={{ py: 1.25 }}>
+              <EmptyState
+                kind="noMatch"
+                onReset={() => {
+                  setQuery('')
+                  setKind('ALL')
+                }}
+              />
+            </Box>
           )}
           {shownGrants.map((grant) => {
             const expired = isExpired(grant.expiresAt)
@@ -506,10 +504,14 @@ export default function AssetGrantsSection({
                 }}
               >
                 <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
-                  <Typography noWrap title={subjectName} sx={{ fontSize: 13.5, fontWeight: 600 }}>
+                  <Typography
+                    noWrap
+                    title={subjectName}
+                    sx={{ fontSize: fontSize.text, fontWeight: 600 }}
+                  >
                     {subjectName}
                   </Typography>
-                  <Typography noWrap sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography noWrap sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {permissionSubjectTypeLabel(grant.subjectType)}
                     {/* the member count is itself the way to the members */}
                     {sizeHint &&
@@ -562,7 +564,7 @@ export default function AssetGrantsSection({
                   value={grant.role}
                   inputProps={{ 'aria-label': `Rolle für ${subjectName}` }}
                   onChange={(e) => void handleRoleChange(grant, e.target.value as AssetRole)}
-                  sx={{ fontSize: 13.5, width: 150, gridColumn: { xs: 2, sm: 'auto' } }}
+                  sx={{ fontSize: fontSize.text, width: 150, gridColumn: { xs: 2, sm: 'auto' } }}
                 >
                   {rolesFor(grant.subjectType).map((option) => (
                     // each option carries the role's meaning
@@ -578,7 +580,7 @@ export default function AssetGrantsSection({
                 <RowMenu
                   name={subjectName}
                   items={[
-                    { label: 'Entziehen', onClick: () => void handleRevoke(grant), danger: true },
+                    { label: 'Widerrufen', onClick: () => void handleRevoke(grant), danger: true },
                   ]}
                 />
               </Box>
@@ -593,8 +595,6 @@ export default function AssetGrantsSection({
           </TextAction>
         </Box>
       )}
-
-      {capControl}
     </DetailSection>
   )
 }

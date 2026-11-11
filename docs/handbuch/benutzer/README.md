@@ -11,8 +11,11 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 | Spaces, Chat und Katalog kennenlernen | [Erste Schritte](erste-schritte.md) |
 | Frage stellen, Suchbereich wählen | [Fragen stellen](fragen-stellen.md) |
 | Prüfen, worauf eine Antwort sich stützt | [Belege prüfen](belege-pruefen.md) |
+| Fassungsstempel und Entwurf einer Agentenantwort lesen | [Agentenergebnis prüfen](agentenergebnis-pruefen.md) |
 | Datei mitgeben oder Frage sprechen | [Dateien anhängen und Spracheingabe](anhaengen-und-diktieren.md) |
 | Prompt im Chat einsetzen | [Prompts verwenden](prompts-verwenden.md) |
+| Frage an einen Agenten geben, Schritte nachlesen | [Agenten verwenden](agenten-verwenden.md) |
+| Frage in mehreren Schritten recherchieren lassen, Plan bestätigen | [Recherche nutzen](recherche-nutzen.md) |
 | Antwort kopieren, Chat exportieren | [Antworten weitergeben](antworten-weitergeben.md) |
 | Chats ordnen, archivieren, wiederfinden | [Chats verwalten](chats.md) |
 
@@ -32,6 +35,8 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 | Arbeitsmittel finden und einem Space zuordnen | [Katalog nutzen](katalog.md) |
 | Eigene Dokumente durchsuchbar machen | [Wissensbibliothek anlegen](bibliothek-anlegen.md) |
 | Eigene Prompts schreiben | [Prompt-Bibliothek anlegen](prompt-bibliothek-anlegen.md) |
+| Einen Agenten für mehrstufige Fragen einrichten | [Agent anlegen](agent-anlegen.md) |
+| Word-Vorlage für Agenten bereitstellen | [Vorlage anlegen](vorlage-anlegen.md) |
 
 ## Bibliothek pflegen
 

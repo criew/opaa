@@ -1,8 +1,11 @@
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import type { ElementType } from 'react'
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { Capability } from '@/shared/api/types'
 import { isCapabilityOffered } from '@/shared/session/installationFeatures'
@@ -41,6 +44,23 @@ const PRESENTATION: Record<Capability, CapabilityPresentation> = {
     title: 'Prompt-Bibliotheken',
     description: 'Sammlungen von Frage-Vorlagen, die andere übernehmen können.',
     icon: LightbulbOutlinedIcon,
+  },
+  CREATE_AGENT: {
+    title: 'Agenten',
+    description:
+      'Helfer, die eine Frage in mehreren Schritten mit Werkzeugen abarbeiten. Sie lesen nur, was die aufrufende Person lesen darf.',
+    icon: SmartToyOutlinedIcon,
+  },
+  CREATE_TEMPLATE: {
+    title: 'Vorlagen',
+    description: 'Word-Vorlagen mit Platzhaltern, nach denen Agenten Dateien erstellen.',
+    icon: DescriptionOutlinedIcon,
+  },
+  VIEW_AGENT_DIRECTORY: {
+    title: 'Agentenverzeichnis',
+    description:
+      'Alle Agenten und Vorlagen mit Zweck, Anweisung und verantwortlicher Stelle, ohne Inhalte der Bibliotheken und ohne Nutzungsangaben. Gedacht für die Personalvertretung.',
+    icon: MenuBookOutlinedIcon,
   },
 }
 

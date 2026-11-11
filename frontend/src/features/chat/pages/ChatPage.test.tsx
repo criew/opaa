@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -11,6 +11,7 @@ import { useSpaceStore } from '@/features/space'
 import { useChatListStore } from '../stores/chatListStore'
 import { mockChatArchive } from '../mocks/chatFixtures'
 import { server } from '@/test/server'
+import { useRuntimeSwitchStore } from '@/shared/session/runtimeSwitches'
 
 let currentSpaceId: string | undefined = 'space-personal'
 let currentChatId: string | undefined = 'new'
@@ -110,6 +111,85 @@ describe('ChatPage', () => {
       { replace: true, state: KEEP_FOCUS_STATE },
     )
   }, 15000)
+
+  describe('Kopf und Hinweise (#3743)', () => {
+    const NOTICE = { name: 'Hinweis zur KI-Nutzung' }
+
+    it('shows the header with "Neuer Chat" from the start, without a rename button', async () => {
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+      const header = screen.getByRole('group', { name: 'Chat-Kopfzeile' })
+      expect(within(header).getByText('Neuer Chat')).toBeInTheDocument()
+      expect(within(header).queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('keeps the header while the first answer runs and puts the title in once it is set', async () => {
+      useChatStore.setState({
+        spaceId: 'space-personal',
+        chatId: null,
+        messages: [{ id: 'q', role: 'user', content: 'Offene Frage', timestamp: new Date() }],
+        isLoading: true,
+      })
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      const header = screen.getByRole('group', { name: 'Chat-Kopfzeile' })
+      expect(within(header).getByText('Neuer Chat')).toBeInTheDocument()
+
+      act(() => {
+        useChatStore.setState({ chatId: 'chat-x', title: 'Offene Frage', isLoading: false })
+      })
+
+      expect(screen.getByRole('group', { name: 'Chat-Kopfzeile' })).toBe(header)
+      expect(within(header).queryByText('Neuer Chat')).not.toBeInTheDocument()
+      expect(
+        within(header).getByRole('button', { name: 'Chat-Titel „Offene Frage“ umbenennen' }),
+      ).toBeInTheDocument()
+    })
+
+    it('names a stored chat without a title like the chat list, as a rename button', () => {
+      currentChatId = 'chat-personal-1'
+      useSpaceStore.setState({ spaces: [], isLoadingList: false })
+      useChatStore.setState({
+        spaceId: 'space-personal',
+        chatId: 'chat-personal-1',
+        title: null,
+        messages: [
+          { id: 'q', role: 'user', content: 'Frage', timestamp: new Date() },
+          { id: 'a', role: 'assistant', content: 'Antwort', timestamp: new Date() },
+        ],
+      })
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const header = screen.getByRole('group', { name: 'Chat-Kopfzeile' })
+      expect(within(header).queryByText('Neuer Chat')).not.toBeInTheDocument()
+      expect(
+        within(header).getByRole('button', { name: 'Chat-Titel „Unbenannter Chat“ umbenennen' }),
+      ).toBeEnabled()
+    })
+
+    it('shows the AI notice once in the empty chat: in its middle, not under the input', async () => {
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+      expect(screen.getAllByRole('note', NOTICE)).toHaveLength(1)
+      expect(screen.getByTestId('ai-notice')).toBeInTheDocument()
+      expect(screen.queryByTestId('ai-notice-line')).not.toBeInTheDocument()
+    })
+
+    it('shows the AI notice once in a running chat: under the input', () => {
+      currentChatId = 'chat-personal-1'
+      useChatStore.setState({
+        spaceId: 'space-personal',
+        chatId: 'chat-personal-1',
+        messages: [{ id: 'q', role: 'user', content: 'Offene Frage', timestamp: new Date() }],
+        isLoading: true,
+      })
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(screen.getAllByRole('note', NOTICE)).toHaveLength(1)
+      expect(screen.getByTestId('ai-notice-line')).toBeInTheDocument()
+    })
+  })
 
   it('loads an existing chat by id from the route', async () => {
     currentChatId = 'chat-personal-1'
@@ -707,6 +787,82 @@ describe('ChatPage', () => {
 
       expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
       expect(screen.queryByRole('article')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Plan eines Agenten', () => {
+    const PLAN_ANSWER = {
+      id: 'plan-answer',
+      role: 'assistant' as const,
+      content: '1. Fristen suchen',
+      timestamp: new Date('2026-11-11T08:00:00Z'),
+      agentRun: {
+        runId: 'run-1',
+        endState: 'PLAN' as const,
+        steps: [],
+        agentId: 'agent-recherche',
+        agentName: 'Recherche',
+      },
+    }
+
+    it('confirms the plan with the same agent, focuses the input and hides the buttons once the answer is pending', async () => {
+      useRuntimeSwitchStore.setState({ agents: true })
+      const sendMessage = vi.fn()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      act(() => {
+        useChatStore.setState({
+          sendMessage,
+          messages: [
+            {
+              id: 'q',
+              role: 'user',
+              content: 'Welche Fristen gelten?',
+              timestamp: new Date('2026-11-11T07:59:00Z'),
+            },
+            PLAN_ANSWER,
+          ],
+        })
+      })
+
+      const plan = await screen.findByRole('group', { name: 'Plan von Recherche' })
+      await userEvent.click(within(plan).getByRole('button', { name: 'Bestätigen' }))
+
+      expect(sendMessage).toHaveBeenCalledWith('Plan bestätigt.', undefined, [], {
+        id: 'agent-recherche',
+        name: 'Recherche',
+      })
+      expect(screen.getByRole('textbox')).toHaveFocus()
+      act(() => useChatStore.setState({ isLoading: true }))
+      expect(screen.queryByRole('group', { name: 'Plan von Recherche' })).not.toBeInTheDocument()
+    })
+
+    it('changes the plan in the input with the agent chosen', async () => {
+      useRuntimeSwitchStore.setState({ agents: true })
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      act(() => useChatStore.setState({ messages: [PLAN_ANSWER] }))
+
+      const chip = await screen.findByTestId('chosen-agent-chip')
+      await userEvent.click(within(chip).getByTestId('CancelIcon'))
+      expect(screen.queryByTestId('chosen-agent-chip')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Ändern' }))
+
+      expect(await screen.findByTestId('chosen-agent-chip')).toHaveTextContent('Agent: Recherche')
+      expect(screen.getByRole('textbox')).toHaveFocus()
+    })
+
+    it('shows no plan buttons when the agent is no longer offered', async () => {
+      useRuntimeSwitchStore.setState({ agents: true })
+      server.use(http.get('/api/v1/agents/available', () => HttpResponse.json([])))
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      act(() => useChatStore.setState({ messages: [PLAN_ANSWER] }))
+
+      await screen.findByText('Fristen suchen')
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.queryByRole('group', { name: 'Plan von Recherche' })).not.toBeInTheDocument()
     })
   })
 })

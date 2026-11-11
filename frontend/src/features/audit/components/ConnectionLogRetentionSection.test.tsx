@@ -9,16 +9,23 @@ import ConnectionLogRetentionSection from './ConnectionLogRetentionSection'
 const RETENTION = '/api/v1/admin/connection-log/retention'
 
 async function setMonths(user: ReturnType<typeof userEvent.setup>, value: string) {
-  const field = await screen.findByLabelText('Aufbewahrungsfrist (Monate)')
+  await user.click(await screen.findByRole('button', { name: 'Aufbewahrungsfrist ändern' }))
+  const field = screen.getByLabelText('Aufbewahrungsfrist (Monate)')
   await user.clear(field)
   await user.type(field, value)
 }
 
 describe('ConnectionLogRetentionSection', () => {
-  it('shows the current period', async () => {
+  it('shows the current period as a value with „Ändern“, without a field', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<ConnectionLogRetentionSection />)
 
-    expect(await screen.findByLabelText('Aufbewahrungsfrist (Monate)')).toHaveValue(12)
+    expect(await screen.findByText('12 Monate')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Aufbewahrungsfrist (Monate)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Aufbewahrungsfrist ändern' }))
+    expect(screen.getByLabelText('Aufbewahrungsfrist (Monate)')).toHaveValue(12)
   })
 
   it.each(['5', '25'])('refuses %s months before sending anything', async (value) => {
@@ -35,9 +42,12 @@ describe('ConnectionLogRetentionSection', () => {
 
     expect(screen.getByText('Bitte eine ganze Zahl von 6 bis 24 eingeben.')).toBeInTheDocument()
     const save = screen.getByRole('button', { name: 'Speichern' })
-    expect(save).toBeDisabled()
+    expect(save).toBeEnabled()
+    await user.click(save)
     await user.type(screen.getByLabelText('Aufbewahrungsfrist (Monate)'), '{Enter}')
     expect(sent).toBe(false)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Aufbewahrungsfrist (Monate)')).toBeInvalid()
   })
 
   it.each([
@@ -62,7 +72,7 @@ describe('ConnectionLogRetentionSection', () => {
 
     const question = `Aufbewahrungsfrist des Verbindungsprotokolls auf ${value} Monate ändern?`
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(effect)
-    await answerConfirm(user, question, 'Frist ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual({ retentionMonths: Number(value) }))
     expect(
@@ -83,11 +93,14 @@ describe('ConnectionLogRetentionSection', () => {
     renderWithProviders(<ConnectionLogRetentionSection />)
     await setMonths(user, '18')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    await answerConfirm(user, /auf 18 Monate ändern\?/, 'Frist ändern')
+    await answerConfirm(user, /auf 18 Monate ändern\?/, 'Ändern')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Die Frist wurde nicht angenommen: Sie muss zwischen 6 und 24 Monaten liegen.',
-    )
+    expect(
+      await screen.findByText(
+        'Die Frist wurde nicht angenommen: Sie muss zwischen 6 und 24 Monaten liegen.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Aufbewahrungsfrist (Monate)')).toBeInvalid()
   })
 
   it('tells a failed load apart and offers to retry', async () => {

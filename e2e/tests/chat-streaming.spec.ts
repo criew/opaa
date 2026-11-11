@@ -96,6 +96,35 @@ test.describe('Antwort im Fluss', () => {
     await expectCitedSource(page, documentName)
   })
 
+  test('Kopf steht von Anfang an, die erste Nachricht rutscht nicht, wenn die Antwort fertig ist', async ({
+    page,
+  }) => {
+    await startFreshChat(page)
+    await clearSearchScope(page)
+    const header = page.getByRole('group', { name: 'Chat-Kopfzeile' })
+    await expect(header).toContainText('Neuer Chat')
+
+    await askQuestion(page, `${SLOW} Wo steht die erste Frage? (${Date.now()})`)
+    const firstMessage = page.getByTestId('message-list').locator('[data-message-id]').first()
+    // The position in the list's content, so a scroll of the list does not count as a move.
+    const firstMessageTop = () =>
+      firstMessage.evaluate((element) => {
+        const list = element.closest('[data-testid="message-list"]')!
+        return Math.round(element.getBoundingClientRect().top + list.scrollTop)
+      })
+
+    // The provisional hint stands once, in the status line.
+    await expect(page.getByTestId('provisional-answer')).toBeVisible()
+    await expect(page.getByTestId('chat-status-line')).toContainText(PROVISIONAL_LABEL)
+    await expect(page.getByText(/Belege noch nicht geprüft/)).toHaveCount(1)
+    await expect(header).toContainText('Neuer Chat')
+    const whileRunning = await firstMessageTop()
+
+    await expect(page.getByTestId('chat-status-line')).toHaveCount(0, { timeout: 60_000 })
+    await expect(header).not.toContainText('Neuer Chat')
+    expect(await firstMessageTop()).toBe(whileRunning)
+  })
+
   test('bricht die Antwort ab, beendet den Modellaufruf und behält nichts', async ({ page }) => {
     const question = `${SLOW} Was gilt für Anträge im Urlaub? (${Date.now()})`
     const abandonedBefore = await abandonedStreams()
@@ -108,12 +137,12 @@ test.describe('Antwort im Fluss', () => {
 
     await expect(page.getByText('Antwort abgebrochen.')).toBeVisible()
     await expect(page.getByTestId('provisional-answer')).toHaveCount(0)
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toHaveValue(question)
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toHaveValue(question)
     await expect.poll(abandonedStreams, { timeout: 15_000 }).toBeGreaterThan(abandonedBefore)
 
     // The turn was never kept: a reload of the draft shows no question.
     await page.reload()
-    await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
     await expect(page.getByText(question)).toHaveCount(0)
   })
 })

@@ -83,6 +83,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingChat: false,
   error: null,
   streamingAnswer: null,
+  streamingRun: null,
   returnedQuestion: null,
   scope: 'all',
   referencedLibraryIds: [],
@@ -98,7 +99,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // why a per-chat counter, rather than settingsUpdateChains, is needed to catch this ordering.
     const settingsSequenceAtStart = settingsChangeSequenceByChatId.get(chatId) ?? 0
     const completedTurnsAtStart = currentCompletedTurnSequence()
-    set({ isLoadingChat: true, error: null, returnedQuestion: null, streamingAnswer: null })
+    set({
+      isLoadingChat: true,
+      error: null,
+      returnedQuestion: null,
+      streamingAnswer: null,
+      streamingRun: null,
+    })
     try {
       const detail = await getChat(chatId)
       // A newer loadChat/startNewChat call superseded this one while the request was in flight -
@@ -186,6 +193,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [],
       error: null,
       streamingAnswer: null,
+      streamingRun: null,
       scope: 'all',
       referencedLibraryIds: [],
       metadataFilter: null,
@@ -211,8 +219,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: (question, usedPrompt, attachments) =>
-    sendChatMessage(get, set, question, usedPrompt, attachments),
+  sendMessage: (question, usedPrompt, attachments, agent) =>
+    sendChatMessage(get, set, question, usedPrompt, attachments, agent),
 
   setScopeAll: () => {
     // Already showing @Space-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
@@ -295,6 +303,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoadingChat: false,
       error: null,
       streamingAnswer: null,
+      streamingRun: null,
       returnedQuestion: null,
       scope: 'all',
       referencedLibraryIds: [],

@@ -2,13 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
 import type { ChatAttachment } from '@/shared/api/types'
@@ -23,15 +19,14 @@ import {
   downloadChatAttachment,
   listMyChatAttachments,
 } from '../api/chatAttachmentApi'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 const UPLOAD_ROLES = new Set(['EDITOR', 'MANAGER', 'OWNER'])
 
 function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return formatDate(iso)
 }
 
 /** Where the attachment lives and how long - the line under its name. */
@@ -62,6 +57,7 @@ function CopyToLibraryDialog({
   const [libraryId, setLibraryId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [libraryMissing, setLibraryMissing] = useState(false)
   const targets = useMemo(
     () =>
       libraries.filter(
@@ -77,11 +73,16 @@ function CopyToLibraryDialog({
   const close = () => {
     setLibraryId('')
     setError(null)
+    setLibraryMissing(false)
     onClose()
   }
 
   const copy = async () => {
-    if (!attachment || !libraryId) return
+    if (!attachment) return
+    if (!libraryId) {
+      setLibraryMissing(true)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -97,46 +98,51 @@ function CopyToLibraryDialog({
   }
 
   return (
-    <Dialog open={attachment !== null} onClose={close} fullWidth maxWidth="xs">
-      <DialogTitle>In Bibliothek übernehmen</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
-          Eine Kopie von „{attachment?.fileName}“ wird in der Bibliothek indexiert und folgt danach
-          deren Rechten und Fristen. Der Anhang im Chat bleibt unverändert.
+    <FormDialog
+      open={attachment !== null}
+      title="In Bibliothek übernehmen"
+      submitLabel="Übernehmen"
+      onSubmit={() => void copy()}
+      onClose={close}
+      busy={busy}
+      busyAnnouncement="Wird übernommen"
+      hideSubmit={targets.length === 0}
+    >
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
+        Eine Kopie von „{attachment?.fileName}“ wird in der Bibliothek indexiert und folgt danach
+        deren Rechten und Fristen. Der Anhang im Chat bleibt unverändert.
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {targets.length === 0 ? (
+        <Typography sx={{ fontSize: fontSize.text }}>
+          Sie können in keine Upload-Bibliothek Dokumente hochladen.
         </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {targets.length === 0 ? (
-          <Typography sx={{ fontSize: 13.5 }}>
-            Sie können in keine Upload-Bibliothek Dokumente hochladen.
-          </Typography>
-        ) : (
-          <TextField
-            select
-            fullWidth
-            size="small"
-            label="Bibliothek"
-            value={libraryId}
-            onChange={(e) => setLibraryId(e.target.value)}
-          >
-            {targets.map((library) => (
-              <MenuItem key={library.id} value={library.id}>
-                {library.name}
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close}>Abbrechen</Button>
-        <Button variant="contained" disabled={!libraryId || busy} onClick={() => void copy()}>
-          Übernehmen
-        </Button>
-      </DialogActions>
-    </Dialog>
+      ) : (
+        <FormField
+          select
+          fullWidth
+          size="small"
+          label="Bibliothek"
+          value={libraryId}
+          onChange={(e) => {
+            setLibraryId(e.target.value)
+            setLibraryMissing(false)
+          }}
+          error={libraryMissing}
+          helperText={libraryMissing ? 'Bitte eine Bibliothek auswählen.' : undefined}
+        >
+          {targets.map((library) => (
+            <MenuItem key={library.id} value={library.id}>
+              {library.name}
+            </MenuItem>
+          ))}
+        </FormField>
+      )}
+    </FormDialog>
   )
 }
 
@@ -167,7 +173,7 @@ export default function MyChatAttachmentsSection() {
 
   const remove = async (attachment: ChatAttachment) => {
     const confirmed = await confirmAction({
-      question: `Anhang „${attachment.fileName}“ löschen?`,
+      question: `„${attachment.fileName}“ löschen?`,
       consequence: attachment.chatId
         ? 'Die Datei und ihr Text werden gelöscht; der Chat nennt sie danach nicht mehr als Quelle.'
         : 'Die Datei und ihr Text werden gelöscht.',
@@ -191,7 +197,7 @@ export default function MyChatAttachmentsSection() {
   return (
     <Box component="section" aria-labelledby="my-chat-attachments-head">
       <SectionHead id="my-chat-attachments-head">Meine Uploads</SectionHead>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
         Dateien, die Sie an Fragen im Chat angehängt haben. Ein Anhang gehört zu seinem Chat und
         wird mit ihm gelöscht; nie gesendete Anhänge werden nach Ablauf ihrer Frist gelöscht.
       </Typography>
@@ -201,7 +207,7 @@ export default function MyChatAttachmentsSection() {
         </Alert>
       )}
       {attachments !== null && attachments.length === 0 && (
-        <Typography sx={{ fontSize: 13.5 }}>Sie haben keine Anhänge.</Typography>
+        <Typography sx={{ fontSize: fontSize.text }}>Sie haben keine Anhänge.</Typography>
       )}
       {attachments !== null && attachments.length > 0 && (
         <Stack component="ul" spacing={1} sx={{ p: 0, m: 0, listStyle: 'none' }}>
@@ -219,12 +225,14 @@ export default function MyChatAttachmentsSection() {
                 borderColor: 'divider',
               }}
             >
-              <AttachFileIcon aria-hidden sx={{ fontSize: 18, color: 'text.secondary' }} />
+              <AttachFileIcon aria-hidden sx={{ fontSize: iconSize.md, color: 'text.secondary' }} />
               <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
-                <Typography sx={{ fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}>
+                <Typography
+                  sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}
+                >
                   {attachment.fileName}
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                   {attachmentContext(attachment)}
                 </Typography>
               </Box>

@@ -30,37 +30,43 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Label | 1–3 | Sicht (P12) |
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
+| Gesperrte Absende-Knöpfe („Weiter", „Anlegen", „Speichern" …) | 0 | gemessen: `disabledSubmits`, sichtbare Absende-Knöpfe mit `disabled` oder `aria-disabled`, in Assistenten, Dialogen und auf Einstellungsseiten (P28, P56) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
 | Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
+| Schriftgrößen im Hauptbereich | höchstens 6 (die Stufen aus [guidelines.md](./guidelines.md), 3.2) | gemessen: `fontSizes`, verschiedene berechnete Größen sichtbaren Texts (P11) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
+| Spalten je Tabelle | höchstens 7 bei 1280 px | gemessen: `tableColumns`, Spaltenköpfe der breitesten sichtbaren Tabelle; die Spalte der Handlungen zählt mit (P58) |
+| Primärschaltflächen in Tabellenzeilen | 0 | gemessen: `rowPrimaryButtons`, gefüllte Schaltflächen in Tabellenzeilen (P58) |
 
 ## Visuell
 
 1. **Ein Signal je Element.** Ein Badge oder Chip trägt nicht zugleich Icon, Punkt, Rahmen,
    Tönung und Zusatztext. Chips selbst: [guidelines.md](./guidelines.md), 5.5. – Sicht
 2. **Reiter** sind Text mit Unterstrich: keine Pillen, keine Icons, keine Zähler, kein
-   „Neu“-Badge. – Sicht
+   „Neu“-Badge. Die Anzahl der Liste steht neben dem Seitentitel
+   ([guidelines.md](./guidelines.md), 4.6). – Sicht; `AreaTabs` kennt keinen Zähler
+   (Quelltext-Test)
 3. **Keine Schmuck-Icons** vor Überschriften, Kacheltiteln oder Labels, wenn sie nichts
    unterscheiden. Icons der Kachelauswahl: [guidelines.md](./guidelines.md), 5.11. – Sicht
 4. Keine getönten Flächen oder Verläufe als Schmuck: [guidelines.md](./guidelines.md), 1 und 4.3.
 5. Akzentfarbe nur für Handlung und Zustand: [guidelines.md](./guidelines.md), 1 und 2.3.
 6. **Listenzeile:** höchstens zwei Textzeilen, Hauptangabe und eine Nebenangabe, Navigation über
-   Chevron oder die ganze Zeile ([guidelines.md](./guidelines.md), 5.3). Keine Avatare, IDs oder
+   die ganze Zeile, nie über Chevron oder „Details“ ([guidelines.md](./guidelines.md), 5.3). Keine Avatare, IDs oder
    Fortschrittsbalken ohne Zweck. – Sicht
 7. **Fehler am Feld:** Rahmen und eine kurze Zeile darunter ([guidelines.md](./guidelines.md), 5.2).
    Für Validierung kein Banner mit Icon, Titel, Fehlercode, Support-Link und Schließen-X. –
    gemessen (`alertCount` im Zustand `wizard-validation`) und Sicht
 8. Bestätigungsdialog: [guidelines.md](./guidelines.md), 5.10. Darüber hinaus kein
    „Nicht mehr fragen“, kein „Später“, keine zusätzliche Warnbox. – Sicht
-9. **Stepper:** Schrittnamen aus einem Wort, keine Unterzeilen, keine Restzeit- oder
-   Prozentangaben. – Sicht
+9. **Stepper:** Schrittnamen und Schrittleiste: [guidelines.md](./guidelines.md), 5.15. Darüber
+   hinaus keine Unterzeilen, keine Restzeit- oder Prozentangaben. – Sicht
 10. **Filter:** schlichte Chips, gewählt heißt gefüllt. Keine Leisten „Gespeicherte Filter“ oder
     „Alle zurücksetzen“ ohne Bedarf. Ein Filter erscheint nur, wenn er kürzt
     ([guidelines.md](./guidelines.md), 5.3). Filterzeile für Assets: [guidelines.md](./guidelines.md),
     5.11. – Sicht
-11. Hierarchie über Größe und Gewicht: [guidelines.md](./guidelines.md), 1 und 3. Messbar
-    begrenzt durch `fontSizes` und `colors` (verschiedene Werte im Hauptbereich), im Vergleich
-    zwischen Varianten. – gemessen
+11. Hierarchie über Größe und Gewicht: [guidelines.md](./guidelines.md), 1 und 3. Höchstens die
+    sechs Schriftstufen aus 3.2 im Hauptbereich (`fontSizes` ≤ 6, Zählbudget), dazu `colors` im
+    Vergleich zwischen Varianten. – gemessen
 
 ## Text
 
@@ -79,7 +85,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
     verifiziert“. – Sicht
 17. Schaltflächen tragen das Verb: [guidelines.md](./guidelines.md), 5.1 und 5.10.
 18. **Keine Redundanz:** „Sind Sie sicher?“, „nicht rückgängig“ und „dauerhaft und unwiderruflich“
-    werden ein Satz. – Sicht
+    werden ein Satz. Bestätigungen: Frage, Folge und Verb nach [guidelines.md](./guidelines.md),
+    5.10 und Verbliste in 6; geprüft durch `confirmTexts.test.ts`. – Sicht
 19. **Begriffsregel** (eigener Begriff oder Herstellerbegriff): [guidelines.md](./guidelines.md), 6,
     und das [Glossar](../handbuch/referenz/glossar.md). – Sicht über alle Arten einer Variante
 
@@ -103,21 +110,32 @@ zwei Einträgen.
 
 ## Allgemeine Qualität
 
-25. Reflow bei 320 px und 400 % Zoom ohne waagerechtes Scrollen:
-    [accessibility.md](./accessibility.md), 2.5. – gemessen (`overflowX` bei 320 px)
+25. **Telefon und Reflow** ([guidelines.md](./guidelines.md), 4.7): Bei 320 px und 400 % Zoom
+    bricht nichts und nichts scrollt waagerecht ([accessibility.md](./accessibility.md), 2.5).
+    Bei 360 px beginnt der Inhalt spätestens 200 px unter der Oberkante, die Bereichsnavigation
+    steht in einer Zeile, unter 900 px ist keine `<table>` sichtbar, unter 600 px stehen Dialoge
+    bildschirmfüllend und der Anlege-Knopf in voller Breite unter dem Titel; keine Beschriftung
+    eines Knopfs oder Reiters bricht um, kein Text ist am Rand abgeschnitten. – gemessen:
+    `e2e/ui-lab/mobile-pass.mjs` (alle Verwaltungs- und Hauptseiten mit den Mock-Profilen
+    `admin`, `user` und `auditor`, `contentTop`, `overflowX`, `tables`, `wrappedLabels`,
+    `cutOff`, `createButton`, `dialog`), dazu `overflowX` bei 320 px in `capture.mjs`
 26. **Tastatur:** die ganze Strecke ohne Maus ([accessibility.md](./accessibility.md), 2.1). Nach
-    „Weiter“ liegt der Fokus auf der Schrittüberschrift, und `document.title` nennt den Schritt. –
+    „Weiter“ liegt der Fokus auf der Schrittüberschrift, ohne sichtbaren Ring
+    ([guidelines.md](./guidelines.md), 4.4), und `document.title` nennt den Schritt. –
     gemessen (`tabStops`, `title`) und Tastatur
 27. Fokus nicht verdeckt durch Sticky-Leiste oder Popup-Benachrichtigung (WCAG 2.4.11). –
     gemessen (`focusObscured`, `focusHidden`)
-28. **Absenden bleibt aktiv:** kein `disabled` wegen fehlender Eingaben; ein Doppelklick legt
-    nichts doppelt an. – gemessen (`disabledSubmits`) und Sicht
+28. Absenden bleibt aktiv, Fehler am Feld: [guidelines.md](./guidelines.md), 5.15; ein
+    Doppelklick legt nichts doppelt an. – gemessen (`disabledSubmits`, Budget 0) und Sicht
 29. **Validierung beim Verlassen des Felds oder beim Absenden**, nicht beim Tippen;
-    Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “. –
+    Fehlerzusammenfassung oben mit Sprunglinks, der Seitentitel beginnt dann mit „Fehler: “.
+    Ausnahme Assistenten: Fehler am Feld, Zusammenfassung nur im Schritt „Quelle“
+    ([guidelines.md](./guidelines.md), 5.15). –
     gemessen (`title`, `invalidFields`) und Tastatur
 30. **Zurück verliert nichts**, weder im Assistenten noch über den Browser. – Video
-31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde. – Video
-32. **Prüfschritt** vor dem Anlegen, mit „Ändern“-Verweisen je Abschnitt. – Sicht
+31. **Ungespeicherte Änderungen:** Nachfrage nur, wenn tatsächlich etwas geändert wurde; auf
+    Einstellungsseiten „Änderungen verwerfen?" ([guidelines.md](./guidelines.md), 5.16). – Video
+32. Prüfschritt vor dem Anlegen: [guidelines.md](./guidelines.md), 5.15. – Sicht
 33. **Verbindungstest einheitlich:** automatisch bei „Weiter“ und über einen eigenen Knopf;
     Ergebnis inline, mit der Stufe (Adresse · Anmeldung · Rechte); es verfällt, sobald ein
     Verbindungsfeld geändert wird. – Sicht und Video
@@ -127,10 +145,9 @@ zwei Einträgen.
     [guidelines.md](./guidelines.md), 5.11. Stresstest mit 300 Assets. – Sicht im Szenario `scale`
 36. **Tri-State im Baum** (`aria-checked="mixed"`). – Tastatur oder Screenreader
 37. **„Alle auswählen“ nennt den Umfang**; ein Filter löscht nie die Auswahl. – Sicht
-38. **Drei Leerzustände** unterscheidbar: erstmals leer · 0 Treffer (mit „Filter zurücksetzen“)
-    · kein Zugriff. – Sicht in `empty` und `failed`
-39. **Kein Lade-Flackern** unter 300 ms; eine Aktion über 1 s zeigt Fortschritt im auslösenden
-    Knopf. – Video im Szenario `slow`
+38. **Leerzustände und Ladefehler:** [guidelines.md](./guidelines.md), 5.7, Regeln 2–7. – Sicht
+    in `empty` und `failed`
+39. **Laden:** [guidelines.md](./guidelines.md), 5.7, Regel 1. – Video im Szenario `slow`
 40. **Indizierungsstatus** überall gleich: Zustand, „n von m“, letzter Lauf, „Teilweise
     fehlgeschlagen“. – Sicht
 41. Popup-Benachrichtigungen: [guidelines.md](./guidelines.md), 5.9. – Sicht in `failed`
@@ -148,20 +165,82 @@ zwei Einträgen.
 45. **„Ändern“ nur als Textlink** an einer gemeinsamen rechten Kante, nie als Knopf. – Sicht
     (Querbögen)
 46. **Eine Inhaltsbreite** für Reiterleiste, Zeilen und Fußleiste; sie springt nicht zwischen
-    Assistent, Prüfen, Bearbeiten und Detail. – Sicht (Querbögen)
+    Assistent, Prüfen, Bearbeiten und Detail. Es gibt drei Breiten je Seitentyp (720, 880,
+    1180 px), Erklärtexte in Lesebreite, und jede Bereichsseite beginnt mit demselben Kopf aus
+    Titel, Anzahl und Anlege-Knopf; ein Plus-Icon steht nur dort, in der Seitenleiste und im
+    Leerzustand ([guidelines.md](./guidelines.md), 4.6 und 5.1). – Sicht (Querbögen) und
+    Quelltext-Test (`pageGrid.test.tsx`: keine `maxWidth`-Zahl unter `features/`, Plus-Icon
+    nur aus `CreateButton`)
 47. **Keine doppelten Trennlinien:** Die Unterkante der Reiterleiste ist der erste Trenner; danach
     je ein Trenner zwischen den Abschnitten und einer vor den Knöpfen. – Sicht
 48. **Zeilenraster** Titel | Inhalt | „Ändern“ für zusammengefasste Abschnitte, gleich in
     Assistent, Prüfen und Detail. – Sicht (Querbögen)
 49. Gleichartige Wahl ohne unterscheidendes Icon: [guidelines.md](./guidelines.md), 5.11. – Sicht
 50. **Dieselbe Information nie zweimal auf einer Fläche** – weder als Kopfzeile und Abschnitt noch
-    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt. – Sicht
-    (Konsistenz-Review, Kategorie A)
+    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt; im Chat weder
+    der KI-Hinweis noch der Hinweis auf vorläufige Belege ([guidelines.md](./guidelines.md), 5.8). –
+    Sicht (Konsistenz-Review, Kategorie A)
 51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
     „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
+52. **Dialoge aus den Bausteinen** ([guidelines.md](./guidelines.md), 5.6): Titel wörtlich wie der
+    öffnende Knopf, beim Bearbeiten „„<Name>“ bearbeiten“; die Handlung als Verb allein; links
+    höchstens eine Nebenhandlung, rechts „Abbrechen“ und die Handlung; Startfokus im ersten Feld,
+    bei einer Bestätigung im Ton `danger` auf „Abbrechen“, im Ton `caution` auf dem Dialog;
+    Breite 600 oder 900 px,
+    444 px nur für die Bestätigung, unter 600 px Bildschirmbreite bildschirmfüllend; keine
+    Trennlinien an Titel und Fußzeile; ein Seitenpanel nur, wenn die Liste dahinter gebraucht
+    wird. – Sicht; ESLint verbietet `Dialog` und `Drawer` außerhalb von `shared/ui`
+53. **Nichts rutscht, wenn ein Vorgang endet:** Kopf und Rahmen einer Fläche stehen vom ersten
+    Bild an, ein Titel, der später feststeht, hat bis dahin einen Platzhalter („Neuer Chat“). Was
+    schon steht, behält seine Position, wenn eine Antwort, ein Titel oder ein Ergebnis eintrifft
+    ([guidelines.md](./guidelines.md), 5.8). – Video im Szenario `slow`
+54. **Seiten vor der Anmeldung wie die Anwendung:** Bausteine `FormField`, `SecretField`,
+    `TextLink`, `SectionHead`; Rückweg überall „Zur Anmeldung" als Textlink unter dem Formular;
+    Abschnittsköpfe grau, auch im Installationsassistenten; die Primärschaltfläche trägt das Verb
+    der Seite ([guidelines.md](./guidelines.md), 5.1 und 5.12). – gemessen wie jede Seite
+    (`capture.mjs --flow pages --profile signed-out`) und Sicht; im Code geprüft durch
+    `preSignInRules.test.ts`
+55. **Einrichten und Verwalten aus einem Feldblock:** Was der Installationsassistent und die
+    Verwaltung beide abfragen, zeigt dieselben Felder in derselben Reihenfolge mit denselben
+    Beschriftungen, Hilfetexten und Bedienelementen; der Schritt heißt wie der Reiter; Geheimnisse
+    stehen im `SecretField` mit „Gesetzt“ und „Ersetzen“, Löschen ist eine stille Textaktion am
+    Feld; im Assistenten ist keine Schaltfläche gesperrt, die Fußzeile steht rechts, die
+    Schrittliste zeigt unter 900 px nur „Schritt 2 von 12 · Erstes Konto“, die Einleitung hat
+    höchstens zwei Sätze ([guidelines.md](./guidelines.md), 5.17). – Sicht (Schritt und
+    Einstellungsseite nebeneinander, `?mockInstallation=pending`); im Code geprüft durch
+    `setupRules.test.ts` und `fieldBlocks.test.tsx`
+56. **Speichern, Schalter, Verbindungstest einheitlich** ([guidelines.md](./guidelines.md), 5.16):
+    ein Formular mit mehreren Feldern hat genau ein „Speichern", primär, unten links, immer aktiv,
+    daneben „Verwerfen" nur bei Änderungen; ein einzelner Wert ist eine Wertzeile mit „Ändern",
+    kein Speichern-Knopf neben einem Feld; ein Schalter wirkt sofort, was erst mit „Speichern"
+    gilt, ist ein Auswahlkästchen; nach dem Speichern meldet das Popup, kein Hinweis in der Seite;
+    „Verbindung testen" sekundär neben „Speichern", im Dialog links in der Fußzeile, Ergebnis
+    inline. – Sicht (Querbögen) und gemessen (`disabledSubmits`); im Code geprüft durch
+    `settingsSource.test.ts` und `SettingsForm.test.tsx`
+57. **Formularfelder aus einem Baustein:** Beschriftung oberhalb, kein schwebendes Label, kein
+    Sternchen, „(optional)“ an optionalen Feldern, Hilfetext bündig mit der Feldkante;
+    Such- und Filterfelder ohne sichtbare Beschriftung; Einstellungsformulare einspaltig in
+    640 px, Zahlenfelder 160 px, mehrzeilige Felder ab drei Zeilen
+    ([guidelines.md](./guidelines.md), 5.2). – Sicht (Querbögen); im Code geprüft durch
+    `FormField.test.tsx` und `fieldHeight.test.tsx`
+58. **Listen aus einem Baustein** ([guidelines.md](./guidelines.md), 5.3): die ganze Zeile als
+    Link statt „Details“, „Beheben“ oder Chevron; höchstens eine sichtbare, sekundäre Handlung je
+    Zeile, der Rest hinter „⋯“ (Ausnahme: Pfeile zum Verschieben, wo die Reihenfolge der Inhalt
+    ist, und die Entscheidungszeile mit „Bestätigen“ und „Ablehnen“ als zwei kompakten
+    Sekundär-Schaltflächen, 5.3); Abfrageseiten mit `QueryForm` (720 px, „Von“/„Bis“
+    nebeneinander, Schaltfläche immer aktiv, vor der ersten Abfrage ein Satz statt leerem Rahmen,
+    „Anlass“ einheitlich); Anzahl neben dem Seitentitel, gefiltert „12 von 40“; Blättern
+    unten rechts als „Seite 2 von 5“; höchstens sieben Spalten bei 1280 px; Zellen einzeilig,
+    Namen und Zustandswörter gekürzt mit „…“ und Tooltip, nie stumm abgeschnitten; Ergebnisspalten
+    (`wrap`) brechen um. – gemessen (`tableColumns`, `rowPrimaryButtons`) und Sicht; ESLint
+    verbietet `Table` außerhalb von `shared/ui`, im Code geprüft durch `AdminList.test.tsx` und
+    `QueryForm.test.tsx`; Revisionsseiten im Seitendurchlauf mit `--profile auditor`
 
 ## Pflege
 
 Ein neuer Punkt bekommt die nächste freie Nummer; ein gestrichener behält seine Nummer mit dem
-Vermerk „entfallen“, damit ältere Berichte lesbar bleiben. Wird eine Regel in die Guidelines
+Vermerk „entfallen“, damit ältere Berichte lesbar bleiben. Vor einem Merge prüfen, ob ein
+paralleler PR dieselbe Nummer vergeben hat. Doppelt vergeben waren einmal 52 und 55: Seit
+November 2026 heißen die Formularfelder P57 und die Listen P58; ein älterer Bericht mit „P52“ zu
+Formularfeldern oder „P55“ zu Listen meint diese Punkte. Wird eine Regel in die Guidelines
 übernommen, schrumpft der Punkt hier zum Verweis.

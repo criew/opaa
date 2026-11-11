@@ -7,14 +7,22 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { Link as RouterLink } from 'react-router'
+import { attachActionSlot } from '@/shared/ui/areaHeaderSlots'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
-import { focusRingOffsetPx, focusRingWidthPx } from '@/shared/theme/tokens'
+import {
+  focusRingOffsetPx,
+  focusRingWidthPx,
+  fontSize,
+  iconSize,
+  readingWidth,
+} from '@/shared/theme/tokens'
 import AssetHeadline, { EditHeadlineDialog, type AssetHeadlineProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
+import { formatDate } from '@/shared/utils/formatDate'
 
 export interface AssetDetailHeaderProps {
   assetType: AssetType
@@ -59,14 +67,6 @@ export interface AssetDetailHeaderProps {
   note?: ReactNode
   /** Under the figures, e.g. the scope of a source or a running indexing. */
   children?: ReactNode
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 /**
@@ -244,6 +244,12 @@ export default function AssetDetailHeader({
             minHeight: 40,
           }}
         >
+          {/* A `CreateButton` in the content of a tab lands here („Neuer Prompt"). */}
+          <Box
+            component="span"
+            ref={attachActionSlot}
+            sx={{ display: 'inline-flex', '&:empty': { display: 'none' } }}
+          />
           {actions}
           {favorite !== undefined && onFavoriteChange && (
             <FavoriteToggle name={name} favorite={favorite} onChange={onFavoriteChange} />
@@ -260,7 +266,7 @@ export default function AssetDetailHeader({
 
       <Box sx={{ position: 'relative' }}>
         <AssetHeadline name={name} description={description} />
-        {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
+        {note && <Box sx={{ maxWidth: readingWidth }}>{note}</Box>}
       </Box>
       {headline.canEdit && (
         <EditHeadlineDialog
@@ -284,7 +290,7 @@ export default function AssetDetailHeader({
         component="div"
         sx={{
           mt: { xs: 0.75, sm: 1.5 },
-          fontSize: 13,
+          fontSize: fontSize.text,
           lineHeight: '22px',
           color: 'text.secondary',
           display: 'flex',
@@ -364,7 +370,10 @@ export default function AssetDetailHeader({
                   }}
                 >
                   <ExpandMoreIcon
-                    sx={{ fontSize: 20, transform: figuresOpen ? 'rotate(180deg)' : 'none' }}
+                    sx={{
+                      fontSize: iconSize.md,
+                      transform: figuresOpen ? 'rotate(180deg)' : 'none',
+                    }}
                   />
                 </IconButton>
               </Box>

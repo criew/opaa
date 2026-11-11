@@ -133,7 +133,10 @@ class ChatSearchPrivacyIntegrationTest {
       }
     }
     assertThat(meterRegistry.find("opaa.chat.search.duration").timer()).isNotNull();
-    assertThat(meterRegistry.find("opaa.chat.search.duration").timer().getId().getTags()).isEmpty();
+    assertThat(meterRegistry.find("opaa.chat.search.duration").timer().getId().getTags())
+        .extracting(Tag::getKey)
+        .as("only the common tags every meter carries")
+        .containsOnly("application", "host");
   }
 
   private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder search(

@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import Collapse from '@mui/material/Collapse'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 interface Props {
   children: ReactNode
@@ -45,14 +46,18 @@ export default class ErrorBoundary extends Component<Props, State> {
             p: 4,
           }}
         >
-          <ErrorOutlineIcon sx={{ fontSize: 48 }} color="error" />
-          <Typography sx={{ fontSize: 26, fontWeight: 600 }}>Etwas ist schiefgelaufen</Typography>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', textAlign: 'center' }}>
+          <ErrorOutlineIcon sx={{ fontSize: iconSize.xl }} color="error" />
+          <Typography sx={{ fontSize: fontSize.wizardTitle, fontWeight: 600 }}>
+            Etwas ist schiefgelaufen
+          </Typography>
+          <Typography
+            sx={{ fontSize: fontSize.text, color: 'text.secondary', textAlign: 'center' }}
+          >
             Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button variant="contained" onClick={() => window.location.reload()}>
-              Neu laden
+              Seite neu laden
             </Button>
             <Button
               variant="outlined"
@@ -86,7 +91,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
                     fontFamily: 'monospace',
-                    fontSize: 11.5,
+                    fontSize: fontSize.meta,
                     color: 'text.secondary',
                     m: 0,
                   }}

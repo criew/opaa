@@ -2,7 +2,6 @@ package io.opaa.query.answer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.retrieval.QueryProperties;
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +27,7 @@ class ConversationMemoryConfigurationTest {
     ChatMemory chatMemory =
         new ConversationMemoryConfiguration()
             .chatMemory(
-                new CaffeineChatMemoryRepository(new SimpleMeterRegistry()),
+                new CaffeineChatMemoryRepository(),
                 new QueryProperties(
                     8, 25, 1.0, 0.3, true, 3, 2, true, 50, conversationWindowMessages, 2));
     String conversationId = "window-probe-" + UUID.randomUUID();

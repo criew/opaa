@@ -59,6 +59,18 @@ describe('RightsHistoryPage', () => {
     vi.clearAllMocks()
   })
 
+  it('says what will appear before the first query and names missing values at their fields', async () => {
+    signInAs('AUDITOR')
+    const user = userEvent.setup()
+    renderWithProviders(<RightsHistoryPage />)
+
+    expect(screen.getByText(/Hier erscheinen nach der Abfrage/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Auskunft erstellen' }))
+
+    expect(mockGetAccessAsOf).not.toHaveBeenCalled()
+    expect(screen.getByText('Bitte die Kennung des Objekts angeben.')).toBeInTheDocument()
+  })
+
   it('nennt Person, Grundlage, Gruppe und Zeitraum eines Zugriffs', async () => {
     signInAs('AUDITOR')
     mockGetAccessAsOf.mockResolvedValue(answer)
@@ -115,7 +127,7 @@ describe('RightsHistoryPage', () => {
     await fillAndSubmit()
 
     expect(await screen.findByText('Seite 1 von 3')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Nächste Seite' }))
 
     expect(mockGetAccessAsOf).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }))
   })

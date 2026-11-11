@@ -18,6 +18,7 @@ import type {
   EmbeddingReindexRunStatus,
   EmbeddingReindexStatusResponse,
 } from '@/shared/api/types'
+import { formatDateTime, formatNumber } from '@/shared/utils/formatDate'
 
 /** How often the section asks for the progress while a run is working. */
 export const POLL_INTERVAL_MS = 5000
@@ -36,7 +37,7 @@ function describeModel(identity: EmbeddingIndexIdentity): string {
 
 function formatTimestamp(value?: string | null): string | null {
   if (!value) return null
-  return new Date(value).toLocaleString('de-DE')
+  return formatDateTime(value)
 }
 
 /**
@@ -140,8 +141,8 @@ export default function EmbeddingIndexSection() {
       {status.stale && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="body2" sx={{ mb: 0.5 }}>
-            {status.embeddedChunks.toLocaleString('de-DE')} von{' '}
-            {status.totalChunks.toLocaleString('de-DE')} Abschnitten neu eingebettet ({percent} %)
+            {formatNumber(status.embeddedChunks)} von {formatNumber(status.totalChunks)} Abschnitten
+            neu eingebettet ({percent} %)
             {!status.privateLibrariesCounted && ', ohne private Bibliotheken'}
           </Typography>
           <LinearProgress
@@ -177,8 +178,9 @@ export default function EmbeddingIndexSection() {
 
       {refillPending && !running && (
         <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+          {/* With a stale index „Neueinbettung starten" below is the page's primary action. */}
           <Button
-            variant="contained"
+            variant={status.stale ? 'outlined' : 'contained'}
             disabled={busy}
             onClick={() => void act(startEmbeddingReindex)}
           >

@@ -3,12 +3,11 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import CircularProgress from '@mui/material/CircularProgress'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import Popover from '@mui/material/Popover'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import type {
@@ -24,6 +23,8 @@ import {
   type MetadataFilterScope,
 } from '../stores/metadataFilterOptionsStore'
 import { fillLevelText, notOfferedText } from './metadataFilterText'
+import { fontSize } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 interface MetadataFilterPopoverProps {
@@ -227,7 +228,7 @@ export default function MetadataFilterPopover({
         // Contains the visible "Filter" word for word (WCAG 2.5.3).
         aria-label="Filter für Metadaten setzen"
         {...tourAnchor('filter')}
-        sx={{ textTransform: 'none', fontSize: 12, py: 0.25 }}
+        sx={{ textTransform: 'none', fontSize: fontSize.meta, py: 0.25 }}
       >
         Filter
       </Button>
@@ -240,18 +241,14 @@ export default function MetadataFilterPopover({
         transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         slotProps={{ paper: { sx: { p: 2, width: 360, maxWidth: '90vw' } } }}
       >
-        <Typography component="h2" sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+        <Typography component="h2" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 1 }}>
           Nach Kernfeldern filtern
         </Typography>
         <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1.5 }}>
           Der Filter gilt für jede Frage dieses Chats. Ein Dokument ohne Angabe im gefilterten Feld
           bleibt gefunden und wird als „ohne Angabe“ gekennzeichnet.
         </Typography>
-        {isLoading && !optionsCurrent && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={20} aria-label="Filteroptionen werden geladen" />
-          </Box>
-        )}
+        {isLoading && !optionsCurrent && <LoadingState shape="lines" count={4} />}
         {error && (
           <Alert severity="error" sx={{ mb: 1 }}>
             {error}
@@ -260,7 +257,7 @@ export default function MetadataFilterPopover({
         {optionsCurrent && (
           <Stack spacing={2}>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500 }}>Dokumentart</Typography>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>Dokumentart</Typography>
               {typeField?.offered ? (
                 <>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
@@ -289,7 +286,7 @@ export default function MetadataFilterPopover({
                             />
                           }
                           label={`${type.label} (${type.documentCount})`}
-                          slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                          slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                         />
                       ))}
                     </FormGroup>
@@ -311,7 +308,7 @@ export default function MetadataFilterPopover({
               )}
             </Box>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500 }}>Datum/Stand</Typography>
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>Datum/Stand</Typography>
               {dateField?.offered ? (
                 <>
                   <Typography
@@ -325,16 +322,15 @@ export default function MetadataFilterPopover({
                       ` · Werte von ${options.documentDateMin} bis ${options.documentDateMax}`}
                   </Typography>
                   <Stack direction="row" spacing={1}>
-                    <TextField
+                    <FormField
                       label="Von"
                       type="date"
                       size="small"
                       value={draftFrom}
                       onChange={(e) => setDraftFrom(e.target.value)}
-                      slotProps={{ inputLabel: { shrink: true } }}
                       fullWidth
                     />
-                    <TextField
+                    <FormField
                       label="Bis"
                       type="date"
                       size="small"
@@ -342,7 +338,6 @@ export default function MetadataFilterPopover({
                       onChange={(e) => setDraftTo(e.target.value)}
                       error={dateInvalid}
                       helperText={dateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
-                      slotProps={{ inputLabel: { shrink: true } }}
                       fullWidth
                     />
                   </Stack>
@@ -368,7 +363,9 @@ export default function MetadataFilterPopover({
               .filter((field) => field.offered)
               .map((field) => (
                 <Box key={field.fieldKey} data-testid="filter-format-field">
-                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{field.label}</Typography>
+                  <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
+                    {field.label}
+                  </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }} component="p">
                     {`${field.label} bei ${field.filledDocuments} von ${field.totalDocuments} Dokumenten vorhanden`}
                     {field.valuesCapped && ` · die ${field.values.length} häufigsten Werte`}
@@ -395,13 +392,13 @@ export default function MetadataFilterPopover({
                           />
                         }
                         label={`${value.label} (${value.documentCount})`}
-                        slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                        slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                       />
                     ))}
                   </FormGroup>
                   {/* The value set is open - whoever looks for an address outside the offered
                       ones types it exactly; a value the field's pattern rejects is a 400. */}
-                  <TextField
+                  <FormField
                     label={`${field.label} genau`}
                     size="small"
                     fullWidth
@@ -418,7 +415,7 @@ export default function MetadataFilterPopover({
               ))}
             {libraryFields.map((field) => (
               <Box key={libraryFieldKey(field)} data-testid="filter-library-field">
-                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>
                   {field.label} · {field.libraryName}
                 </Typography>
                 {field.offered ? (
@@ -461,13 +458,13 @@ export default function MetadataFilterPopover({
                               />
                             }
                             label={`${value.label} (${value.documentCount})`}
-                            slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                            slotProps={{ typography: { sx: { fontSize: fontSize.text } } }}
                           />
                         ))}
                       </FormGroup>
                     )}
                     {field.type === 'PATTERN' && (
-                      <TextField
+                      <FormField
                         label="Kennung"
                         size="small"
                         fullWidth
@@ -487,12 +484,11 @@ export default function MetadataFilterPopover({
                     )}
                     {field.type === 'DATE' && (
                       <Stack direction="row" spacing={1}>
-                        <TextField
+                        <FormField
                           label="Von"
                           type="date"
                           size="small"
                           fullWidth
-                          slotProps={{ inputLabel: { shrink: true } }}
                           value={draftLibraryFields[libraryFieldKey(field)]?.dateFrom ?? ''}
                           onChange={(e) =>
                             setDraftLibraryFields((current) => ({
@@ -506,12 +502,11 @@ export default function MetadataFilterPopover({
                             }))
                           }
                         />
-                        <TextField
+                        <FormField
                           label="Bis"
                           type="date"
                           size="small"
                           fullWidth
-                          slotProps={{ inputLabel: { shrink: true } }}
                           value={draftLibraryFields[libraryFieldKey(field)]?.dateTo ?? ''}
                           onChange={(e) =>
                             setDraftLibraryFields((current) => ({

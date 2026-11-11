@@ -2,11 +2,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Drawer from '@mui/material/Drawer'
-import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import CloseIcon from '@mui/icons-material/Close'
 import type { CapabilityOverviewResponse, ConnectionProfileResponse } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
 import KeyValueList from '@/shared/ui/KeyValueList'
@@ -26,6 +23,10 @@ import { applyAccess, confirmAccess } from '@/features/capability'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
 import { formatDay, signsInItself, type ProfileAttention } from './profileState'
+import { fontSize } from '@/shared/theme/tokens'
+import SidePanel from '@/shared/ui/dialog/SidePanel'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -54,7 +55,7 @@ function Lever({ action, children }: { action: ReactNode; children: ReactNode })
       }}
     >
       <Box>{action}</Box>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: { sm: 0.5 } }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', pt: { sm: 0.5 } }}>
         {children}
       </Typography>
     </Box>
@@ -104,29 +105,32 @@ export default function ConnectionProfilePanel(props: ConnectionProfilePanelProp
   // Held here so that Escape and the backdrop cannot close the panel while a change runs.
   const [busy, setBusy] = useState(false)
   return (
-    <Drawer
-      anchor="right"
+    <SidePanel
       open={profile !== null}
-      onClose={busy ? undefined : onClose}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'connection-profile-panel-heading',
-          sx: { width: { xs: '100%', sm: 560 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
+      onClose={onClose}
+      busy={busy}
+      titleId="connection-profile-panel-heading"
+      title={profile?.name}
+      below={
+        profile && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
+            <MetaBadge>{props.sourceTypeName}</MetaBadge>
+            {profile.locked && <MetaBadge>Gesperrt</MetaBadge>}
+            {props.typeLocked && <MetaBadge>Quellart gesperrt</MetaBadge>}
+          </Box>
+        )
+      }
     >
       {profile && (
         <PanelContent key={profile.id} {...props} profile={profile} busy={busy} setBusy={setBusy} />
       )}
-    </Drawer>
+    </SidePanel>
   )
 }
 
 function PanelContent({
   profile,
   sourceTypeName,
-  typeLocked,
   attention,
   accessEntry,
   accessError,
@@ -209,37 +213,6 @@ function PanelContent({
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-          px: 3,
-          pt: 2.5,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography
-            id="connection-profile-panel-heading"
-            component="h2"
-            sx={{ fontSize: 18, fontWeight: 600, overflowWrap: 'anywhere' }}
-          >
-            {profile.name}
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
-            <MetaBadge>{sourceTypeName}</MetaBadge>
-            {profile.locked && <MetaBadge>Gesperrt</MetaBadge>}
-            {typeLocked && <MetaBadge>Quellart gesperrt</MetaBadge>}
-          </Box>
-        </Box>
-        <IconButton aria-label="Schließen" onClick={onClose} disabled={busy} sx={{ mt: -0.5 }}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
       <Stack spacing={3.5} sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
         {error && (
           <Alert ref={errorRef} tabIndex={-1} severity="error" onClose={() => setError(null)}>
@@ -263,20 +236,13 @@ function PanelContent({
         <Box ref={accessSectionRef}>
           <PanelSection title="Wer darf diesen Zugang nutzen?">
             {accessError ? (
-              <Alert
-                severity="error"
-                action={
-                  <Button color="inherit" size="small" onClick={onRetryAccess}>
-                    Erneut laden
-                  </Button>
-                }
-              >
-                {accessError}
-              </Alert>
+              <LoadError
+                message="Die Freigabe konnte nicht geladen werden."
+                detail={accessError}
+                onRetry={onRetryAccess}
+              />
             ) : !accessEntry || !access ? (
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                Die Freigabe wird geladen …
-              </Typography>
+              <LoadingState shape="lines" count={2} />
             ) : editingAccess ? (
               <AccessEditor
                 key={accessEntry.scope ?? profile.id}
@@ -294,10 +260,10 @@ function PanelContent({
                     Ändern
                   </Button>
                 </Box>
-                <Typography sx={{ fontSize: 13, mt: 1 }}>
+                <Typography sx={{ fontSize: fontSize.text, mt: 1 }}>
                   {resultSentence(access, phrase)}
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
                   Wer ihn nutzen darf, kann damit Bibliotheken anlegen und das eigene Konto
                   verbinden. Bei einem Entzug laufen bestehende Bibliotheken weiter. Dieselbe
                   Einstellung steht unter Anlegerechte.
@@ -358,7 +324,7 @@ function PanelContent({
             ]}
           />
           {persons && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}>
               Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine
               Zahl auf einzelne Personen schließen lässt.
             </Typography>

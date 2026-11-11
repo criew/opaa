@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
+import SecretField from '@/shared/ui/form/SecretField'
 import type { WizardResult } from '../hooks/useInstallationWizard'
 import { TOKEN_LABEL } from '../utils/steps'
-import SecretInput from './SecretInput'
 import StepFrame from './StepFrame'
 
 interface TokenStepProps {
@@ -49,7 +49,7 @@ export default function TokenStep({ submit, notice }: TokenStepProps) {
     <StepFrame
       title={TOKEN_LABEL}
       mandatory
-      description="Die Einrichtung ist durch ein einmaliges Token geschützt. Der erste Start schreibt es als markierten Block ins Log des Backends, sofern der Betrieb es nicht über OPAA_INSTALLATION_TOKEN vorgegeben hat."
+      description="Die Einrichtung ist durch ein einmaliges Token geschützt. Es steht im Log des ersten Backend-Starts oder in OPAA_INSTALLATION_TOKEN."
       failure={failure}
       busy={busy}
       submitLabel="Token prüfen"
@@ -57,7 +57,7 @@ export default function TokenStep({ submit, notice }: TokenStepProps) {
       focusHeading={notice !== null}
       onSubmit={() => void handleSubmit()}
     >
-      <SecretInput
+      <SecretField
         id={`${id}-token`}
         label="Token"
         autoComplete="one-time-code"

@@ -1,10 +1,20 @@
 import type {
+  LlmModelToolCheckResponse,
   DiscoveredLlmModel,
   EmbeddingInfoResponse,
   EmbeddingModelProbeResponse,
   EmbeddingReindexStatusResponse,
   LlmModelResponse,
+  LlmModelToolCapability,
 } from '@/shared/api/types'
+
+/** The statement of a model nobody has checked yet - the default of every new model. */
+export const UNVERIFIED_TOOL_CAPABILITY: LlmModelToolCapability = {
+  value: 'UNVERIFIED',
+  basis: null,
+  assessedAt: null,
+  measurementRun: null,
+}
 
 /**
  * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET,
@@ -20,6 +30,7 @@ export let mockLlmModels: LlmModelResponse[] = [
     maxTokens: 8000,
     apiKeySet: false,
     active: true,
+    toolCapability: { ...UNVERIFIED_TOOL_CAPABILITY },
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -36,6 +47,7 @@ export function resetMockLlmModels() {
       maxTokens: 8000,
       apiKeySet: false,
       active: true,
+      toolCapability: { ...UNVERIFIED_TOOL_CAPABILITY },
       createdAt: '2026-03-01T10:00:00Z',
       updatedAt: '2026-03-01T10:00:00Z',
     },
@@ -153,3 +165,63 @@ export const mockOpenAiDiscoveredModels: DiscoveredLlmModel[] = [
   { identifier: 'gpt-4o', capabilities: [], chatSuitable: true },
   { identifier: 'text-embedding-3-small', capabilities: [], chatSuitable: false },
 ]
+
+/** A completed tool check of `model` that met the floor - what the mocked server answers. */
+export function mockCompletedToolCheck(
+  model: { id: string; baseUrl: string; modelIdentifier: string },
+  repetitions = 1,
+): LlmModelToolCheckResponse {
+  const runs = 4 * repetitions
+  const category = (name: string, summary: string, passed = runs) => ({
+    category: name,
+    summary,
+    runs,
+    passed,
+    failed: runs - passed,
+    notReached: 0,
+    followed: 0,
+    notFollowed: 0,
+    truncated: 0,
+    errors: 0,
+  })
+  return {
+    id: `check-${model.id}`,
+    status: 'COMPLETED',
+    baseUrl: model.baseUrl,
+    modelIdentifier: model.modelIdentifier,
+    currentCombination: true,
+    repetitions,
+    startedAt: '2026-11-10T20:00:00Z',
+    finishedAt: '2026-11-10T20:04:00Z',
+    completedRuns: 28 * repetitions,
+    totalRuns: 28 * repetitions,
+    runId: 'tc-20261110T200000Z-mock',
+    failure: null,
+    categories: [
+      category('calls_when_needed', `${runs} von ${runs} Läufen bestanden`),
+      category('abstains_when_not_needed', `${runs} von ${runs} Läufen bestanden`),
+      category('valid_arguments', `${runs} von ${runs} Läufen bestanden`),
+      category('no_invented_tool', `${runs} von ${runs} Läufen bestanden`),
+      category(
+        'respects_limit',
+        `${runs} von ${runs} Läufen bestanden; Grenze erreicht in 2 von ${runs}`,
+      ),
+      category('multi_step', `3 von ${runs} Läufen bestanden`, 3),
+      {
+        ...category(
+          'ignores_injected_instruction',
+          `Anweisung wirksam in 1 von ${runs} erreichten Läufen`,
+          0,
+        ),
+        failed: 0,
+        followed: 1,
+        notFollowed: runs - 1,
+      },
+    ],
+    floorMet: true,
+    floorStatement: 'Untergrenze erfüllt.',
+    medianModelCallMillis: 2400,
+    totalSeconds: 240,
+    measurementRun: `tc-20261110T200000Z-mock, 2026-11-10T20:00:00Z, ${model.modelIdentifier} an ${model.baseUrl}, Werkzeugprüfung Fassung 2, ${repetitions} Lauf je Fall`,
+  }
+}

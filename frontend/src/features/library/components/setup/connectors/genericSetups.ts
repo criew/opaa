@@ -5,8 +5,8 @@ import {
   type FilesystemSourceValues,
 } from '../../../utils/filesystemSource'
 import { genericSourceIssue, type GenericSourceValues } from '../../../utils/librarySourceConfig'
-import type { SourceSetupSpec } from '../setupTypes'
-import { addressIssue, counted, hostOf, issueList, joinSummary } from './common'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
+import { addressIssue, counted, hostOf, issueList, joinSummary } from '../../sourceCore/common'
 import { PathConnectionFields, PathScopeFields, UrlConnectionFields } from './GenericSetupFields'
 
 export const filesystemSetup: SourceSetupSpec<FilesystemSourceValues> = {

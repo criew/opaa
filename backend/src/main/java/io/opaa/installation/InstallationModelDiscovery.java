@@ -1,6 +1,5 @@
 package io.opaa.installation;
 
-import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
@@ -46,7 +45,7 @@ public class InstallationModelDiscovery {
   private final StepRules rules;
   private final SettingsEncryptor settingsEncryptor;
   private final LlmModelDiscoverer discoverer;
-  private final FeatureFlags features;
+  private final OfferedSteps offered;
   private final RateLimitService budget = new RateLimitService(MAX_DISCOVERIES, WINDOW_SECONDS);
 
   InstallationModelDiscovery(
@@ -55,13 +54,13 @@ public class InstallationModelDiscovery {
       StepRules rules,
       SettingsEncryptor settingsEncryptor,
       LlmModelDiscoverer discoverer,
-      FeatureFlags features) {
+      OfferedSteps offered) {
     this.states = states;
     this.steps = steps;
     this.rules = rules;
     this.settingsEncryptor = settingsEncryptor;
     this.discoverer = discoverer;
-    this.features = features;
+    this.offered = offered;
   }
 
   /**
@@ -79,8 +78,8 @@ public class InstallationModelDiscovery {
           "Modelle lassen sich nur in den Schritten Chat-Modell, Embedding-Modell, Rerank-Modell"
               + " und Transkriptionsmodell abrufen.");
     }
-    if (!step.isOfferedWith(features)) {
-      throw new ValidationException(InstallationService.notOffered(step));
+    if (!offered.isOffered(step)) {
+      throw new ValidationException(OfferedSteps.notOffered(step));
     }
     if (states.isCompleted()) {
       throw new NotFoundException("Die angeforderte Ressource wurde nicht gefunden");

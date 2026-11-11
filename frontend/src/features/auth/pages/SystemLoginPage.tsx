@@ -3,19 +3,20 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import { Navigate, Link as RouterLink, useLocation } from 'react-router'
+import { Navigate, useLocation } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AuthLayout from '../components/AuthLayout'
+import SignInLink from '../components/SignInLink'
 import LocalSignInForm from '../components/LocalSignInForm'
 import { useAuthStore } from '@/shared/session/authStore'
 import { spendSilentSignIn } from '@/shared/session/silentSignIn'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { LOGIN_ROUTE } from '@/shared/routes'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 /**
  * The sign-in of the local system administrators (ADR-0033, Entscheidung 4 and 5). It is
@@ -74,18 +75,17 @@ export default function SystemLoginPage() {
 
       <Divider sx={{ my: 3 }} />
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', color: 'text.secondary' }}>
-        <LockOutlinedIcon aria-hidden="true" sx={{ fontSize: 16, mt: '1px', flex: 'none' }} />
-        <Typography sx={{ fontSize: 12, lineHeight: 1.5 }}>
+        <LockOutlinedIcon
+          aria-hidden="true"
+          sx={{ fontSize: iconSize.sm, mt: '1px', flex: 'none' }}
+        />
+        <Typography sx={{ fontSize: fontSize.meta, lineHeight: 1.5 }}>
           Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren
           Prüfwert.
         </Typography>
       </Stack>
 
-      <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
-        <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>
-          Zur regulären Anmeldung
-        </Link>
-      </Typography>
+      <SignInLink sx={{ mt: 3 }} />
     </AuthLayout>
   )
 }

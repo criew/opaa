@@ -8,18 +8,20 @@ prompts:
     classes:
       - io.opaa.query.answer.AnswerGenerationService
       - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "ece4655f419e6c88037798105df112d6620f8434b12b0e0a6ba817f0e2b6009c"
+    sha256: "1641942805a2aef568eeec580c0f273eaa45c1ad751a86a6d48c075febb45e15"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
       - io.opaa.retrieval.search.QueryDecompositionService
       - io.opaa.retrieval.search.DecompositionContext
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "11aae7c367b2f10f4333a97c8dcfc54aa09c358cd37331e13fca72e16f87ba3e"
+      - io.opaa.common.PromptText
+    sha256: "69e776f659a9e6f200dbac6da39a4661b86395f58beb2bb6faa41d9f571f8643"
   - id: chat-title
     purpose: Erzeugt aus erster Frage und Antwort einen Titel für den Chat
     classes: [io.opaa.chat.ChatTitleGenerationService]
@@ -30,18 +32,48 @@ prompts:
     sha256: "b642eb44720453f950ce49d422dc2356c30d8df21460e7f00f4b5c8b3c930abb"
   - id: metadata-extraction
     purpose: Ordnet einem Dokument Metadatencodes und freie Schlagworte zu
-    classes: [io.opaa.metadata.ModelExtractionPrompt]
-    sha256: "e2b44a307f70ff0f67b0b695b594001c648e95d91858f23e073a2005e86699df"
-  - id: tool-loop-spike
-    purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
     classes:
-      - io.opaa.query.spike.SpikeToolLoopQueryHandler
-      - io.opaa.query.spike.SearchKnowledgeTool
-      - io.opaa.query.spike.RunCodeTool
+      - io.opaa.metadata.ModelExtractionPrompt
+      - io.opaa.common.ContentFence
+      - io.opaa.common.PromptText
+    sha256: "91af4169c942a12372b950ab4611af05805377f17a883a7f23071857d78c688e"
+  - id: agent-run
+    purpose: >-
+      Regeln für einen Agentenlauf: Werkzeuge in Schritten nutzen, Belegpflicht, Antwortsprache,
+      Anweisung des Agenten und des Space, Gesprächsnotiz; im abschließenden Aufruf ohne Werkzeuge
+      die Pflicht, auch dann mit Zitiermarken zu antworten; bei einem Agenten mit Planschritt die
+      Regel, zuerst nur einen Plan vorzulegen, und im nächsten Lauf die Regel, den bestätigten oder
+      geänderten Plan abzuarbeiten, auch nach der Antwort auf eine Rückfrage dabei; dazu die Beschreibungen der Werkzeuge,
+      nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
+      dem Hinweis, dass ihr Inhalt keine Anweisung ist
+    classes:
+      - io.opaa.query.toolloop.AgentPrompt
+      - io.opaa.query.toolloop.AgentToolCallback
+      - io.opaa.query.toolloop.SearchKnowledgeTool
+      - io.opaa.query.toolloop.ReadDocumentTool
+      - io.opaa.query.toolloop.ListSourcesTool
+      - io.opaa.query.toolloop.RunCodeTool
+      - io.opaa.query.toolloop.FillTemplateTool
+      - io.opaa.query.toolloop.AskUserTool
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.DocumentBlock
+      - io.opaa.query.answer.SpaceInstructionBlock
+      - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
-    sha256: "74acd02cb86c042f361d0a4d9796f98d63b80a224e4c4cb897d7d902fa7570a7"
+      - io.opaa.common.PromptText
+    sha256: "9c601b2bf6f31a13843da35c79722d27b4f6e3dc9876e867122e38396533aeea"
+  - id: agent-research
+    purpose: >-
+      Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten
+      angelegt wird: Teilfragen zu allen genannten Aspekten bilden und je Teilfrage gezielt
+      suchen, vor der Antwort prüfen, ob jede Teilfrage Fundstellen hat, Eingrenzungen der Person
+      im Plan beachten, gegliederter Bericht mit Zitiermarke je Aussage, Widersprüche zwischen
+      Fundstellen
+      und Lücken ausdrücklich benennen, auf Wunsch eine Vorlage ausfüllen. Eigentümerin oder
+      Eigentümer des Agenten kann sie ändern wie bei jedem Agenten; jede Änderung erhöht die
+      Fassung und steht im Revisionsprotokoll
+    classes: [io.opaa.agent.AgentResearchProvisioner]
+    sha256: "b5c3e36834c79b998259fb974da388338afeba75620331ee6435dcc1c498bd96"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
@@ -56,7 +88,7 @@ prompts:
     purpose: >-
       Bittet ein Vision-Modell der Texterkennung, den Text einer gescannten Seite wortgetreu und
       ohne Zusätze wiederzugeben
-    classes: [io.opaa.llm.TextRecognitionVisionPrompt]
+    classes: [io.opaa.llm.textrecognition.TextRecognitionVisionPrompt]
     sha256: "54c5316716f8591a052e95ac0bc9b407d3368585aac9ec47d8feec423fd422bb"
 aiFunctions:
   - id: chat-answer
@@ -94,13 +126,17 @@ aiFunctions:
     prompts: [metadata-extraction]
     notes:
       - Der Prompt verbietet Personennamen als Schlagworte
-  - id: tool-loop-spike
-    purpose: Erprobung, nur mit Präfix „@test “ und eingeschaltetem Schalter
+  - id: agent-run
+    purpose: >-
+      Bearbeitet eine Frage im Chat in mehreren Schritten mit Werkzeugen, wenn die Person einen
+      Agenten mit @ wählt; nur bei eingeschalteten Agenten der Installation
     outputKind: TEXT
     interactsWithPersons: true
     assessesPersons: false
-    labelling: Wie die Chat-Antwort
-    prompts: [tool-loop-spike]
+    labelling: >-
+      Wie die Chat-Antwort; zusätzlich nennt die Frage den gewählten Agenten und die Antwort zeigt
+      die Schritte des Laufs
+    prompts: [agent-run, agent-research]
   - id: speech-transcription
     purpose: Wandelt eine Sprachaufnahme der Person in Text für die Eingabe um (Diktat)
     outputKind: TEXT

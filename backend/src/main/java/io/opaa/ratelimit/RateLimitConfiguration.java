@@ -5,11 +5,13 @@ import static io.opaa.ratelimit.RateLimitFilter.Counting.AUTHENTICATED_BY_HANDLE
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.observability.RequestIdFilter;
 import io.opaa.ratelimit.RateLimitFilter.Counting;
 import io.opaa.ratelimit.RateLimitFilter.Rule;
 import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
+import io.opaa.ratelimit.RateLimitProperties.WriteLimit;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -23,7 +25,6 @@ import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilte
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -62,6 +63,8 @@ public class RateLimitConfiguration {
    */
   static final String LOCAL_HANDOVER_PATTERN = "^/api/v1/auth/local/handover/(?:preview|redeem)$";
 
+  static final String QUERY_CANCEL_PATTERN = "^/api/v1/query/stream/cancel$";
+
   /** Keyed by the client alone: one bucket for all spaces, so switching spaces buys no budget. */
   static final String CHAT_SEARCH_PATTERN = "^/api/v1/spaces/[^/]+/chats/search$";
 
@@ -74,6 +77,17 @@ public class RateLimitConfiguration {
 
   /** The dictation; the availability next to it stays outside. */
   static final String TRANSCRIPTION_PATTERN = "^/api/v1/transcriptions$";
+
+  /** Opening a live dictation: the WebSocket upgrade, which opens an upstream session. */
+  static final String TRANSCRIPTION_STREAM_PATTERN = "^/api/v1/transcriptions/stream$";
+
+  /**
+   * Every writing call under {@code /api/v1}; matched last, so a rule with a budget of its own
+   * comes first. Keyed by the client alone: another object buys no fresh budget.
+   */
+  static final String WRITE_PATTERN = "^/api/v1/";
+
+  static final String WRITE_METHODS = "POST|PUT|PATCH|DELETE";
 
   /**
    * The upload into a library, keyed by the client alone and for {@code POST} only: another library
@@ -152,7 +166,18 @@ public class RateLimitConfiguration {
     // These endpoints sit behind the sign-in (the push intake behind its secret): only requests
     // that authenticated keep their token of the global ceiling.
     List<Rule> rules = new ArrayList<>();
-    rules.add(rule(counters, "query", "^/api/v1/query", properties.query(), AUTHENTICATED));
+    // The stop button of a streamed agent run spends no question: a person whose budget is used up
+    // must still be able to stop the run that used it. It counts in a budget of its own as large as
+    // that of the questions - at most one stop per question - with its own installation ceiling.
+    rules.add(
+        rule(
+            counters,
+            "query",
+            "^/api/v1/query(?!/stream/cancel$)",
+            properties.query(),
+            AUTHENTICATED));
+    rules.add(
+        rule(counters, "query-cancel", QUERY_CANCEL_PATTERN, properties.query(), AUTHENTICATED));
     rules.add(
         rule(counters, "indexing", indexingTriggerPattern, properties.indexing(), AUTHENTICATED));
     rules.add(
@@ -184,6 +209,13 @@ public class RateLimitConfiguration {
             properties.documentUpload(),
             AUTHENTICATED,
             "POST"));
+    rules.add(
+        rule(
+            counters,
+            "transcription-stream",
+            TRANSCRIPTION_STREAM_PATTERN,
+            properties.transcriptionStream(),
+            AUTHENTICATED));
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule(counters, "local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule(counters, "local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
@@ -218,12 +250,24 @@ public class RateLimitConfiguration {
             LOCAL_CONFIRM_REGISTRATION_PATTERN,
             localAuth.verifyEmail()));
     rules.add(rule(counters, "local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
+    // Last: only what no rule above covers. Without a ceiling for the installation (WriteLimit).
+    WriteLimit write = properties.write();
+    rules.add(
+        new Rule(
+            "write",
+            WRITE_PATTERN,
+            new RateLimitService(write.maxRequests(), write.windowSeconds()),
+            null,
+            RateLimitFilter.ALWAYS_SERVED,
+            AUTHENTICATED,
+            new RateLimitService(write.maxRequestsPerAccount(), write.windowSeconds()),
+            WRITE_METHODS));
 
     var registration =
         new FilterRegistrationBean<>(
             new RateLimitFilter(rules, clientIpResolver, metrics, jsonMapper, clock));
     registration.addUrlPatterns("/api/*");
-    registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+    registration.setOrder(RequestIdFilter.ORDER + 5);
     return registration;
   }
 

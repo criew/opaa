@@ -99,6 +99,7 @@ public class ChatAttachmentService {
   private final MalwareScanService malwareScanService;
   private final ChatAttachmentReadingSlots readingSlots;
   private final ChatAttachmentProperties properties;
+  private final ChatAttachmentQuota quota;
   private final TaskExecutor executor;
   private final FeatureFlags featureFlags;
   private final LibraryDocumentService libraryDocumentService;
@@ -117,6 +118,7 @@ public class ChatAttachmentService {
       MalwareScanService malwareScanService,
       ChatAttachmentReadingSlots readingSlots,
       ChatAttachmentProperties properties,
+      ChatAttachmentQuota quota,
       @Qualifier("chatAttachmentExecutor") TaskExecutor executor,
       FeatureFlags featureFlags,
       LibraryDocumentService libraryDocumentService,
@@ -133,6 +135,7 @@ public class ChatAttachmentService {
     this.malwareScanService = malwareScanService;
     this.readingSlots = readingSlots;
     this.properties = properties;
+    this.quota = quota;
     this.executor = executor;
     this.featureFlags = featureFlags;
     this.libraryDocumentService = libraryDocumentService;
@@ -144,7 +147,8 @@ public class ChatAttachmentService {
    * opaa.chat.attachments.read-wait} for its text. Every check that rejects the file runs before
    * anything stays behind: membership (404 like an unknown space), archive (409), size (413),
    * format and content (400), malware (400, or 503 when the scanner could not judge it), the
-   * reading slots of the account and the pool (429).
+   * storage quotas of {@link ChatAttachmentQuota} (413), the reading slots of the account and the
+   * pool (429).
    */
   public ChatAttachmentView upload(UUID spaceId, MultipartFile file, CurrentUser caller) {
     return upload(spaceId, file, caller.id());
@@ -218,6 +222,7 @@ public class ChatAttachmentService {
               + String.join(", ", supportedFormats.extensions()));
     }
     String extension = matchedExtension(fileName);
+    quota.requireRoom(space.getOrganizationId(), authorId, file.getSize());
 
     ChatAttachmentReadingSlots.Slot slot = readingSlots.reserve(authorId);
     boolean handedOver = false;
@@ -228,6 +233,7 @@ public class ChatAttachmentService {
       Path workingFile = accepted.workingFile();
       requireContentMatchesExtension(workingFile, extension);
       requireNoMalware(workingFile, space.getOrganizationId());
+      long sizeBytes = Files.size(workingFile);
       ChatAttachment attachment =
           new ChatAttachment(
               space.getOrganizationId(),
@@ -235,10 +241,15 @@ public class ChatAttachmentService {
               authorId,
               fileName,
               probeContentType(workingFile),
-              Files.size(workingFile),
+              sizeBytes,
               Instant.now(clock));
       attachment.setOriginalLocator(accepted.store().locator());
-      saved = attachmentRepository.save(attachment);
+      saved =
+          quota.admit(
+              space.getOrganizationId(),
+              authorId,
+              sizeBytes,
+              () -> attachmentRepository.save(attachment));
 
       UploadedOriginalStore.AcceptedUpload handOver = accepted;
       UUID attachmentId = saved.getId();

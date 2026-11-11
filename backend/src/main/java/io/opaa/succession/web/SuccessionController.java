@@ -1,6 +1,5 @@
 package io.opaa.succession.web;
 
-import io.opaa.api.dto.SuccessionCountsResponse;
 import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.dto.SuccessionSettingsRequest;
 import io.opaa.api.dto.SuccessionSettingsResponse;
@@ -49,12 +48,6 @@ public class SuccessionController {
         successionService.list(caller.organizationId(), kind, page, size));
   }
 
-  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-  @GetMapping("/counts")
-  public SuccessionCountsResponse countSuccessionEntries(@Caller CurrentUser caller) {
-    return SuccessionResponseMapper.toResponse(successionService.counts(caller.organizationId()));
-  }
-
   @GetMapping("/settings")
   public SuccessionSettingsResponse getSuccessionSettings(@Caller CurrentUser caller) {
     return SuccessionResponseMapper.toResponse(settings.current(caller));
@@ -64,6 +57,7 @@ public class SuccessionController {
   public SuccessionSettingsResponse updateSuccessionSettings(
       @RequestBody SuccessionSettingsRequest request, @Caller CurrentUser caller) {
     return SuccessionResponseMapper.toResponse(
-        settings.change(caller, request.getAgingThresholdMonths()));
+        settings.change(
+            caller, request.getAgingThresholdMonths(), request.getResponsibleLockDays()));
   }
 }

@@ -1,11 +1,12 @@
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeDescriptor, SourceTypeKey } from '@/shared/api/types'
 import SourceTypeIcon from './sourceTypeIcon'
 import { admitsProfiles, NO_PROFILES_REASON } from './connectionProfileLabels'
 import { sourceTypeEntry } from './sourceTypeDirectory'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
 
 function descriptionOf(type: SourceTypeDescriptor): string | undefined {
   return sourceTypeEntry(type.type as SourceTypeKey)?.description
@@ -28,7 +29,7 @@ export default function SourceTypeSelect({ types, value, onChange }: SourceTypeS
   const nameOf = (key: string) => types.find((type) => type.type === key)?.displayName ?? key
 
   return (
-    <TextField
+    <FormField
       select
       required
       size="small"
@@ -74,12 +75,12 @@ export default function SourceTypeSelect({ types, value, onChange }: SourceTypeS
                 color: available ? 'primary.main' : 'text.secondary',
               }}
             >
-              <SourceTypeIcon sourceType={type.type as SourceTypeKey} fontSize={18} />
+              <SourceTypeIcon sourceType={type.type as SourceTypeKey} fontSize={iconSize.md} />
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 sx={{
-                  fontSize: 14,
+                  fontSize: fontSize.text,
                   fontWeight: 500,
                   color: available ? 'text.primary' : 'text.secondary',
                 }}
@@ -89,7 +90,7 @@ export default function SourceTypeSelect({ types, value, onChange }: SourceTypeS
               {secondary && (
                 <Typography
                   sx={{
-                    fontSize: 12.5,
+                    fontSize: fontSize.meta,
                     lineHeight: 1.4,
                     color: available ? 'text.secondary' : 'warning.main',
                   }}
@@ -101,6 +102,6 @@ export default function SourceTypeSelect({ types, value, onChange }: SourceTypeS
           </MenuItem>
         )
       })}
-    </TextField>
+    </FormField>
   )
 }

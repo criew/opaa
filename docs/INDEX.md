@@ -75,7 +75,7 @@ Personalvertretung. Entscheidung zu Katalog und Zuordnung:
 
 ### D · Agenten, Prompts & Werkzeuge
 
-**[Roadmap](./ROADMAP.md)**
+**[ADR-0070](./decisions/0070-werkzeugaufrufe-im-chat.md)** · **[Roadmap](./ROADMAP.md)**
 
 Agenten als teilbare Pakete mit Aufgabenbeschreibung · geführtes Onboarding · Agenten-Prüfstand vor der
 Freigabe · Prüfagenten · isolierte Ausführungsumgebung · Werkzeuge und MCP · schreibende Aktionen mit
@@ -108,16 +108,16 @@ Voreinstellungen · Software-Stückliste und signierte Builds · C5-Fähigkeit �
 
 ### H · Monitoring, Kosten & Governance
 
-**[Roadmap](./ROADMAP.md)**
+**[ADR-0071](./decisions/0071-betriebsbeobachtung.md)** · **[Roadmap](./ROADMAP.md)**
 
 Betriebsmetriken und Gesundheitsendpunkt · Grenzen je Nutzerin und Nutzer · Transparenz über Token- und
 Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Personenbezug.
 
 ### I · Kanäle & Oberflächen
 
-**[`handbuch/referenz/wie-die-suche-arbeitet.md`](handbuch/referenz/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/referenz/wie-die-suche-arbeitet.md`](handbuch/referenz/wie-die-suche-arbeitet.md)** · **[ADR-0072](./decisions/0072-live-transkript-ueber-websocket.md)** · **[Roadmap](./ROADMAP.md)**
 
-Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
+Spracheingabe mit Live-Transkript · Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
 
 

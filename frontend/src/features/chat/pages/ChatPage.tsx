@@ -5,7 +5,6 @@ import ButtonBase from '@mui/material/ButtonBase'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/MessageList'
@@ -13,8 +12,11 @@ import ChatInput from '../components/ChatInput'
 import SearchAvailabilityNotice from '../components/SearchAvailabilityNotice'
 import ConversationNote from '../components/ConversationNote'
 import SpaceInstruction from '../components/SpaceInstruction'
-import { isConversationNoteVisible } from '../components/conversationNoteVisibility'
+import PlanConfirmation from '../components/PlanConfirmation'
+import { useAgentOffered } from '../components/useAgentOffered'
+import { PLAN_CONFIRMATION_TEXT, agentFollowUp } from '../components/agentFollowUp'
 import { deletionDueLabel } from '../components/deletionDueLabel'
+import { chatTitle as chatListTitle } from '../components/chatListSections'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -22,6 +24,34 @@ import { useSpaceStore } from '@/features/space'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import { fieldWidth, fontSize, iconSize } from '@/shared/theme/tokens'
+import LoadingState from '@/shared/ui/states/LoadingState'
+
+/** The header's title until the chat has one of its own. */
+const NEW_CHAT_TITLE = 'Neuer Chat'
+
+/** Shared by the title button and the placeholder title, so both have the same height. */
+const TITLE_FRAME_SX = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minWidth: 0,
+  borderRadius: '6px',
+  px: 0.5,
+  py: 0.25,
+  justifyContent: 'flex-start',
+} as const
+
+function ChatTitleText({ children }: { children: string }) {
+  return (
+    <Typography
+      component="span"
+      noWrap
+      sx={{ fontSize: fontSize.title, fontWeight: 600, minWidth: 0 }}
+    >
+      {children}
+    </Typography>
+  )
+}
 
 interface ChatPageProps {
   /**
@@ -41,6 +71,7 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
   const messages = useChatStore((s) => s.messages)
   const isLoading = useChatStore((s) => s.isLoading)
   const streamingAnswer = useChatStore((s) => s.streamingAnswer)
+  const streamingRun = useChatStore((s) => s.streamingRun)
   const cancelAnswer = useChatStore((s) => s.cancelAnswer)
   const isLoadingChat = useChatStore((s) => s.isLoadingChat)
   const error = useChatStore((s) => s.error)
@@ -77,6 +108,19 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
   const isArchivedSpace = useSpaceStore(
     (s) => s.spaces.find((space) => space.id === spaceId)?.archived ?? false,
   )
+  // A question back or a plan of an agent: the next message goes to the same agent.
+  const followUp = useMemo(() => agentFollowUp(messages), [messages])
+  // Each "Ändern" chooses the plan's agent again and puts the focus into the input; it counts
+  // only while that plan is the latest answer.
+  const [planChange, setPlanChange] = useState<{ key: string; count: number } | null>(null)
+  const planChanges = followUp && planChange?.key === followUp.key ? planChange.count : 0
+  // Each confirmation puts the focus into the input, where the running answer's status shows.
+  const [planConfirm, setPlanConfirm] = useState(0)
+  const planOffered = useAgentOffered(
+    spaceId ?? null,
+    followUp?.plan ? followUp.agent.id : null,
+    followUp?.key ?? null,
+  )
   // Every member sees that an instruction of the space takes part in the answers, before asking.
   const spaceInstruction = useSpaceStore(
     (s) => s.spaces.find((space) => space.id === spaceId)?.modelInstruction ?? null,
@@ -86,7 +130,6 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
     () => messages.filter((message) => message.role === 'assistant').length,
     [messages],
   )
-  const noteVisible = isConversationNoteVisible(noteItems, completedRounds)
   // Where focus goes when the last note point is removed and the note's surface disappears with it.
   const headerRef = useRef<HTMLDivElement>(null)
 
@@ -183,11 +226,20 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
       headerRef.current?.focus()
     } else {
       notify(
-        useChatListStore.getState().error ?? 'Chat konnte nicht aus dem Archiv zurückgeholt werden',
+        useChatListStore.getState().takeError() ??
+          'Chat konnte nicht aus dem Archiv zurückgeholt werden',
         'error',
       )
     }
   }
+
+  // "Neuer Chat" only until the first round is complete; a stored chat without a title is named
+  // like in the chat list and can be renamed.
+  const headerTitle = chatTitle?.trim()
+    ? chatTitle
+    : completedRounds > 0
+      ? chatListTitle({ title: chatTitle })
+      : null
 
   const isArchivedChat = !isNewChat && archivedAt !== null
   // Renaming from the header writes through the same endpoint as the list's context menu,
@@ -211,14 +263,17 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
     const renamed = await renameChat(storeSpaceId, chatId, title)
     if (!renamed) {
       applyChatTitle(chatId, previous)
-      notify(useChatListStore.getState().error ?? 'Chat konnte nicht umbenannt werden', 'error')
+      notify(
+        useChatListStore.getState().takeError() ?? 'Chat konnte nicht umbenannt werden',
+        'error',
+      )
     }
   }
 
   if (isLoadingChat) {
     return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <LoadingState shape="detail" count={4} />
       </Box>
     )
   }
@@ -239,128 +294,123 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
         documentTitle={chatTitle ?? undefined}
         visuallyHidden
       />
-      {(chatTitle || noteVisible || isArchivedChat || spaceInstruction) && (
-        // The design's header bar, and the Gesprächsnotiz's place. Wrapping flex
-        // row: title and button share the first line, the note panel takes the next one.
-        <Box
-          ref={headerRef}
-          // Focus target of the note when its last point - and with it its button - is removed.
-          // Named, because focus must never land on an element without name and role.
-          tabIndex={-1}
-          role="group"
-          aria-label="Chat-Kopfzeile"
-          sx={{
-            px: 5,
-            py: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-            flexShrink: 0,
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 2,
-          }}
-        >
-          {chatTitle &&
-            (isRenaming ? (
-              <TextField
-                // Opened deliberately by clicking the title or its pencil; moving focus into
-                // the field is the expected inline-edit behaviour.
-                // eslint-disable-next-line jsx-a11y-x/no-autofocus
-                autoFocus
-                size="small"
-                value={renameValue}
-                onChange={(event) => setRenameValue(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    void commitRename(true)
-                  } else if (event.key === 'Escape') {
-                    event.preventDefault()
-                    refocusTitleRef.current = true
-                    closeRename()
-                  }
-                }}
-                onBlur={() => void commitRename(false)}
-                slotProps={{ htmlInput: { 'aria-label': 'Chat-Titel' } }}
-                sx={{ flexGrow: 1, minWidth: 0, maxWidth: 520 }}
-              />
-            ) : (
-              // The title is a button, not a heading: the visually hidden PageHeading above
-              // already announces the chat, so this row only has to be operable.
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  flexGrow: 1,
-                  minWidth: 0,
-                  '& .rename-hint': { opacity: 0 },
-                  '&:hover .rename-hint, &:focus-within .rename-hint': { opacity: 1 },
-                }}
-              >
-                <ButtonBase
-                  ref={titleButtonRef}
-                  onClick={startRename}
-                  disabled={!canRename}
-                  aria-label={`Chat-Titel „${chatTitle}“ umbenennen`}
-                  sx={{
-                    minWidth: 0,
-                    borderRadius: '6px',
-                    px: 0.5,
-                    py: 0.25,
-                    justifyContent: 'flex-start',
-                  }}
-                >
-                  <Typography
-                    component="span"
-                    noWrap
-                    sx={{ fontSize: 18, fontWeight: 600, minWidth: 0 }}
-                  >
-                    {chatTitle}
-                  </Typography>
-                </ButtonBase>
-                {canRename && (
-                  <EditOutlinedIcon
-                    aria-hidden
-                    className="rename-hint"
-                    sx={{ fontSize: 15, color: 'text.secondary', transition: 'opacity 120ms' }}
-                  />
-                )}
-              </Box>
-            ))}
-          {isArchivedChat && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* The chat archive of the person, not an archived space. */}
-              <MetaBadge>Archiviert</MetaBadge>
-              {deletionDueAt && (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {deletionDueLabel(deletionDueAt)}
-                </Typography>
-              )}
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => void handleUnarchive()}
-                disabled={isUnarchiving}
-                aria-label="Chat aus dem Archiv zurückholen"
-              >
-                Zurückholen
-              </Button>
-            </Box>
-          )}
-          {spaceInstruction && <SpaceInstruction key={spaceId} text={spaceInstruction} />}
-          <ConversationNote
-            // Expanding is per chat and per session: switching chats starts collapsed again.
-            key={storeChatId ?? 'new'}
-            items={noteItems}
-            completedRounds={completedRounds}
-            canRemove={!isArchivedSpace}
-            onRemove={(itemId) => void removeNoteItem(itemId)}
-            emptyFocusRef={headerRef}
+      {/* The design's header bar, and the Gesprächsnotiz's place. It stands from the start, with
+          "Neuer Chat" until the chat has a title, so nothing below it moves when the first answer
+          arrives. Wrapping flex row: title and button share the first line, the note panel takes
+          the next one. */}
+      <Box
+        ref={headerRef}
+        // Focus target of the note when its last point - and with it its button - is removed.
+        // Named, because focus must never land on an element without name and role.
+        tabIndex={-1}
+        role="group"
+        aria-label="Chat-Kopfzeile"
+        sx={{
+          px: 5,
+          py: 2,
+          borderBottom: 1,
+          borderColor: 'divider',
+          flexShrink: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 2,
+        }}
+      >
+        {isRenaming ? (
+          <TextField
+            // Opened deliberately by clicking the title or its pencil; moving focus into
+            // the field is the expected inline-edit behaviour.
+            // eslint-disable-next-line jsx-a11y-x/no-autofocus
+            autoFocus
+            size="small"
+            value={renameValue}
+            onChange={(event) => setRenameValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void commitRename(true)
+              } else if (event.key === 'Escape') {
+                event.preventDefault()
+                refocusTitleRef.current = true
+                closeRename()
+              }
+            }}
+            onBlur={() => void commitRename(false)}
+            slotProps={{ htmlInput: { 'aria-label': 'Chat-Titel' } }}
+            sx={{ flexGrow: 1, minWidth: 0, maxWidth: fieldWidth.long }}
           />
-        </Box>
-      )}
+        ) : (
+          // The title is a button, not a heading: the visually hidden PageHeading above
+          // already announces the chat, so this row only has to be operable.
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              flexGrow: 1,
+              minWidth: 0,
+              '& .rename-hint': { opacity: 0 },
+              '&:hover .rename-hint, &:focus-within .rename-hint': { opacity: 1 },
+            }}
+          >
+            {headerTitle ? (
+              <ButtonBase
+                ref={titleButtonRef}
+                onClick={startRename}
+                disabled={!canRename}
+                aria-label={`Chat-Titel „${headerTitle}“ umbenennen`}
+                sx={TITLE_FRAME_SX}
+              >
+                <ChatTitleText>{headerTitle}</ChatTitleText>
+              </ButtonBase>
+            ) : (
+              // Same frame as the title button, so the header keeps its height once the title
+              // is set. Nothing to rename before the chat has a title.
+              <Box data-testid="chat-title-placeholder" sx={TITLE_FRAME_SX}>
+                <ChatTitleText>{NEW_CHAT_TITLE}</ChatTitleText>
+              </Box>
+            )}
+            {canRename && headerTitle && (
+              <EditOutlinedIcon
+                aria-hidden
+                className="rename-hint"
+                sx={{ fontSize: iconSize.sm, color: 'text.secondary', transition: 'opacity 120ms' }}
+              />
+            )}
+          </Box>
+        )}
+        {isArchivedChat && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* The chat archive of the person, not an archived space. */}
+            <MetaBadge>Archiviert</MetaBadge>
+            {deletionDueAt && (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {deletionDueLabel(deletionDueAt)}
+              </Typography>
+            )}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => void handleUnarchive()}
+              disabled={isUnarchiving}
+              aria-label="Chat aus dem Archiv zurückholen"
+            >
+              Zurückholen
+            </Button>
+          </Box>
+        )}
+        {spaceInstruction && <SpaceInstruction key={spaceId} text={spaceInstruction} />}
+        <ConversationNote
+          // Expanding is per chat and per session: switching chats starts collapsed again.
+          key={storeChatId ?? 'new'}
+          items={noteItems}
+          completedRounds={completedRounds}
+          canRemove={!isArchivedSpace}
+          onRemove={(itemId) => void removeNoteItem(itemId)}
+          emptyFocusRef={headerRef}
+        />
+      </Box>
       {error && (
         <Alert severity="error" sx={{ m: 2 }}>
           {error}
@@ -373,20 +423,47 @@ export default function ChatPage({ emptyChatHint }: ChatPageProps = {}) {
         targetMessageId={targetMessageId}
         streamingAnswer={streamingAnswer}
         emptyStateHint={emptyChatHint}
+        streamingRun={streamingRun}
+        afterMessages={
+          followUp?.plan && planOffered && !isLoading && !isArchivedSpace ? (
+            <PlanConfirmation
+              key={followUp.key}
+              agentName={followUp.agent.name}
+              onConfirm={() => {
+                setPlanConfirm((count) => count + 1)
+                void sendMessage(PLAN_CONFIRMATION_TEXT, undefined, [], followUp.agent)
+              }}
+              onChange={() => setPlanChange({ key: followUp.key, count: planChanges + 1 })}
+            />
+          ) : null
+        }
       />
       <SearchAvailabilityNotice />
       <ChatInput
-        onSend={(message, usedPrompt, attachments) =>
-          attachments
-            ? sendMessage(message, usedPrompt, attachments)
-            : sendMessage(message, usedPrompt)
+        onSend={(message, usedPrompt, attachments, agent) =>
+          agent
+            ? sendMessage(message, usedPrompt, attachments ?? [], agent)
+            : attachments
+              ? sendMessage(message, usedPrompt, attachments)
+              : sendMessage(message, usedPrompt)
         }
         answerPending={isLoading}
         onCancelAnswer={cancelAnswer}
         returnedQuestion={returnedQuestionForView}
         onReturnedQuestionHandled={clearReturnedQuestion}
         // Every arrival at a new chat - also the plus clicked again on one - lands in the input.
-        focusRequest={isNewChat ? locationKey : null}
+        focusRequest={
+          planChanges > 0 || planConfirm > 0
+            ? `plan-${planChanges}-${planConfirm}`
+            : isNewChat
+              ? locationKey
+              : null
+        }
+        followUpAgent={
+          followUp ? { key: `${followUp.key}-${planChanges}`, agent: followUp.agent } : null
+        }
+        // The empty chat shows the notice in its middle; one notice per surface.
+        showAiNotice={messages.length > 0 || isLoading}
       />
     </Box>
   )

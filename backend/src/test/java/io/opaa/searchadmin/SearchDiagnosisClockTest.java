@@ -14,8 +14,8 @@ import io.opaa.group.GroupService;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleStatus;
+import io.opaa.llm.OptionalRoleStatus;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
@@ -51,7 +51,7 @@ class SearchDiagnosisClockTest {
     when(libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()))
         .thenReturn(Set.of(LIBRARY_ID));
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
-    when(rerankModelRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
+    when(rerankModelRole.currentStatus()).thenReturn(OptionalRoleStatus.disabled());
     RetrievalPipeline pipeline =
         RetrievalPipelineTestSupport.vectorSearchPipeline(vectorChunkSearch, rerankModelRole);
     QueryProperties properties =

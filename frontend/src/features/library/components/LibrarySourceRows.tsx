@@ -14,13 +14,14 @@ import {
   sourceConnectionOfRef,
   withConnection,
   withoutFixed,
-} from './sources/sourceConnection'
-import type { SourceFormContext } from './sources/types'
+} from './sourceCore/sourceConnection'
+import type { SourceFormContext } from './sourceCore/types'
 import SourceSetupRows, {
   type SourceSetupHandle,
   type SourceSetupRowsMarks as SourceSetupRowsProps,
 } from './setup/SourceSetupRows'
-import type { SetupRowId } from './setup/setupTypes'
+import type { SetupRowId } from './sourceCore/setupTypes'
+import { formatDateTime } from '@/shared/utils/formatDate'
 
 export interface SourceRowsLibrary {
   name: string
@@ -133,7 +134,7 @@ export default function LibrarySourceRows({
     <SourceSetupRows
       scheduleNote={
         library.schedule?.nextRunAt
-          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}`
+          ? `nächster Lauf ${formatDateTime(library.schedule.nextRunAt)}`
           : null
       }
       ref={ref}

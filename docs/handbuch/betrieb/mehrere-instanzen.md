@@ -394,6 +394,8 @@ gleichzeitig ausführen, erhält bei zwei Instanzen jede die Hälfte.
 | Stundenkontingent je Zugangstoken | je Instanz | nichts: Die Einstellung der Oberfläche bleibt die Grenze der Installation, jede Instanz gewährt davon ihren Anteil, geteilt durch die Zahl der laufenden Instanzen im Register |
 | Pools für Läufe, Uploads, Chat-Titel und Gesprächsnotizen | je Instanz | nicht teilen: Mehr Instanzen sollen mehr Arbeit tragen, dafür gibt es sie |
 | Tagesgrenze und Starts der Selbstauskunft je Person, höchstens eine laufende Auskunft je Person | für die Installation | nichts: Die Datenbank entscheidet; zwei gleichzeitige Anfragen derselben Person auf zwei Instanzen ergeben genau eine Auskunft |
+| gleichzeitige Live-Sitzungen der Spracheingabe („Gleichzeitige Live-Sitzungen“ unter Modelle → Spracheingabe) | für die Installation | nichts: Die Datenbank vergibt die Plätze; ein Platz einer ausgefallenen Instanz wird nach 180 Sekunden wieder frei ([Live-Transkript](modell-endpunkte.md#live-transkript)) |
+| eine Live-Sitzung je Person | je Instanz | nichts: Mit mehreren Instanzen kann eine Person bis zu einer Sitzung je Instanz halten, alle innerhalb der Höchstzahl der Installation |
 | gleichzeitige Selbstauskünfte (`OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS`) | je Instanz | nicht teilen: Die Grenze schützt Threads und Speicher der Instanz; darüber antwortet sie mit `503`, ohne etwas zu verbrauchen |
 
 Die Modellaufrufe der Metadatenextraktion folgen den Pools der Läufe und Uploads und wachsen ebenso
@@ -488,6 +490,26 @@ bleibt eine Instanz die Vorgabe.
 Mehr Instanzen brauchen mehr Datenbankverbindungen: Jede Instanz hält ihren Connection Pool und dazu
 die Hörverbindung für die Benachrichtigungen, und während eines Updates läuft kurz eine Instanz mehr.
 Die Rechnung steht unter [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
+
+## Instanzen beobachten
+
+Jede Instanz gibt ihre eigenen Metriken aus, Prometheus fragt jede einzeln ab
+([Überwachung](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)). Für den Mehrinstanzbetrieb
+sind drei Fragen wichtig:
+
+- **Laufen alle Instanzen, und in welcher Version?** `opaa_instances_active` zählt die laufenden
+  Instanzen nach dem Register, `opaa_instances_versions` ihre verschiedenen Versionen. Jede Instanz
+  meldet denselben Wert; `max(opaa_instances_active)` unter der Zahl der gewünschten Instanzen
+  heißt, eine fehlt, `opaa_instances_versions` dauerhaft über `1`, ein Rolling Update hängt.
+  `opaa_instance_heartbeat_age_seconds` ist das Alter des eigenen Herzschlags; nähert es sich der
+  Frist `OPAA_INSTANCE_DEAD_AFTER`, droht der Selbstschutz.
+- **Hört jede Instanz die Änderungen?** `opaa_invalidation_bus_connected` ist je Instanz `1`, solange
+  sie mithört, und `0`, solange ihre Zwischenspeicher an sich vorbei lesen.
+- **Laufen die geplanten Läufe?** Unter der Sperre führt nur eine Instanz einen Termin aus; den
+  letzten Erfolg eines Laufs zeigt deshalb `max by (scheduled_job) (opaa_scheduled_last_success)` über alle
+  Instanzen, die Fehler `sum by (scheduled_job) (opaa_scheduled_failures_total)`. Bis ein Lauf auf einer
+  Instanz gelingt, zeigt sie ihren eigenen Start als letzten Erfolg. Die gehaltenen Sperren und das
+  Alter der ältesten zeigt `opaa_scheduled_locks_held` und `opaa_scheduled_locks_oldest_age_seconds`.
 
 ## Was man wissen sollte
 

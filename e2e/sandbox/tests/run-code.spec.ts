@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib'
 import { expect, test } from '../../fixtures/auth'
-import { askQuestion, startFreshChat } from '../../fixtures/chat'
+import { RESPONSIBLE_UNIT, setToolCapability } from '../../fixtures/agents'
+import { startFreshChat } from '../../fixtures/chat'
 import { apiAs } from '../../fixtures/externalAccess'
 import { cleanupLibraries } from '../../fixtures/libraries'
 import { createKnowledgeLibraryViaApi } from '../../fixtures/promptLibraries'
@@ -8,9 +9,10 @@ import { assignToDefaultSpace } from '../../fixtures/spaces'
 import type { APIRequestContext, Locator, Page } from '@playwright/test'
 
 /**
- * The agent spike end to end: a question with the prefix "@test " searches the knowledge base,
- * writes a PDF with run_code in an OpenSandbox sandbox and hangs it at the answer; a follow-up
- * question corrects it; a reload shows both files again.
+ * An agent with run_code end to end: the spec switches agents on, assigns an agent with
+ * search_knowledge and run_code to the default space and chooses it with @ in the chat. Its run
+ * searches the knowledge base, writes a PDF in an OpenSandbox sandbox and hangs it at the answer; a
+ * follow-up question to the agent corrects it; a reload shows both files again.
  *
  * Two variants. Without E2E_REAL_MODEL_BASE_URL the chat model is ai-stub, which plays a fixed
  * script (search, run_code with a reportlab script, closing answer) and titles the PDF with the
@@ -34,6 +36,12 @@ interface ModelEntry {
   active: boolean
 }
 
+interface AgentSettings {
+  enabled: boolean
+  enabledTools: string[]
+  availableTools: string[]
+}
+
 function answers(page: Page): Locator {
   return page
     .getByTestId('message-list')
@@ -45,6 +53,19 @@ function generatedFiles(answer: Locator): Locator {
   return answer.getByRole('list', { name: 'Erzeugte Dateien' }).getByRole('button')
 }
 
+/** Types @ in the chat input, chooses the agent `name` and sends `question` to it. */
+async function askAgent(page: Page, name: string, question: string): Promise<void> {
+  const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
+  await input.pressSequentially('@')
+  await page
+    .getByRole('group', { name: 'Agenten' })
+    .getByRole('option', { name: new RegExp(`^${name}`) })
+    .click()
+  await expect(page.getByTestId('chosen-agent-chip')).toHaveText(`Agent: ${name}`)
+  await input.fill(question)
+  await page.getByRole('button', { name: 'Senden' }).click()
+}
+
 async function pdfOf(api: APIRequestContext, attachmentId: string): Promise<PDFDocument> {
   const response = await api.get(`/api/v1/chat-attachments/${attachmentId}/content`)
   expect(response.ok(), await response.text()).toBe(true)
@@ -53,9 +74,13 @@ async function pdfOf(api: APIRequestContext, attachmentId: string): Promise<PDFD
   return PDFDocument.load(bytes, { updateMetadata: false })
 }
 
-test.describe('Agent mit Code-Sandbox (Spike)', () => {
+test.describe('Agent mit Code-Sandbox', () => {
   const createdLibraryIds = cleanupLibraries()
   let restoreModelId: string | null = null
+  let restoreCapability: Awaited<ReturnType<typeof setToolCapability>> | null = null
+  let restoreAgentSettings: AgentSettings | null = null
+  let agentId: string | null = null
+  const agentName = `E2E-Rechnen-${Date.now().toString(36)}`
 
   test.beforeAll(async () => {
     const suffix = Date.now().toString(36)
@@ -94,6 +119,34 @@ test.describe('Agent mit Code-Sandbox (Spike)', () => {
         .toBe('INDEXED')
       await assignToDefaultSpace(ADMIN, 'KNOWLEDGE_LIBRARY', id)
 
+      const settings = (await (await api.get('/api/v1/system/agents')).json()) as AgentSettings
+      restoreAgentSettings = settings
+      const switchedOn = await api.put('/api/v1/system/agents', {
+        data: { enabled: true, enabledTools: settings.availableTools },
+      })
+      expect(switchedOn.ok(), await switchedOn.text()).toBe(true)
+      const created = await api.post('/api/v1/agents', {
+        data: { name: agentName, responsible: { function: RESPONSIBLE_UNIT } },
+      })
+      expect(created.ok(), await created.text()).toBe(true)
+      agentId = ((await created.json()) as { id: string }).id
+      const configured = await api.put(`/api/v1/agents/${agentId}`, {
+        data: {
+          name: agentName,
+          instruction: '',
+          libraryIds: [],
+          toolNames: ['search_knowledge', 'run_code'],
+          planStep: 'OFF',
+          limits: {},
+        },
+      })
+      expect(configured.ok(), await configured.text()).toBe(true)
+      await assignToDefaultSpace(ADMIN, 'AGENT', agentId)
+
+      // An agent run is refused unless the active model is recorded as tool-capable.
+      if (!REAL_MODEL) {
+        restoreCapability = await setToolCapability('CAPABLE')
+      }
       if (REAL_MODEL) {
         const models = (await (await api.get('/api/v1/admin/models')).json()) as ModelEntry[]
         restoreModelId = models.find((model) => model.active)?.id ?? null
@@ -110,6 +163,7 @@ test.describe('Agent mit Code-Sandbox (Spike)', () => {
         const { id: modelId } = (await created.json()) as { id: string }
         const activated = await api.post(`/api/v1/admin/models/${modelId}/activate`)
         expect(activated.ok(), await activated.text()).toBe(true)
+        await setToolCapability('CAPABLE')
       }
     } finally {
       await api.dispose()
@@ -117,12 +171,27 @@ test.describe('Agent mit Code-Sandbox (Spike)', () => {
   })
 
   test.afterAll(async () => {
-    if (!restoreModelId) return
     const api = await apiAs(ADMIN)
     try {
-      await api.post(`/api/v1/admin/models/${restoreModelId}/activate`)
+      if (agentId) {
+        await api.delete(`/api/v1/agents/${agentId}`)
+      }
+      if (restoreAgentSettings) {
+        await api.put('/api/v1/system/agents', {
+          data: {
+            enabled: restoreAgentSettings.enabled,
+            enabledTools: restoreAgentSettings.enabledTools,
+          },
+        })
+      }
+      if (restoreModelId) {
+        await api.post(`/api/v1/admin/models/${restoreModelId}/activate`)
+      }
     } finally {
       await api.dispose()
+    }
+    if (restoreCapability && restoreCapability !== 'CAPABLE') {
+      await setToolCapability(restoreCapability)
     }
   })
 
@@ -131,9 +200,10 @@ test.describe('Agent mit Code-Sandbox (Spike)', () => {
   }) => {
     await startFreshChat(page)
 
-    await askQuestion(
+    await askAgent(
       page,
-      '@test Erstelle mir aus der Wissensbasis ein PDF „Fristenübersicht“ mit allen Bearbeitungsfristen.',
+      agentName,
+      'Erstelle mir aus der Wissensbasis ein PDF „Fristenübersicht“ mit allen Bearbeitungsfristen.',
     )
     const first = answers(page).nth(0)
     await expect(generatedFiles(first)).toHaveCount(1, {
@@ -142,7 +212,7 @@ test.describe('Agent mit Code-Sandbox (Spike)', () => {
     await expect(generatedFiles(first).first()).toHaveAccessibleName(
       /^Datei .+\.pdf herunterladen$/,
     )
-    await expect(first).toContainText('Code-Läufe:')
+    await expect(first).toContainText(/\d+ Schritte?/)
 
     // The chip downloads the file through the authenticated client.
     const downloadPromise = page.waitForEvent('download')
@@ -150,7 +220,7 @@ test.describe('Agent mit Code-Sandbox (Spike)', () => {
     const download = await downloadPromise
     expect(download.suggestedFilename()).toMatch(/\.pdf$/)
 
-    await askQuestion(page, '@test Bitte korrigiere das PDF: Der Titel soll „Fristen 2026“ lauten.')
+    await askAgent(page, agentName, 'Bitte korrigiere das PDF: Der Titel soll „Fristen 2026“ lauten.')
     const second = answers(page).nth(1)
     await expect(generatedFiles(second)).toHaveCount(1, {
       timeout: ANSWER_TIMEOUT,

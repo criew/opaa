@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.CandidateOutcome;
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.api.types.VerdictReason;
-import io.opaa.llm.RerankModelRole;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipeline;

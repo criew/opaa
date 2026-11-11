@@ -1,5 +1,8 @@
 package io.opaa.mail;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.observability.PolledGauges;
+import javax.sql.DataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
@@ -25,5 +28,10 @@ class MailOutboxConfiguration {
     scheduler.setWaitForTasksToCompleteOnShutdown(true);
     scheduler.setAwaitTerminationSeconds(SHUTDOWN_GRACE_SECONDS);
     return scheduler;
+  }
+
+  @Bean
+  PolledGauges mailOutboxGauges(DataSource dataSource, MeterRegistry registry) {
+    return MailDeliveryMetrics.queueGauges(dataSource, registry);
   }
 }

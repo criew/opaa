@@ -5,21 +5,25 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Link from '@mui/material/Link'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import SectionHead from '@/shared/ui/SectionHead'
 import type { LocalAuthSettingsResponse, LocalAuthSettingsUpdateRequest } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useMailStore } from '@/features/mail'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 import PageSection from '@/shared/ui/PageSection'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import { mailStatusOf } from '@/features/mail'
-import { localUserErrorMessage } from './localUserLabels'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
+import { LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 
 export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
   'Reguläre lokale Konten können sich ab sofort nicht mehr anmelden, und ihre laufenden Sitzungen ' +
@@ -30,7 +34,7 @@ export const DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE =
 export const SELF_REGISTRATION_CONSEQUENCE =
   'Die Registrierung ist danach ein öffentlich erreichbares Formular. Es gilt nur für die unten ' +
   'eingetragenen Adress-Domänen, die Rate-Limits der Anmeldung greifen, jedes Konto wird mit dem ' +
-  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung" erzeugt. Das Einschalten ist ein ' +
+  'Pflicht-Ablaufdatum und dem Anlagegrund „Selbstregistrierung“ erzeugt. Das Einschalten ist ein ' +
   'Protokollereignis und nach der Dienstvereinbarung mitbestimmungspflichtig.'
 
 export const PUBLIC_BASE_URL_HINT =
@@ -147,8 +151,8 @@ function LockoutField(props: LockoutFieldProps) {
   }
   return (
     <Box>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <TextField
+      <FormField
+        label={label}
         id={id}
         inputRef={inputRef}
         fullWidth
@@ -196,17 +200,17 @@ function SmtpStatusLine() {
           bgcolor: !status ? 'text.disabled' : usable ? 'success.main' : 'warning.main',
         }}
       />
-      <Typography component="span" sx={{ fontSize: 12.5 }}>
-        E-Mail-Versand: {status ? status.headline : 'Status wird geladen …'}
+      <Typography component="span" sx={{ fontSize: fontSize.meta }}>
+        E-Mail-Versand: {status ? status.headline : <LoadingState shape="inline" />}
       </Typography>
-      <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+      <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         ·{' '}
         <Link component={RouterLink} to="/admin/mail/server">
           E-Mail-Einstellungen
         </Link>
       </Typography>
       {status && !usable && (
-        <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+        <Typography component="span" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
           · Einladungen und Rücksetzlinks werden dann zur Übergabe angezeigt.
         </Typography>
       )}
@@ -260,7 +264,7 @@ function LinkFlowSwitch({
         </Tooltip>
       )}
       {ineffectiveHint !== null && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', ml: 6, mt: -0.5 }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', ml: 6, mt: -0.5 }}>
           {ineffectiveHint}
         </Typography>
       )}
@@ -309,7 +313,9 @@ export default function LocalAuthSettingsCard() {
    * `null` after every save, so that the form shows what was actually saved.
    */
   const [edited, setEdited] = useState<RulesDraft | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // A switch reports beside the switches, the rules form under its footer (guidelines 5.16).
+  const [error, setError] = useState<{ text: string; from: 'switch' | 'form' } | null>(null)
+  const gate = useRecentLoginGate(LOCAL_AUTH_SETTINGS_CONFIRM_PURPOSE)
   const draft = edited ?? (settings ? draftOf(settings) : null)
 
   useEffect(() => {
@@ -317,13 +323,21 @@ export default function LocalAuthSettingsCard() {
   }, [loadSettings])
 
   if (isLoading && !settings) {
-    return <Skeleton variant="rounded" height={260} sx={{ mb: 3 }} />
+    return (
+      <Box sx={{ mb: 3 }}>
+        <LoadingState shape="block" />
+      </Box>
+    )
   }
   if (!settings || !draft) {
     return (
-      <Alert severity="error" sx={{ mb: 3 }}>
-        {loadError ?? 'Die Einstellungen der lokalen Anmeldung konnten nicht geladen werden.'}
-      </Alert>
+      <Box sx={{ mb: 3 }}>
+        <LoadError
+          message="Die Einstellungen der lokalen Anmeldung konnten nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void loadSettings()}
+        />
+      </Box>
     )
   }
 
@@ -337,14 +351,29 @@ export default function LocalAuthSettingsCard() {
     request: LocalAuthSettingsUpdateRequest,
     success: (saved: LocalAuthSettingsResponse) => string,
     discardDraft = false,
+    afterConfirmation = false,
   ) {
+    const from = discardDraft ? 'form' : 'switch'
     setError(null)
     try {
       const saved = await saveSettings(request)
+      gate.settled()
       if (discardDraft) setEdited(null)
       notify(success(saved), 'success')
     } catch (err) {
-      setError(localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'))
+      const refused = gate.refusal(
+        err,
+        () => void persist(request, success, discardDraft, true),
+        afterConfirmation,
+      )
+      if (refused === null) {
+        setError({
+          text: localUserErrorMessage(err, 'Die Einstellung konnte nicht gespeichert werden.'),
+          from,
+        })
+      } else if (refused) {
+        setError({ text: refused, from })
+      }
     }
   }
 
@@ -366,9 +395,9 @@ export default function LocalAuthSettingsCard() {
     if (
       !next &&
       !(await confirmAction({
-        question: 'Lokale Anmeldung abschalten?',
+        question: 'Lokale Anmeldung ausschalten?',
         consequence: DISABLE_LOCAL_ACCOUNTS_CONSEQUENCE,
-        confirmLabel: 'Abschalten',
+        confirmLabel: 'Ausschalten',
         tone: 'caution',
       }))
     ) {
@@ -387,7 +416,7 @@ export default function LocalAuthSettingsCard() {
 
   async function toggleSelfRegistration(next: boolean) {
     if (next && domains.length === 0) {
-      setError(DOMAIN_REQUIRED_HINT)
+      setError({ text: DOMAIN_REQUIRED_HINT, from: 'switch' })
       return
     }
     if (
@@ -422,7 +451,7 @@ export default function LocalAuthSettingsCard() {
 
   function saveRules() {
     if (settings!.selfRegistrationEnabled && domains.length === 0) {
-      setError(DOMAIN_REQUIRED_HINT)
+      setError({ text: DOMAIN_REQUIRED_HINT, from: 'form' })
       return
     }
     void persist(
@@ -441,9 +470,9 @@ export default function LocalAuthSettingsCard() {
           {PUBLIC_BASE_URL_HINT}
         </Alert>
       )}
-      {error && (
+      {error?.from === 'switch' && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+          {error.text}
         </Alert>
       )}
 
@@ -494,125 +523,132 @@ export default function LocalAuthSettingsCard() {
 
       <SmtpStatusLine />
 
-      <Box sx={{ mt: 2.5, pt: 2.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 1.5 }}>
+      <Box sx={{ mt: 4 }}>
+        <SectionHead id="local-auth-rules-head" component="h3">
           Regeln und Fristen
-        </Typography>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            columnGap: 3,
-            rowGap: 2,
-          }}
+        </SectionHead>
+        <SettingsForm
+          aria-labelledby="local-auth-rules-head"
+          onSave={saveRules}
+          busy={isSaving}
+          dirty={edited !== null}
+          onDiscard={() => setEdited(null)}
+          result={
+            error?.from === 'form' && (
+              <Alert severity="error" onClose={() => setError(null)}>
+                {error.text}
+              </Alert>
+            )
+          }
         >
-          <Box sx={{ gridColumn: { sm: 'span 2' } }}>
-            <FieldLabel htmlFor="local-auth-domains">
-              Adress-Domänen der Selbstregistrierung
-            </FieldLabel>
-            <TextField
-              id="local-auth-domains"
-              fullWidth
-              size="small"
-              value={draft.domains}
-              placeholder="stadt.example, amt.example"
-              onChange={(e) => setEdited({ ...draft, domains: e.target.value })}
-              helperText="Komma- oder leerzeichengetrennt. Pflicht für die Selbstregistrierung; leer bedeutet, dass sich niemand registrieren kann."
-            />
-          </Box>
-          {(
-            [
-              ['passwordMinLength', 'Mindestlänge des Passworts', '8 bis 64 Zeichen'],
-              ['defaultExpiryDays', 'Vorbelegtes Ablaufdatum (Tage)', 'Vorschlag beim Anlegen'],
-              ['inactiveDays', 'Sperre nach Inaktivität (Tage)', 'mindestens 30'],
-              ['invitationTokenTtlHours', 'Einladungslink gültig (Stunden)', '1 bis 720'],
-              ['resetTokenTtlMinutes', 'Rücksetzlink gültig (Minuten)', '1 bis 1440'],
-            ] as Array<[keyof RulesDraft, string, string]>
-          ).map(([field, label, help]) => (
-            <Box key={field}>
-              <FieldLabel htmlFor={`local-auth-${field}`}>{label}</FieldLabel>
-              <TextField
-                id={`local-auth-${field}`}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              rowGap: 2,
+              maxWidth: formWidth.column,
+            }}
+          >
+            <Box>
+              <FormField
+                label="Adress-Domänen der Selbstregistrierung"
+                id="local-auth-domains"
                 fullWidth
                 size="small"
-                type="number"
-                value={draft[field]}
-                onChange={(e) => setEdited({ ...draft, [field]: e.target.value })}
-                helperText={help}
+                value={draft.domains}
+                placeholder="stadt.example, amt.example"
+                onChange={(e) => setEdited({ ...draft, domains: e.target.value })}
+                helperText="Komma- oder leerzeichengetrennt. Pflicht für die Selbstregistrierung; leer bedeutet, dass sich niemand registrieren kann."
               />
             </Box>
-          ))}
-        </Box>
-        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mt: 3, mb: 0.5 }}>
-          Sperre nach Fehlversuchen
-        </Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
-          Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
-          der Betrieb fest, abschalten lässt sich die Sperre nicht.
-          {limitsAreFactoryOnly(settings) && (
-            <>
-              {' '}
-              Ab Werk lässt der Betrieb nur strengere Werte zu als die Werkseinstellung; lockern
-              geht erst, wenn er OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS oder
-              OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION weiter setzt.
-            </>
-          )}
-        </Typography>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            columnGap: 3,
-            rowGap: 2,
-          }}
-        >
-          <LockoutField
-            id="local-auth-lockoutMaxAttempts"
-            label="Fehlversuche bis zur Sperre"
-            value={draft.lockoutMaxAttempts}
-            stored={settings.storedLockoutMaxAttempts}
-            inForce={settings.lockoutMaxAttempts}
-            factory={settings.defaultLockoutMaxAttempts}
-            factoryInForce={Math.min(
-              settings.defaultLockoutMaxAttempts,
-              settings.lockoutMaxAttemptsLimit,
+            {(
+              [
+                ['passwordMinLength', 'Mindestlänge des Passworts', '8 bis 64 Zeichen'],
+                ['defaultExpiryDays', 'Vorbelegtes Ablaufdatum (Tage)', 'Vorschlag beim Anlegen'],
+                ['inactiveDays', 'Sperre nach Inaktivität (Tage)', 'mindestens 30'],
+                ['invitationTokenTtlHours', 'Einladungslink gültig (Stunden)', '1 bis 720'],
+                ['resetTokenTtlMinutes', 'Rücksetzlink gültig (Minuten)', '1 bis 1440'],
+              ] as Array<[keyof RulesDraft, string, string]>
+            ).map(([field, label, help]) => (
+              <Box key={field}>
+                <FormField
+                  label={label}
+                  id={`local-auth-${field}`}
+                  fullWidth
+                  size="small"
+                  type="number"
+                  value={draft[field]}
+                  onChange={(e) => setEdited({ ...draft, [field]: e.target.value })}
+                  helperText={help}
+                />
+              </Box>
+            ))}
+          </Box>
+          <SectionHead component="h3">Sperre nach Fehlversuchen</SectionHead>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
+            Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
+            der Betrieb fest, abschalten lässt sich die Sperre nicht.
+            {limitsAreFactoryOnly(settings) && (
+              <>
+                {' '}
+                Ab Werk lässt der Betrieb nur strengere Werte zu als die Werkseinstellung; lockern
+                geht erst, wenn er OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS oder
+                OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION weiter setzt.
+              </>
             )}
-            range={`1 bis ${settings.lockoutMaxAttemptsLimit}`}
-            resetLabel="Fehlversuche auf die Werkseinstellung setzen"
-            disabled={isSaving}
-            onChange={(value) => setEdited({ ...draft, lockoutMaxAttempts: value })}
-          />
-          <LockoutField
-            id="local-auth-lockoutDurationMinutes"
-            label="Dauer der Sperre (Minuten)"
-            value={draft.lockoutDurationMinutes}
-            stored={settings.storedLockoutDurationMinutes}
-            inForce={settings.lockoutDurationMinutes}
-            factory={settings.defaultLockoutDurationMinutes}
-            factoryInForce={Math.min(
-              Math.max(settings.defaultLockoutDurationMinutes, settings.minLockoutDurationMinutes),
-              settings.maxLockoutDurationMinutes,
-            )}
-            range={`${settings.minLockoutDurationMinutes} bis ${settings.maxLockoutDurationMinutes} Minuten`}
-            resetLabel="Dauer der Sperre auf die Werkseinstellung setzen"
-            disabled={isSaving}
-            onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
-          />
-        </Box>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1.5 }}>
-          Sehr strenge Werte sperren auch das Notanker-Konto der Systemverwaltung entsprechend
-          lange. Schützen lässt es sich mit OPAA_LOCAL_ADMIN_ALLOWED_CIDRS; entsperren kann es eine
-          andere Systemverwaltung oder der Betrieb mit OPAA_LOCAL_ADMIN_RESET=force.
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-          <Button variant="outlined" size="small" onClick={saveRules} disabled={isSaving}>
-            Regeln speichern
-          </Button>
-          <Button size="small" onClick={() => setEdited(null)} disabled={isSaving}>
-            Verwerfen
-          </Button>
-        </Stack>
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              rowGap: 2,
+              maxWidth: formWidth.column,
+            }}
+          >
+            <LockoutField
+              id="local-auth-lockoutMaxAttempts"
+              label="Fehlversuche bis zur Sperre"
+              value={draft.lockoutMaxAttempts}
+              stored={settings.storedLockoutMaxAttempts}
+              inForce={settings.lockoutMaxAttempts}
+              factory={settings.defaultLockoutMaxAttempts}
+              factoryInForce={Math.min(
+                settings.defaultLockoutMaxAttempts,
+                settings.lockoutMaxAttemptsLimit,
+              )}
+              range={`1 bis ${settings.lockoutMaxAttemptsLimit}`}
+              resetLabel="Fehlversuche auf die Werkseinstellung setzen"
+              disabled={isSaving}
+              onChange={(value) => setEdited({ ...draft, lockoutMaxAttempts: value })}
+            />
+            <LockoutField
+              id="local-auth-lockoutDurationMinutes"
+              label="Dauer der Sperre (Minuten)"
+              value={draft.lockoutDurationMinutes}
+              stored={settings.storedLockoutDurationMinutes}
+              inForce={settings.lockoutDurationMinutes}
+              factory={settings.defaultLockoutDurationMinutes}
+              factoryInForce={Math.min(
+                Math.max(
+                  settings.defaultLockoutDurationMinutes,
+                  settings.minLockoutDurationMinutes,
+                ),
+                settings.maxLockoutDurationMinutes,
+              )}
+              range={`${settings.minLockoutDurationMinutes} bis ${settings.maxLockoutDurationMinutes} Minuten`}
+              resetLabel="Dauer der Sperre auf die Werkseinstellung setzen"
+              disabled={isSaving}
+              onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
+            />
+          </Box>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1.5 }}>
+            Sehr strenge Werte sperren auch das Notanker-Konto der Systemverwaltung entsprechend
+            lange. Schützen lässt es sich mit OPAA_LOCAL_ADMIN_ALLOWED_CIDRS; entsperren kann es
+            eine andere Systemverwaltung oder der Betrieb mit OPAA_LOCAL_ADMIN_RESET=force.
+          </Typography>
+        </SettingsForm>
       </Box>
+      {gate.dialog}
     </PageSection>
   )
 }

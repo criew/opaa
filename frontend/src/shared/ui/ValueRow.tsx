@@ -1,15 +1,18 @@
 import { useId, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { fontSize } from '../theme/tokens'
 
 /** The grid of the rows of the Reiter „Quelle“: title | content | action. */
 const ROW_GRID = {
   display: 'grid',
-  gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', sm: '128px minmax(0, 1fr) auto' },
   columnGap: 2,
   rowGap: 0.5,
   alignItems: 'baseline',
 } as const
+
+/** Width of the title column from `sm` up; `wide` where the titles are names of settings. */
+const TITLE_WIDTH = { regular: 128, wide: 240 } as const
 
 /**
  * A single value as one row of the Reiter „Quelle“: title | value | one text action at the shared
@@ -21,6 +24,7 @@ export default function ValueRow({
   action,
   children,
   headingLevel = 'h2',
+  titleWidth = 'regular',
 }: {
   title: string
   value: ReactNode
@@ -28,7 +32,8 @@ export default function ValueRow({
   action?: ReactNode
   /** Opened content, under the value column. */
   children?: ReactNode
-  headingLevel?: 'h2' | 'h3'
+  headingLevel?: 'h2' | 'h3' | 'h4'
+  titleWidth?: keyof typeof TITLE_WIDTH
 }) {
   const id = useId()
   return (
@@ -37,11 +42,19 @@ export default function ValueRow({
       aria-labelledby={id}
       sx={{ borderBottom: 1, borderColor: 'divider', py: 2 }}
     >
-      <Box sx={ROW_GRID}>
+      <Box
+        sx={{
+          ...ROW_GRID,
+          gridTemplateColumns: {
+            xs: 'minmax(0, 1fr) auto',
+            sm: `${TITLE_WIDTH[titleWidth]}px minmax(0, 1fr) auto`,
+          },
+        }}
+      >
         <Typography
           id={id}
           component={headingLevel}
-          sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary', gridColumn: '1' }}
+          sx={{ fontSize: fontSize.title, fontWeight: 600, color: 'text.primary', gridColumn: '1' }}
         >
           {title}
         </Typography>
@@ -49,7 +62,7 @@ export default function ValueRow({
           sx={{
             gridColumn: { xs: '1 / -1', sm: '2' },
             gridRow: { xs: '2', sm: '1' },
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             minWidth: 0,
           }}
         >

@@ -4,11 +4,16 @@ import {
   answerAsMarkdown,
   answerAsPlainText,
   answerWithSources,
+  agentDraftNote,
   copyNote,
   markdownWithNote,
+  noteWithDraft,
   plainTextWithNote,
 } from './copyFormats'
 import type { SourceReference } from '@/shared/api/types'
+
+// The answers below link to this origin; the link stays a link only because it is allowed.
+const LINKS = { allowedOrigins: ['https://example.test'] }
 
 const ANSWER =
   '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro** 【source: doc-a#0 | 001_personalausweis.md】.\n' +
@@ -41,7 +46,7 @@ const SOURCES: SourceReference[] = [
 
 describe('answerAsMarkdown', () => {
   test('keeps the Markdown and drops every marker with the space before it', () => {
-    expect(answerAsMarkdown(ANSWER)).toBe(
+    expect(answerAsMarkdown(ANSWER, LINKS)).toBe(
       '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro**.\n' +
         '- Passbild\n' +
         '- Termin im [Bürgerbüro](https://example.test/termin)',
@@ -53,7 +58,7 @@ describe('answerWithSources', () => {
   test('turns markers into Markdown footnotes and lists the cited documents with their Fundort', () => {
     const citations = buildCitationIndex(ANSWER, SOURCES)
 
-    expect(answerWithSources(ANSWER, citations)).toBe(
+    expect(answerWithSources(ANSWER, citations, LINKS)).toBe(
       '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro**[^1].\n' +
         '- Passbild[^2]\n' +
         '- Termin im [Bürgerbüro](https://example.test/termin)[^1]\n\n' +
@@ -101,7 +106,7 @@ describe('bracketed markers', () => {
 
   test('leave a Markdown link around a marker alone', () => {
     const link = 'Siehe [【source: doc-a#0 | 001_personalausweis.md】](https://example.test/a).'
-    expect(answerAsMarkdown(link)).toBe('Siehe [](https://example.test/a).')
+    expect(answerAsMarkdown(link, LINKS)).toBe('Siehe [](https://example.test/a).')
   })
 
   test('drop square brackets and doubled parentheses as well', () => {
@@ -129,7 +134,7 @@ describe('bracketed markers', () => {
 
 describe('answerAsPlainText', () => {
   test('removes the Markdown syntax but keeps structure readable', () => {
-    expect(answerAsPlainText(ANSWER)).toBe(
+    expect(answerAsPlainText(ANSWER, LINKS)).toBe(
       'Gebühren\n\nEin Personalausweis kostet 42,60 Euro.\n• Passbild\n• Termin im Bürgerbüro',
     )
   })
@@ -160,6 +165,59 @@ describe('answerAsPlainText', () => {
     expect(answerAsPlainText('Datei 001_personalausweis_neu.md und _kursiv_')).toBe(
       'Datei 001_personalausweis_neu.md und kursiv',
     )
+  })
+
+  test('keeps no Markdown escape, and writes every tag as text', () => {
+    expect(
+      answerAsPlainText(
+        'Ersetzen Sie <Projektname>, x<br>y, Fußnote \\[1\\]. <img src="https://evil.example/p">',
+      ),
+    ).toBe(
+      'Ersetzen Sie &lt;Projektname>, x&lt;br>y, Fußnote [1]. &lt;img src="https://evil.example/p">',
+    )
+  })
+
+  test.each([
+    ['<span style="background:url(https://evil.example/s)">b</span>'],
+    ['<table background="https://evil.example/t">'],
+    ['<area href="https://evil.example/r"> <track src="https://evil.example/k">'],
+    ['<!-- x --> <?php x ?>'],
+  ])('writes the tag %s as text', (answer) => {
+    expect(answerAsPlainText(answer)).not.toMatch(/<[A-Za-z/!?]/)
+  })
+
+  test('keeps the address of a refused link next to brackets of the text', () => {
+    expect(
+      answerAsPlainText('[[b](https://evil.example/x)](https://amt.example/y)', {
+        allowedOrigins: ['https://amt.example'],
+      }),
+    ).toBe('b (https://evil.example/x) (https://amt.example/y)')
+  })
+
+  test.each([
+    [
+      '<div>\n[x](https://evil.example/a)\n</div>',
+      '&lt;div>\nx (https://evil.example/a)\n&lt;/div>',
+    ],
+    ['\\[x\\](https://evil.example/a)', 'x (https://evil.example/a)'],
+  ])('turns a link that resolved escapes form into text with its address: %s', (answer, plain) => {
+    const once = answerAsPlainText(answer)
+
+    expect(once).toBe(plain)
+    expect(answerAsPlainText(once)).toBe(once)
+  })
+
+  test('keeps code spans as written, in backticks where they hold a tag or a link', () => {
+    expect(
+      answerAsPlainText('Code `<img src=x>` und `a\\*b`, ``` a`b ```, `[l](https://x.example)`'),
+    ).toBe('Code `<img src=x>` und a\\*b, a`b, `[l](https://x.example)`')
+  })
+
+  test.each([
+    ['![x]`(https://evil.example/p.png)`', '![x]`(https://evil.example/p.png)`'],
+    ['[x]`(https://evil.example/a)`', '[x]`(https://evil.example/a)`'],
+  ])('lets a code span in brackets complete no image and no link: %s', (answer, expected) => {
+    expect(answerAsPlainText(answer)).toBe(expected)
   })
 })
 
@@ -192,5 +250,28 @@ describe('copy note', () => {
 
     expect(markdownWithNote('Antwort', note)).toBe('Antwort\n\n---\n\nHinweis. – OPAA, 05.03.2026')
     expect(plainTextWithNote('Antwort', note)).toBe('Antwort\n\nHinweis. – OPAA, 05.03.2026')
+  })
+
+  test('leads the note of an agent answer with its draft notice, agent and revision', () => {
+    const note = copyNote('Hinweis.', 'OPAA', answeredAt)
+    const run = {
+      runId: 'run-1',
+      endState: 'COMPLETED' as const,
+      steps: [],
+      agentId: 'agent-1',
+      agentName: 'Prüfhilfe',
+      stamp: {
+        agentRevision: 3,
+        libraries: [],
+        templates: [],
+      },
+    }
+
+    expect(noteWithDraft(note, run)).toBe(
+      'Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Hinweis. – OPAA, 05.03.2026',
+    )
+    expect(agentDraftNote({ ...run, stamp: null })).toBe('Entwurf, nicht geprüft')
+    // regression guard: an ordinary answer keeps the note unchanged
+    expect(noteWithDraft(note, undefined)).toBe(note)
   })
 })

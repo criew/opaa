@@ -24,6 +24,7 @@ import { resetIndexingState } from '@/features/library/mocks/indexingHandlers'
 import { resetDocumentMockState } from '@/features/library/mocks/libraryDocumentHandlers'
 // prompt
 import { resetMockPromptLibraries } from '@/features/prompt/mocks/promptLibraryFixtures'
+import { resetMockAgents } from '@/features/agent/mocks/agentFixtures'
 // user
 import {
   resetMockLocalAuthSettings,
@@ -48,6 +49,10 @@ import { resetMockExternalAccessTokens } from '@/features/external-access/mocks/
 import { resetServiceAccountMockState } from '@/features/external-access/mocks/serviceAccountHandlers'
 // compliance
 import { resetSelfDisclosureMockState } from '@/features/compliance/mocks/selfDisclosureHandlers'
+// document-template
+import { resetDocumentTemplateMockState } from '@/features/document-template/mocks/documentTemplateFixtures'
+// malware-scan
+import { resetMalwareScanMockState } from '@/features/malware-scan/mocks/malwareScanHandlers'
 import { resetRetentionMockState } from '@/features/compliance/mocks/retentionHandlers'
 // auth
 import { resetMockAuthConfig, resetMockQuickTourHint } from '@/shared/mocks/authFixtures'
@@ -90,6 +95,8 @@ afterEach(() => {
   resetConnectedAccountMockState()
   resetConnectionLogMockState()
   resetSelfDisclosureMockState()
+  resetMalwareScanMockState()
+  resetDocumentTemplateMockState()
   resetRetentionMockState()
   // The branding fixture is mutable so a PUT is visible on the next GET - without this,
   // a test that configures a brand colour would silently set the stage for the next one.
@@ -117,6 +124,7 @@ afterEach(() => {
   resetServiceAccountMockState()
   // Prompt libraries, their prompts and the space associations are mutable in the mocks as well.
   resetMockPromptLibraries()
+  resetMockAgents()
   resetMockSpaceAssetAssociations()
   clearCookies()
 })

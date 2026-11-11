@@ -63,15 +63,15 @@ public final class CapabilityResponseMapper {
     if (overview.scope() != null) {
       return scopeStatement(overview);
     }
-    String what = CapabilityService.creatable(overview.capability());
+    String what = CapabilityService.permits(overview.capability());
     List<CapabilityGrantView> grants = overview.grants();
     if (grants.isEmpty()) {
-      return "Nur die Systemverwaltung darf " + what + " anlegen.";
+      return "Nur die Systemverwaltung darf " + what + ".";
     }
     if (reachesAllAccounts(grants)) {
-      return "Alle Konten dürfen " + what + " anlegen.";
+      return "Alle Konten dürfen " + what + ".";
     }
-    return subjects(grants) + " sowie die Systemverwaltung dürfen " + what + " anlegen.";
+    return subjects(grants) + " sowie die Systemverwaltung dürfen " + what + ".";
   }
 
   /** "Zugang Nextcloud intern: frei für Alle Konten." - one line per scope. */

@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import AddIcon from '@mui/icons-material/Add'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
+import CreateButton from '@/shared/ui/CreateButton'
 import type { AccountResponse, LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import AreaPageCount from '@/shared/ui/AreaPageCount'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import AccountFilterBar from '../components/AccountFilterBar'
@@ -50,13 +49,14 @@ const FALLBACK_EXPIRY_DAYS = 365
  * export, page size at most 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
-  const error = useUserAdminStore((s) => s.error)
   const summary = useUserAdminStore((s) => s.summary)
   const settings = useUserAdminStore((s) => s.settings)
   const loadAccounts = useUserAdminStore((s) => s.loadAccounts)
   const loadSummary = useUserAdminStore((s) => s.loadSummary)
   const loadSettings = useUserAdminStore((s) => s.loadSettings)
   const setFilters = useUserAdminStore((s) => s.setFilters)
+  const total = useUserAdminStore((s) => s.total)
+  const overallTotal = useUserAdminStore((s) => s.overallTotal)
 
   // `opening` is the dialog's key: every opening mounts a fresh dialog with a fresh draft.
   const [form, setForm] = useState<{
@@ -88,60 +88,52 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
   return (
     <>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* The primary action in the head of the area, not in the filter row: five filters and
-         a button in one row wrap, and the wrap then puts the action
-         below half a set of filters. To its left, flush with the table, the hint about the
-         requirement – only if there is one. */}
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <LocalUserReviewHint
-            summary={summary}
-            // The jump resets every other filter: the hint
-            // names a number across all local accounts, and a standing origin, role or
-            // state selection would then show fewer rows than the number promises.
-            onShowWithoutExpiry={() =>
-              void setFilters({
-                review: 'WITHOUT_EXPIRY',
-                status: null,
-                role: null,
-                query: '',
-                providerType: 'LOCAL',
-                providerId: null,
-              })
-            }
-            onShowInvited={() =>
-              void setFilters({
-                status: 'INVITED',
-                review: 'ALL',
-                role: null,
-                query: '',
-                providerType: 'LOCAL',
-                providerId: null,
-              })
-            }
-          />
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}
-        >
-          Konto anlegen
-        </Button>
-      </Stack>
+      <CreateButton onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}>
+        Konto anlegen
+      </CreateButton>
+      {/* Flush with the table, the hint about the requirement – only if there is one. */}
+      <Box sx={{ minWidth: 0, mb: 1.5, '&:empty': { display: 'none' } }}>
+        <LocalUserReviewHint
+          summary={summary}
+          // The jump resets every other filter: the hint
+          // names a number across all local accounts, and a standing origin, role or
+          // state selection would then show fewer rows than the number promises.
+          onShowWithoutExpiry={() =>
+            void setFilters({
+              review: 'WITHOUT_EXPIRY',
+              status: null,
+              role: null,
+              query: '',
+              providerType: 'LOCAL',
+              providerId: null,
+            })
+          }
+          onShowInvited={() =>
+            void setFilters({
+              status: 'INVITED',
+              review: 'ALL',
+              role: null,
+              query: '',
+              providerType: 'LOCAL',
+              providerId: null,
+            })
+          }
+        />
+      </Box>
       <AccountFilterBar />
+      {overallTotal !== null && (
+        <AreaPageCount total={overallTotal} filtered={total} unit={['Konto', 'Konten']} />
+      )}
       <AccountList
         currentUserId={currentUserId}
+        createAction={
+          <CreateButton
+            placement="empty"
+            onClick={() => setForm((f) => ({ open: true, opening: f.opening + 1 }))}
+          >
+            Konto anlegen
+          </CreateButton>
+        }
         onEdit={(user) => setForm((f) => ({ open: true, user, opening: f.opening + 1 }))}
         onSetupLink={setHandover}
         onGeneratedPassword={(user, password) =>
@@ -230,7 +222,7 @@ export default function UserManagementPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Benutzer" gutterBottom />
         <Alert severity="info">
           Die Benutzerverwaltung wird von der Systemverwaltung gepflegt. Für Ihr Konto ist diese
@@ -242,7 +234,7 @@ export default function UserManagementPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={BadgeOutlinedIcon}
           title="Benutzer"

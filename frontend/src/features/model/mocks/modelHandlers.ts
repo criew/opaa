@@ -7,7 +7,9 @@ import {
   mockLlmModels,
   mockOllamaDiscoveredModels,
   mockOpenAiDiscoveredModels,
+  mockCompletedToolCheck,
   resetMockLlmModels,
+  UNVERIFIED_TOOL_CAPABILITY,
 } from './modelFixtures'
 import type {
   EmbeddingModelDraft,
@@ -17,10 +19,17 @@ import type {
   LlmModelDiscoveryResponse,
   LlmModelRequest,
   LlmModelTestRequest,
+  LlmModelToolCapabilityRequest,
+  LlmModelToolCheckRequest,
+  LlmModelToolCheckResponse,
 } from '@/shared/api/types'
+
+/** Tool checks per model id; a started check completes at once. */
+const toolChecks = new Map<string, LlmModelToolCheckResponse>()
 
 export function resetLlmModelMockState() {
   resetMockLlmModels()
+  toolChecks.clear()
 }
 
 export function discoveryFailure(
@@ -55,6 +64,7 @@ export const modelHandlers = [
       maxTokens: body.maxTokens,
       apiKeySet: Boolean(body.apiKey && body.apiKey.trim() !== ''),
       active: false,
+      toolCapability: { ...UNVERIFIED_TOOL_CAPABILITY },
       createdAt: now,
       updatedAt: now,
     }
@@ -69,6 +79,10 @@ export const modelHandlers = [
       return HttpResponse.json({ error: 'Modell nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as LlmModelRequest
+    // Mirrors LlmModel#replaceDetails: the statement was made for the previous combination.
+    if (body.baseUrl !== model.baseUrl || body.modelIdentifier !== model.modelIdentifier) {
+      model.toolCapability = { ...UNVERIFIED_TOOL_CAPABILITY }
+    }
     model.displayName = body.displayName
     model.baseUrl = body.baseUrl
     model.modelIdentifier = body.modelIdentifier
@@ -111,6 +125,60 @@ export const modelHandlers = [
     mockLlmModels.forEach((item) => {
       item.active = item.id === modelId
     })
+    model.updatedAt = new Date().toISOString()
+    return HttpResponse.json(model)
+  }),
+
+  http.post('/api/v1/admin/models/:modelId/tool-checks', async ({ params, request }) => {
+    const model = mockLlmModels.find((item) => item.id === String(params.modelId))
+    if (!model) {
+      return HttpResponse.json({ error: 'Modell nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as LlmModelToolCheckRequest
+    const check = mockCompletedToolCheck(model, body.repetitions)
+    toolChecks.set(model.id, check)
+    return HttpResponse.json(check, { status: 202 })
+  }),
+
+  http.get('/api/v1/admin/models/:modelId/tool-checks/latest', ({ params }) => {
+    const check = toolChecks.get(String(params.modelId))
+    return check
+      ? HttpResponse.json(check)
+      : HttpResponse.json({ error: 'Für dieses Modell gibt es keine Prüfung.' }, { status: 404 })
+  }),
+
+  http.get('/api/v1/admin/models/:modelId/tool-checks/:checkId/report', () =>
+    HttpResponse.text('# Werkzeugfähigkeit: Messlauf tc-20261110T200000Z-mock\n', {
+      headers: { 'Content-Type': 'text/markdown' },
+    }),
+  ),
+
+  http.put('/api/v1/admin/models/:modelId/tool-capability', async ({ params, request }) => {
+    const model = mockLlmModels.find((item) => item.id === String(params.modelId))
+    if (!model) {
+      return HttpResponse.json({ error: 'Modell nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as LlmModelToolCapabilityRequest
+    // Mirrors LlmModelService#setToolCapability: a statement for another combination is a 409,
+    // UNVERIFIED clears basis, run and date.
+    if (body.baseUrl !== model.baseUrl || body.modelIdentifier !== model.modelIdentifier) {
+      return HttpResponse.json(
+        {
+          error:
+            'Das Modell wurde inzwischen geändert: Basis-Adresse oder Modell-Kennung stimmen nicht mehr mit der geprüften Kombination überein. Bitte die Liste neu laden und erneut prüfen.',
+        },
+        { status: 409 },
+      )
+    }
+    model.toolCapability =
+      body.value === 'UNVERIFIED'
+        ? { ...UNVERIFIED_TOOL_CAPABILITY }
+        : {
+            value: body.value,
+            basis: body.basis ?? 'MANUAL',
+            assessedAt: new Date().toISOString(),
+            measurementRun: body.basis === 'MEASURED' ? (body.measurementRun ?? null) : null,
+          }
     model.updatedAt = new Date().toISOString()
     return HttpResponse.json(model)
   }),

@@ -24,8 +24,10 @@ import ChatModelStep from '../components/steps/ChatModelStep'
 import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import MailStep from '../components/steps/MailStep'
+import MalwareScanStep from '../components/steps/MalwareScanStep'
 import RerankModelStep from '../components/steps/RerankModelStep'
 import SignInStep from '../components/steps/SignInStep'
+import TextRecognitionModelStep from '../components/steps/TextRecognitionModelStep'
 import TranscriptionModelStep from '../components/steps/TranscriptionModelStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
 import { findStep, previousView, viewOrder, type WizardView } from '../utils/steps'
@@ -145,14 +147,23 @@ function StepView({
           {...nav}
         />
       )
+    case 'TEXT_RECOGNITION_MODEL':
+      return (
+        <TextRecognitionModelStep
+          step={step}
+          submit={(v) => submit('TEXT_RECOGNITION_MODEL', v)}
+          {...nav}
+        />
+      )
+    case 'MALWARE_SCAN':
+      return <MalwareScanStep step={step} submit={(v) => submit('MALWARE_SCAN', v)} {...nav} />
     case 'MAIL':
       return (
         <MailStep
           step={step}
           publicBaseUrlConfigured={publicBaseUrlConfigured}
           submit={(v, options) => submit('MAIL', v, options)}
-          skip={() => skip('MAIL')}
-          onBack={onBack}
+          {...nav}
         />
       )
     case 'BRANDING':
@@ -219,7 +230,12 @@ export default function InstallationPage() {
           onBack={onBack}
         />
       ) : (
-        <SummaryStep installation={installation} complete={wizard.complete} onBack={onBack} />
+        <SummaryStep
+          installation={installation}
+          complete={wizard.complete}
+          onBack={onBack}
+          onSelect={wizard.goTo}
+        />
       )}
     </InstallationLayout>
   )

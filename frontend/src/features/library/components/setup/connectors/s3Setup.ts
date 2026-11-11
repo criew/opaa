@@ -9,9 +9,9 @@ import {
   validateS3Scope,
   type S3SourceValues,
 } from '../../../utils/s3Source'
-import { connectionFields } from '../../sources/sourceConnection'
-import { displayPath } from '../paths'
-import type { SourceSetupSpec } from '../setupTypes'
+import { connectionFields } from '../../sourceCore/sourceConnection'
+import { displayPath } from '../../sourceCore/paths'
+import type { SourceSetupSpec } from '../../sourceCore/setupTypes'
 import {
   addressIssue,
   credentialsKept,
@@ -20,7 +20,7 @@ import {
   joinSummary,
   listSummary,
   pairIssues,
-} from './common'
+} from '../../sourceCore/common'
 import { S3ConnectionFields, S3ScopeFields } from './S3SetupFields'
 
 const SCOPE_FIELDS = ['scopes', 'includePatterns', 'excludePatterns']

@@ -92,9 +92,9 @@ class ManualAndTokenRoleWithdrawalIntegrationTest {
       return;
     }
     jdbc.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    users.deleteAll(createdUsers);
+    users.deleteAllById(createdUsers.stream().map(User::getId).toList());
     createdUsers.clear();
-    providers.deleteAll(createdProviders);
+    providers.deleteAllById(createdProviders.stream().map(OidcProvider::getId).toList());
     createdProviders.clear();
     organizations.deleteById(organizationId);
     organizationId = null;

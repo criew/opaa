@@ -94,7 +94,12 @@ class InstallationModelDiscoveryTest {
             mock(LlmModelRepository.class), encryptor, JsonMapper.builder().build(), policy);
     discovery =
         new InstallationModelDiscovery(
-            states, steps, rules, encryptor, discoverer, new FeatureFlags(new MockEnvironment()));
+            states,
+            steps,
+            rules,
+            encryptor,
+            discoverer,
+            new OfferedSteps(new FeatureFlags(new MockEnvironment()), false));
     when(states.isCompleted()).thenReturn(false);
     when(steps.findById(InstallationStep.CHAT_MODEL)).thenReturn(Optional.empty());
     when(steps.findById(InstallationStep.EMBEDDING_MODEL)).thenReturn(Optional.empty());
@@ -286,8 +291,11 @@ class InstallationModelDiscoveryTest {
             encryptor,
             new LlmModelDiscoverer(
                 mock(LlmModelRepository.class), encryptor, JsonMapper.builder().build(), policy),
-            new FeatureFlags(
-                new MockEnvironment().withProperty("opaa.features.speech-input.enabled", "false")));
+            new OfferedSteps(
+                new FeatureFlags(
+                    new MockEnvironment()
+                        .withProperty("opaa.features.speech-input.enabled", "false")),
+                false));
 
     assertThatThrownBy(
             () -> withoutSpeechInput.discover(InstallationStep.TRANSCRIPTION_MODEL, baseUrl, null))

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { contentWidth } from '@/shared/theme/tokens'
+import AgentRunLogRetentionSection from '../components/AgentRunLogRetentionSection'
 import ChatAutoCleanupRetentionSection from '../components/ChatAutoCleanupRetentionSection'
 import IncidentScopeRetentionSection from '../components/IncidentScopeRetentionSection'
 import LockedAccountChatRetentionSection from '../components/LockedAccountChatRetentionSection'
@@ -19,7 +20,7 @@ export default function PrivacySettingsPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Datenschutz" gutterBottom />
         <Alert severity="info">
           Die Einstellungen zum Datenschutz pflegt die Systemverwaltung. Für Ihr Konto ist diese
@@ -31,16 +32,17 @@ export default function PrivacySettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={PrivacyTipOutlinedIcon}
           title="Datenschutz"
-          description="Gilt für die gesamte Installation: wie Personen Auskunft über ihre eigenen Daten erhalten und wie lange Chats und anlassbezogene Klärungen aufbewahrt werden."
+          description="Gilt für die gesamte Installation: wie Personen Auskunft über ihre eigenen Daten erhalten und wie lange Chats, anlassbezogene Klärungen und die Protokolle der Agentenläufe aufbewahrt werden."
         />
         <SelfDisclosureSettingsSection />
         <ChatAutoCleanupRetentionSection />
         <LockedAccountChatRetentionSection />
         <IncidentScopeRetentionSection />
+        <AgentRunLogRetentionSection />
       </Box>
     </Box>
   )

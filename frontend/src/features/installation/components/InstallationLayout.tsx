@@ -5,7 +5,7 @@ import { useTheme } from '@mui/material/styles'
 import BrandMark from '@/shared/ui/BrandMark'
 import PageHeading, { MAIN_CONTENT_ID } from '@/shared/ui/a11y/PageHeading'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import { darkRoles, fontSize, lightRoles } from '@/shared/theme/tokens'
 import { STEP_RHYTHM } from './stepLayout'
 
 interface InstallationLayoutProps {
@@ -18,8 +18,8 @@ interface InstallationLayoutProps {
 
 /**
  * The frame of the assistant, outside the application shell: the installation's mark and the
- * page's one h1 on top, the step list in a light secondary column beside the step from `md` on,
- * above it below that. The step keeps a reading width; extra width goes to the margins.
+ * page's one h1 on top, the step list in a light secondary column beside the step from `md` (900 px)
+ * on, collapsed to one line above it below that. The step keeps a reading width; extra width goes to the margins.
  */
 export default function InstallationLayout({
   progress,
@@ -49,7 +49,16 @@ export default function InstallationLayout({
       >
         <BrandMark variant="h6" logoHeight={28} />
         {progress && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{progress}</Typography>
+          <Typography
+            sx={{
+              // Below md the collapsed step list names the position.
+              display: { xs: 'none', md: 'block' },
+              fontSize: fontSize.text,
+              color: 'text.secondary',
+            }}
+          >
+            {progress}
+          </Typography>
         )}
       </Box>
       <Box
@@ -70,7 +79,7 @@ export default function InstallationLayout({
               borderRight: { md: `1px solid ${roles.borderStrong}` },
               borderBottom: { xs: `1px solid ${roles.borderStrong}`, md: 'none' },
               px: 1.5,
-              pb: 2.5,
+              pb: { xs: 1, md: 2.5 },
             }}
           >
             {navigation}
@@ -86,7 +95,7 @@ export default function InstallationLayout({
               title={`${productName} einrichten`}
               variant="h5"
               sx={{
-                fontSize: 13,
+                fontSize: fontSize.text,
                 fontWeight: 500,
                 color: 'text.secondary',
                 mb: STEP_RHYTHM.pageToStep,

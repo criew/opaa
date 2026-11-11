@@ -9,10 +9,7 @@ import io.opaa.permission.AssetType;
  * appears as, and the words messages use for it. The business package owning the type contributes
  * one bean; the shell never names a type.
  *
- * <p>{@link #requireAllAccountsGrantAllowed} is the port for a type-specific <b>restriction</b>:
- * the grant service asks it before it writes a grant to "Alle Konten". A type that restricts
- * nothing keeps the default. Everything else - grants, derivation, history, succession - is the
- * shell's.
+ * <p>Everything else - grants, derivation, history, succession - is the shell's.
  *
  * <p>{@link #enabled} switches a type off for its readers (ADR-0044): an inactive type stays
  * registered, so ownership, history, succession and audit keep serving its existing assets, but no
@@ -28,19 +25,66 @@ public interface AssetTypeDefinition {
   /** The audit event the creation of an asset of this type writes. */
   AuditEventType createdAuditEventType();
 
-  /** The singular noun, feminine or neuter with "die"/"diese" ("Bibliothek"). */
+  /** The singular noun in the nominative ("Bibliothek", "Agent"). */
   String singular();
+
+  /**
+   * Whether the noun is masculine ("der Agent"); the phrases below then take its oblique form.
+   * Every other type is feminine ("die Bibliothek").
+   */
+  default boolean masculine() {
+    return false;
+  }
+
+  /** The singular noun outside the nominative ("Agenten"); the nominative for a feminine noun. */
+  default String oblique() {
+    return singular();
+  }
+
+  /** "diese Bibliothek" / "dieser Agent", the subject of a sentence. */
+  default String thisNominative() {
+    return (masculine() ? "dieser " : "diese ") + singular();
+  }
+
+  /** "diese Bibliothek" / "diesen Agenten", after "auf" or "für". */
+  default String thisAccusative() {
+    return (masculine() ? "diesen " : "diese ") + oblique();
+  }
+
+  /** "eine Bibliothek" / "einen Agenten", the object of "anlegen". */
+  default String aAccusative() {
+    return (masculine() ? "einen " : "eine ") + oblique();
+  }
+
+  /** "einer Bibliothek" / "eines Agenten". */
+  default String aGenitive() {
+    return (masculine() ? "eines " : "einer ") + oblique();
+  }
+
+  /** "der Bibliothek" / "des Agenten". */
+  default String theGenitive() {
+    return (masculine() ? "des " : "der ") + oblique();
+  }
+
+  /** "die Bibliothek" / "der Agent", the subject of a sentence. */
+  default String theNominative() {
+    return (masculine() ? "der " : "die ") + singular();
+  }
+
+  /** "Ihre Bibliothek" / "Ihr Agent", the subject of a sentence. */
+  default String yourNominative() {
+    return (masculine() ? "Ihr " : "Ihre ") + singular();
+  }
+
+  /** The phrase with its first letter in upper case, for the start of a sentence. */
+  static String capitalized(String phrase) {
+    return phrase.isEmpty()
+        ? phrase
+        : Character.toUpperCase(phrase.charAt(0)) + phrase.substring(1);
+  }
 
   /** The plural noun ("Bibliotheken"). */
   String plural();
-
-  /**
-   * Refuses a grant to "Alle Konten" the type does not allow for this asset, with a {@code 409}
-   * naming the limit (ADR-0037 Entscheidung 5). Called before the grant is written - this is where
-   * a connector library's share cap takes effect now that organization-wide reach is a grant and no
-   * longer a field of the shell.
-   */
-  default void requireAllAccountsGrantAllowed(Asset asset) {}
 
   /**
    * Whether the type is offered to readers right now; asked on every read, never cached. A type

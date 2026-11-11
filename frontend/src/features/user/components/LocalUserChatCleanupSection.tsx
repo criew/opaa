@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type {
   ChatCleanupHoldPurpose,
@@ -28,6 +28,7 @@ import {
   localUserErrorMessage,
   remainingDays,
 } from './localUserLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 export const CHAT_CLEANUP_HEADING = 'Chats nach der Sperre'
 
@@ -39,7 +40,7 @@ interface LocalUserChatCleanupSectionProps {
   user: LocalUserResponse
 }
 
-const smallText = { fontSize: 13, color: 'text.secondary' } as const
+const smallText = { fontSize: fontSize.text, color: 'text.secondary' } as const
 
 /**
  * The deletion of the account's chats after a lock by the administration, in the single view of the
@@ -54,6 +55,11 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
   const [formOpen, setFormOpen] = useState(false)
   const [purpose, setPurpose] = useState<ChatCleanupHoldPurpose | ''>('')
   const [reason, setReason] = useState('')
+  // Where the focus goes once the request form has closed: the request it filed, or the button
+  // that opened it - never the page's body, where the closed form would leave it.
+  const [focusAfterForm, setFocusAfterForm] = useState<'pending' | 'opener' | null>(null)
+  const pendingRef = useRef<HTMLDivElement>(null)
+  const openerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     let active = true
@@ -102,8 +108,22 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
       setFormOpen(false)
       setPurpose('')
       setReason('')
+      setFocusAfterForm('pending')
     }
   }
+
+  function cancelRequest() {
+    setFormOpen(false)
+    setFocusAfterForm('opener')
+  }
+
+  useEffect(() => {
+    if (focusAfterForm === null) return
+    const target = focusAfterForm === 'pending' ? pendingRef.current : openerRef.current
+    if (!target) return
+    target.focus()
+    setFocusAfterForm(null)
+  }, [focusAfterForm, state])
 
   const hold = state?.hold
   const pending = state?.pendingRequest
@@ -113,7 +133,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
       <Typography
         id="user-form-chat-cleanup-heading"
         component="h3"
-        sx={{ fontSize: 12, fontWeight: 600, mb: '5px' }}
+        sx={{ fontSize: fontSize.meta, fontWeight: 600, mb: '5px' }}
       >
         {CHAT_CLEANUP_HEADING}
       </Typography>
@@ -139,23 +159,28 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
           )}
 
           {pending && (
-            <Alert severity="info" data-testid="chat-cleanup-pending">
-              <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+            <Alert
+              ref={pendingRef}
+              severity="info"
+              tabIndex={-1}
+              data-testid="chat-cleanup-pending"
+            >
+              <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                 {pending.extension
                   ? 'Verlängerung beantragt, wartet auf Freigabe'
                   : 'Anhaltung beantragt, wartet auf Freigabe'}
               </Typography>
-              <Typography sx={{ fontSize: 13 }}>
+              <Typography sx={{ fontSize: fontSize.text }}>
                 Zweck: {CHAT_CLEANUP_HOLD_PURPOSE_LABEL[pending.purpose]}
               </Typography>
-              <Typography sx={{ fontSize: 13 }}>Begründung: {pending.reason}</Typography>
-              <Typography sx={{ fontSize: 13 }}>
+              <Typography sx={{ fontSize: fontSize.text }}>Begründung: {pending.reason}</Typography>
+              <Typography sx={{ fontSize: fontSize.text }}>
                 Beantragt am {formatExpiry(pending.requestedAt)}
                 {pending.requestedByMe ? ' von Ihnen' : ''}. Ohne Antwort verfällt der Antrag nach
                 14 Tagen.
               </Typography>
               {pending.requestedByMe && (
-                <Typography sx={{ fontSize: 13, mt: 0.5 }}>
+                <Typography sx={{ fontSize: fontSize.text, mt: 0.5 }}>
                   Freigeben kann nur eine zweite Person der Systemverwaltung.
                 </Typography>
               )}
@@ -197,18 +222,13 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
           )}
 
           {formOpen && !pending && (
-            <Box
-              component="form"
-              aria-labelledby="chat-cleanup-hold-form-heading"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void submitRequest()
-              }}
-            >
+            // A group, not a form: the section stands inside the account's edit dialog, which is
+            // a form itself, and a nested form would submit (and close) the dialog as well.
+            <Box role="group" aria-labelledby="chat-cleanup-hold-form-heading">
               <Typography
                 id="chat-cleanup-hold-form-heading"
                 component="h4"
-                sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.5 }}
+                sx={{ fontSize: fontSize.meta, fontWeight: 600, mb: 0.5 }}
               >
                 {hold ? 'Verlängerung beantragen' : 'Anhaltung beantragen'}
               </Typography>
@@ -218,24 +238,13 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                 disziplinarischer, arbeitsrechtlicher oder leistungsbezogener Zweck ist nicht
                 zulässig.
               </Typography>
-              <Typography
-                id="chat-cleanup-hold-purpose-label"
-                component="span"
-                sx={{ display: 'block', fontSize: 12.5, fontWeight: 500, mb: 0.5 }}
-              >
-                Zweck
-              </Typography>
-              <TextField
+              <FormField
                 id="chat-cleanup-hold-purpose"
+                label="Zweck"
                 select
                 fullWidth
                 size="small"
                 required
-                slotProps={{
-                  select: {
-                    SelectDisplayProps: { 'aria-labelledby': 'chat-cleanup-hold-purpose-label' },
-                  },
-                }}
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value as ChatCleanupHoldPurpose)}
                 disabled={busy}
@@ -245,12 +254,11 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                     {CHAT_CLEANUP_HOLD_PURPOSE_LABEL[entry]}
                   </MenuItem>
                 ))}
-              </TextField>
-              <TextField
+              </FormField>
+              <FormField
                 id="chat-cleanup-hold-reason"
                 label="Begründung"
                 multiline
-                minRows={2}
                 fullWidth
                 size="small"
                 required
@@ -264,14 +272,14 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
               />
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Button
-                  type="submit"
                   size="small"
                   variant="contained"
                   disabled={busy || !purpose || !reasonValid}
+                  onClick={() => void submitRequest()}
                 >
                   Antrag stellen
                 </Button>
-                <Button size="small" onClick={() => setFormOpen(false)} disabled={busy}>
+                <Button size="small" onClick={cancelRequest} disabled={busy}>
                   Abbrechen
                 </Button>
               </Stack>
@@ -281,7 +289,12 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
           {!formOpen && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               {!pending && (state.status !== 'SWITCHED_OFF' || hold) && (
-                <Button size="small" variant="outlined" onClick={() => setFormOpen(true)}>
+                <Button
+                  ref={openerRef}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setFormOpen(true)}
+                >
                   {hold ? 'Verlängerung beantragen' : 'Anhaltung beantragen'}
                 </Button>
               )}

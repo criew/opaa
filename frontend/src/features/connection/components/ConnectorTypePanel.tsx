@@ -3,14 +3,11 @@ import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Drawer from '@mui/material/Drawer'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import CloseIcon from '@mui/icons-material/Close'
 import type {
   CapabilityOverviewResponse,
   ConnectionProfileResponse,
@@ -33,6 +30,8 @@ import {
 import ProfileRequirementDialog from './ProfileRequirementDialog'
 import { confirmLock } from './connectorLock'
 import { stockLabel } from './connectorTypeState'
+import { fontSize } from '@/shared/theme/tokens'
+import SidePanel from '@/shared/ui/dialog/SidePanel'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -64,20 +63,14 @@ interface ConnectorTypePanelProps {
 export default function ConnectorTypePanel(props: ConnectorTypePanelProps) {
   const { state, onClose } = props
   return (
-    <Drawer
-      anchor="right"
+    <SidePanel
       open={state !== null}
       onClose={onClose}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'connector-type-panel-heading',
-          sx: { width: { xs: '100%', sm: 520 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
+      titleId="connector-type-panel-heading"
+      title={state?.displayName}
     >
       {state && <PanelContent key={state.sourceType} {...props} state={state} />}
-    </Drawer>
+    </SidePanel>
   )
 }
 
@@ -85,7 +78,6 @@ function PanelContent({
   state,
   profiles,
   ownAddressEntry,
-  onClose,
   onChanged,
 }: ConnectorTypePanelProps & { state: ConnectorTypeStateResponse }) {
   const [requirementDialog, setRequirementDialog] = useState(false)
@@ -98,7 +90,7 @@ function PanelContent({
       !lock && lockedProfiles > 0
         ? `${lockedProfiles === 1 ? 'Ein Zugang' : `${lockedProfiles} Zugänge`} dieser Quellart ${lockedProfiles === 1 ? 'ist' : 'sind'} selbst gesperrt und ${lockedProfiles === 1 ? 'bleibt' : 'bleiben'} es; ${lockedProfiles === 1 ? 'seine' : 'ihre'} Bibliotheken laufen erst nach dem Entsperren ${lockedProfiles === 1 ? 'des Zugangs' : 'der Zugänge'} weiter. Die übrigen laufen ohne Neueinrichtung weiter.`
         : undefined
-    if (!(await confirmLock(`die Quellart „${state.displayName}“`, lock, remaining))) return
+    if (!(await confirmLock(state.displayName, lock, remaining))) return
     try {
       await lockConnectorType(state.sourceType, lock)
       notify(
@@ -117,7 +109,7 @@ function PanelContent({
     const confirmed = await confirmAction({
       question: `„Nur über Zugänge“ für die Quellart „${state.displayName}“ ausschalten?`,
       consequence:
-        'Neue Bibliotheken dürfen dann wieder eine eigene Adresse nutzen, und eine Bibliothek lässt sich wieder von ihrem Zugang lösen. Wegen der Pflicht gesperrte Bibliotheken laufen ohne Neueinrichtung weiter. Das Ausschalten wird als Governance-Ereignis protokolliert.',
+        'Neue Bibliotheken dürfen dann wieder eine eigene Adresse nutzen, und die Zuordnung einer Bibliothek zu ihrem Zugang lässt sich wieder entfernen. Wegen der Pflicht gesperrte Bibliotheken laufen ohne Neueinrichtung weiter. Das Ausschalten wird als Governance-Ereignis protokolliert.',
       confirmLabel: 'Ausschalten',
       tone: 'caution',
     })
@@ -141,30 +133,6 @@ function PanelContent({
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-          px: 3,
-          pt: 2.5,
-          pb: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Typography
-          id="connector-type-panel-heading"
-          component="h2"
-          sx={{ flex: 1, fontSize: 18, fontWeight: 600, overflowWrap: 'anywhere' }}
-        >
-          {state.displayName}
-        </Typography>
-        <IconButton aria-label="Schließen" onClick={onClose} sx={{ mt: -0.5 }}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
       <Stack spacing={3.5} sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
         <PanelSection title="Zustand">
           <StatusLine
@@ -194,13 +162,13 @@ function PanelContent({
 
         <PanelSection title="Zugänge">
           {state.profileSupport === 'FORBIDDEN' ? (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Für diese Quellart sind in dieser Version keine Zugänge möglich.
             </Typography>
           ) : (
             <>
               {state.profileSupport === 'REQUIRED' ? (
-                <Typography sx={{ fontSize: 13 }}>
+                <Typography sx={{ fontSize: fontSize.text }}>
                   Immer über Zugänge – das gibt die Quellart vor.
                 </Typography>
               ) : (
@@ -219,7 +187,7 @@ function PanelContent({
                     }
                     label="Nur über Zugänge"
                   />
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {state.profileRequired
                       ? stockLabel(state.ownAddressStock)
                       : 'Bibliotheken dürfen einen Zugang wählen oder eine eigene Adresse eintragen.'}
@@ -238,7 +206,13 @@ function PanelContent({
               )}
               <Typography
                 component="h4"
-                sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mt: 2, mb: 0.75 }}
+                sx={{
+                  fontSize: fontSize.meta,
+                  fontWeight: 600,
+                  color: 'text.secondary',
+                  mt: 2,
+                  mb: 0.75,
+                }}
               >
                 {own === null
                   ? 'Die Zugänge dieser Quellart konnten nicht geladen werden'
@@ -258,7 +232,7 @@ function PanelContent({
                       {profile.locked && (
                         <Typography
                           component="span"
-                          sx={{ fontSize: 12.5, color: 'text.secondary' }}
+                          sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
                         >
                           {' '}
                           · gesperrt
@@ -275,7 +249,7 @@ function PanelContent({
         {ownAddressEntry && ownAccess && (
           <PanelSection title="Wer darf Bibliotheken mit eigener Adresse anlegen?">
             <AccessBadge tone={ownAccess.level} label={accessBadgeLabel(ownAccess)} />
-            <Typography sx={{ fontSize: 13, mt: 1 }}>
+            <Typography sx={{ fontSize: fontSize.text, mt: 1 }}>
               {resultSentence(ownAccess, objectPhrase(ownAddressEntry))}
             </Typography>
             <TextLink to="/admin/capabilities">Unter Anlegerechte ändern</TextLink>

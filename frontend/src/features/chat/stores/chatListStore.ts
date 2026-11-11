@@ -14,8 +14,10 @@ import {
 } from '../api/chatApi'
 import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
-import { RECENT_PAGE_SIZE } from '../components/chatListSections'
 import { registerSessionStore } from '@/shared/session/resettableStores'
+
+/** How many recent chats the list shows at once, and how many each "… weitere" adds. */
+export const RECENT_PAGE_SIZE = 15
 
 /** Page size of the chat archive and of the active table on the "Chats" page - the same 25 rows
  *  per page as the administration lists. */
@@ -33,14 +35,23 @@ interface ChatListState {
    * loaded yet" for that space - distinct from an empty array, which means "loaded, no chats". */
   chatsBySpaceId: Record<string, ChatSummary[] | undefined>
   isLoading: boolean
+  /** Why the last list or archive load failed; actions report in `error` instead. */
+  loadError: string | null
+  /** Why the last action on the list failed; loads report in `loadError` instead. */
   error: string | null
+  /**
+   * Returns the action error and clears it: for callers that report it as a popup, so the same
+   * error does not stand on the chat overview as well.
+   */
+  takeError: () => string | null
   loadChats: (spaceId: string) => Promise<void>
   /** Returns null (and sets `error`) when creation fails, instead of throwing - callers must
    * handle the null case explicitly rather than relying on a rejected promise. */
   createChatInSpace: (spaceId: string) => Promise<ChatSummary | null>
   /** Renames a chat; resolves to false (with `error` set) if the server rejects it. */
   renameChat: (spaceId: string, chatId: string, title: string) => Promise<boolean>
-  deleteChatFromList: (spaceId: string, chatId: string) => Promise<void>
+  /** Deletes a chat; resolves to false (with `error` set) if the server rejects it. */
+  deleteChatFromList: (spaceId: string, chatId: string) => Promise<boolean>
   /** Pins or unpins a chat for the current person. Applied optimistically and rolled back (with
    * `error` set) if the server rejects it. Requests for one chat reach the server in the order
    * they were made, and only the latest one decides what the list shows. Resolves to false if
@@ -137,7 +148,13 @@ function toChatSummary(detail: {
 export const useChatListStore = create<ChatListState>((set, get) => ({
   chatsBySpaceId: {},
   isLoading: false,
+  loadError: null,
   error: null,
+  takeError: () => {
+    const { error } = get()
+    if (error !== null) set({ error: null })
+    return error
+  },
   archiveBySpaceId: {},
   isLoadingArchive: false,
   revealedRecent: { spaceId: null, count: RECENT_PAGE_SIZE },
@@ -148,6 +165,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     set({
       chatsBySpaceId: {},
       isLoading: false,
+      loadError: null,
       error: null,
       archiveBySpaceId: {},
       isLoadingArchive: false,
@@ -159,7 +177,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
     // previous user's chat list into the now-emptied store.
     const sessionEpoch = currentSessionEpoch()
-    set({ isLoading: true, error: null })
+    set({ isLoading: true, loadError: null })
     try {
       const chats = sortByLastUse(await listSpaceChats(spaceId))
       if (isStaleSessionEpoch(sessionEpoch)) return
@@ -170,7 +188,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     } catch (err) {
       if (isStaleSessionEpoch(sessionEpoch)) return
       const message = err instanceof Error ? err.message : 'Chats konnten nicht geladen werden'
-      set({ error: message, isLoading: false })
+      set({ loadError: message, isLoading: false })
     }
   },
 
@@ -232,7 +250,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
       // from growing unbounded for the rest of the session. Done regardless of the session epoch
       // below: the chat really was deleted server-side, so its cache entries must go either way.
       dropChatSettingsCache(chatId)
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch)) return true
       set((state) => {
         const chats = state.chatsBySpaceId[spaceId]
         if (!chats) return state
@@ -243,10 +261,12 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
           },
         }
       })
+      return true
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch)) return false
       const message = err instanceof Error ? err.message : 'Chat konnte nicht gelöscht werden'
       set({ error: message })
+      return false
     }
   },
 
@@ -314,7 +334,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
   loadArchivedChats: async (spaceId: string, page?: number) => {
     const sessionEpoch = currentSessionEpoch()
     const requested = page ?? get().archiveBySpaceId[spaceId]?.page ?? 0
-    set({ isLoadingArchive: true, error: null })
+    set({ isLoadingArchive: true, loadError: null })
     try {
       let result = await listArchivedSpaceChats(spaceId, requested, CHAT_PAGE_SIZE)
       if (result.items.length === 0 && requested > 0 && result.totalElements > 0) {
@@ -337,7 +357,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
       if (isStaleSessionEpoch(sessionEpoch)) return
       const message =
         err instanceof Error ? err.message : 'Das Chat-Archiv konnte nicht geladen werden'
-      set({ error: message, isLoadingArchive: false })
+      set({ loadError: message, isLoadingArchive: false })
     }
   },
 

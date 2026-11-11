@@ -28,7 +28,8 @@ class SharePointTargetValidationContractTest extends TargetValidationContract {
         new SharePointSourceConnector(
             target,
             "https://login.example.org/{tenant}/oauth2/v2.0/token",
-            new GraphConnections(SharePointProperties.defaults(), validator, wait -> {}),
+            new GraphConnections(
+                SharePointProperties.defaults(), validator, wait -> {}, "sharepoint"),
             mock(SourceSyncStateRepository.class));
     return connector.testConnection(
         new SourceSettings(

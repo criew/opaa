@@ -181,7 +181,7 @@ describe('DocumentMetadataPanel', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Titel von dienstanweisung.pdf löschen' }),
     )
-    await answerConfirm(user, 'Titel von "dienstanweisung.pdf" löschen?', 'Löschen')
+    await answerConfirm(user, 'Titel von „dienstanweisung.pdf“ löschen?', 'Löschen')
 
     await waitFor(() =>
       expect(mockDeleteDocumentMetadataValue).toHaveBeenCalledWith(
@@ -315,7 +315,10 @@ describe('DocumentMetadataPanel', () => {
     )
     const dialog = await screen.findByRole('dialog', { name: 'Fassung setzen' })
     expect(within(dialog).queryByLabelText(/Datum/)).not.toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    expect(within(dialog).getByText('Bitte einen Wert angeben.')).toBeVisible()
+    expect(within(dialog).getByRole('combobox', { name: /Fassung/ })).toHaveFocus()
+    expect(mockSetDocumentMetadataValue).not.toHaveBeenCalled()
     await user.click(await within(dialog).findByRole('combobox', { name: /Fassung/ }))
     expect(screen.queryByRole('option', { name: 'Fassung 2023' })).not.toBeInTheDocument()
     await user.click(await screen.findByRole('option', { name: 'Fassung 2024' }))

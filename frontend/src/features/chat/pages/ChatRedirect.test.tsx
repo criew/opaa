@@ -191,7 +191,7 @@ describe('ChatRedirect', () => {
 
     renderWithProviders(<ChatRedirect />, { withRouter: true })
 
-    expect(await screen.findByText('Spaces konnten nicht geladen werden')).toBeInTheDocument()
+    expect(await screen.findByText('Spaces konnten nicht geladen werden.')).toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
 
     // Escape route: a retry button, not a dead end.
@@ -201,7 +201,7 @@ describe('ChatRedirect', () => {
       }),
     )
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
 
     await waitFor(() => {
       expect(screen.getByText('Kein Arbeitsraum verfügbar.')).toBeInTheDocument()

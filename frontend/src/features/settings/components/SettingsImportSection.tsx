@@ -1,14 +1,8 @@
-import { useState, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import type { SettingsChange, SettingsDocument } from '@/shared/api/types'
@@ -19,12 +13,16 @@ import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { importSettings, previewSettingsImport } from '../api/settingsApi'
+import { SETTINGS_IMPORT_CONFIRM_PURPOSE } from './settingsRecentLogin'
 import {
   MAX_SETTINGS_FILE_BYTES,
   formatSettingValue,
   parseSettingsFile,
 } from '../utils/settingsFile'
+import { readingWidth } from '@/shared/theme/tokens'
 
 interface Checked {
   fileName: string
@@ -53,10 +51,12 @@ function refusalOf(err: unknown, fallback: string): Refusal {
  * and its differences shown; only "Übernehmen" changes anything, every value or none.
  */
 export default function SettingsImportSection() {
+  const fileInput = useRef<HTMLInputElement | null>(null)
   const [checked, setChecked] = useState<Checked | null>(null)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [checking, setChecking] = useState(false)
   const [applying, setApplying] = useState(false)
+  const gate = useRecentLoginGate(SETTINGS_IMPORT_CONFIRM_PURPOSE)
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null
@@ -99,9 +99,15 @@ export default function SettingsImportSection() {
       tone: 'caution',
     })
     if (!confirmed) return
+    await apply(checked.document)
+  }
+
+  async function apply(document: SettingsDocument, afterConfirmation = false) {
+    setRefusal(null)
     setApplying(true)
     try {
-      const result = await importSettings(checked.document)
+      const result = await importSettings(document)
+      gate.settled()
       setChecked(null)
       if (result.changes.some((change) => change.section === 'branding')) {
         void useBrandingStore.getState().loadBranding()
@@ -115,7 +121,12 @@ export default function SettingsImportSection() {
         'success',
       )
     } catch (err: unknown) {
-      setRefusal(refusalOf(err, 'Die Einstellungen konnten nicht übernommen werden.'))
+      const refused = gate.refusal(err, () => void apply(document, true), afterConfirmation)
+      if (refused === null) {
+        setRefusal(refusalOf(err, 'Die Einstellungen konnten nicht übernommen werden.'))
+      } else if (refused) {
+        setRefusal({ message: refused, details: [] })
+      }
     } finally {
       setApplying(false)
     }
@@ -127,28 +138,29 @@ export default function SettingsImportSection() {
       description="Übernimmt die Einstellungen aus einer exportierten Datei. Jeder Wert wird geprüft wie in der Verwaltung und gegen die Grenzen des Betriebs; besteht einer die Prüfung nicht, ändert sich nichts."
     >
       <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
-        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 640 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: readingWidth }}>
           Abschnitte, die die Datei nicht enthält, bleiben, wie sie sind. Passwörter und Schlüssel
           dieser Installation bleiben erhalten.
         </Typography>
         <Button
-          component="label"
           variant="outlined"
           startIcon={<FileUploadOutlinedIcon />}
           disabled={checking || applying}
+          onClick={() => fileInput.current?.click()}
         >
           {checking ? 'Datei wird geprüft …' : 'Datei auswählen'}
-          <Box
-            component="input"
-            type="file"
-            accept="application/json,.json"
-            hidden
-            aria-label="Einstellungsdatei auswählen"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => void handleFile(event)}
-          />
         </Button>
+        <Box
+          component="input"
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          aria-label="Einstellungsdatei auswählen"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => void handleFile(event)}
+        />
         {refusal && (
-          <Alert severity="error" role="alert" sx={{ maxWidth: 640 }}>
+          <Alert severity="error" role="alert" sx={{ maxWidth: readingWidth }}>
             {refusal.message}
             {refusal.details.length > 0 && (
               <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
@@ -160,7 +172,7 @@ export default function SettingsImportSection() {
           </Alert>
         )}
         {checked && checked.changes.length === 0 && (
-          <Alert severity="info" sx={{ maxWidth: 640 }}>
+          <Alert severity="info" sx={{ maxWidth: readingWidth }}>
             „{checked.fileName}“ stimmt mit dieser Installation überein; es gibt nichts zu
             übernehmen.
           </Alert>
@@ -172,7 +184,7 @@ export default function SettingsImportSection() {
               {checked.changes.length === 1 ? 'Angabe' : 'Angaben'}:
             </Typography>
             {securityRelevant(checked.changes) > 0 && (
-              <Alert severity="warning" sx={{ maxWidth: 640 }}>
+              <Alert severity="warning" sx={{ maxWidth: readingWidth }}>
                 {securityRelevant(checked.changes) === 1
                   ? 'Eine Änderung ist sicherheitsrelevant'
                   : `${securityRelevant(checked.changes)} Änderungen sind sicherheitsrelevant`}
@@ -180,37 +192,53 @@ export default function SettingsImportSection() {
                 vor dem Übernehmen prüfen.
               </Alert>
             )}
-            <TableContainer>
-              <Table size="small" aria-label="Änderungen durch den Import">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Bereich</TableCell>
-                    <TableCell>Angabe</TableCell>
-                    <TableCell>Bisher</TableCell>
-                    <TableCell>Neu</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {checked.changes.map((change) => (
-                    <TableRow key={`${change.section}.${change.key}`}>
-                      <TableCell>{change.sectionLabel}</TableCell>
-                      <TableCell>
-                        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                          <span>{change.keyLabel}</span>
-                          {change.securityRelevant && <MetaBadge>Sicherheitsrelevant</MetaBadge>}
-                        </Stack>
-                      </TableCell>
-                      <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>
-                        {formatSettingValue(change.before, change.section)}
-                      </TableCell>
-                      <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>
-                        {formatSettingValue(change.after, change.section)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <AdminList
+              label="Änderungen durch den Import"
+              rows={checked.changes}
+              rowKey={(change) => `${change.section}.${change.key}`}
+              rowLabel={(change) => `${change.sectionLabel}: ${change.keyLabel}`}
+              columns={[
+                {
+                  id: 'section',
+                  head: 'Bereich',
+                  width: '18%',
+                  card: 'line',
+                  cell: (change) => change.sectionLabel,
+                },
+                {
+                  id: 'key',
+                  head: 'Angabe',
+                  width: '26%',
+                  card: 'title',
+                  cell: (change) => (
+                    <>
+                      <ListText strong>{change.keyLabel}</ListText>
+                      {change.securityRelevant && <MetaBadge>Sicherheitsrelevant</MetaBadge>}
+                    </>
+                  ),
+                },
+                {
+                  id: 'before',
+                  head: 'Bisher',
+                  wrap: true,
+                  cell: (change) => (
+                    <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                      {formatSettingValue(change.before, change.section)}
+                    </Box>
+                  ),
+                },
+                {
+                  id: 'after',
+                  head: 'Neu',
+                  wrap: true,
+                  cell: (change) => (
+                    <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                      {formatSettingValue(change.after, change.section)}
+                    </Box>
+                  ),
+                },
+              ]}
+            />
             <Stack direction="row" spacing={1}>
               <BusyButton
                 variant="contained"
@@ -227,6 +255,7 @@ export default function SettingsImportSection() {
           </Stack>
         )}
       </Stack>
+      {gate.dialog}
     </PageSection>
   )
 }

@@ -14,6 +14,7 @@ import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserRepository.DirectoryAccountState;
+import io.opaa.common.DatabaseClock;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -85,6 +87,7 @@ class DirectorySyncPlanExecutor {
   private final DirectorySyncPendingPlanRepository pendingPlanRepository;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final ApplicationEventPublisher eventPublisher;
+  private final DatabaseClock databaseClock;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
@@ -95,7 +98,8 @@ class DirectorySyncPlanExecutor {
       AuditEventRecorder auditEventRecorder,
       DirectorySyncPendingPlanRepository pendingPlanRepository,
       LocalAdminAvailabilityGuard adminGuard,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      DatabaseClock databaseClock) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
@@ -105,6 +109,7 @@ class DirectorySyncPlanExecutor {
     this.pendingPlanRepository = pendingPlanRepository;
     this.adminGuard = adminGuard;
     this.eventPublisher = eventPublisher;
+    this.databaseClock = databaseClock;
   }
 
   // Not readOnly: finish() writes DIRECTORY_SYNC_RUN_COMPLETED on the dry run too; a readOnly
@@ -304,7 +309,7 @@ class DirectorySyncPlanExecutor {
               plan,
               null,
               null);
-      storePendingPlan(target, now, report, plan);
+      storePendingPlan(target, report, plan);
       return report;
     }
 
@@ -334,7 +339,7 @@ class DirectorySyncPlanExecutor {
                 plan,
                 actorUserId,
                 reason);
-        storePendingPlan(target, now, report, plan);
+        storePendingPlan(target, report, plan);
         return report;
       }
     }
@@ -358,18 +363,22 @@ class DirectorySyncPlanExecutor {
    * Writes this provider's pending plan, replacing whatever it had - "ein neuer Lauf ersetzt den
    * ausstehenden Plan" (ADR-0036, Entscheidung 3). The delete and the insert share this class's
    * transaction, so a provider never ends up with two plans or with none where one was due; {@code
-   * uk_directory_sync_pending_plans_provider} holds the same invariant in the schema.
+   * uk_directory_sync_pending_plans_provider} holds the same invariant in the schema. The new plan
+   * keeps the creation time of the one it replaces: the decision has waited since the first plan
+   * nobody decided, and that is the age the status line and {@code plan.pending.age} report. A new
+   * plan takes the database clock, which every instance compares the same.
    */
-  private void storePendingPlan(SyncTarget target, Instant now, SyncReport report, SyncPlan plan) {
-    pendingPlanRepository
-        .findByOrganizationIdAndProviderId(target.organizationId(), target.providerId())
-        .ifPresent(pendingPlanRepository::delete);
+  private void storePendingPlan(SyncTarget target, SyncReport report, SyncPlan plan) {
+    Optional<DirectorySyncPendingPlan> replaced =
+        pendingPlanRepository.findByOrganizationIdAndProviderId(
+            target.organizationId(), target.providerId());
+    replaced.ifPresent(pendingPlanRepository::delete);
     pendingPlanRepository.flush();
     pendingPlanRepository.save(
         new DirectorySyncPendingPlan(
             target.organizationId(),
             target.providerId(),
-            now,
+            replaced.map(DirectorySyncPendingPlan::getCreatedAt).orElseGet(databaseClock::now),
             fingerprintOf(report, plan),
             plan.changedFraction(),
             plan.membershipsRemoved(),

@@ -1,4 +1,4 @@
-/**
+import { formatNumber } from '@/shared/utils/formatDate' /**
  * German wording for the free-text halves of the retrieval explanation protocol - the stage notes
  * and the candidate list labels. The backend states both technically and in English by contract
  * (`StageExplanation#notes`, `CandidateList`); turning them into the operator's language is this
@@ -414,4 +414,24 @@ export function translateStageNote(note: string): string {
  */
 export function translateListLabel(label: string | null | undefined): string {
   return label == null ? 'fusioniert' : translate(LIST_LABEL_RULES, label)
+}
+
+/**
+ * The measured duration of a stage, as the diagnosis shows it: milliseconds below one second,
+ * seconds with one decimal above. `null` means the stage was not called and shows nothing.
+ */
+export function formatStageDuration(durationMs: number | null | undefined): string | null {
+  if (durationMs == null) {
+    return null
+  }
+  if (durationMs < 1) {
+    return '< 1 ms'
+  }
+  if (durationMs < 1000) {
+    return `${durationMs} ms`
+  }
+  return `${formatNumber(durationMs / 1000, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} s`
 }

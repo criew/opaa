@@ -18,5 +18,10 @@
     "baseUrl": "http://ollama:11434/v1",
     "model": "bge-m3",
     "apiKeyFile": null
+  },
+  "textRecognitionModel": {
+    "connectionType": "DOCLING_SERVE",
+    "baseUrl": "http://opaa-ocr:5001",
+    "apiKeyFile": "/run/opaa/installation/ocr-api-key"
   }
 }

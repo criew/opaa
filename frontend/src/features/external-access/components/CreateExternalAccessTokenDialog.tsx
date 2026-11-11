@@ -1,15 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormHelperText from '@mui/material/FormHelperText'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type {
@@ -39,6 +33,9 @@ import {
   releaseEndsBeforeExpiry,
   toDateInputValue,
 } from './tokenLabels'
+import { fontSize } from '@/shared/theme/tokens'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface CreateExternalAccessTokenDialogProps {
   /** The installation's maximum lifetime; it is also the default of the expiry date. */
@@ -221,7 +218,7 @@ export default function CreateExternalAccessTokenDialog({
     if (expiresOn === '') {
       errors.expiresAt = 'Bitte geben Sie ein Ablaufdatum an - ein Token ohne Ablauf gibt es nicht.'
     } else if (expiresOn > latestValue) {
-      errors.expiresAt = `Das Ablaufdatum liegt höchstens ${tokenMaxLifetimeDays} Tage in der Zukunft, also spätestens am ${latest.toLocaleDateString('de-DE')}.`
+      errors.expiresAt = `Das Ablaufdatum liegt höchstens ${tokenMaxLifetimeDays} Tage in der Zukunft, also spätestens am ${formatDate(latest)}.`
     } else if (expiresOn < earliestValue) {
       errors.expiresAt = 'Das Ablaufdatum muss in der Zukunft liegen, frühestens morgen.'
     }
@@ -261,9 +258,16 @@ export default function CreateExternalAccessTokenDialog({
       : releaseEndsBeforeExpiry(libraries ?? [], selected, expiryInstantOf(expiresOn, latest))
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="create-token-title">
-      <DialogTitle id="create-token-title">Token erzeugen</DialogTitle>
-      <DialogContent>
+    <>
+      <FormDialog
+        titleId="create-token-title"
+        title="Token erzeugen"
+        submitLabel="Erzeugen"
+        onSubmit={() => void handleSubmit()}
+        onClose={onClose}
+        busy={isSaving}
+        busyAnnouncement="Das Token wird erzeugt"
+      >
         {afterProviderSignIn && !error && (
           <Alert severity="info" sx={{ mb: 2 }}>
             {SIGN_IN_CONFIRMED_HINT}
@@ -275,7 +279,7 @@ export default function CreateExternalAccessTokenDialog({
           </Alert>
         )}
         <Stack spacing={3} sx={{ mt: 1 }}>
-          <TextField
+          <FormField
             label="Name / Zweck"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -289,11 +293,16 @@ export default function CreateExternalAccessTokenDialog({
           />
 
           <Box>
-            <Typography id="create-token-libraries-title" sx={{ fontSize: 13.5, fontWeight: 500 }}>
+            <Typography
+              id="create-token-libraries-title"
+              sx={{ fontSize: fontSize.text, fontWeight: 500 }}
+            >
               Bibliotheken
             </Typography>
             {libraries === null ? (
-              <Skeleton variant="rounded" height={96} sx={{ mt: 1 }} />
+              <Box sx={{ mt: 1 }}>
+                <LoadingState count={2} />
+              </Box>
             ) : hasLibraries ? (
               <>
                 <Box sx={{ mt: 1, mb: 1.5 }}>
@@ -302,7 +311,7 @@ export default function CreateExternalAccessTokenDialog({
                     filters={filters}
                     onToggle={toggleFilter}
                     trailing={
-                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                         {selected.length} ausgewählt
                       </Typography>
                     }
@@ -314,7 +323,9 @@ export default function CreateExternalAccessTokenDialog({
                   role="status"
                   aria-live="polite"
                   sx={
-                    tiles.length === 0 ? { fontSize: 13, color: 'text.secondary' } : visuallyHidden
+                    tiles.length === 0
+                      ? { fontSize: fontSize.text, color: 'text.secondary' }
+                      : visuallyHidden
                   }
                 >
                   {searching || filtering ? resultMessage(tiles.length, searching, filtering) : ''}
@@ -359,7 +370,7 @@ export default function CreateExternalAccessTokenDialog({
             )}
           </Box>
 
-          <TextField
+          <FormField
             label="Läuft ab"
             type="date"
             value={expiresOn}
@@ -367,10 +378,9 @@ export default function CreateExternalAccessTokenDialog({
             error={Boolean(fieldErrors.expiresAt)}
             helperText={
               fieldErrors.expiresAt ??
-              `Höchstens ${tokenMaxLifetimeDays} Tage, also spätestens am ${latest.toLocaleDateString('de-DE')}.`
+              `Höchstens ${tokenMaxLifetimeDays} Tage, also spätestens am ${formatDate(latest)}.`
             }
             slotProps={{
-              inputLabel: { shrink: true },
               htmlInput: { min: earliestValue, max: latestValue },
             }}
             fullWidth
@@ -385,23 +395,17 @@ export default function CreateExternalAccessTokenDialog({
           )}
 
           <Box>
-            <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>Rechte</Typography>
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, fontWeight: 500 }}>Rechte</Typography>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Nur lesen und suchen. Der Umfang ist fest und nicht wählbar.
             </Typography>
           </Box>
 
           <Alert severity="info" role="note">
-            <Typography sx={{ fontSize: 13 }}>{DISCLOSURE_HINT}</Typography>
+            <Typography sx={{ fontSize: fontSize.text }}>{DISCLOSURE_HINT}</Typography>
           </Alert>
         </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button variant="contained" onClick={() => void handleSubmit()} disabled={isSaving}>
-          Erzeugen
-        </Button>
-      </DialogActions>
+      </FormDialog>
       <RecentLoginDialog
         open={confirming}
         purpose={CONFIRM_PURPOSE}
@@ -412,6 +416,6 @@ export default function CreateExternalAccessTokenDialog({
         onClose={() => setConfirming(false)}
         returnTo={OWN_TOKENS_ROUTE}
       />
-    </Dialog>
+    </>
   )
 }

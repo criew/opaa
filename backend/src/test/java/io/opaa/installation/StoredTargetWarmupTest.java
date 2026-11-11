@@ -3,12 +3,16 @@ package io.opaa.installation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.mail.MailSettingsService;
@@ -18,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -38,6 +43,8 @@ class StoredTargetWarmupTest {
   void everyStoredModelEndpointAndTheMailServerAreChecked() {
     when(jdbc.queryForList(anyString(), eq(String.class)))
         .thenReturn(Arrays.asList("https://chat.example/v1", null, "http://ollama:11434/v1"));
+    when(jdbc.queryForList(contains("realtime_url"), eq(String.class)))
+        .thenReturn(List.of("wss://live.example/v1/realtime"));
     when(models.blockedReason("http://ollama:11434/v1")).thenReturn("abgelehnt");
     when(mail.snapshot()).thenReturn(mailServer("smtp.example", 587));
 
@@ -45,6 +52,8 @@ class StoredTargetWarmupTest {
 
     verify(models).blockedReason("https://chat.example/v1");
     verify(models).blockedReason("http://ollama:11434/v1");
+    // The live address of speech input is checked as the https address the check reads.
+    verify(models).blockedReason("https://live.example/v1/realtime");
     verify(mailTargets).guardStoredServer("smtp.example", 587);
   }
 
@@ -57,6 +66,31 @@ class StoredTargetWarmupTest {
     assertThatCode(warmup::warmUp).doesNotThrowAnyException();
 
     verify(mailTargets).guardStoredServer("smtp.example", 25);
+  }
+
+  /** Regression guard: the log names only the type of a failure, never its message. */
+  @Test
+  void aFailureIsLoggedByItsTypeWithoutTheMessageOfTheDatabaseError() {
+    String details = "jdbc:postgresql://db.intern:5432/opaa?user=opaa&password=geheim";
+    when(jdbc.queryForList(anyString(), eq(String.class)))
+        .thenThrow(new DataAccessResourceFailureException("Connection to " + details + " refused"));
+    when(mail.snapshot()).thenThrow(new IllegalStateException("mail store at " + details));
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    Logger logger = (Logger) LoggerFactory.getLogger(StoredTargetWarmup.class);
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      warmup.warmUp();
+    } finally {
+      logger.detachAppender(appender);
+    }
+
+    assertThat(appender.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .hasSize(2)
+        .noneMatch(line -> line.contains("db.intern") || line.contains("geheim"))
+        .anyMatch(line -> line.endsWith(DataAccessResourceFailureException.class.getName()))
+        .anyMatch(line -> line.endsWith(IllegalStateException.class.getName()));
   }
 
   @Test

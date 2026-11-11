@@ -1,21 +1,48 @@
-# Sandbox image for the run_code tool: Python plus the document libraries the generated scripts
-# may import. The OpenSandbox server injects execd at start-up, so the image needs no agent.
-FROM python:3.13.16-slim-bookworm
+# Sandbox image for the agent tools run_code and fill_template: Python plus the document libraries
+# the generated scripts may import, LibreOffice for PDF and the fixed fill_template script. The
+# OpenSandbox server injects execd at start-up, so the image needs no agent.
+# Version and index digest, kept current by Renovate; cve-scan.yml builds and scans the image.
+FROM python:3.13.16-slim-trixie@sha256:cf50a4f6ac4f026458b08d5222023d700ac806410dff5e9ca8728fa44f2b850f
 
-RUN pip install --no-cache-dir \
-        reportlab==5.0.1 \
-        fpdf2==2.8.9 \
-        python-docx==1.2.0 \
-        openpyxl==3.1.5 \
-        pandas==3.0.6 \
-        matplotlib==3.11.2
+# LibreOffice Writer without GUI converts a filled template to PDF; the fonts are metric-compatible
+# with Arial, Times New Roman, Courier New and Calibri, so the PDF keeps the template's line breaks.
+# The packages come from the trixie release the base image digest fixes, with its security updates
+# at build time, also for the packages of the base image; Trivy scans the result in cve-scan.yml.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        libreoffice-writer-nogui \
+        fonts-liberation2 \
+        fonts-crosextra-carlito \
+        fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
+# Every package with all dependencies and their hashes (requirements.txt); wheels only, so no
+# source build fetches unhashed build requirements. pip itself leaves the image afterwards: scripts
+# cannot install anything at run time anyway, and its vendored libraries are not maintained here.
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt \
+    && python3 -m pip uninstall -y pip
+
+# The fixed script of fill_template, owned by root and read-only for the sandbox user. Its tests run
+# here against this image's docxtpl and LibreOffice; a failing test fails the build.
+COPY --chmod=0644 fill_template.py /opt/opaa/fill_template.py
+# COPY --chmod also applies to the directory it creates; the sandbox user must be able to enter it.
+RUN chmod 0755 /opt/opaa
+RUN --mount=type=bind,source=tests,target=/tmp/opaa-tests \
+    PYTHONDONTWRITEBYTECODE=1 OPAA_REQUIRE_SOFFICE=1 \
+    OPAA_FILL_TEMPLATE_SCRIPT=/opt/opaa/fill_template.py \
+    python3 -I -m unittest discover -s /tmp/opaa-tests \
+    && rm -rf /tmp/opaa-lo-* /root/.config
 
 # Scripts run as uid/gid 1000 (run command "uid"/"gid"); results are collected from /workspace/out.
 # MPLCONFIGDIR keeps matplotlib's cache writable for that user.
 RUN groupadd --gid 1000 sandbox \
     && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash sandbox \
     && mkdir -p /workspace/out \
-    && chown -R 1000:1000 /workspace
+    && chown -R 1000:1000 /workspace \
+    && runuser -u sandbox -- test -r /opt/opaa/fill_template.py
 ENV MPLCONFIGDIR=/tmp/matplotlib \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

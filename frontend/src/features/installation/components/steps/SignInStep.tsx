@@ -1,15 +1,11 @@
 import { useId, useState } from 'react'
-import Box from '@mui/material/Box'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
-import Typography from '@mui/material/Typography'
+import OptionGroup, { type SetupOption } from '@/shared/ui/setup/OptionGroup'
+import SetupField from '@/shared/ui/setup/SetupField'
 import type { InstallationSignInMode, InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank, urlError } from '../../utils/validation'
-import FormField from '../FormField'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 const SIGN_IN_FIELDS = ['oidc.issuerUri', 'oidc.clientId', 'oidc.jwkSetUri', 'oidc.displayName']
@@ -19,16 +15,16 @@ interface SignInStepProps extends StepNavigationProps {
   submit: (values: StepInput['SIGN_IN']) => Promise<WizardResult>
 }
 
-const MODES: { value: InstallationSignInMode; label: string; detail: string }[] = [
+const MODES: SetupOption<InstallationSignInMode>[] = [
   {
     value: 'LOCAL_ONLY',
     label: 'Nur lokale Konten',
-    detail: 'Konten legt die Systemverwaltung in OPAA an. Ein Anbieter lässt sich später ergänzen.',
+    hint: 'Konten legt die Systemverwaltung in OPAA an. Ein Anbieter lässt sich später ergänzen.',
   },
   {
     value: 'LOCAL_AND_OIDC',
-    label: 'Lokale Konten und ein OIDC-Anbieter',
-    detail: 'Die Anmeldung läuft zusätzlich über einen Identitätsanbieter wie Keycloak.',
+    label: 'Lokale Konten und ein Identitätsanbieter',
+    hint: 'Die Anmeldung läuft zusätzlich über einen Anbieter mit OpenID Connect, etwa Keycloak.',
   },
 ]
 
@@ -46,7 +42,6 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
   const [providerName, setProviderName] = useState(stored?.oidc?.displayName ?? '')
   const form = useStepForm(step.checked ? null : step.checkMessage)
   const withProvider = mode === 'LOCAL_AND_OIDC'
-  const legendId = `${id}-mode`
 
   function handleSubmit() {
     const localErrors = withProvider
@@ -76,43 +71,22 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
       title={STEP_INFO.SIGN_IN.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.SIGN_IN.laterUnder}
-      description="Legen Sie fest, wie sich Personen anmelden. Das erste Konto meldet sich immer lokal an."
+      description="Legen Sie fest, ob sich Personen nur mit lokalen Konten oder zusätzlich über einen Identitätsanbieter anmelden. Das erste Konto meldet sich immer lokal an."
       failure={form.failure}
       busy={form.busy}
       onSubmit={handleSubmit}
       onBack={onBack}
       onSkip={onSkip}
     >
-      <Box>
-        <Typography id={legendId} sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}>
-          Anmeldeverfahren
-        </Typography>
-        <RadioGroup
-          value={mode}
-          onChange={(event) => setMode(event.target.value as InstallationSignInMode)}
-          aria-labelledby={legendId}
-        >
-          {MODES.map((option) => (
-            <FormControlLabel
-              key={option.value}
-              value={option.value}
-              control={<Radio size="small" />}
-              sx={{ alignItems: 'flex-start', mb: 1, '& .MuiRadio-root': { mt: -0.5 } }}
-              label={
-                <Box>
-                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{option.label}</Typography>
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                    {option.detail}
-                  </Typography>
-                </Box>
-              }
-            />
-          ))}
-        </RadioGroup>
-      </Box>
+      <OptionGroup<InstallationSignInMode>
+        label="Anmeldung"
+        options={MODES}
+        value={mode}
+        onChange={setMode}
+      />
       {withProvider && (
         <>
-          <FormField
+          <SetupField
             id={`${id}-issuer`}
             label="Issuer-URI"
             inputMode="url"
@@ -121,7 +95,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
             error={form.errors['oidc.issuerUri']}
             hint="Die Adresse, die der Anbieter in seine Tokens schreibt, bei Keycloak die Realm-Adresse."
           />
-          <FormField
+          <SetupField
             id={`${id}-client`}
             label="Client-ID"
             value={clientId}
@@ -129,7 +103,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
             error={form.errors['oidc.clientId']}
             hint="Der beim Anbieter angelegte öffentliche Client, ohne Secret und mit PKCE."
           />
-          <FormField
+          <SetupField
             id={`${id}-jwk`}
             label="JWK-Set-Adresse"
             optional
@@ -139,14 +113,14 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
             error={form.errors['oidc.jwkSetUri']}
             hint="Nur nötig, wenn das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser."
           />
-          <FormField
+          <SetupField
             id={`${id}-provider-name`}
             label="Name auf der Anmeldeseite"
             optional
             value={providerName}
             onChange={setProviderName}
+            placeholder="Verzeichnisdienst"
             error={form.errors['oidc.displayName']}
-            hint="Ohne Angabe steht dort „Verzeichnisdienst“."
           />
         </>
       )}

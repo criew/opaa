@@ -1,8 +1,10 @@
 import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
 import { notify, useNotificationStore } from '@/shared/stores/notificationStore'
 import { exportChatPdf, getChat } from '../api/chatApi'
-import { chatAsMarkdown, exportFileName } from './chatExport'
-import { copyNote } from './copyFormats'
+import { exportFileName } from './exportFileName'
+import { copyNote } from './copyNote'
+import { loadOptionalChunk } from '@/shared/utils/optionalChunk'
 
 export type ChatExportFormat = 'markdown' | 'pdf'
 
@@ -42,11 +44,14 @@ export async function exportChat(
   const pending = format === 'pdf' ? notify('Export wird erstellt …', 'info') : null
   try {
     if (format === 'markdown') {
+      // The Markdown parser behind the export stays out of the entry bundle the chat list is in.
+      const { chatAsMarkdown } = await loadOptionalChunk(() => import('./chatExport'))
       const detail = await getChat(chat.id)
       const { branding } = useBrandingStore.getState()
       const exportedAt = new Date()
       const note = copyNote(branding.aiNotice, branding.productName, exportedAt)
-      const markdown = chatAsMarkdown(detail, note, exportedAt)
+      const { allowedOrigins } = useLinkTargetsStore.getState()
+      const markdown = chatAsMarkdown(detail, note, exportedAt, { allowedOrigins })
       download(
         new Blob([markdown], { type: 'text/markdown;charset=utf-8' }),
         exportFileName(detail.title, 'md'),

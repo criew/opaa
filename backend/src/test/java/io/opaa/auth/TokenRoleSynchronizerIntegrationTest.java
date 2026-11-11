@@ -79,8 +79,8 @@ class TokenRoleSynchronizerIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    userRepository.deleteAll(List.of(first, second, auditor));
-    providerRepository.delete(provider);
+    userRepository.deleteAllById(List.of(first.getId(), second.getId(), auditor.getId()));
+    providerRepository.deleteById(provider.getId());
     organizationRepository.deleteById(organizationId);
   }
 
@@ -138,8 +138,8 @@ class TokenRoleSynchronizerIntegrationTest {
       assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
       assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
     } finally {
-      userRepository.delete(ofDisabled);
-      providerRepository.delete(off);
+      userRepository.deleteById(ofDisabled.getId());
+      providerRepository.deleteById(off.getId());
     }
   }
 
@@ -158,7 +158,7 @@ class TokenRoleSynchronizerIntegrationTest {
       assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
       assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
     } finally {
-      userRepository.delete(elsewhere);
+      userRepository.deleteById(elsewhere.getId());
       organizationRepository.deleteById(otherOrganization);
     }
   }
@@ -243,7 +243,7 @@ class TokenRoleSynchronizerIntegrationTest {
           .extracting(row -> row.get("event_type"))
           .containsExactly("SYSTEM_ADMIN_ROLE_GRANTED");
     } finally {
-      userRepository.delete(regular);
+      userRepository.deleteById(regular.getId());
     }
   }
 }

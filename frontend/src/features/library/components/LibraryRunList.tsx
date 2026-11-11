@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
@@ -18,8 +15,11 @@ import {
   indexingTriggerSourceLabel,
 } from './indexingLabels'
 import { formatDay, isErrorEvent, runTone, runWord, stateTargetHref } from './libraryState'
-import { plainMessage } from './sourceKit/plainMessage'
-import { PATH_SEPARATOR } from './setup/paths'
+import { plainMessage } from './sourceCore/plainMessage'
+import { PATH_SEPARATOR } from './sourceCore/paths'
+import { fontSize, iconSize } from '@/shared/theme/tokens'
+import { formatDateTime, formatNumber } from '@/shared/utils/formatDate'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 /** The run list offers „Nur mit Fehlern“ from this many runs on. */
 const FILTER_FROM = 5
@@ -47,18 +47,12 @@ export interface RunningProgress {
 }
 
 function count(value: number): string {
-  return value.toLocaleString('de-DE')
+  return formatNumber(value)
 }
 
 /** „23.10.2026, 06:00“ - the one date-and-time form of the page. */
 function formatStart(value: string): string {
-  return new Date(value).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(value)
 }
 
 function formatDuration(run: IndexingRunResponse): string {
@@ -190,7 +184,7 @@ function Disclosure({
   )
 }
 
-const LINE = { fontSize: 13, lineHeight: '22px' } as const
+const LINE = { fontSize: fontSize.text, lineHeight: '22px' } as const
 
 function EventGroup({
   label,
@@ -339,35 +333,29 @@ function RunDetail({
           </Typography>
         ))}
       </Disclosure>
-      <Dialog
+      <ViewDialog
         open={allOf !== null}
         onClose={() => setAllOf(null)}
-        fullWidth
-        maxWidth="sm"
-        aria-labelledby={`run-events-title-${run.id}`}
+        titleId={`run-events-title-${run.id}`}
+        title={`${allOf?.label ?? ''} · ${count(allOf?.events.length ?? 0)}`}
       >
-        <DialogTitleWithClose id={`run-events-title-${run.id}`} onClose={() => setAllOf(null)}>
-          {allOf?.label} · {count(allOf?.events.length ?? 0)}
-        </DialogTitleWithClose>
-        <DialogContent>
-          <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-            {allOf?.events.map((event, index) => (
-              <Box
-                component="li"
-                key={`${event.reference ?? ''}-${index}`}
-                sx={{ py: 0.75, borderBottom: 1, borderColor: 'divider' }}
-              >
-                <Typography sx={{ ...LINE, overflowWrap: 'anywhere' }}>
-                  {event.reference ?? '–'}
-                </Typography>
-                <Typography sx={{ ...LINE, color: 'text.secondary' }}>
-                  {plainMessage(event.message)}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        </DialogContent>
-      </Dialog>
+        <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+          {allOf?.events.map((event, index) => (
+            <Box
+              component="li"
+              key={`${event.reference ?? ''}-${index}`}
+              sx={{ py: 0.75, borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Typography sx={{ ...LINE, overflowWrap: 'anywhere' }}>
+                {event.reference ?? '–'}
+              </Typography>
+              <Typography sx={{ ...LINE, color: 'text.secondary' }}>
+                {plainMessage(event.message)}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </ViewDialog>
     </Box>
   )
 }
@@ -439,7 +427,7 @@ export default function LibraryRunList({
           pb: 0.75,
           borderBottom: 1,
           borderColor: 'divider',
-          fontSize: 12,
+          fontSize: fontSize.meta,
           color: 'text.secondary',
         }}
       >
@@ -522,7 +510,7 @@ export default function LibraryRunList({
               <ExpandMoreIcon
                 aria-hidden
                 sx={{
-                  fontSize: 20,
+                  fontSize: iconSize.md,
                   alignSelf: 'center',
                   color: 'text.secondary',
                   transform: isOpen ? 'rotate(180deg)' : 'none',

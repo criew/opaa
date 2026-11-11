@@ -6,7 +6,7 @@ import {
 } from '../../utils/confluenceSource'
 import { confluenceSetup } from '../setup/connectors/confluenceSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const confluenceSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.CONFLUENCE,
@@ -38,11 +38,6 @@ export const confluenceSource: SourceRegistration = {
           : values.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
       },
     }),
-    nameFromSource: (values: ConfluenceSourceValues) => {
-      const first = values.spaces[0]
-      if (values.allSpaces || !first) return ''
-      return values.spaces.length === 1 ? (first.name ?? first.key) : ''
-    },
     scopeNoteId: 'confluence-sharing-consequence',
     fullSyncRhythm: true,
     firstRunHint:

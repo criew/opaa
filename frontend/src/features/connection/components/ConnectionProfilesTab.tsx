@@ -2,14 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import AddIcon from '@mui/icons-material/Add'
 import type {
   CapabilityOverviewResponse,
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
+import CreateButton from '@/shared/ui/CreateButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSourceTypes } from './useSourceTypes'
@@ -24,7 +23,6 @@ import {
   testConnectionProfileSignIn,
 } from '../api/connectionProfileApi'
 import StatusLine from '@/shared/ui/StatusLine'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
 import ConnectionProfileFormDialog from './ConnectionProfileFormDialog'
 import ConnectionProfileOverview, { type ProfileEntry } from './ConnectionProfileOverview'
 import ConnectionProfilePanel from './ConnectionProfilePanel'
@@ -33,6 +31,9 @@ import { confirmLock } from './connectorLock'
 import { admitsProfiles } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
 import { accessOf, attentionOf, profileAccessEntry, signsInItself, summaryOf } from './profileState'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
@@ -158,7 +159,7 @@ export default function ConnectionProfilesTab() {
         consequence: signsInItself(profile)
           ? `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'Der Dienstkonto-Schlüssel' : 'Das Client-Secret'} des Zugangs wird unwiderruflich gelöscht. Die Bibliotheken laufen erst wieder, wenn die Systemverwaltung ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'einen Schlüssel' : 'ein Secret'} am Zugang neu hinterlegt. Beim Anbieter widerruft OPAA nichts; das geschieht dort.${personsNotice(profile)}`
           : `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
-        confirmLabel: 'Alle trennen',
+        confirmLabel: 'Trennen',
         tone: 'danger',
       })
       if (!confirmed) return
@@ -176,7 +177,7 @@ export default function ConnectionProfilesTab() {
       !lock && typeLocked(profile.sourceType)
         ? `Die Quellart „${displayNameOf(profile.sourceType)}“ bleibt gesperrt: Die Bibliotheken des Zugangs laufen erst weiter, wenn auch ihre Sperre aufgehoben ist.`
         : undefined
-    if (!(await confirmLock(`den Zugang „${profile.name}“`, lock, remaining))) return
+    if (!(await confirmLock(profile.name, lock, remaining))) return
     try {
       await lockConnectionProfile(profile.id, lock)
       notify(
@@ -205,7 +206,7 @@ export default function ConnectionProfilesTab() {
     try {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
-        question: `Zugang „${profile.name}“ löschen?`,
+        question: `„${profile.name}“ löschen?`,
         consequence: `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}; sie werden getrennt. Die Bibliotheken bleiben mit ihrem Inhalt und dem Hinweis „Zugang entfernt“ stehen und laufen nicht mehr, bis sie einem anderen Zugang zugeordnet sind.`,
         confirmLabel: 'Löschen',
         tone: 'danger',
@@ -251,59 +252,32 @@ export default function ConnectionProfilesTab() {
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 2,
-          rowGap: 1.5,
-          alignItems: 'flex-start',
-          flexWrap: { xs: 'wrap', md: 'nowrap' },
-          mb: 3,
-        }}
+      <CreateButton
+        disabled={!anyTypeAdmitsProfiles}
+        onClick={() => setForm({ open: true, profile: null })}
       >
-        <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
-          {loading || error || !settled ? null : (
-            <StatusLine
-              component="h2"
-              label="Handlungsbedarf der Zugänge"
-              tone={summary.tone}
-              headline={summary.headline}
-              detail={
-                profiles.length === 0
-                  ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
-                  : summary.detail
-              }
-            />
-          )}
+        Neuer Zugang
+      </CreateButton>
+      {!loading && !error && settled && (
+        <Box sx={{ mb: 3 }}>
+          <StatusLine
+            component="h2"
+            label="Handlungsbedarf der Zugänge"
+            tone={summary.tone}
+            headline={summary.headline}
+            detail={
+              profiles.length === 0
+                ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
+                : summary.detail
+            }
+          />
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          disabled={!anyTypeAdmitsProfiles}
-          onClick={() => setForm({ open: true, profile: null })}
-          sx={{ flex: 'none' }}
-        >
-          Neuer Zugang
-        </Button>
-      </Box>
+      )}
 
       {sourceTypesLoaded && !anyTypeAdmitsProfiles && (
         <Alert severity="info" sx={{ mb: 2 }} data-testid="no-profile-source-type">
           Zugänge stehen zur Verfügung, sobald eine Quellart sie unterstützt. In dieser Version
           bietet noch keine Quellart Zugänge an.
-        </Alert>
-      )}
-      {error && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={reload}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {error}
         </Alert>
       )}
       {typeError && (
@@ -312,25 +286,37 @@ export default function ConnectionProfilesTab() {
         </Alert>
       )}
       {overviewError && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => void loadOverview()}>
-              Erneut laden
-            </Button>
-          }
-        >
-          {`Wer die Zugänge nutzen darf, konnte nicht geladen werden (${overviewError}).`}
-        </Alert>
+        <Box sx={{ mb: 2 }}>
+          <LoadError
+            message="Wer die Zugänge nutzen darf, konnte nicht geladen werden."
+            detail={overviewError}
+            onRetry={() => void loadOverview()}
+          />
+        </Box>
       )}
 
-      {loading ? (
-        <ListLoading label="Zugänge werden geladen" />
-      ) : profiles.length === 0 && !error ? (
-        <ListEmptyState
-          title="Es sind noch keine Zugänge angelegt."
-          hint="Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
+      {error ? (
+        <LoadError
+          message="Zugänge konnten nicht geladen werden."
+          detail={error}
+          onRetry={reload}
+        />
+      ) : loading ? (
+        <LoadingState />
+      ) : profiles.length === 0 ? (
+        <EmptyState
+          framed
+          message="Noch keine Zugänge. Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
+          action={
+            anyTypeAdmitsProfiles ? (
+              <CreateButton
+                placement="empty"
+                onClick={() => setForm({ open: true, profile: null })}
+              >
+                Neuer Zugang
+              </CreateButton>
+            ) : undefined
+          }
         />
       ) : (
         <ConnectionProfileOverview entries={entries} onOpen={openPanel} />

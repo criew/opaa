@@ -55,8 +55,10 @@ gemeinsame Obergrenzen:
 - **Gelesene Inhaltsdaten eines PDF** (`max-pdf-content-bytes`): die entpackten Zeichenanweisungen
   aller Seiten und Zeichnungen, eine Zeichnung so oft gezählt, wie sie gezeichnet wird.
 - **Größe eines einzelnen Inhaltsteils eines PDF** (`max-pdf-stream-bytes`): Ein Seiteninhalt, eine
-  Zeichnung und jedes Verzeichnis, das schon beim Öffnen der Datei entpackt wird (Querverweis- und
-  Objektströme), darf entpackt nicht größer werden. Gemessen wird, bevor der Teil im Speicher
+  Zeichnung, jedes Verzeichnis, das schon beim Öffnen der Datei entpackt wird (Querverweis- und
+  Objektströme), und jedes eingebettete Schriftprogramm samt Zeichenzuordnung (CMap, ToUnicode)
+  darf entpackt nicht größer werden. Schriften werden beim Öffnen für die ganze Datei gemessen,
+  gleich wo sie verwendet werden, auch in Anmerkungen und Formularen. Gemessen wird, bevor der Teil im Speicher
   ausgepackt wird; so kann eine wenige hundert Kilobyte große Datei nicht Hunderte Megabyte
   Speicher belegen. Bei einer verschlüsselten Datei mit beschädigtem Querverweis werden
   Objektströme nicht durchsucht; was nur dort steht, fehlt dann.
@@ -121,7 +123,7 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 | `max-ooxml-total-bytes` | 64 MiB | entpackte Größe aller Inhaltsdateien eines solchen Dokuments zusammen |
 | `max-pdf-operators` | 200.000.000 | Zeichenanweisungen (und Elemente ihrer Wertelisten), die beim Lesen eines PDF insgesamt ausgeführt werden |
 | `max-pdf-content-bytes` | 512 MiB | entpackte Inhaltsdaten, die beim Lesen eines PDF insgesamt verarbeitet werden |
-| `max-pdf-stream-bytes` | 32 MiB | entpackte Größe eines einzelnen Seiteninhalts, einer Zeichnung oder eines Querverweis- oder Objektstroms eines PDF |
+| `max-pdf-stream-bytes` | 32 MiB | entpackte Größe eines einzelnen Seiteninhalts, einer Zeichnung, eines eingebetteten Schriftprogramms oder eines Querverweis- oder Objektstroms eines PDF |
 | `max-pdf-parse-seconds` | 120 | Sekunden, die das Öffnen und Lesen eines PDF höchstens dauern darf |
 | `max-pdf-pages` | 10.000 | Seiten eines PDF |
 | `max-pdf-objects` | 1.000.000 | Objekte eines PDF: Einträge aller Querverweise, Objekte entpackter Objektströme und bei beschädigter Datei die gefundenen Objekte; Objekte in Objektströmen zählen doppelt |
@@ -143,5 +145,5 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 Abgewiesene Dateien werden gezählt und im Laufprotokoll namentlich als „Format nicht unterstützt"
 geführt; bei der Löscherkennung gelten sie als vorhanden.
 
-Die Formatprüfung erkennt keinen Schadcode. Dafür kann der Betrieb eine Virenprüfung einschalten, die
+Die Formatprüfung erkennt keinen Schadcode. Dafür kann die Systemverwaltung eine Virenprüfung einschalten, die
 jede Datei vor dem Lesen prüft ([Netz und Sicherheit](../../betrieb/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)).

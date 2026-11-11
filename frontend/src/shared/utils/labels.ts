@@ -1,4 +1,5 @@
 import type { AssetRole, Capability, SpaceRole } from '../api/types'
+import { formatNumber } from './formatDate'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
   MEMBER: 'Mitglied',
@@ -37,7 +38,7 @@ export function formatFileSize(bytes: number | null | undefined): string {
     value /= 1024
     unitIndex += 1
   }
-  return `${value.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${units[unitIndex]}`
+  return `${formatNumber(value, { maximumFractionDigits: 1 })} ${units[unitIndex]}`
 }
 
 /**
@@ -55,6 +56,9 @@ const capabilityLabels: Record<Capability, string> = {
   CREATE_CONNECTOR_LIBRARY: 'Konnektorbibliotheken anlegen',
   CREATE_INTERNAL_GROUP: 'Interne Gruppen anlegen',
   CREATE_PROMPT_LIBRARY: 'Prompt-Bibliotheken anlegen',
+  CREATE_AGENT: 'Agenten anlegen',
+  CREATE_TEMPLATE: 'Vorlagen anlegen',
+  VIEW_AGENT_DIRECTORY: 'Agentenverzeichnis einsehen',
 }
 
 /**
@@ -65,7 +69,7 @@ const capabilityLabels: Record<Capability, string> = {
  */
 export function capabilityMissingMessage(capability: Capability): string {
   return (
-    `Ihnen fehlt das Anlegerecht „${capabilityLabels[capability]}“. ` +
+    `Ihnen fehlt das ${capability === 'VIEW_AGENT_DIRECTORY' ? 'Recht' : 'Anlegerecht'} „${capabilityLabels[capability]}“. ` +
     'Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.'
   )
 }

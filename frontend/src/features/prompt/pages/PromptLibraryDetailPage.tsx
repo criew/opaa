@@ -8,14 +8,14 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import CreateButton from '@/shared/ui/CreateButton'
 import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { promptVariableTypeLabel } from '../components/promptLabels'
-import { fontFamily } from '@/shared/theme/tokens'
+import { contentWidth, fontFamily, fontSize, readingWidth } from '@/shared/theme/tokens'
 import {
   CATALOG_ROUTE,
   FORMER_PROMPT_LIBRARY_TABS,
@@ -37,6 +37,9 @@ import { useAssetCatalogEntry } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import PromptEditorDialog from '../components/PromptEditorDialog'
 import PromptTextHighlight from '../components/PromptTextHighlight'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 const ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -84,7 +87,7 @@ function PromptsArea({
 
   async function handleDelete(prompt: PromptResponse) {
     const confirmed = await confirmAction({
-      question: `Prompt „${prompt.title}“ löschen?`,
+      question: `„${prompt.title}“ löschen?`,
       consequence: `Der Befehl /${prompt.name} steht danach nicht mehr zur Verfügung.`,
       confirmLabel: 'Löschen',
       tone: 'danger',
@@ -103,46 +106,41 @@ function PromptsArea({
   // No heading of its own: the tab „Prompts" already names the area.
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
-        }}
+      <Typography
+        sx={{ fontSize: fontSize.meta, color: 'text.secondary', maxWidth: readingWidth, mb: 2 }}
       >
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
-          Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein
-          Prompt im Chat aufgerufen wird.
-        </Typography>
-        {mayCreate && (
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => setEditing(null)}
-          >
-            Neuer Prompt
-          </Button>
-        )}
-      </Box>
+        Benannte Anweisungen dieser Prompt-Bibliothek. Der Befehl ist der Name, unter dem ein Prompt
+        im Chat aufgerufen wird.
+      </Typography>
+      {mayCreate && <CreateButton onClick={() => setEditing(null)}>Neuer Prompt</CreateButton>}
       {actionError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
           {actionError}
         </Alert>
       )}
       {promptsError ? (
-        <Alert severity="warning">{promptsError}</Alert>
+        <LoadError
+          message="Die Prompts konnten nicht geladen werden."
+          detail={promptsError}
+          onRetry={() => void loadPrompts(library.id)}
+        />
       ) : prompts === undefined ? (
-        <Typography sx={{ color: 'text.secondary' }}>Prompts werden geladen …</Typography>
+        <LoadingState />
       ) : prompts.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          {canEditPrompts
-            ? 'Diese Prompt-Bibliothek enthält noch keine Prompts. Legen Sie den ersten mit „Neuer Prompt“ an.'
-            : 'Diese Prompt-Bibliothek enthält noch keine Prompts.'}
-        </Typography>
+        <EmptyState
+          message={
+            canEditPrompts
+              ? 'Noch keine Prompts.'
+              : 'Noch keine Prompts. Prompts anlegen kann, wer die Prompt-Bibliothek bearbeiten darf.'
+          }
+          action={
+            mayCreate ? (
+              <CreateButton placement="empty" onClick={() => setEditing(null)}>
+                Neuer Prompt
+              </CreateButton>
+            ) : undefined
+          }
+        />
       ) : (
         <Box>
           {prompts.map((prompt) => (
@@ -159,17 +157,21 @@ function PromptsArea({
                     spacing={1.5}
                     sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}
                   >
-                    <Typography component="span" sx={{ fontSize: 14.5, fontWeight: 600 }}>
+                    <Typography component="span" sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
                       {prompt.title}
                     </Typography>
                     <Typography
                       component="span"
-                      sx={{ fontFamily: fontFamily.mono, fontSize: 12, color: 'primary.main' }}
+                      sx={{
+                        fontFamily: fontFamily.mono,
+                        fontSize: fontSize.meta,
+                        color: 'primary.main',
+                      }}
                     >
                       /{prompt.name}
                     </Typography>
                   </Stack>
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                     {[prompt.description, variablesSummary(prompt)].filter(Boolean).join(' · ')}
                   </Typography>
                 </Box>
@@ -178,7 +180,7 @@ function PromptsArea({
                 <Stack spacing={1.5}>
                   <PromptTextHighlight text={prompt.text} label={`Text von ${prompt.title}`} />
                   {prompt.variables.length > 0 && (
-                    <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: 12.5 }}>
+                    <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: fontSize.meta }}>
                       {prompt.variables.map((variable) => (
                         <li key={variable.name}>
                           <Box component="span" sx={{ fontFamily: fontFamily.mono }}>
@@ -277,9 +279,13 @@ export default function PromptLibraryDetailPage() {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
         {storeError ? (
-          <Alert severity="error">{storeError}</Alert>
+          <LoadError
+            message="Die Prompt-Bibliothek konnte nicht geladen werden."
+            detail={storeError}
+            onRetry={() => void loadLibrary(promptLibraryId)}
+          />
         ) : (
-          <Typography sx={{ color: 'text.secondary' }}>Prompt-Bibliothek wird geladen …</Typography>
+          <LoadingState shape="detail" count={4} />
         )}
       </Box>
     )
@@ -308,9 +314,9 @@ export default function PromptLibraryDetailPage() {
 
   async function handleDelete() {
     const confirmed = await confirmAction({
-      question: `Prompt-Bibliothek „${library?.name}“ löschen?`,
+      question: `„${library?.name}“ löschen?`,
       consequence:
-        'Das entfernt auch alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.',
+        'Alle Prompts, Rechte und Space-Zuordnungen dieser Prompt-Bibliothek werden gelöscht.',
       confirmLabel: 'Löschen',
       tone: 'danger',
     })
@@ -331,7 +337,7 @@ export default function PromptLibraryDetailPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: 880 }}>
+      <Box sx={{ maxWidth: contentWidth.detail }}>
         <AssetDetailHeader
           assetType="PROMPT_LIBRARY"
           assetId={libraryId}

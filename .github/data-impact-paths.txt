@@ -42,6 +42,8 @@ backend/src/main/resources/META-INF/additional-spring-configuration-metadata.jso
 deploy/helm/opaa/values.yaml
 deploy/helm/opaa/values.schema.json
 docker-compose.yml
+docker-compose.sandbox.yml
+sandbox/config.toml
 .env*.example
 
 # Outgoing data flows: connectors, directories, model providers, mail, proxies, network policy
@@ -52,7 +54,10 @@ backend/src/main/java/io/opaa/s3/**/*.java
 backend/src/main/java/io/opaa/mail/**/*.java
 backend/src/main/java/io/opaa/mcp/**/*.java
 backend/src/main/java/io/opaa/outbound/**/*.java
+backend/src/main/java/io/opaa/observability/MeteredHttpClient.java
 backend/src/main/java/io/opaa/llm/**/*.java
+backend/src/main/java/io/opaa/observability/TracingConfiguration.java
+backend/src/main/java/io/opaa/observability/AllowlistedSpanExporter.java
 backend/src/main/java/io/opaa/sourceaccess/**/*.java
 backend/src/main/java/io/opaa/connection/oauth/**/*.java
 backend/src/main/java/io/opaa/connection/profile/McpServerDiscovery.java
@@ -63,8 +68,6 @@ backend/src/main/java/io/opaa/auth/OidcProviderConnectionTester.java
 backend/src/main/java/io/opaa/connection/profile/McpServerProfileService.java
 backend/src/main/java/io/opaa/account/LocalAccountMailer.java
 backend/src/main/java/io/opaa/account/MailingBootstrapLoginNotifier.java
-backend/src/main/java/io/opaa/externalaccess/token/ExternalAccessTokenMailer.java
-backend/src/main/java/io/opaa/externalaccess/token/ServiceAccountMailer.java
 backend/src/main/java/io/opaa/library/LibraryExternalAccessReminderService.java
 backend/src/main/java/io/opaa/auth/NimbusOidcJwtDecoderFactory.java
 backend/src/main/java/io/opaa/api/HttpClientConfig.java
@@ -95,7 +98,13 @@ backend/src/main/java/io/opaa/searchadmin/SearchStatusService.java
 backend/src/main/java/io/opaa/metadata/ChunkContextPrefix.java
 backend/src/main/java/io/opaa/metadata/CoreContextPrefixSettings.java
 
+# Text recognition: whole documents go to the OCR service, its result is stored
+backend/src/main/java/**/*TextRecognition*.java
+backend/src/main/java/io/opaa/indexing/document/ScannedDocumentRecognition.java
+backend/src/main/java/io/opaa/format/file/pdf/PdfOcrDocumentFormat.java
+
 # Prompts and answer generation: system prompts and their inputs
+backend/src/main/java/io/opaa/chat/ChatAttachment*.java
 backend/src/main/java/io/opaa/prompt/**/*.java
 backend/src/main/java/io/opaa/query/answer/**/*.java
 backend/src/main/java/io/opaa/retrieval/search/QueryDecompositionService.java
@@ -105,16 +114,33 @@ backend/src/main/java/io/opaa/metadata/ModelMetadataExtractor.java
 backend/src/main/java/io/opaa/chat/ChatTitleGenerationService.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtraction.java
 backend/src/main/java/io/opaa/chat/ChatNoteExtractionService.java
-backend/src/main/java/io/opaa/query/spike/**/*.java
+backend/src/main/java/io/opaa/query/sandbox/**/*.java
+backend/src/main/java/io/opaa/query/toolloop/**/*.java
+# Tool check of a chat model: fictional cases and their system prompt sent to the model endpoint
+backend/src/main/java/io/opaa/query/toolcheck/**/*.java
+backend/src/main/resources/io/opaa/query/toolcheck/**
 
 # Retention and deletion periods
 backend/src/main/java/**/*Retention*.java
 backend/src/main/java/**/*Cleanup*.java
 backend/src/main/java/io/opaa/diagnosticaccess/**/*.java
+backend/src/main/java/io/opaa/query/runlog/**/*.java
 backend/src/main/java/io/opaa/instance/InstanceRegistry.java
 backend/src/main/java/io/opaa/connection/token/ConnectionLifecycleSettings.java
 backend/src/main/java/io/opaa/library/PrivateLibraryDeletion*.java
-backend/src/main/java/io/opaa/library/PrivateLibraryErasure.java
+
+# Service accounts and access tokens: lifecycle, consents, reminders
+backend/src/main/java/io/opaa/externalaccess/token/**/*.java
 
 # Exports of personal data
 backend/src/main/java/io/opaa/chat/ChatExportService.java
+
+# Erasure of personal reference
+backend/src/main/java/**/*Erasure*.java
+
+# Evaluations of usage and request logging
+backend/src/main/java/io/opaa/externalaccess/ExternalAccessMassRetrievalAlarm.java
+backend/src/main/java/io/opaa/api/RequestLoggingFilter.java
+backend/src/main/java/io/opaa/observability/UnobservedRoutes.java
+backend/src/main/java/io/opaa/observability/RequestId*.java
+backend/src/main/java/io/opaa/auth/QuickTourHint.java

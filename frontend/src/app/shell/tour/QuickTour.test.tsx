@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import Dialog from '@mui/material/Dialog'
 import TextField from '@mui/material/TextField'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -374,9 +374,9 @@ describe('quick tour', () => {
     it('leaves the focus to a modal opened above the tour', async () => {
       const { user } = await openTour()
       renderWithProviders(
-        <Dialog open aria-label="Darüber">
+        <ViewDialog title="Darüber" onClose={() => undefined}>
           <TextField label="Feld darüber" />
-        </Dialog>,
+        </ViewDialog>,
       )
       const upper = await screen.findByRole('textbox', { name: 'Feld darüber' })
 

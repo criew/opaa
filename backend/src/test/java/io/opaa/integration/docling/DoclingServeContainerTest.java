@@ -18,12 +18,12 @@ import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.indexing.document.DocumentTextRecognitionStore;
 import io.opaa.indexing.document.ScannedDocumentRecognition;
 import io.opaa.indexing.document.TextRecognitionIndexing;
-import io.opaa.llm.TextRecognitionClient;
-import io.opaa.llm.TextRecognitionClient.TestOutcome;
-import io.opaa.llm.TextRecognitionEndpoint;
-import io.opaa.llm.TextRecognitionModelRole;
-import io.opaa.llm.TextRecognitionModelRole.ActiveTextRecognition;
-import io.opaa.llm.TextRecognitionProperties;
+import io.opaa.llm.textrecognition.TextRecognitionClient;
+import io.opaa.llm.textrecognition.TextRecognitionClient.TestOutcome;
+import io.opaa.llm.textrecognition.TextRecognitionEndpoint;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole;
+import io.opaa.llm.textrecognition.TextRecognitionModelRole.ActiveTextRecognition;
+import io.opaa.llm.textrecognition.TextRecognitionProperties;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
@@ -88,7 +88,7 @@ class DoclingServeContainerTest {
             .waitingFor(Wait.forHttp("/health").forPort(PORT).forStatusCode(200))
             .withStartupTimeout(Duration.ofMinutes(10));
     container.start();
-    client = new TextRecognitionClient(JsonMapper.builder().build());
+    client = new TextRecognitionClient(JsonMapper.builder().build(), new SimpleMeterRegistry());
   }
 
   @AfterAll

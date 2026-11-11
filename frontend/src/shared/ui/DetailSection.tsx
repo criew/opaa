@@ -3,11 +3,12 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import type { SxProps, Theme } from '@mui/material/styles'
-import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import SectionHead from './SectionHead'
+import { controlHeight, fontSize } from '../theme/tokens'
 
 interface DetailSectionProps {
-  /** The section's head in running type, weight 600 - the style of the rows of the Reiter „Quelle". */
+  /** The section's head, in the one form of `SectionHead`. */
   title: string
   /** The one adding action („Freigeben“, „Feld anlegen“) as a text button at the right edge. */
   action?: ReactNode
@@ -18,9 +19,9 @@ interface DetailSectionProps {
 }
 
 /**
- * A section of a detail page tab: head and adding action on one baseline, the content below, no
- * frame and no eyebrow. Every tab of a detail page uses it, so heads and the right edge of their
- * actions stay the same from tab to tab.
+ * A section of a detail page tab: head and adding action on one hairline, the content below, no
+ * frame. Every tab of a detail page uses it, so heads and the right edge of their actions stay
+ * the same from tab to tab.
  */
 export default function DetailSection({
   title,
@@ -40,20 +41,18 @@ export default function DetailSection({
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
           justifyContent: 'space-between',
           gap: 2,
-          minHeight: 32,
-          mb: 1,
+          minHeight: controlHeight.compact,
+          borderBottom: 1,
+          borderColor: 'divider',
+          mb: 2,
         }}
       >
-        <Typography
-          id={headId}
-          component={headingLevel}
-          sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary' }}
-        >
+        <SectionHead id={headId} component={headingLevel} underline={false}>
           {title}
-        </Typography>
+        </SectionHead>
         {action && <Box sx={{ flex: 'none' }}>{action}</Box>}
       </Box>
       {children}
@@ -63,7 +62,7 @@ export default function DetailSection({
 
 /** The type of a text action and a free-standing text link: one look for both (Leitlinie 5.1). */
 const TEXT_ACTION_SX = {
-  fontSize: 13.5,
+  fontSize: fontSize.text,
   fontWeight: 500,
   textAlign: 'left',
   minHeight: 24,

@@ -1,7 +1,6 @@
 import {
   EMPTY_SHAREPOINT_VALUES,
   sharePointLibrariesOf,
-  sharePointLibraryLabel,
   sharePointPayloadOf,
   sharePointSettingsFromLibrary,
   sharePointWholeSitesOf,
@@ -9,7 +8,7 @@ import {
 } from '../../utils/sharePointSource'
 import { sharePointSetup } from '../setup/connectors/sharePointSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const sharePointSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.SHAREPOINT,
@@ -31,12 +30,6 @@ export const sharePointSource: SourceRegistration = {
       values.libraries.length > 0 || values.sites.length > 0,
     // ADR-0047: only a profile signs in; the library holds no secret
     toPayload: sharePointPayloadOf,
-    nameFromSource: (values: SharePointSourceValues) => {
-      if (values.allLibraries) {
-        return values.sites.length === 1 && values.sites[0].name ? values.sites[0].name : ''
-      }
-      return values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : ''
-    },
     scopeNoteId: 'sharepoint-sharing-consequence',
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,

@@ -15,6 +15,8 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.library.ExternalAccessProperties;
+import io.opaa.permission.ReadableAssetNames;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import java.time.Clock;
@@ -23,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +69,7 @@ public class ExternalAccessTokenService {
   private final UserRepository users;
   private final ExternalAccessTokenMailer mailer;
   private final LocalTokenRevocationService sessions;
+  private final ExternalAccessProperties properties;
   private final Clock clock;
 
   public ExternalAccessTokenService(
@@ -80,6 +84,7 @@ public class ExternalAccessTokenService {
       UserRepository users,
       ExternalAccessTokenMailer mailer,
       LocalTokenRevocationService sessions,
+      ExternalAccessProperties properties,
       Clock clock) {
     this.tokens = tokens;
     this.libraries = libraries;
@@ -92,6 +97,7 @@ public class ExternalAccessTokenService {
     this.users = users;
     this.mailer = mailer;
     this.sessions = sessions;
+    this.properties = properties;
     this.clock = clock;
   }
 
@@ -109,7 +115,8 @@ public class ExternalAccessTokenService {
    * {@code session} is the bearer token of the issuing web session, never absent; one whose
    * sessions all ended meanwhile - a password change, a reset, a replay - is refused under the lock
    * of {@link LocalTokenRevocationService#sessionEndedSince}, so no token outlives that clean-up by
-   * racing it.
+   * racing it. An account holding {@link ExternalAccessProperties#maxActiveTokensPerAccount} live
+   * tokens is refused; the count runs under a lock per account, so two issuances cannot both pass.
    *
    * @return the stored row together with the plain value, which exists nowhere else afterwards
    */
@@ -154,6 +161,14 @@ public class ExternalAccessTokenService {
     if (sessions.sessionEndedSince(ownerId, session)) {
       throw new AccessDeniedException(
           "Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.");
+    }
+    tokens.lockIssuance(ownerId);
+    int maxActive = properties.maxActiveTokensPerAccount();
+    if (tokens.countActiveOf(ownerId, now) >= maxActive) {
+      throw new ValidationException(
+          "Sie haben bereits "
+              + maxActive
+              + " gültige Zugangstokens. Widerrufen Sie eines, bevor Sie ein neues erstellen.");
     }
 
     String rawValue = ExternalAccessTokenValues.generate();
@@ -224,11 +239,22 @@ public class ExternalAccessTokenService {
   public record EligibleLibrary(
       UUID id, String name, String description, Instant releaseExpiresAt, boolean favorite) {}
 
-  /** The caller's own tokens, newest first, each with the names of its selected libraries. */
+  /**
+   * The caller's own tokens, newest first, each with the names of its selected libraries - a name
+   * only while the caller may still read the library, otherwise {@link
+   * ReadableAssetNames#UNREADABLE}.
+   */
   @Transactional(readOnly = true)
   public List<ExternalAccessTokenView> listOwn(UUID ownerId) {
     List<ExternalAccessToken> own = tokens.findByUserIdOrderByCreatedAtDesc(ownerId);
-    Map<UUID, String> names = namesOf(allSelected(own));
+    Set<UUID> selected = allSelected(own);
+    Map<UUID, String> names = new HashMap<>();
+    selected.forEach(id -> names.put(id, ReadableAssetNames.UNREADABLE));
+    if (!selected.isEmpty()) {
+      libraries.findAllById(selected).stream()
+          .filter(library -> libraryAccess.canRead(library, ownerId, false))
+          .forEach(library -> names.put(library.getId(), library.getName()));
+    }
     return own.stream().map(token -> new ExternalAccessTokenView(token, names)).toList();
   }
 
@@ -258,16 +284,11 @@ public class ExternalAccessTokenService {
 
   /**
    * Records the day of use, at most once per calendar day. Not an audit event and not a counter -
-   * the single use of a token is deliberately never written to the trail.
+   * the single use of a token is deliberately never written to the trail. Writes the day alone and
+   * only while the token is not revoked, so a revocation committed meanwhile stays.
    */
-  @Transactional
   public void recordUse(UUID tokenId) {
-    LocalDate today = LocalDate.now(clock);
-    tokens
-        .findById(tokenId)
-        .filter(token -> token.getRevokedAt() == null)
-        .filter(token -> token.touch(today))
-        .ifPresent(tokens::save);
+    tokens.recordUseOn(tokenId, LocalDate.now(clock));
   }
 
   /** How many live tokens name this library - a number for its owner, never a person. */

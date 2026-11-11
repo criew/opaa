@@ -5,7 +5,6 @@ import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -24,6 +23,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { SuccessionStateNote } from '@/features/succession'
 import SpaceKnowledgeNotice from '../components/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../components/spaceKnowledge'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 // The owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
 // never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,
@@ -112,8 +112,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
 
   if (isLoadingDetails && !space) {
     return (
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
+        <LoadingState shape="detail" count={4} />
       </Box>
     )
   }
@@ -181,9 +181,13 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
           <SpaceKnowledgeNotice spaceId={space.id} gap={knowledgeGap} role={space.userRole} />
         )}
 
-        <Accordion expanded={chatsExpanded} onChange={(_, expanded) => setChatsExpanded(expanded)}>
+        <Accordion
+          expanded={chatsExpanded}
+          onChange={(_, expanded) => setChatsExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
+        >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Chats
             </Typography>
           </AccordionSummary>
@@ -196,9 +200,10 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         <Accordion
           expanded={membersExpanded}
           onChange={(_, expanded) => setMembersExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Mitglieder
             </Typography>
           </AccordionSummary>
@@ -253,9 +258,10 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         <Accordion
           expanded={derivationExpanded}
           onChange={(_, expanded) => setDerivationExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Warum sehe ich diesen Space?
             </Typography>
           </AccordionSummary>
@@ -273,9 +279,10 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         <Accordion
           expanded={librariesExpanded}
           onChange={(_, expanded) => setLibrariesExpanded(expanded)}
+          slotProps={{ heading: { component: 'h2' } }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
-            <Typography component="h2" variant="h6">
+            <Typography component="span" variant="h6">
               Datenquellen
             </Typography>
           </AccordionSummary>
@@ -288,9 +295,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
               </Alert>
             )}
             {isLoadingAssetAssociations ? (
-              <Typography sx={{ color: 'text.secondary' }}>
-                Datenquellen werden geladen …
-              </Typography>
+              <LoadingState shape="lines" count={3} />
             ) : !hasAssetAssociations ? (
               <Typography sx={{ color: 'text.secondary' }}>
                 Diesem Space ist noch nichts zugeordnet.

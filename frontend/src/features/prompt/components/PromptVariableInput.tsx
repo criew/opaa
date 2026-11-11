@@ -1,9 +1,5 @@
-import { useId } from 'react'
-import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import type { PromptVariable } from '@/shared/api/types'
 
 interface PromptVariableInputProps {
@@ -17,10 +13,12 @@ interface PromptVariableInputProps {
   ariaLabel?: string
   /** A visible label on the field itself; it is then also the accessible name. */
   label?: string
-  /** Marks the field as required (asterisk, `required` attribute). */
+  /** Marks the field as required (`required` attribute, no asterisk). */
   required?: boolean
   /** Offers "no value" in a selection - for a default, not for a required answer. */
   allowEmpty?: boolean
+  /** What is missing or wrong, shown under the field after a submit. */
+  error?: string
 }
 
 /**
@@ -35,20 +33,26 @@ export default function PromptVariableInput({
   label,
   required = false,
   allowEmpty = true,
+  error,
 }: PromptVariableInputProps) {
-  const labelId = useId()
+  const field = {
+    size: 'small',
+    fullWidth: true,
+    ...(label === undefined
+      ? { label: ariaLabel ?? (variable.label || variable.name), hideLabel: true as const }
+      : { label }),
+    value,
+    required,
+    error: error !== undefined,
+    helperText: error,
+  } as const
   if (variable.type === 'SELECT') {
-    const select = (
-      <Select
-        size="small"
-        fullWidth
-        displayEmpty={label === undefined}
-        value={value}
+    return (
+      <FormField
+        {...field}
+        select
         onChange={(e) => onChange(e.target.value)}
-        required={required}
-        {...(label === undefined
-          ? { 'aria-label': ariaLabel }
-          : { labelId, label, SelectDisplayProps: { 'aria-labelledby': labelId } })}
+        slotProps={{ select: { displayEmpty: label === undefined } }}
       >
         {allowEmpty && (
           <MenuItem value="">
@@ -60,33 +64,16 @@ export default function PromptVariableInput({
             {option}
           </MenuItem>
         ))}
-      </Select>
-    )
-    if (label === undefined) return select
-    return (
-      <FormControl size="small" fullWidth required={required}>
-        <InputLabel id={labelId}>{label}</InputLabel>
-        {select}
-      </FormControl>
+      </FormField>
     )
   }
   return (
-    <TextField
-      size="small"
-      fullWidth
+    <FormField
+      {...field}
       type={variable.type === 'DATE' ? 'date' : 'text'}
       multiline={variable.type === 'TEXTAREA'}
-      minRows={variable.type === 'TEXTAREA' ? 2 : undefined}
-      value={value}
       onChange={(e) => onChange(e.target.value)}
-      label={label}
-      required={required}
-      slotProps={{
-        htmlInput: { ...(label === undefined ? { 'aria-label': ariaLabel } : {}), maxLength: 2000 },
-        ...(label !== undefined && variable.type === 'DATE'
-          ? { inputLabel: { shrink: true } }
-          : {}),
-      }}
+      slotProps={{ htmlInput: { maxLength: 2000 } }}
     />
   )
 }

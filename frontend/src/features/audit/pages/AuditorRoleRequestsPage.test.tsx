@@ -51,6 +51,20 @@ describe('AuditorRoleRequestsPage', () => {
     expect(await screen.findByText('Es liegt kein Antrag vor.')).toBeInTheDocument()
   })
 
+  it('carries both answers visibly in the row and declines without a menu', async () => {
+    signInAs('AUDITOR')
+    const user = userEvent.setup()
+    renderWithProviders(<AuditorRoleRequestsPage />)
+
+    expect(
+      await screen.findByRole('button', { name: 'Antrag für Lena Klein bestätigen' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('button', { name: /Weitere Aktionen/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Antrag für Lena Klein ablehnen' }))
+
+    expect(await screen.findByText('Es liegt kein Antrag vor.')).toBeInTheDocument()
+  })
+
   it('shows the refusal of the backend as a sentence', async () => {
     signInAs('AUDITOR')
     server.use(

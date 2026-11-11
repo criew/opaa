@@ -7,7 +7,9 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaCodeUnitAccess;
+import com.tngtech.archunit.core.domain.JavaFieldAccess;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.domain.JavaParameter;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
@@ -17,6 +19,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -24,13 +27,14 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 /**
- * Four security invariants over compiled classes. Each rule answers what breaks it now, keyed by
+ * Six security invariants over compiled classes. Each rule answers what breaks it now, keyed by
  * code unit ({@code <class>#<method>}, a lambda counted to the method it is written in) or handler
  * operation, with the first offending call or method reference as value. An allowlist names
  * justified exceptions with their reason: {@link #unlisted} answers what is neither a building
@@ -106,7 +110,8 @@ final class SecurityInvariants {
           "io.opaa.security.SettingsEncryptor", Set.of("decrypt"),
           "io.opaa.security.CredentialsEncryptor", Set.of("decrypt"),
           "io.opaa.security.EncryptedCredentials", Set.of("read"),
-          "io.opaa.security.AesGcmCipher", Set.of("open"));
+          "io.opaa.security.AesGcmCipher", Set.of("open"),
+          "io.opaa.llm.OptionalRoleEndpoints", Set.of("decrypt"));
 
   /**
    * The building blocks that hand a stored secret only to the target it was stored for: a model key
@@ -159,6 +164,51 @@ final class SecurityInvariants {
       Map.of(
           "java.lang.String", Set.of("matches", "replaceAll", "replaceFirst", "split"),
           "java.util.regex.Pattern", Set.of("matches"));
+
+  /** The repository members that write the whole row of an entity they are handed. */
+  static final Set<String> SAVING_MEMBERS =
+      Set.of("save", "saveAll", "saveAndFlush", "saveAllAndFlush");
+
+  /**
+   * Field names that carry security state: who may act (role), whether an account, token or grant
+   * still counts (locked, deactivated, revoked, consumed, ended, erased, dissolved, enabled,
+   * status), until when (session generation, expiry, validity) and the hash of a token that unlocks
+   * it.
+   */
+  static final Pattern SECURITY_STATE_FIELD =
+      Pattern.compile(
+          "(?i).*role|revoked.*|locked.*|.*LockedAt|lockout.*|deactivated.*|disabled|enabled|active"
+              + "|status|dissolved|erasedAt|consumedAt|endedAt|sessionGeneration|validUntil"
+              + "|usableUntil|.*expiresAt|.*TokenHash");
+
+  private static final String SPRING_DATA_REPOSITORY =
+      "org.springframework.data.repository.Repository";
+
+  private static final String ENTITY = "jakarta.persistence.Entity";
+
+  private static final String VERSION = "jakarta.persistence.Version";
+
+  private static final String DYNAMIC_UPDATE = "org.hibernate.annotations.DynamicUpdate";
+
+  /**
+   * The members that hand text to a chat model as a message or a prompt: the constructors and
+   * builders of user and system messages, a prompt, and the system and user text of a chat client
+   * request. Keyed by owner type, subtypes included.
+   */
+  static final Map<String, Set<String>> PROMPT_BUILDING_MEMBERS =
+      Map.of(
+          "org.springframework.ai.chat.messages.UserMessage",
+          Set.of("<init>", "builder"),
+          "org.springframework.ai.chat.messages.SystemMessage",
+          Set.of("<init>", "builder"),
+          "org.springframework.ai.chat.prompt.Prompt",
+          Set.of("<init>", "builder"),
+          "org.springframework.ai.chat.client.ChatClient$ChatClientRequestSpec",
+          Set.of("system", "user"));
+
+  /** The one way foreign text enters a prompt: cleaned, marker-free, fenced where it is data. */
+  static final Set<String> PROMPT_TEXT_BLOCKS =
+      Set.of("io.opaa.common.PromptText", "io.opaa.common.ContentFence");
 
   private static final String CONTROLLER = "org.springframework.stereotype.Controller";
 
@@ -253,6 +303,237 @@ final class SecurityInvariants {
       }
     }
     return found;
+  }
+
+  /**
+   * Code units outside {@code entities} that may write a stale whole row of one of them. Without
+   * {@code @Version} that is a call or reference to one of {@link #SAVING_MEMBERS} on a Spring Data
+   * repository of the entity, since a save merges a detached instance and writes back every column
+   * that differs; without {@code @DynamicUpdate} as well, also a call to one of its {@link
+   * #mutators}, since Hibernate flushes a changed instance as a whole row without any save.
+   */
+  static Map<String, String> wholeRowWriters(JavaClasses classes, Collection<String> entities) {
+    Set<String> saved = new TreeSet<>();
+    Set<String> mutators = new TreeSet<>();
+    for (String entity : entities) {
+      JavaClass type = classes.get(entity);
+      if (hasVersion(type)) {
+        continue;
+      }
+      saved.add(entity);
+      if (!writesChangedColumnsOnly(type)) {
+        mutators.addAll(mutators(type));
+      }
+    }
+    return offenders(
+        classes,
+        access ->
+            mutators.contains(access.getTarget().getFullName())
+                || (SAVING_MEMBERS.contains(access.getTarget().getName())
+                    && domainTypeOf(access.getTargetOwner()).filter(saved::contains).isPresent()),
+        type -> entities.contains(topLevel(type).getName()));
+  }
+
+  /**
+   * Code units reachable from {@code entries} that save a versioned one of {@code entities} through
+   * its Spring Data repository ({@link #SAVING_MEMBERS}): on a concurrent change such a save fails,
+   * and on a path that runs before any controller, as the sign-in does, it fails without the {@code
+   * 409} of the controller advice. Reachable means through calls and method references of OPAA's
+   * own code, a lambda counted to the method it is written in and a call of an interface method to
+   * every implementation in {@code classes}; an event a unit publishes is not followed, so its
+   * listeners belong to {@code entries}.
+   */
+  static Map<String, String> versionedSavesReachableFrom(
+      JavaClasses classes, Collection<String> entries, Collection<String> entities) {
+    Set<String> versioned = new TreeSet<>();
+    for (String entity : entities) {
+      if (hasVersion(classes.get(entity))) {
+        versioned.add(entity);
+      }
+    }
+    Map<String, String> found = new TreeMap<>();
+    Set<String> visited = new TreeSet<>();
+    List<JavaCodeUnit> pending = new ArrayList<>();
+    for (String entry : entries) {
+      pending.addAll(codeUnitsNamed(classes, entry));
+    }
+    while (!pending.isEmpty()) {
+      JavaCodeUnit unit = pending.removeLast();
+      if (!visited.add(unit.getFullName())) {
+        continue;
+      }
+      pending.addAll(lambdasOf(unit));
+      accessesOf(unit)
+          .forEach(
+              access -> {
+                if (SAVING_MEMBERS.contains(access.getTarget().getName())
+                    && domainTypeOf(access.getTargetOwner())
+                        .filter(versioned::contains)
+                        .isPresent()) {
+                  found.putIfAbsent(keyOf(unit), describe(access));
+                }
+                pending.addAll(implementationsOf(classes, access));
+              });
+    }
+    return found;
+  }
+
+  /** The methods of {@code <class>#<method>} in {@code classes}, every overload. */
+  private static List<JavaCodeUnit> codeUnitsNamed(JavaClasses classes, String key) {
+    String[] parts = key.split("#", 2);
+    return classes.get(parts[0]).getCodeUnits().stream()
+        .filter(unit -> unit.getName().equals(parts[1]))
+        .toList();
+  }
+
+  /** The synthetic methods of the lambdas written in {@code unit}. */
+  private static List<JavaCodeUnit> lambdasOf(JavaCodeUnit unit) {
+    return unit.getOwner().getCodeUnits().stream()
+        .filter(
+            candidate -> {
+              Matcher lambda = LAMBDA.matcher(candidate.getName());
+              return lambda.matches() && lambda.group(1).equals(unit.getName());
+            })
+        .toList();
+  }
+
+  /**
+   * The code units of OPAA's own classes in {@code classes} that {@code access} may run: its target
+   * and, for a method, every method of a subtype with the same name and parameters.
+   */
+  private static List<JavaCodeUnit> implementationsOf(
+      JavaClasses classes, JavaCodeUnitAccess<?> access) {
+    JavaClass owner = access.getTargetOwner();
+    if (!owner.getPackageName().startsWith("io.opaa")) {
+      return List.of();
+    }
+    List<JavaCodeUnit> found = new ArrayList<>();
+    access.getTarget().resolveMember().ifPresent(found::add);
+    if (access.getTarget().getName().equals("<init>")) {
+      return found;
+    }
+    String[] parameters =
+        ((CodeUnitAccessTarget) access.getTarget())
+            .getRawParameterTypes().stream().map(JavaClass::getName).toArray(String[]::new);
+    for (JavaClass type : classes) {
+      if (!type.equals(owner) && type.isAssignableTo(owner.getName())) {
+        type.tryGetMethod(access.getTarget().getName(), parameters).ifPresent(found::add);
+      }
+    }
+    return found;
+  }
+
+  /**
+   * The full names of the instance methods of {@code entity} that assign one of its fields,
+   * directly or through another such method of it.
+   */
+  static Set<String> mutators(JavaClass entity) {
+    Set<String> found = new TreeSet<>();
+    boolean grown = true;
+    while (grown) {
+      grown = false;
+      for (JavaMethod method : entity.getMethods()) {
+        if (method.getModifiers().contains(JavaModifier.STATIC)
+            || found.contains(method.getFullName())) {
+          continue;
+        }
+        boolean assigns =
+            method.getFieldAccesses().stream()
+                .anyMatch(
+                    access ->
+                        access.getAccessType() == JavaFieldAccess.AccessType.SET
+                            && access.getTargetOwner().equals(entity));
+        boolean delegates =
+            method.getMethodCallsFromSelf().stream()
+                .anyMatch(call -> found.contains(call.getTarget().getFullName()));
+        if (assigns || delegates) {
+          found.add(method.getFullName());
+          grown = true;
+        }
+      }
+    }
+    return found;
+  }
+
+  /** Whether an optimistic lock refuses every stale write of a row of {@code entity}. */
+  static boolean hasVersion(JavaClass entity) {
+    return entity.getAllFields().stream().anyMatch(field -> field.isAnnotatedWith(VERSION));
+  }
+
+  /**
+   * Whether Hibernate writes only the changed columns of a loaded instance of {@code entity}
+   * ({@code @DynamicUpdate} on it or a superclass), so a column changed concurrently stays.
+   */
+  static boolean writesChangedColumnsOnly(JavaClass entity) {
+    return entity.isAnnotatedWith(DYNAMIC_UPDATE)
+        || entity.getAllRawSuperclasses().stream()
+            .anyMatch(superclass -> superclass.isAnnotatedWith(DYNAMIC_UPDATE));
+  }
+
+  /**
+   * The persistent types in {@code classes} - {@code @Entity} classes and the domain types of
+   * Spring Data repositories - with a field named like security state ({@link
+   * #SECURITY_STATE_FIELD}).
+   */
+  static Set<String> typesWithSecurityStateFields(JavaClasses classes) {
+    Set<String> persistent = new TreeSet<>();
+    for (JavaClass type : classes) {
+      if (type.isAnnotatedWith(ENTITY)) {
+        persistent.add(type.getName());
+      }
+      if (type.isInterface()) {
+        domainTypeOf(type).ifPresent(persistent::add);
+      }
+    }
+    Set<String> found = new TreeSet<>();
+    for (String name : persistent) {
+      if (classes.contain(name)
+          && classes.get(name).getAllFields().stream()
+              .anyMatch(field -> SECURITY_STATE_FIELD.matcher(field.getName()).matches())) {
+        found.add(name);
+      }
+    }
+    return found;
+  }
+
+  /** The domain type of a Spring Data repository, empty for any other type. */
+  private static Optional<String> domainTypeOf(JavaClass owner) {
+    if (!owner.isAssignableTo(SPRING_DATA_REPOSITORY)) {
+      return Optional.empty();
+    }
+    return Optional.ofNullable(
+            ResolvableType.forClass(owner.reflect())
+                .as(org.springframework.data.repository.Repository.class)
+                .resolveGeneric(0))
+        .map(Class::getName);
+  }
+
+  /**
+   * Methods that build a prompt ({@link #PROMPT_BUILDING_MEMBERS}) without calling one of {@link
+   * #PROMPT_TEXT_BLOCKS} themselves; a lambda counts as part of the method it is written in. Which
+   * text flows into a message is not visible in bytecode: the rule makes every method that writes a
+   * prompt either clean its text in the same method or name where that text was cleaned. It cannot
+   * tell whether the cleaned text is the one that reaches the message.
+   */
+  static Map<String, String> promptBuildingUnits(JavaClasses classes) {
+    Map<String, String> building = new TreeMap<>();
+    Set<String> cleaning = new TreeSet<>();
+    for (JavaClass type : classes) {
+      for (JavaCodeUnit unit : type.getCodeUnits()) {
+        accessesOf(unit)
+            .forEach(
+                access -> {
+                  if (matches(access, PROMPT_BUILDING_MEMBERS)) {
+                    building.putIfAbsent(keyOf(unit), describe(access));
+                  }
+                  if (PROMPT_TEXT_BLOCKS.contains(access.getTargetOwner().getName())) {
+                    cleaning.add(keyOf(unit));
+                  }
+                });
+      }
+    }
+    building.keySet().removeAll(cleaning);
+    return building;
   }
 
   /** Lines for the entries of {@code current} that {@code allowed} does not name. */

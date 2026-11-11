@@ -29,6 +29,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.library.ExternalAccessProperties;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
@@ -249,6 +250,28 @@ class ExternalAccessTokenIntegrationTest {
             .getResponse()
             .getContentAsString();
     assertThat(list).doesNotContain(rawValue).contains(stored.getTokenPrefix());
+  }
+
+  @Test
+  void anAccountAtItsBoundOfLiveTokensGetsAnotherOneOnlyAfterRevokingOne() throws Exception {
+    List<UUID> issued = new java.util.ArrayList<>();
+    for (int i = 0; i < ExternalAccessProperties.DEFAULT_MAX_ACTIVE_TOKENS_PER_ACCOUNT; i++) {
+      issued.add(issueTokenId());
+    }
+
+    mockMvc
+        .perform(
+            post("/api/v1/external-access/tokens")
+                .with(devUser("dev-user"))
+                .content(createBody(libraryId, clock.instant().plus(Duration.ofDays(30)))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error", Matchers.containsString("gültige Zugangstokens")));
+
+    mockMvc
+        .perform(
+            delete("/api/v1/external-access/tokens/" + issued.getFirst()).with(devUser("dev-user")))
+        .andExpect(status().is2xxSuccessful());
+    assertThat(issueTokenId()).isNotNull();
   }
 
   @Test
@@ -728,6 +751,30 @@ class ExternalAccessTokenIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.tokens[0].libraries[0].id").value(libraryId.toString()))
         .andExpect(jsonPath("$.tokens[0].libraries[0].suspended").value(true));
+  }
+
+  /**
+   * The own list names a selected library only while the person may still read it: once the reading
+   * right is gone, the entry stays but its name today does not leave the server.
+   */
+  @Test
+  void theOwnListHidesTheNameOfALibraryThePersonNoLongerReads() throws Exception {
+    issue();
+    jdbcTemplate.update(
+        "UPDATE assets SET name = 'Umbenannt ohne Leserecht' WHERE id = ?", libraryId);
+    grants.deleteAll(grants.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId));
+    libraryAccess.invalidateLibrary(libraryId);
+
+    String body =
+        mockMvc
+            .perform(get("/api/v1/external-access/tokens").with(devUser("dev-user")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tokens[0].libraries[0].id").value(libraryId.toString()))
+            .andExpect(jsonPath("$.tokens[0].libraries[0].name").value("(kein Leserecht)"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(body).doesNotContain("Umbenannt ohne Leserecht");
   }
 
   @Test

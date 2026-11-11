@@ -3,6 +3,7 @@ import {
   askQuestion,
   createFromReview,
   expectCitedSource,
+  nameNewLibrary,
   openNewLibraryWizard,
   startFreshChat,
 } from '../fixtures/chat'
@@ -58,9 +59,8 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Dropbox/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
-    ).toBeVisible()
+    await nameNewLibrary(page, LIBRARY_NAME)
+    await expect(page.getByRole('heading', { level: 2, name: 'Quelle', exact: true })).toBeVisible()
     // The profile is the only way for Dropbox: it is set without a choice.
     await expect(page.getByRole('radiogroup', { name: 'Zugang' })).toHaveCount(0)
 
@@ -125,9 +125,7 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
       page.getByRole('status').filter({ hasText: 'Verbindung erfolgreich; der Ordner ist erreichbar.' }),
     ).toBeVisible({ timeout: 15_000 })
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Name', { exact: true }).fill(LIBRARY_NAME)
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     libraryId = libraryIdFromCurrentUrl(page)

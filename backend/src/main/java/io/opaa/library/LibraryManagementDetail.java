@@ -22,9 +22,6 @@ import io.opaa.indexing.spi.ConnectorData;
  * @param externalAccess the library's Freigabe fuer Fremdzugaenge, MANAGER-gated like the rest: it
  *     is set at this bar, and the token count it carries is an input of the annual renewal
  *     decision, not something a VIEWER needs.
- * @param allAccountsGrantAllowed the share cap: whether this library may be granted to "Alle
- *     Konten". {@code null} for {@code UPLOAD} (which carries none) and below the MANAGER
- *     threshold, same gating as {@link #schedule}.
  */
 public record LibraryManagementDetail(
     String sourcePath,
@@ -37,10 +34,8 @@ public record LibraryManagementDetail(
     Boolean lastScheduledRunsFailed,
     Long storageQuotaBytes,
     Long storageUsedBytes,
-    LibraryExternalAccess externalAccess,
-    Boolean allAccountsGrantAllowed) {
+    LibraryExternalAccess externalAccess) {
 
   public static final LibraryManagementDetail EMPTY =
-      new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null);
+      new LibraryManagementDetail(null, null, null, null, null, null, null, null, null, null, null);
 }

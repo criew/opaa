@@ -27,7 +27,6 @@ data:
           - external_access_expires_at
           - external_access_set_at
           - external_access_reminder_sent_at
-          - all_accounts_grant_allowed
           - erasure_requested_at
           - erasure_cause
         person:
@@ -338,7 +337,27 @@ nonPersonalTables:
     - active
     - created_at
     - updated_at
+    - tool_capability
+    - tool_capability_basis
+    - tool_capability_assessed_at
+    - tool_capability_measurement_run
   llm_model_seed_marker: [id, seeded_at]
+  llm_tool_checks:
+    - id
+    - model_id
+    - base_url
+    - model_identifier
+    - status
+    - repetitions
+    - completed_runs
+    - total_runs
+    - started_at
+    - heartbeat_at
+    - finished_at
+    - run_id
+    - failure
+    - report
+    - report_markdown
   embedding_model:
     - id
     - base_url
@@ -361,11 +380,25 @@ nonPersonalTables:
     - reference_vectors
   rerank_model: [id, enabled, base_url, model_identifier, api_key_ciphertext, updated_at]
   transcription_model:
-    [id, enabled, base_url, model_identifier, api_key_ciphertext, language, vocabulary, updated_at]
+    - id
+    - enabled
+    - base_url
+    - model_identifier
+    - api_key_ciphertext
+    - language
+    - vocabulary
+    - updated_at
+    - realtime_protocol
+    - realtime_url
+    - realtime_model
+    - realtime_api_key_ciphertext
+    - realtime_max_sessions
+  transcription_realtime_slots: [id, opened_at]
   text_recognition_model:
     [id, enabled, connection_type, base_url, model_identifier, api_key_ciphertext, updated_at]
   private_storage_quota_settings: [id, quota_bytes, updated_at]
   shared_library_quota_settings: [id, quota_bytes, updated_at]
+  malware_scan_settings: [id, enabled, host, port, timeout_seconds, on_unavailable, updated_at]
   full_sync_rhythm_settings: [source_type, interval_days, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id, extraction_settings]
   outbound_proxy_settings: [id, proxy_host, proxy_port, no_proxy, updated_at]

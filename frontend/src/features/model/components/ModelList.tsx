@@ -1,20 +1,8 @@
 import Box from '@mui/material/Box'
-import Stack from '@mui/material/Stack'
-import TableContainer from '@mui/material/TableContainer'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { LlmModelResponse } from '@/shared/api/types'
-import { fontFamily } from '@/shared/theme/tokens'
-import { MODEL_TABLE_SX } from './modelTableStyles'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import ModelRowMenu from './ModelRowMenu'
+import { TOOL_CAPABILITY_LABELS, toolCapabilityBasisLine } from './toolCapability'
 
 interface ModelListProps {
   models: LlmModelResponse[]
@@ -41,142 +29,70 @@ function StateCell({ active }: { active: boolean }) {
   )
 }
 
+/** The tool capability and, once checked, how and when — never who. */
+function ToolCapabilityCell({ model }: { model: LlmModelResponse }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <ListText>{TOOL_CAPABILITY_LABELS[model.toolCapability.value]}</ListText>
+      <ListText secondary>{toolCapabilityBasisLine(model.toolCapability)}</ListText>
+    </Box>
+  )
+}
+
 /**
- * The chat models as a table — one row per model, the actions in the row menu.
+ * The chat models as a list — one row per model, the actions in the row menu.
  *
  * Temperature and maximum response length deliberately have no column: they are fine tuning
  * nobody skims a list for, and are in the dialog. An overview that shows everything shows
  * nothing.
  */
-/** The same details stacked - on a narrow window a five-column table is
- *  not readable, and the page must not scroll horizontally for it (pattern of the account list). */
-function ModelCard({
-  model,
-  onEdit,
-}: {
-  model: LlmModelResponse
-  onEdit: ModelListProps['onEdit']
-}) {
-  return (
-    <Box sx={{ py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{model.displayName}</Typography>
-          <Typography
-            sx={{
-              fontSize: 12,
-              color: 'text.secondary',
-              fontFamily: fontFamily.mono,
-              overflowWrap: 'anywhere',
-            }}
-          >
-            {model.modelIdentifier}
-          </Typography>
-        </Box>
-        <ModelRowMenu model={model} onEdit={onEdit} />
-      </Box>
-      <Box sx={{ mt: 0.75, fontSize: 12.5 }}>
-        <StateCell active={model.active} />
-      </Box>
-      <Typography
-        sx={{
-          fontSize: 12,
-          color: 'text.secondary',
-          fontFamily: fontFamily.mono,
-          overflowWrap: 'anywhere',
-          mt: 0.5,
-        }}
-      >
-        {model.baseUrl}
-      </Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
-        {model.apiKeySet ? 'Schlüssel hinterlegt' : 'Ohne Schlüssel'}
-      </Typography>
-    </Box>
-  )
-}
-
 export default function ModelList({ models, onEdit }: ModelListProps) {
-  const theme = useTheme()
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
-
-  if (!isDesktop) {
-    return (
-      <Stack spacing={0}>
-        {models.map((model) => (
-          <ModelCard key={model.id} model={model} onEdit={onEdit} />
-        ))}
-      </Stack>
-    )
-  }
-
   return (
-    // The endpoints can be any length; instead of bursting the row, the table scrolls horizontally.
-    // `tabIndex` and `role` make the scrollable area reachable by keyboard - without them
-    // the right columns could only be reached with the mouse (pattern of LibraryStatusTable).
-    <TableContainer
-      tabIndex={0}
-      role="region"
-      aria-label="Tabelle Chat-Modelle, horizontal scrollbar"
-    >
-      <Table size="small" aria-label="Chat-Modelle" sx={{ minWidth: 720, ...MODEL_TABLE_SX }}>
-        <TableHead>
-          <TableRow>
-            <TableCell>Modell</TableCell>
-            <TableCell sx={{ width: '32%' }}>Endpunkt</TableCell>
-            <TableCell sx={{ width: '15%' }}>Zustand</TableCell>
-            <TableCell sx={{ width: '15%' }}>Zugang</TableCell>
-            <TableCell align="right" sx={{ width: 56 }}>
-              <span style={visuallyHidden}>Aktionen</span>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {models.map((model) => (
-            <TableRow key={model.id}>
-              <TableCell>
-                <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 600 }}>
-                  {model.displayName}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: 12,
-                    color: 'text.secondary',
-                    fontFamily: fontFamily.mono,
-                    overflowWrap: 'anywhere',
-                  }}
-                >
-                  {model.modelIdentifier}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Tooltip title={model.baseUrl}>
-                  <Box
-                    component="span"
-                    sx={{
-                      fontFamily: fontFamily.mono,
-                      fontSize: 12,
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {model.baseUrl}
-                  </Box>
-                </Tooltip>
-              </TableCell>
-              <TableCell>
-                <StateCell active={model.active} />
-              </TableCell>
-              <TableCell>{model.apiKeySet ? 'Schlüssel hinterlegt' : 'Ohne Schlüssel'}</TableCell>
-              <TableCell align="right">
-                <ModelRowMenu model={model} onEdit={onEdit} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <AdminList
+      label="Chat-Modelle"
+      rows={models}
+      rowKey={(model) => model.id}
+      rowLabel={(model) => model.displayName}
+      minWidth={860}
+      columns={[
+        {
+          id: 'model',
+          head: 'Modell',
+          cell: (model) => (
+            <Box sx={{ minWidth: 0 }}>
+              <ListText strong>{model.displayName}</ListText>
+              <ListText mono secondary>
+                {model.modelIdentifier}
+              </ListText>
+            </Box>
+          ),
+        },
+        {
+          id: 'endpoint',
+          head: 'Endpunkt',
+          width: '28%',
+          cell: (model) => <ListText mono>{model.baseUrl}</ListText>,
+        },
+        {
+          id: 'state',
+          head: 'Zustand',
+          width: '13%',
+          cell: (model) => <StateCell active={model.active} />,
+        },
+        {
+          id: 'access',
+          head: 'Zugang',
+          width: '13%',
+          cell: (model) => (model.apiKeySet ? 'Schlüssel hinterlegt' : 'Ohne Schlüssel'),
+        },
+        {
+          id: 'tools',
+          head: 'Werkzeuge',
+          width: '18%',
+          cell: (model) => <ToolCapabilityCell model={model} />,
+        },
+      ]}
+      rowActions={(model) => <ModelRowMenu model={model} onEdit={onEdit} />}
+    />
   )
 }

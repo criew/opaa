@@ -1,15 +1,14 @@
 import { useId, useState, type ReactNode } from 'react'
-import Dialog from '@mui/material/Dialog'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import TextField from '@mui/material/TextField'
 import { TextAction } from '@/shared/ui/DetailSection'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import StateDot from '@/shared/ui/StateDot'
-import PathLabel from './PathLabel'
+import PathLabel from '../sourceCore/PathLabel'
 import { ROW_GRID } from './rowStyles'
-import type { RowStatus, RowSummary } from './setupTypes'
+import type { RowStatus, RowSummary } from '../sourceCore/setupTypes'
+import { fontSize } from '@/shared/theme/tokens'
+import ViewDialog from '@/shared/ui/dialog/ViewDialog'
 
 /** Entries a list summary names before „und n weitere“. */
 const SHOWN = 5
@@ -93,7 +92,7 @@ export function SummaryValue({
       <Box sx={{ minWidth: 0 }}>
         <Typography
           sx={{
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             color: text ? 'text.primary' : 'text.secondary',
             overflowWrap: 'anywhere',
           }}
@@ -110,7 +109,7 @@ export function SummaryValue({
               <Box
                 component="li"
                 key={item}
-                sx={{ fontSize: 13.5, lineHeight: '22px', display: 'flex' }}
+                sx={{ fontSize: fontSize.text, lineHeight: '22px', display: 'flex' }}
               >
                 <Box component="span" sx={{ minWidth: 0 }}>
                   <PathLabel path={item} />
@@ -121,7 +120,7 @@ export function SummaryValue({
             {items.length > SHOWN && (
               <Box
                 component="li"
-                sx={{ fontSize: 13.5, lineHeight: '22px', color: 'text.secondary' }}
+                sx={{ fontSize: fontSize.text, lineHeight: '22px', color: 'text.secondary' }}
               >
                 {expandable ? (
                   <TextAction onClick={() => setShowAll(true)}>
@@ -140,7 +139,7 @@ export function SummaryValue({
               <Box
                 component="li"
                 key={entry}
-                sx={{ fontSize: 13.5, lineHeight: '22px', display: 'flex' }}
+                sx={{ fontSize: fontSize.text, lineHeight: '22px', display: 'flex' }}
               >
                 <Box component="span" sx={{ minWidth: 0 }}>
                   <PathLabel path={entry} />
@@ -153,53 +152,47 @@ export function SummaryValue({
           </Box>
         )}
         {expandable && (
-          <Dialog
+          <ViewDialog
             open={showAll}
             onClose={() => setShowAll(false)}
-            fullWidth
-            maxWidth="sm"
-            aria-labelledby={allTitleId}
+            titleId={allTitleId}
+            title={text}
           >
-            <DialogTitleWithClose id={allTitleId} onClose={() => setShowAll(false)}>
-              {text}
-            </DialogTitleWithClose>
-            <DialogContent>
-              <TextField
-                size="small"
-                fullWidth
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name enthält …"
-                slotProps={{ htmlInput: { 'aria-label': 'Einträge durchsuchen' } }}
-                sx={{ mb: 1.5, mt: 0.5 }}
-              />
-              <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-                {items
-                  .filter(
-                    (item) =>
-                      !query.trim() || item.toLowerCase().includes(query.trim().toLowerCase()),
-                  )
-                  .map((item) => (
-                    <Box
-                      component="li"
-                      key={item}
-                      sx={{
-                        py: 0.75,
-                        fontSize: 13.5,
-                        borderBottom: 1,
-                        borderColor: 'divider',
-                        display: 'flex',
-                      }}
-                    >
-                      <Box component="span" sx={{ minWidth: 0 }}>
-                        <PathLabel path={item} />
-                      </Box>
-                      {mark(item)}
+            <TextField
+              size="small"
+              fullWidth
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Name enthält …"
+              slotProps={{ htmlInput: { 'aria-label': 'Einträge durchsuchen' } }}
+              sx={{ mb: 1.5, mt: 0.5 }}
+            />
+            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+              {items
+                .filter(
+                  (item) =>
+                    !query.trim() || item.toLowerCase().includes(query.trim().toLowerCase()),
+                )
+                .map((item) => (
+                  <Box
+                    component="li"
+                    key={item}
+                    sx={{
+                      py: 0.75,
+                      fontSize: fontSize.text,
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                      display: 'flex',
+                    }}
+                  >
+                    <Box component="span" sx={{ minWidth: 0 }}>
+                      <PathLabel path={item} />
                     </Box>
-                  ))}
-              </Box>
-            </DialogContent>
-          </Dialog>
+                    {mark(item)}
+                  </Box>
+                ))}
+            </Box>
+          </ViewDialog>
         )}
       </Box>
     )
@@ -217,7 +210,7 @@ export function SummaryValue({
       >
         <Typography
           sx={{
-            fontSize: 13.5,
+            fontSize: fontSize.text,
             color: text ? 'text.primary' : 'text.secondary',
             overflowWrap: 'anywhere',
             minWidth: 0,
@@ -234,14 +227,14 @@ export function SummaryValue({
       {items.length > 0 && (
         <Box component="ul" sx={{ m: 0, mt: 0.25, p: 0, listStyle: 'none' }}>
           {items.slice(0, SHOWN).map((item) => (
-            <Box component="li" key={item} sx={{ fontSize: 13.5, lineHeight: '22px' }}>
+            <Box component="li" key={item} sx={{ fontSize: fontSize.text, lineHeight: '22px' }}>
               <PathLabel path={item} />
             </Box>
           ))}
           {items.length > SHOWN && (
             <Box
               component="li"
-              sx={{ fontSize: 13.5, lineHeight: '22px', color: 'text.secondary' }}
+              sx={{ fontSize: fontSize.text, lineHeight: '22px', color: 'text.secondary' }}
             >
               und {items.length - SHOWN} weitere
             </Box>
@@ -302,7 +295,7 @@ export default function SummaryRow({
         <Typography
           component={headingLevel}
           id={`${id}-title`}
-          sx={{ fontSize: 15, fontWeight: 600, gridColumn: '1', color: 'text.primary' }}
+          sx={{ fontSize: fontSize.title, fontWeight: 600, gridColumn: '1', color: 'text.primary' }}
         >
           {title}
         </Typography>
@@ -318,7 +311,7 @@ export default function SummaryRow({
             {issues.length > 0 && (
               <Box id={issuesId} sx={{ mt: 0.5 }}>
                 {issues.map((issue) => (
-                  <Typography key={issue} sx={{ fontSize: 12.5, color: 'error.main' }}>
+                  <Typography key={issue} sx={{ fontSize: fontSize.meta, color: 'error.main' }}>
                     {issue}
                   </Typography>
                 ))}

@@ -7,8 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.RetrievalStageName;
-import io.opaa.llm.RerankModelRole;
-import io.opaa.llm.RerankRoleStatus;
+import io.opaa.llm.OptionalRoleStatus;
+import io.opaa.llm.rerank.RerankModelRole;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
@@ -83,7 +83,7 @@ class PipelineHarnessSupportTest {
     RetrievalPipeline failing = mock(RetrievalPipeline.class);
     when(failing.run(any())).thenThrow(new IllegalStateException("vector store exploded"));
     RerankModelRole disabledRole = mock(RerankModelRole.class);
-    when(disabledRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
+    when(disabledRole.currentStatus()).thenReturn(OptionalRoleStatus.disabled());
 
     assertThatCode(
             () ->

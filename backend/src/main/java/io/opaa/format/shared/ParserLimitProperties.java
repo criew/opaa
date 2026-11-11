@@ -38,7 +38,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     stream costs, such as a page holding one string literal of hundreds of megabytes. Default 32
  *     MiB.
  * @param maxPdfParseSeconds the wall-clock time one PDF may take to read, loading included, as a
- *     backstop for work the counts above do not see. Default 120.
+ *     backstop for work the counts above do not see. Rendering pages for text recognition applies
+ *     it, the operators and the content bytes to each page anew; the time of loading restarts with
+ *     every page, while the objects it registers count for the whole document. Default 120.
  * @param maxPdfPages the most pages one PDF may have, counted by walking its page tree rather than
  *     trusting the {@code /Count} it declares; a page listed twice counts twice. Default 10 000.
  * @param maxPdfObjects the most objects PDFBox may register for one PDF while it loads and reads

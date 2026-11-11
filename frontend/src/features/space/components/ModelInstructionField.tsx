@@ -1,6 +1,5 @@
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
 
 /** Same limit as the specification and the database. */
 export const MODEL_INSTRUCTION_MAX_LENGTH = 1000
@@ -28,13 +27,12 @@ export default function ModelInstructionField({
     'personenbezogenen Angaben.'
   return (
     <Box>
-      <FieldLabel htmlFor={id}>Anweisung an das Modell</FieldLabel>
-      <TextField
+      <FormField
+        label="Anweisung an das Modell"
         id={id}
         size="small"
         fullWidth
         multiline
-        minRows={3}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={
@@ -49,7 +47,6 @@ export default function ModelInstructionField({
         }
         slotProps={{
           htmlInput: { readOnly: !canChange, maxLength: MODEL_INSTRUCTION_MAX_LENGTH },
-          formHelperText: { sx: { mx: 0 } },
         }}
       />
     </Box>

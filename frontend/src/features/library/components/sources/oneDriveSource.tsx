@@ -1,8 +1,5 @@
 import {
   EMPTY_ONEDRIVE_VALUES,
-  oneDriveChosenFolders,
-  oneDriveFolderLabel,
-  oneDriveLabel,
   oneDrivePayloadOf,
   oneDriveSettingsFromLibrary,
   oneDriveValuesOf,
@@ -10,16 +7,7 @@ import {
 } from '../../utils/oneDriveSource'
 import { oneDriveSetup } from '../setup/connectors/oneDriveSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
-
-/** The last segment of a folder's shown path. */
-function lastSegment(path: string) {
-  const segments = path
-    .split('/')
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-  return segments[segments.length - 1] ?? ''
-}
+import type { SourceRegistration } from '../sourceCore/types'
 
 /**
  * The OneDrive for Business of a person, only ever as her private library (ADR-0058): the profile
@@ -43,12 +31,6 @@ export const oneDriveSource: SourceRegistration = {
     // the OneDrive is found, not entered: only a choice of folders is something to lose
     isDirty: (values: OneDriveSourceValues) => !values.allFolders || values.folders.length > 0,
     toPayload: oneDrivePayloadOf,
-    nameFromSource: (values: OneDriveSourceValues) => {
-      if (values.driveId === '') return ''
-      const folders = oneDriveChosenFolders(values)
-      if (values.allFolders) return oneDriveLabel(values)
-      return folders.length === 1 ? lastSegment(oneDriveFolderLabel(folders[0])) : ''
-    },
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,
     firstRunHint:

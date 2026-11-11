@@ -46,7 +46,8 @@ e2e/
   installation-assistant/        Konfiguration des Ziels "installation": das Szenario des
     playwright.config.ts         Einrichtungs-Assistenten aus tests/ gegen einen Stack im Installationsmodus
   installation.env           Environment des Installationsmodus (oidc, ohne Antwortdatei, Token gesetzt)
-  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt des Assistenten
+  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt, oidc-stub, ocr-stub
+                                 und clamd-stub für die Schritte des Assistenten
   multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
     playwright.config.ts         Konfiguration, ohne Browser
     tests/*.spec.ts
@@ -65,6 +66,7 @@ e2e/
   docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
   scripts/offline.mjs            Lebenszyklus des Ziels "offline"
   ocr-stub/server.mjs            Ersatz für docling-serve (opaa-ocr), spielt die aufgezeichnete Antwort ab
+  oidc-stub/server.mjs           Ersatz für einen OIDC-Anbieter: Discovery, JWK-Set, stille Anmeldung abgelehnt
   ocr/                           Ziel "ocr": Abnahme der Texterkennung mit echtem opaa-ocr, als Video
     playwright.config.ts
     tests/abnahme.spec.ts
@@ -143,8 +145,8 @@ weiter anheben.
 ### Isolation von einem laufenden Dev-Stack
 
 Der E2E-Stack läuft als **eigenes Compose-Projekt** (`COMPOSE_PROJECT_NAME=opaa-e2e`) auf **eigenen
-Host-Ports** (Postgres `15432`, Backend `18081`, Frontend `13000`, überschreibbar via
-`OPAA_DB_PORT`/`OPAA_BACKEND_PORT`/`OPAA_FRONTEND_PORT`) und mit einem **eigenen Environment**
+Host-Ports** (Postgres `15432`, Backend `18081`, Management-Port `18181`, Frontend `13000`, überschreibbar via
+`OPAA_DB_PORT`/`OPAA_BACKEND_PORT`/`OPAA_BACKEND_MANAGEMENT_PORT`/`OPAA_FRONTEND_PORT`) und mit einem **eigenen Environment**
 (`e2e/e2e.env`, nie `.env.docker`). `docker-compose.yml` selbst hat keine festen `container_name`-
 Werte mehr — Compose präfixiert Container-, Netzwerk- und Volume-Namen automatisch mit dem
 Projektnamen. Ein parallel laufender Dev-Stack (`docker compose up`, Standardprojekt) wird von
@@ -299,6 +301,19 @@ Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANT
 Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
 des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
+Für **Agenten** (#3680) spielt der Stub jede Anfrage, die ein Werkzeug des Agenten anbietet, nach
+einem festen Skript: je ein `search_knowledge` pro Text in „…“ der Frage (höchstens zwei, sonst eine
+Suche mit der ganzen Frage), dann eine Antwort, die je Schritt nur die Fundstellen mit diesem
+Begriff zitiert. Auslösewörter ändern das Skript: `E2E-AGENT-PAUSE` hält den Modellaufruf nach dem
+ersten Werkzeugergebnis fest, bis `POST /control/agent-release` ihn freigibt (`GET
+/control/agent-hold` zählt die wartenden Aufrufe); `E2E-AGENT-RUECKFRAGE` beginnt mit `ask_user`;
+`E2E-AGENT-GRENZE` sucht immer weiter, bis eine Grenze den Lauf beendet; `E2E-AGENT-DATEI` füllt
+nach der Suche `fill_template` mit Werten, die er aus dem Schema des Werkzeugs erfindet.
+Ein Agent mit Planschritt bekommt im ersten Lauf kein Werkzeug; der Stub erkennt ihn an den Planregeln
+im Systemtext und antwortet mit einem festen Plan, der bestätigende Lauf sucht nach den Begriffen der
+ersten Frage.
+Anfragen mit `run_code` spielen weiter das Skript des Ziels `sandbox`.
+
 Für den **Modellfehler** (#3467) lässt `E2E-MODELL-FEHLER` in der Frage den Antwort-Prompt mit
 `400` scheitern, wie ein Anbieter, der eine Anfrage ablehnt. Ein 4xx wiederholt der Client des
 Backends nicht, die Meldung „Fehler im KI-Dienst" steht also sofort im Chat statt nach einer
@@ -334,8 +349,9 @@ Aufgabe ist das deterministische Modell, und die Dropbox-Routen haben damit nich
 
 `clamd-stub` (`e2e/clamd-stub/server.mjs`, ebenfalls ein Skript im Standard-`node`-Image) spricht
 das `INSTREAM`-Protokoll von clamd und meldet `FOUND` für die EICAR-Testzeichenfolge, `OK` für alles
-andere. `e2e.env` schaltet die Virenprüfung damit für den ganzen Stack ein (`OPAA_MALWARE_SCAN_*`),
-jeder Upload und jede Konnektoraufnahme der Suite läuft also durch sie. Ein echtes ClamAV lädt beim
+andere; auf `VERSION` antwortet er wie ClamAV. `upload-limits.spec.ts` prüft ihn über den
+Verbindungstest der Administration und schaltet die Virenprüfung damit ein; sie bleibt für den Rest
+des Laufs an, jeder spätere Upload und jede Konnektoraufnahme läuft also durch sie. Ein echtes ClamAV lädt beim
 Start erst seine Signaturdatenbank aus dem Netz, das kostete jeden Lauf Minuten und Speicher.
 
 Dieselbe Datei setzt kleine Grenzen, damit die Ablehnungen ohne große Dateien prüfbar sind: 4 MiB je
@@ -703,6 +719,15 @@ lassen.
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
+- `tests/live-dictation.spec.ts` (#2615) — Live-Diktat (ADR-0072) durch den ganzen Stack: Browser,
+  WebSocket-Upgrade in nginx, `/api/v1/transcriptions/stream` und `ai-stub` als Live-Dienst im
+  vLLM-Protokoll (`ws://ai-stub:8089/realtime`). Chromium spielt über das Fake-Mikrofon einen Ton ab.
+  - **1.** Der Text erscheint beim Sprechen gedimmt unter der Eingabe, nach „Aufnahme beenden“ steht
+    der endgültige Live-Text im Entwurf.
+  - **2.** `ai-stub` bricht die Verbindung beim ersten Audio-Frame ab (`POST /control/realtime`
+    `{"drop": true}`); der Entwurf bekommt den Text der parallel aufgezeichneten Aufnahme vom
+    Batch-Endpunkt, ohne Fehlermeldung.
+
 - `tests/text-recognition.spec.ts` (#3606) — Texterkennung gescannter PDFs (ADR-0069) mit
   `ocr-stub` als docling-serve (siehe „Texterkennung“ unten). Die Nummern sind die der Testtitel
   (Szenarien des Issues); ausgeführt wird in dieser Reihenfolge:
@@ -824,6 +849,29 @@ lassen.
   (`praepariertes-merkblatt.txt`) übernommene Links bleiben Text, und der Beleg zeigt das Merkblatt.
   Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
   her.
+
+- `tests/agents-schalter-anlegerecht.spec.ts`, `tests/agents-teilen-und-wahl.spec.ts`,
+  `tests/agents-lauf.spec.ts`, `tests/agents-sperre.spec.ts`,
+  `tests/agents-plan-verzeichnis.spec.ts` (#3680, Epic #1747) — das Agenten-Paket
+  mit dem KI-Stub (siehe dort). **Schalter aus:** keine `@`-Agentenwahl, kein Katalogeintrag
+  „Agenten“ oder „Vorlagen“, die Schnittstelle antwortet 404, der gewöhnliche Chat antwortet wie
+  bisher. **Anlegerecht:** ohne `CREATE_AGENT` fehlt die Kachel und der Assistent nennt den Grund;
+  die verantwortliche Stelle ist Pflicht im Schritt „Freigaben“; nach der Freigabe der
+  Systemverwaltung entsteht der Agent. **Teilen und Wahl:** Freigabe an eine Gruppe, das Mitglied
+  wählt den Agenten, eine fremde Person im selben Space nicht; Agent- und Wissens-Einträge und Chips
+  sind unterscheidbar, `@Agent` mit `/Prompt` läuft über den Agenten. **Lauf:** Schritte erscheinen
+  im Strom durch den nginx des Frontend-Containers, während der Lauf am Stub festgehalten wird;
+  Belege aus beiden Schritten, Fassungsstempel, „Entwurf“; Stopp, Rückfrage, Grenze, volles
+  Platzlimit (zwei gleichzeitige Läufe von zwei Personen, Vorgabe) und Personenlimit (ein Lauf je Person, Vorgabe) und ein Modell ohne Werkzeugfähigkeit. **Sperre:**
+  gesperrter Agent fehlt in der Auswahl, ein offener Chat meldet die Sperre beim Senden. Schalter,
+  Werkzeugfähigkeit des Modells und Vorlagen-Schalter sind installationsweit; jedes Szenario stellt
+  den Stand davor wieder her. Die Datei nach Vorlage (DOCX und PDF, gesperrte Vorlage) braucht die
+  Sandbox und läuft im Ziel `sandbox` (`sandbox/tests/agent-vorlage.spec.ts`, nicht in der CI).
+  **Plan und Verzeichnis** (`agents-plan-verzeichnis.spec.ts`): ein Agent mit Planschritt endet mit
+  dem Plan, „Bestätigen“ startet den Lauf mit Belegen, „Ändern“ wählt den Agenten und setzt den
+  Fokus in die Eingabe; wer das Recht „Agentenverzeichnis einsehen“ hat, sieht die Agenten ohne
+  Nutzungsangaben, vorher die Sperrmeldung. Der Agent des Szenarios ist ein selbst angelegter mit
+  denselben Einstellungen wie „Recherche“ (Planschritt „bestätigen“).
 
 - `tests/lifecycle.spec.ts` (#3465, Epic #3462) — die Wege, die eine Installation umziehen und
   Bestände übergeben oder entfernen. **Einstellungen übertragen:** Export über die Oberfläche, eine
@@ -977,7 +1025,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 
 | Datei | Prüft |
 | --- | --- |
-| `01-erststart.spec.ts` | Anmeldung auf `/login` nach der Installation, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testmail, eingeschaltete lokale Verwaltung und die Weiterleitung von `/login/system` |
+| `01-erststart.spec.ts` | Anmeldung auf `/login` nach der Installation, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testnachricht, eingeschaltete lokale Verwaltung und die Weiterleitung von `/login/system` |
 | `02-einladung.spec.ts` | Einladung, Link aus der Mail, Passwort setzen, Einmaligkeit des Links, erste Anmeldung, persönlicher Space, Anlagegrund in den eigenen Einstellungen — dazu der erzwungene Wechsel nach einem erzeugten Anfangspasswort |
 | `03-passwort-vergessen.spec.ts` | Gleiche Antwort für unbekannte Adressen und keine Mail, Rücksetzen über den Link, Ende der laufenden Sitzung mit Grund |
 | `04-sperre.spec.ts` | Sperre nach fünf Fehlversuchen, unveränderte Antwort auch bei richtigem Passwort, Entsperren durch die Verwaltung, offener Rücksetzweg trotz Sperre |
@@ -1022,22 +1070,29 @@ Betriebsmodus `oidc` auf einer leeren Datenbank, **ohne** Antwortdatei und mit v
 läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, über die Konfiguration
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
 Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zwei Varianten, je auf
-einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspringt die optionalen Schritte
-Chat-, Embedding-, Rerank- und Transkriptionsmodell, E-Mail-Versand und Branding und endet mit der
-Anmeldung des ersten Kontos auf der regulären Anmeldeseite unter dem OPAA-Standard, `@mail-filled`
-wählt das Rerank-Modell aus der Liste des Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`;
-`POST …/rerank` bewertet jede Probe) und das Transkriptionsmodell aus der Liste unter
-`http://ai-stub:8089/transcription` (nur diese beiden Präfixe des Stubs haben eine Modellliste, Chat-
-und Embedding-Schritt finden keine), findet beide danach eingeschaltet unter „Modelle → Reranking“
-und „Modelle → Spracheingabe“, richtet den E-Mail-Versand gegen den Mailpit des
-Stapels ein (Profil `mail`, `mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die
-Testnachricht über `E2E_MAILPIT_BASE_URL` zurück, füllt das Branding aus und findet Produktname und
-Akzentfarbe danach auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
+einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` bleibt bei lokalen Konten,
+überspringt die optionalen Schritte Chat-Modell, Einbettung, Reranking, Spracheingabe,
+Texterkennung, Virenprüfung, E-Mail und Branding und endet mit der Anmeldung des ersten Kontos auf
+der regulären Anmeldeseite unter dem OPAA-Standard. `@mail-filled` trägt `oidc-stub` als
+Identitätsanbieter ein (Issuer `http://localhost:18095` für den Browser, JWK-Set unter
+`http://oidc-stub:8095/jwks` für das Backend), wählt das Rerank-Modell aus der Liste des
+Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`; `POST …/rerank` bewertet jede Probe) und
+das Transkriptionsmodell aus der Liste unter `http://ai-stub:8089/transcription` (nur diese beiden
+Präfixe des Stubs haben eine Modellliste, Chat- und Embedding-Schritt finden keine), prüft die
+Texterkennung gegen `ocr-stub` (erst mit falschem Schlüssel, Stufe „Anmeldung“), die Virenprüfung
+gegen `clamd-stub`, richtet die E-Mail gegen den Mailpit des Stapels ein (Profil `mail`,
+`mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die Testnachricht über
+`E2E_MAILPIT_BASE_URL` zurück und füllt das Branding aus. Nach dem Abschluss zeigt die Anmeldeseite den
+Anbieter (die stille Anmeldung beantwortet der Stub mit `login_required`), und die Verwaltung zeigt
+Reranking, Spracheingabe, Texterkennung und Virenprüfung eingeschaltet; Produktname und Akzentfarbe
+erscheinen auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
 `playwright-report-installation-<variante>`, `test-results/installation-<variante>-results.json`);
 der Barrierefreiheitsbericht führt die JSON-Berichte zusammen. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
 sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
 (`--pass-with-no-tests`). Eigene Ports und ein eigenes Subnetz (`172.27.0.0/16`); in
 `local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.
+Jeder Schritt des Assistenten muss in dem Szenario vorkommen: `.github/scripts/check_installation_e2e_coverage.sh`
+lässt die CI scheitern, sobald ein Wert von `InstallationStep` dort fehlt.
 
 ## Zwei Instanzen (#2952)
 

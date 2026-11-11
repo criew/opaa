@@ -1,9 +1,11 @@
 package io.opaa.knowledge;
 
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
+import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import io.opaa.compliance.InstanceStateSource;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,16 +27,19 @@ class KnowledgeInstanceState implements InstanceStateSource {
   private final KnowledgeLibraryRepository libraries;
   private final UploadedOriginalStore originalStore;
   private final MalwareScanService malwareScanService;
+  private final MalwareScanSettingsService malwareScanSettings;
   private final ObjectProvider<ConnectorDataFlows> connectorDataFlows;
 
   KnowledgeInstanceState(
       KnowledgeLibraryRepository libraries,
       UploadedOriginalStore originalStore,
       MalwareScanService malwareScanService,
+      MalwareScanSettingsService malwareScanSettings,
       ObjectProvider<ConnectorDataFlows> connectorDataFlows) {
     this.libraries = libraries;
     this.originalStore = originalStore;
     this.malwareScanService = malwareScanService;
+    this.malwareScanSettings = malwareScanSettings;
     this.connectorDataFlows = connectorDataFlows;
   }
 
@@ -66,6 +71,23 @@ class KnowledgeInstanceState implements InstanceStateSource {
     flows.put("original-store", originalStore instanceof S3UploadedOriginalStore);
     flows.put("malware-scanner", malwareScanService.enabled());
     return flows;
+  }
+
+  /** The malware scan as saved, or its factory default without a change time. */
+  @Override
+  public Map<String, StoredValue> storedSettings() {
+    MalwareScanSettingsSnapshot scan = malwareScanSettings.current();
+    Map<String, StoredValue> stored = new LinkedHashMap<>();
+    stored.put(
+        "malware_scan_settings.enabled",
+        new StoredValue(String.valueOf(scan.enabled()), scan.updatedAt()));
+    stored.put(
+        "malware_scan_settings.host",
+        new StoredValue(scan.host() == null ? "" : scan.host(), scan.updatedAt()));
+    stored.put(
+        "malware_scan_settings.on_unavailable",
+        new StoredValue(scan.onUnavailable().name(), scan.updatedAt()));
+    return stored;
   }
 
   private Map<String, Long> sharedLibraryCounts(UUID organizationId) {

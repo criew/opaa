@@ -253,7 +253,7 @@ describe('LibraryServiceAccountsSection', () => {
 
     const dialog = await openManage(user)
     const alert = await within(dialog).findByRole('alert')
-    expect(alert).toHaveTextContent('Die Auswahl konnte nicht geladen werden.')
+    expect(alert).toHaveTextContent('Die wählbaren Dienstkonten konnten nicht geladen werden.')
     fail = false
     await user.click(within(alert).getByRole('button', { name: 'Erneut laden' }))
     expect(

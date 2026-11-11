@@ -41,6 +41,20 @@ function saveCapture(librariesOverQuota = 0) {
   return sent
 }
 
+/** The limit is a value row: „Ändern“ opens its field. */
+async function openField(user = userEvent.setup()) {
+  await user.click(await screen.findByRole('button', { name: 'Grenze je Bibliothek ändern' }))
+  return screen.getByLabelText('Grenze je Bibliothek (GB)')
+}
+
+/** „Speichern“ stays active; with a wrong or unchanged entry it asks nothing and sends nothing. */
+async function expectNothingToSave() {
+  const save = screen.getByRole('button', { name: 'Speichern' })
+  expect(save).toBeEnabled()
+  await userEvent.setup().click(save)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+}
+
 describe('SharedLibraryQuotaSection', () => {
   it('shows the upper limit of the operation as the limit in force without an own value', async () => {
     quota()
@@ -49,9 +63,9 @@ describe('SharedLibraryQuotaSection', () => {
     expect(await screen.findByTestId('shared-library-quota-current')).toHaveTextContent(
       'Es gilt die Obergrenze des Betriebs: 10 GB je Bibliothek.',
     )
-    expect(screen.getByLabelText('Grenze je Bibliothek (GB)')).toHaveValue('10')
+    expect(await openField()).toHaveValue('10')
     expect(screen.getByText('Höchstens 10 GB, die Obergrenze des Betriebs.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+    await expectNothingToSave()
     expect(
       screen.queryByRole('button', { name: 'Eigene Grenze entfernen' }),
     ).not.toBeInTheDocument()
@@ -63,16 +77,16 @@ describe('SharedLibraryQuotaSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SharedLibraryQuotaSection />)
 
-    const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '2,5')
-    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     const question = 'Speicherkontingent geteilter Bibliotheken auf 2,5 GB je Bibliothek ändern?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /Gelöscht wird nichts.*nimmt nichts mehr auf/,
     )
-    await answerConfirm(user, question, 'Grenze ändern')
+    await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 2.5 * GIB }]))
     expect(await screen.findByTestId('shared-library-quota-current')).toHaveTextContent(
@@ -89,7 +103,7 @@ describe('SharedLibraryQuotaSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SharedLibraryQuotaSection />)
 
-    const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '11')
 
@@ -98,7 +112,7 @@ describe('SharedLibraryQuotaSection', () => {
         'Die Grenze darf die Obergrenze des Betriebs von 10 GB nicht überschreiten.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+    await expectNothingToSave()
     expect(sent).toEqual([])
   })
 
@@ -113,7 +127,7 @@ describe('SharedLibraryQuotaSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       'Es gilt dann die Obergrenze des Betriebs von 10 GB.',
     )
-    await answerConfirm(user, question, 'Grenze entfernen')
+    await answerConfirm(user, question, 'Entfernen')
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: null }]))
     expect(await screen.findByTestId('shared-library-quota-current')).toHaveTextContent(
@@ -137,7 +151,7 @@ describe('SharedLibraryQuotaSection', () => {
     expect(await screen.findByTestId('shared-library-quota-current')).toHaveTextContent(
       'Es gilt keine Grenze je Bibliothek.',
     )
-    expect(screen.getByLabelText('Grenze je Bibliothek (GB)')).toHaveValue('')
+    expect(await openField()).toHaveValue('')
     expect(screen.getByText('Der Betrieb hat keine Obergrenze gesetzt.')).toBeInTheDocument()
   })
 
@@ -157,19 +171,22 @@ describe('SharedLibraryQuotaSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<SharedLibraryQuotaSection />)
 
-    const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+    const field = await openField(user)
     await user.clear(field)
     await user.type(field, '3')
-    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await answerConfirm(
       user,
       'Speicherkontingent geteilter Bibliotheken auf 3 GB je Bibliothek ändern?',
-      'Grenze ändern',
+      'Ändern',
     )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Das Speicherkontingent darf die Obergrenze des Betriebs nicht überschreiten.',
-    )
+    expect(
+      await screen.findByText(
+        'Das Speicherkontingent darf die Obergrenze des Betriebs nicht überschreiten.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Grenze je Bibliothek (GB)')).toBeInvalid()
   })
 
   describe('with an upper limit that is no multiple of a GB', () => {
@@ -179,10 +196,10 @@ describe('SharedLibraryQuotaSection', () => {
       quota({ quotaBytes: CAP, capBytes: CAP })
       renderWithProviders(<SharedLibraryQuotaSection />)
 
-      const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+      const field = await openField()
       expect(field).toHaveValue('9,313226')
       expect(field).not.toHaveAttribute('aria-invalid', 'true')
-      expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+      await expectNothingToSave()
     })
 
     it('takes the shown upper limit as the exact upper limit', async () => {
@@ -191,11 +208,11 @@ describe('SharedLibraryQuotaSection', () => {
       const user = userEvent.setup()
       renderWithProviders(<SharedLibraryQuotaSection />)
 
-      const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+      const field = await openField(user)
       await user.clear(field)
       await user.type(field, '9,313226')
-      await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
-      await answerConfirm(user, /Speicherkontingent geteilter Bibliotheken auf/, 'Grenze ändern')
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+      await answerConfirm(user, /Speicherkontingent geteilter Bibliotheken auf/, 'Ändern')
 
       await waitFor(() => expect(sent).toEqual([{ quotaBytes: CAP }]))
     })
@@ -204,8 +221,8 @@ describe('SharedLibraryQuotaSection', () => {
       quota({ quotaBytes: 5_000_000_000, ownQuotaBytes: 5_000_000_000, capBytes: CAP })
       renderWithProviders(<SharedLibraryQuotaSection />)
 
-      expect(await screen.findByLabelText('Grenze je Bibliothek (GB)')).toHaveValue('4,656613')
-      expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+      expect(await openField()).toHaveValue('4,656613')
+      await expectNothingToSave()
     })
   })
 })

@@ -120,34 +120,6 @@
     {
       "if": {
         "properties": {
-          "malwareScan": {
-            "properties": {
-              "enabled": {
-                "const": true
-              }
-            }
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "malwareScan": {
-            "required": [
-              "host"
-            ],
-            "properties": {
-              "host": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
           "siemExport": {
             "properties": {
               "enabled": {
@@ -216,6 +188,34 @@
               "ocrApiKey": {
                 "type": "string",
                 "minLength": 32
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tracing": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "tracing": {
+            "required": [
+              "otlpEndpoint"
+            ],
+            "properties": {
+              "otlpEndpoint": {
+                "type": "string",
+                "minLength": 1
               }
             }
           }
@@ -424,6 +424,32 @@
           "type": "string",
           "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
           "description": "Duration such as 30s or PT30S; empty keeps the application default"
+        }
+      }
+    },
+    "tracing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "otlpEndpoint": {
+          "type": "string",
+          "pattern": "^(https?://\\S+)?$",
+          "description": "OTLP/HTTP address of the trace collector including the path, e.g. http://otel-collector.monitoring:4318/v1/traces"
+        },
+        "samplingProbability": {
+          "type": "string",
+          "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)?$",
+          "description": "Share of requests traced, 0.0 to 1.0; empty keeps the application default"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "NetworkPolicy egress rules of the backend to the collector, while tracing is on and networkPolicy.egress is enabled"
         }
       }
     },
@@ -686,36 +712,59 @@
         }
       }
     },
-    "malwareScan": {
+    "sandbox": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "enabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Offers the agent tools run_code and fill_template (OPAA_SANDBOX_ENABLED); needs baseUrl, namespace, the server selectors and secrets.sandboxApiKey"
         },
-        "host": {
+        "baseUrl": {
           "type": "string",
-          "pattern": "^([^\\s/:]+)?$",
-          "description": "Host name or address of clamd, without scheme or port"
+          "pattern": "^(https?://\\S+)?$",
+          "description": "Address of the OpenSandbox server (OPAA_SANDBOX_BASE_URL)"
         },
-        "port": {
+        "namespace": {
           "type": "string",
-          "pattern": "^([1-9][0-9]{0,4})?$",
-          "description": "TCP port of clamd; empty keeps the application default"
+          "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$",
+          "description": "Namespace of the sandbox pods; the chart closes their network there"
         },
-        "timeout": {
+        "serverNamespaceSelector": {
+          "type": "object",
+          "description": "Namespace selector of the OpenSandbox server"
+        },
+        "serverPodSelector": {
+          "type": "object",
+          "description": "Pod selector of the OpenSandbox server"
+        },
+        "serverPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port of the OpenSandbox server"
+        },
+        "image": {
+          "type": "string",
+          "description": "Sandbox image; empty keeps the application default"
+        },
+        "runTimeout": {
           "type": "string",
           "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
-          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+          "description": "Time limit of one script such as 60s; empty keeps the application default"
         },
-        "onUnavailable": {
+        "maxLifetime": {
           "type": "string",
-          "enum": [
-            "",
-            "REJECT",
-            "ACCEPT"
-          ],
-          "description": "What happens to a file the scanner could not judge; empty keeps REJECT"
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Longest life of one sandbox such as 15m, at least 60s; empty keeps the application default"
+        },
+        "cpu": {
+          "type": "string",
+          "description": "CPU limit of one sandbox such as 1 or 500m; empty keeps the application default"
+        },
+        "memory": {
+          "type": "string",
+          "description": "Memory limit of one sandbox such as 1Gi; empty keeps the application default"
         }
       }
     },
@@ -1009,6 +1058,217 @@
             "indexingStallMinutes": {
               "type": "integer",
               "minimum": 1
+            },
+            "groups": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "platform": {
+                  "type": "boolean"
+                },
+                "chat": {
+                  "type": "boolean"
+                },
+                "model": {
+                  "type": "boolean"
+                },
+                "indexing": {
+                  "type": "boolean"
+                },
+                "directory": {
+                  "type": "boolean"
+                },
+                "background": {
+                  "type": "boolean"
+                },
+                "audit": {
+                  "type": "boolean"
+                },
+                "security": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "errorRateCriticalThreshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "retrievalEmptyShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "outboundAuthErrorShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "identityProviderFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "throttledShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "indexingRunFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "mailFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "malwareScanFailureShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "chatSloObjective": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            },
+            "errorRateCriticalMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "chatSloMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timeToFirstTokenMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retrievalEmptyMinQuestions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outboundAuthErrorMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identityProviderMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identityProviderKeyErrorMin": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "throttledMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indexingRunFailureMinRuns": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mailFailureMinAttempts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "malwareScanMinScans": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "loginFailureMin": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "monthlyTokenBudget": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timeToFirstTokenSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "directorySyncMaxAgeHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "directorySyncPlanPendingHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scheduledOverdueMinMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "malwareSignatureMaxAgeDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "siemExportLagMinutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "auditLogHorizonWarningDays": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "auditLogHorizonCriticalHours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "heartbeatMaxAgeSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scheduledOverdueFactor": {
+              "type": "number",
+              "minimum": 1
+            },
+            "loginFailureFactor": {
+              "type": "number",
+              "minimum": 1
+            },
+            "queueMaxAgeMinutes": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[a-z_]+$"
+              },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "runbookBaseUrl": {
+          "type": "string",
+          "pattern": "^https?://[^#\\s]+$",
+          "description": "Address of the runbook page without anchor"
+        },
+        "grafanaDashboards": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "labelValue": {
+              "type": "string"
+            },
+            "folder": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "object"
+            },
+            "annotations": {
+              "type": "object"
             }
           }
         }
@@ -1325,6 +1585,11 @@
           "pattern": "^$|^\\S{32,}$",
           "description": "Key of the bundled text recognition service (ocr-api-key), at least 32 characters without spaces; required with ocr.service.enabled unless secrets.existingSecret is set"
         },
+        "sandboxApiKey": {
+          "type": "string",
+          "pattern": "^$|^\\S{32,}$",
+          "description": "API key of the OpenSandbox server (OPAA_SANDBOX_API_KEY), at least 32 characters without spaces; required with sandbox.enabled unless secrets.existingSecret is set"
+        },
         "rerankApiKey": {
           "type": "string",
           "description": "Without effect since the model administration holds the role (Modelle); still accepted so that value files up to v0.1.0-rc.4 keep rendering.",
@@ -1489,6 +1754,13 @@
               "OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT",
               "OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT",
               "OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS_PER_ACCOUNT",
               "OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS",
               "OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS",
               "OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS",

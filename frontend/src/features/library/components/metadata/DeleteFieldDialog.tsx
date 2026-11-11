@@ -1,11 +1,7 @@
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface DeleteFieldDialogProps {
   libraryId: string
@@ -26,33 +22,30 @@ export default function DeleteFieldDialog({
   onClose,
 }: DeleteFieldDialogProps) {
   return (
-    <Dialog open={deleteField != null} onClose={onClose}>
-      <DialogTitle>Feld löschen</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2">
-          {deleteUsage == null
-            ? 'Betroffene Dokumente werden ermittelt …'
-            : `${deleteUsage} Dokument(e) tragen einen Wert für „${deleteField?.label}“. Mit dem Feld werden diese Werte und seine Werteliste entfernt.`}
-        </Typography>
-        {deleteField && (
-          <ChangeImpactNotice
-            libraryId={libraryId}
-            fieldKey={deleteField.fieldKey}
-            change="FIELD_REMOVED"
-          />
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button
-          color="error"
-          variant="contained"
-          disabled={deleteUsage == null}
-          onClick={onConfirm}
-        >
-          Endgültig löschen
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open={deleteField != null}
+      width="confirm"
+      tone="danger"
+      title={`„${deleteField?.label ?? ''}“ löschen?`}
+      submitLabel="Löschen"
+      onSubmit={() => {
+        // the consequence is not known yet: nothing to confirm
+        if (deleteUsage != null) onConfirm()
+      }}
+      onClose={onClose}
+    >
+      <Typography variant="body2">
+        {deleteUsage == null
+          ? 'Betroffene Dokumente werden ermittelt …'
+          : `${deleteUsage} Dokument(e) tragen einen Wert für „${deleteField?.label}“. Mit dem Feld werden diese Werte und seine Werteliste entfernt.`}
+      </Typography>
+      {deleteField && (
+        <ChangeImpactNotice
+          libraryId={libraryId}
+          fieldKey={deleteField.fieldKey}
+          change="FIELD_REMOVED"
+        />
+      )}
+    </FormDialog>
   )
 }

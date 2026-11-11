@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { OutboundProxyResponse } from '@/shared/api/types'
 import { getOutboundProxy, updateOutboundProxy } from '../api/outboundProxyApi'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import PageSection from '@/shared/ui/PageSection'
+import { fontSize } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** One entry per line; blank lines drop out. */
 function entriesOf(text: string): string[] {
@@ -69,19 +70,22 @@ export default function OutboundProxySection() {
     current !== null &&
     (proxyUrl !== (current.proxyUrl ?? null) || !sameEntries(noProxy, current.noProxy))
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  function discard() {
+    if (current) adopt(current)
+    setFieldErrors({})
+    setSaveError(null)
+  }
+
+  async function handleSave() {
     if (busy || !changed) return
     const confirmed = await confirmAction({
       question:
-        proxyUrl === null
-          ? 'Ausgangsproxy entfernen und alle Verbindungen direkt aufbauen?'
-          : `Ausgangsproxy ${proxyUrl} speichern?`,
+        proxyUrl === null ? 'Ausgangsproxy entfernen?' : `Ausgangsproxy ${proxyUrl} speichern?`,
       consequence:
         proxyUrl === null
           ? 'Alle ausgehenden Verbindungen gehen ab sofort direkt hinaus. Die Änderung steht im Revisionsprotokoll.'
           : 'Ab sofort gehen alle ausgehenden HTTP(S)-Verbindungen über diesen Proxy, außer zu den Zielen der Ausnahmeliste – auch die Anmeldung über einen Identitätsanbieter. Ein falscher Proxy kann die Anmeldung über den Anbieter lahmlegen; das lokale Konto der Systemverwaltung bleibt nutzbar. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Speichern',
+      confirmLabel: proxyUrl === null ? 'Entfernen' : 'Speichern',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -114,29 +118,35 @@ export default function OutboundProxySection() {
       description="Alle ausgehenden HTTP(S)-Verbindungen laufen über diesen Proxy, auch zu Sprachmodellen und Identitätsanbietern; Ziele der Ausnahmeliste erreicht OPAA direkt."
     >
       {loadError ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void load()}>
-              Erneut laden
-            </Button>
+        <LoadError
+          message="Der Ausgangsproxy konnte nicht geladen werden."
+          detail={loadError}
+          onRetry={() => void load()}
+        />
+      ) : current === null ? (
+        <LoadingState shape="lines" count={2} />
+      ) : (
+        <SettingsForm
+          onSave={handleSave}
+          busy={busy}
+          busyAnnouncement="Ausgangsproxy wird gespeichert"
+          dirty={changed}
+          onDiscard={discard}
+          result={
+            saveError && (
+              <Alert severity="error" role="alert">
+                {saveError}
+              </Alert>
+            )
           }
         >
-          {loadError}
-        </Alert>
-      ) : current === null ? (
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Ausgangsproxy wird geladen …
-        </Typography>
-      ) : (
-        <Box component="form" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="outbound-proxy-current">
             {current.proxyUrl
               ? `Ausgehende Verbindungen gehen über ${current.proxyUrl}.`
               : 'Es ist kein Ausgangsproxy eingetragen; alle Verbindungen gehen direkt hinaus.'}
           </Typography>
-          <Stack spacing={2} sx={{ maxWidth: 560 }}>
-            <TextField
+          <Stack spacing={2}>
+            <FormField
               label="Proxy-Adresse"
               size="small"
               value={proxyDraft}
@@ -151,11 +161,10 @@ export default function OutboundProxySection() {
                 'http://host:port oder host:port. Leer lassen, um alle Verbindungen direkt aufzubauen.'
               }
             />
-            <TextField
+            <FormField
               label="Ausnahmeliste"
               size="small"
               multiline
-              minRows={3}
               value={noProxyDraft}
               placeholder={'intranet.example.org\n10.0.0.0/8'}
               onChange={(event) => {
@@ -168,29 +177,13 @@ export default function OutboundProxySection() {
                 'Ein Eintrag je Zeile: ein Hostname (gilt auch für alle Subdomänen), eine IP-Adresse oder ein Netzbereich wie 10.0.0.0/8. Interne Ziele gehören hierher.'
               }
             />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
               Die Ausnahmeliste gibt keine internen Adressen frei. Welche internen Ziele OPAA
               überhaupt erreichen darf, legt der Betrieb über
               OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST fest.
             </Typography>
-            <Box>
-              <BusyButton
-                type="submit"
-                variant="outlined"
-                busy={busy}
-                busyAnnouncement="Ausgangsproxy wird gespeichert"
-                disabled={!changed && !busy}
-              >
-                Ausgangsproxy speichern
-              </BusyButton>
-            </Box>
           </Stack>
-          {saveError && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {saveError}
-            </Alert>
-          )}
-        </Box>
+        </SettingsForm>
       )}
     </PageSection>
   )

@@ -78,7 +78,7 @@ describe('OwnExternalAccessTokensSection', () => {
     // would lead to a refusal. Revoking stays possible.
     expect(screen.getByRole('button', { name: 'Token erzeugen' })).toBeDisabled()
     expect(
-      screen.getByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Claude Code (Dienst-PC)“' }),
     ).toBeEnabled()
   })
 
@@ -408,7 +408,7 @@ describe('OwnExternalAccessTokensSection', () => {
       'opaa_pat_new1_geheimer_wert_nur_dieses_eine_mal',
     )
 
-    await user.click(within(valueDialog).getByRole('button', { name: 'Kopiert, schließen' }))
+    await user.click(within(valueDialog).getByRole('button', { name: 'Schließen' }))
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Token erzeugt' })).not.toBeInTheDocument(),
     )
@@ -494,14 +494,16 @@ describe('OwnExternalAccessTokensSection', () => {
     const user = userEvent.setup()
     render()
 
+    // Revoking is irreversible and therefore behind „⋯", never a button in the row.
     await user.click(
-      await screen.findByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Claude Code (Dienst-PC)“' }),
     )
+    await user.click(await screen.findByRole('menuitem', { name: 'Widerrufen' }))
     const confirmation = await screen.findByRole('dialog', {
-      name: 'Token „Claude Code (Dienst-PC)“ widerrufen?',
+      name: '„Claude Code (Dienst-PC)“ widerrufen?',
     })
     expect(within(confirmation).getByText(/verliert sofort den Zugriff/)).toBeInTheDocument()
-    await answerConfirm(user, 'Token „Claude Code (Dienst-PC)“ widerrufen?', 'Widerrufen')
+    await answerConfirm(user, '„Claude Code (Dienst-PC)“ widerrufen?', 'Widerrufen')
 
     await waitFor(() => expect(screen.getByText('widerrufen')).toBeInTheDocument())
   })

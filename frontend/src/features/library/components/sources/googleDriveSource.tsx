@@ -1,14 +1,13 @@
 import {
   EMPTY_GOOGLE_DRIVE_VALUES,
   googleDrivePayloadOf,
-  googleDriveScopeLabel,
   googleDriveScopesOf,
   googleDriveSettingsFromLibrary,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
 import { googleDriveSetup } from '../setup/connectors/googleDriveSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const googleDriveSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.GOOGLE_DRIVE,
@@ -31,10 +30,6 @@ export const googleDriveSource: SourceRegistration = {
     isDirty: (values: GoogleDriveSourceValues) =>
       values.keyFile !== '' || values.subject !== '' || values.scopes.length > 0,
     toPayload: googleDrivePayloadOf,
-    nameFromSource: (values: GoogleDriveSourceValues) =>
-      !values.allScopes && values.scopes.length === 1
-        ? googleDriveScopeLabel(values.scopes[0])
-        : '',
     scopeNoteId: 'google-drive-sharing-consequence',
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,

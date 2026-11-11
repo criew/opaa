@@ -137,6 +137,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
     delete:
       operationId: deleteGroup
@@ -470,6 +472,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/groups/{groupId}/protection:
     parameters:
@@ -516,6 +520,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/groups/{groupId}/deactivation:
     parameters:

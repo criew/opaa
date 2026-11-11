@@ -1,4 +1,6 @@
 import type {
+  AgentRun,
+  AgentRunStreamStep,
   AnswerEvidence,
   ChatAttachmentRef,
   SearchedLibrary,
@@ -6,6 +8,21 @@ import type {
 } from '@/shared/api/types'
 
 export type MessageRole = 'user' | 'assistant'
+
+/**
+ * An agent run while it works, as the answer stream reports it: the steps so far (a step without
+ * status still runs), whether a limit was reached and whether the run ended. Shown under the
+ * status line until the final answer carries the kept steps.
+ */
+export interface LiveAgentRun {
+  /** The run's id from run_started, as AgentRun.runId of the final answer. */
+  runId?: string
+  steps: AgentRunStreamStep[]
+  limitReached: boolean
+  ended: boolean
+  /** How the run ended, from run_finished. */
+  endState?: AgentRun['endState']
+}
 
 export interface ChatMessage {
   id: string
@@ -45,6 +62,8 @@ export interface ChatMessage {
   answerEmpty?: boolean
   /** The answer's Belegstand (QueryResponse/ChatMessageResponse#evidence), absent when not assessed. */
   evidence?: AnswerEvidence
+  /** The agent run behind the answer (QueryResponse/ChatMessageResponse#agentRun), absent otherwise. */
+  agentRun?: AgentRun
   /**
    * True when any source the answer was given with - cited or not - came from one of the
    * caller's private libraries (QueryResponse/ChatMessageResponse#privateSourcesInContext).
@@ -55,6 +74,11 @@ export interface ChatMessage {
    * snapshot shown as "Prompt: <title>", never a link.
    */
   usedPromptTitle?: string
+  /**
+   * On a question: the name of the agent it was sent to - set when sent, and on a loaded chat
+   * taken from the answer's agent run.
+   */
+  agentName?: string
   /** On a question: the files sent along with it. */
   attachments?: ChatAttachmentRef[]
   timestamp: Date

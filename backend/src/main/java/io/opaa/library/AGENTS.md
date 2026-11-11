@@ -13,7 +13,7 @@ liegt in `io.opaa.knowledge`, Zuordnung und Adressprüfung in connections; eine 
 - **Das Recht zu löschen und zu übertragen liegt immer bei einer Person.** Beim Anlegen erhält der
   Ersteller ausdrücklich `OWNER`; bei einer Gruppenbibliothek bekommt die Gruppe `MANAGER`, nie `OWNER`.
 - **Eine private Bibliothek** (`KnowledgeLibrary#isOwnerOnly`, Merkmal der Asset-Schale) hat nur ihre Besitzerin.
-  Fremdzugang und Freigabe-Obergrenze fragen `OwnerOnlyRule#requireShareable`; für alle anderen ist sie unbekannt
+  Der Fremdzugang fragt `OwnerOnlyRule#requireShareable`; für alle anderen ist sie unbekannt
   (`404`, gleiche Antwort wie ohne sie). Angelegt wird sie nur in `PrivateLibraryCreation`, an Zugang, Konto und
   Ziel gebunden über `PrivateLibraryConnections`; Protokolle nennen sie `auditName()`. Ein zweites Merkmal an
   `knowledge_libraries` gibt es nicht. Gelöscht wird sie nur über `PrivateLibraryErasure` (Marker, eine Transaktion,
@@ -41,7 +41,7 @@ liegt in `io.opaa.knowledge`, Zuordnung und Adressprüfung in connections; eine 
 - [ADR-0030](../../../../../../../docs/decisions/0030-originalablage-der-uploads.md) (Entscheidung 11): Aufräumen verwaister Originale
 - [ADR-0035](../../../../../../../docs/decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) (Entscheidung 4): Freigabe für Fremdzugänge
 - [ADR-0036](../../../../../../../docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 5): Anlegen über Fähigkeiten
-- [ADR-0037](../../../../../../../docs/decisions/0037-reichweite-als-freigabe-an-alle.md) (Entscheidung 5): Freigabe-Obergrenze
+- [ADR-0037](../../../../../../../docs/decisions/0037-reichweite-als-freigabe-an-alle.md) (Entscheidung 5): Reichweite allein über das Anlegerecht
 - [ADR-0038](../../../../../../../docs/decisions/0038-steckbare-konnektoren.md): Konnektoren nur über Registry
 - [ADR-0049](../../../../../../../docs/decisions/0049-private-bibliotheken-und-kontingente.md) (Entscheidungen 1, 2, 4): private Bibliotheken, Kontingent
 

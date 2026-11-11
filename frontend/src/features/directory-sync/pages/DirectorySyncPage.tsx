@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
@@ -15,9 +15,11 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 import DirectorySyncOverview from '../components/DirectorySyncOverview'
-import DirectorySyncPanel from '../components/DirectorySyncPanel'
+import DirectorySyncDialog from '../components/DirectorySyncDialog'
 import DirectorySyncThresholdSection from '../components/DirectorySyncThresholdSection'
 import { usePendingPlans } from '../components/usePendingPlans'
 import {
@@ -26,7 +28,7 @@ import {
   type OverviewEntry,
   type OverviewFilter,
 } from '../components/directorySyncState'
-import { contentWidth } from '@/shared/theme/tokens'
+import { contentWidth, fontSize } from '@/shared/theme/tokens'
 
 /** From this many providers on, the overview offers a filter and a search. */
 const FILTER_FROM = 6
@@ -60,7 +62,7 @@ function attentionSummary(entries: OverviewEntry[]) {
 /**
  * The directory sync per provider (ADR-0036, Entscheidung 3): one row per provider with its
  * mechanism, last and next run and what needs doing; report, plan, schedule and access open in
- * the side panel.
+ * the dialog.
  */
 export default function DirectorySyncPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -121,7 +123,7 @@ export default function DirectorySyncPage() {
 
   if (!isSystemAdmin) {
     return (
-      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
+      <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.form }}>
         <PageHeading title="Verzeichnisabgleich" gutterBottom />
         <Alert severity="info">
           Den Verzeichnisabgleich führt die Systemverwaltung. Für Ihr Konto ist diese Seite nicht
@@ -138,28 +140,28 @@ export default function DirectorySyncPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: contentWidth.areaContent }}>
+      <Box sx={{ maxWidth: contentWidth.list }}>
         <AreaPageHeader
           icon={SyncOutlinedIcon}
           title="Verzeichnisabgleich"
-          meta={entries.length === 1 ? '1 Anbieter' : `${entries.length} Anbieter`}
+          count={{ total: entries.length, unit: ['Anbieter', 'Anbieter'] }}
           description="OPAA liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters, nur lesend."
         />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         <Box component="section" aria-labelledby="directory-sync-overview-heading">
           <SectionHead id="directory-sync-overview-heading">Abgleich je Anbieter</SectionHead>
-          {isLoading ? (
-            <ListLoading label="Abgleichstand wird geladen …" />
+          {error ? (
+            <LoadError
+              message="Der Abgleichstand konnte nicht geladen werden."
+              detail={error}
+              onRetry={() => void reload()}
+            />
+          ) : isLoading ? (
+            <LoadingState />
           ) : entries.length === 0 ? (
-            <ListEmptyState
-              title="Kein Identitätsanbieter hinterlegt"
-              hint="Ein Verzeichnisabgleich gehört immer zu einem Anbieter. Legen Sie ihn zuerst unter Administration → Identitätsanbieter an."
+            <EmptyState
+              framed
+              message="Noch keine Identitätsanbieter. Ein Verzeichnisabgleich gehört immer zu einem Anbieter; legen Sie ihn zuerst unter Administration → Identitätsanbieter an."
             />
           ) : (
             <>
@@ -184,21 +186,28 @@ export default function DirectorySyncPage() {
                     </ToggleButton>
                     <ToggleButton value="ON">Eingeschaltet ({onCount})</ToggleButton>
                   </ToggleButtonGroup>
-                  <TextField
+                  <FormField
                     size="small"
                     type="search"
                     label="Anbieter suchen"
+                    hideLabel
+                    placeholder="Anbieter suchen …"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    slotProps={{ htmlInput: { 'data-list-search': '' } }}
                     sx={{ width: { sm: 260 } }}
                   />
                 </Stack>
               )}
 
               {visible.length === 0 ? (
-                <ListEmptyState
-                  title="Kein Anbieter passt zu dieser Auswahl"
-                  hint="Wählen Sie „Alle“ oder ändern Sie den Suchbegriff."
+                <EmptyState
+                  framed
+                  kind="noMatch"
+                  onReset={() => {
+                    setFilter('ALL')
+                    setQuery('')
+                  }}
                 />
               ) : (
                 <DirectorySyncOverview entries={visible} onOpen={setSelectedId} now={now} />
@@ -206,7 +215,7 @@ export default function DirectorySyncPage() {
             </>
           )}
           {!isLoading && entries.length > 0 && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1.5 }}>
+            <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1.5 }}>
               Der nächste Lauf ergibt sich aus dem letzten Lauf und dem Intervall des Anbieters;
               „jetzt fällig“ heißt, das Intervall ist verstrichen. Das gilt nur, solange der
               Zeittakt der Installation eingeschaltet ist – sonst laufen Abgleiche nur von Hand.
@@ -217,7 +226,7 @@ export default function DirectorySyncPage() {
         <DirectorySyncThresholdSection />
       </Box>
 
-      <DirectorySyncPanel
+      <DirectorySyncDialog
         key={selectedId ?? 'closed'}
         provider={selected?.provider ?? null}
         status={selected?.status}

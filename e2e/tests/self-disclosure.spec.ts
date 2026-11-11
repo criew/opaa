@@ -173,7 +173,7 @@ async function askAndWait(page: Page, question: string): Promise<string> {
 
 async function openSpaceChat(page: Page): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
-  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Nachricht eingeben' })).toBeVisible()
 }
 
 test.describe('Selbstauskunft aus den Einstellungen', () => {
@@ -388,12 +388,12 @@ ${BODY}
     try {
       await admin.goto('/admin/privacy')
       const section = admin.getByRole('region', { name: 'Selbstauskunft' })
-      const toggle = section.getByRole('switch', { name: 'Selbstauskunft anbieten' })
+      const toggle = section.getByRole('checkbox', { name: 'Selbstauskunft anbieten' })
       await expect(toggle).toBeChecked({ timeout: 20_000 })
       await toggle.click()
       await section.getByRole('button', { name: 'Speichern' }).click()
-      const confirm = admin.getByRole('dialog').filter({ hasText: 'Selbstauskunft abschalten?' })
-      await confirm.getByRole('button', { name: 'Abschalten' }).click()
+      const confirm = admin.getByRole('dialog').filter({ hasText: 'Selbstauskunft ausschalten?' })
+      await confirm.getByRole('button', { name: 'Ausschalten' }).click()
       await expect(admin.getByText('Die Selbstauskunft ist abgeschaltet.')).toBeVisible()
 
       await openMyData(page)

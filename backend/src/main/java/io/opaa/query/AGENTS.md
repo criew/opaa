@@ -1,13 +1,13 @@
 # Modul assistant
 
-Pakete (`io.opaa.*`): query, chat, search, searchadmin, prompt. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): query, chat, search, searchadmin, prompt, template, agent. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Von der Frage zur belegten Antwort: die Abfragefassade mit Antwort und Zitaten (`query`), Chats
 samt Suchbereich eines Turns (`chat`), der Leseweg ohne Generierung (`search`), die lesende
-Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zweiter Asset-Typ
-(`prompt`). Die Pipeline selbst ist das Modul retrieval (`retrieval/AGENTS.md`).
+Betriebssicht auf das Retrieval (`searchadmin`), Prompt-Bibliothek (`prompt`), Dokumentvorlage
+(`template`) und Agent (`agent`) als Asset-Typen. Die Pipeline selbst ist das Modul retrieval (`retrieval/AGENTS.md`).
 
 ## Invarianten und Stolpersteine
 
@@ -26,14 +26,14 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
 - **Ein Chat gehört seinem Autor.** Weder Raum- noch Systemverwaltung sieht ihn. Neue Fragen
   verlangen weiter die Raummitgliedschaft (`requireStillSpaceMember`).
 - **Chats gesperrter Konten** löscht `LockedAccountChatCleanupService` nach Sperre durch Verwaltung oder Verzeichnis.
-- **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt außer dem
-  Entity-Mapping keine Abfrage.
+- **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt nur das Entity-Mapping.
+- **`template` rendert nichts:** Platzhalter per Regex lesen, füllen nur in der Sandbox (`NoTemplateEngineTest`).
 - **`prompt` baut auf der Asset-Schale auf** und fragt `io.opaa.permission` nur nach Rollen. Es
-  kennt `io.opaa.library` nicht, und kein Fachpaket kennt es (`PermissionPackageBoundaryTest`).
-  Das gilt auch für `prompt.web`: Die Prompts eines Space holt `PromptService` über den Port
-  `SpaceAssetDirectory`.
-- **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
-  `QueryService` kennt nur die Schnittstelle `ToolLoopQueryHandler`.
+  kennt `io.opaa.library` nicht, und kein Fachpaket kennt es (`PermissionPackageBoundaryTest`), auch
+  `prompt.web` nicht: Die Prompts eines Space holt `PromptService` über den Port `SpaceAssetDirectory`.
+- **Sandbox nur über `query.sandbox.Sandboxes`** (ADR-0073), Ausgaben nur als Anhang; `query.runlog` ohne Konto/Inhalt.
+- **Zyklen:** keine zwischen Unterpaketen. `query.toolloop` hängt an `query`, nicht umgekehrt:
+  `QueryService` kennt nur `AgentTurnHandler` (ADR-0070).
 
 ## Maßgebliche ADRs
 
@@ -52,7 +52,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
 
 ```bash
 ./gradlew test --tests 'io.opaa.query.*' --tests 'io.opaa.chat.*' --tests 'io.opaa.search.*' \
-  --tests 'io.opaa.searchadmin.*' --tests 'io.opaa.prompt.*' \
+  --tests 'io.opaa.searchadmin.*' --tests 'io.opaa.prompt.*' --tests 'io.opaa.template.*' \
   --tests 'io.opaa.retrieval.*' --tests 'io.opaa.architecture.*'
 ```
 

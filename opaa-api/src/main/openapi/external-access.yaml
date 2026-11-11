@@ -57,6 +57,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StaleWrite"
 
   /api/v1/libraries/{libraryId}/external-access:
     parameters:
@@ -164,8 +166,10 @@ paths:
         no other, ever - the server keeps only its HMAC lookup hash and the prefix. Name, at least
         one library and an expiry are mandatory; the expiry must not exceed the installation-wide
         ceiling, and every named library must be readable by the caller and released for external
-        access. The selection is immutable afterwards - a change is a new token. Requires a recent
-        sign-in, and the person is notified of the issuance by mail.
+        access. The selection is immutable afterwards - a change is a new token. An account that
+        already holds the configured number of live tokens (neither revoked nor expired) is refused
+        with 400 until one of them is revoked or runs out. Requires a recent sign-in, and the person
+        is notified of the issuance by mail.
       requestBody:
         required: true
         content:
@@ -899,6 +903,9 @@ components:
           format: uuid
         name:
           type: string
+          description: >
+            The library's name. In the caller's own list only while the caller may still read the
+            library, otherwise the neutral placeholder "(kein Leserecht)".
         suspended:
           type: boolean
           description: >

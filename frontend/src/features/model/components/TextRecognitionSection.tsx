@@ -1,22 +1,22 @@
 import { useEffect, useId, useState } from 'react'
+import {
+  secretPart,
+  isVisionDraft,
+  textRecognitionDraftOf,
+  type TextRecognitionDraft,
+} from '@/shared/ui/setup/setupDrafts'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import FormControl from '@mui/material/FormControl'
+import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import FormLabel from '@mui/material/FormLabel'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type {
-  SearchModelRoleState,
-  TextRecognitionConnectionType,
-  TextRecognitionModelSettingsResponse,
-} from '@/shared/api/types'
-import BusyButton from '@/shared/ui/a11y/BusyButton'
+import type { SearchModelRoleState, TextRecognitionModelSettingsResponse } from '@/shared/api/types'
+import ConnectionTestButton from '@/shared/ui/settings/ConnectionTestButton'
+import SettingsForm from '@/shared/ui/settings/SettingsForm'
 import StateDot from '@/shared/ui/StateDot'
+import TextRecognitionFields from '@/shared/ui/setup/TextRecognitionFields'
+import { TEXT_RECOGNITION_PURPOSE } from '@/shared/ui/textRecognition/textRecognitionTexts'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { notify } from '@/shared/stores/notificationStore'
 import {
@@ -24,8 +24,7 @@ import {
   testTextRecognitionModel,
   updateTextRecognitionModelSettings,
 } from '../api/modelApi'
-import RoleApiKeyField from './RoleApiKeyField'
-import { fieldErrorsOf, resolveApiKey, UNTOUCHED_API_KEY, type ApiKeyDraft } from './roleForm'
+import { fieldErrorsOf } from './roleForm'
 import {
   failedStage,
   stageStates,
@@ -34,37 +33,16 @@ import {
   type TestStageState,
   type TextRecognitionTestView,
 } from './textRecognitionStages'
+import { fontSize, formWidth } from '@/shared/theme/tokens'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** How long after a save the state is read again; the probe runs on the server meanwhile. */
 const RECHECK_DELAY_MS = 3000
 
-const INTRO =
-  'Die Texterkennung liest gescannte PDFs ohne Textebene, damit sie durchsuchbar und zitierfähig werden. Ab Werk ist sie aus.'
+const INTRO = `${TEXT_RECOGNITION_PURPOSE} Ab Werk ist sie aus.`
 
 const CATCH_UP_HINT = 'Bestehende Scans werden nach dem Einschalten automatisch nachverarbeitet.'
-
-const VISION_NOTICE =
-  'Ein Vision-Modell liefert keine Lage des Textes: Fundstellen werden nur auf ihrer Seite angezeigt, nicht als Rahmen markiert.'
-
-const CONNECTION_TYPES: Record<
-  TextRecognitionConnectionType,
-  { label: string; description: string; addressHint: string }
-> = {
-  DOCLING_SERVE: {
-    label: 'docling-serve',
-    description:
-      'Der mitgelieferte OCR-Dienst oder ein eigenes docling-serve; passt für die meisten Installationen.',
-    addressHint: 'Ohne den Pfad /v1, etwa http://opaa-ocr:5001.',
-  },
-  OPENAI_VISION: {
-    label: 'Vision-Modell (OpenAI-kompatibel)',
-    description:
-      'Ein Modell mit Bildeingang, etwa PaddleOCR-VL; passt, wenn ein solcher Modellserver schon im Haus läuft.',
-    addressHint: 'Mit dem Pfad /v1, etwa http://vllm:8000/v1.',
-  },
-}
-
-const CONNECTION_TYPE_ORDER: TextRecognitionConnectionType[] = ['DOCLING_SERVE', 'OPENAI_VISION']
 
 const STATE_TEXT: Record<SearchModelRoleState, string> = {
   DISABLED: 'Ausgeschaltet.',
@@ -80,36 +58,32 @@ const STAGE_STATE: Record<TestStageState, { tone: StatusTone; word: string }> = 
 }
 
 /**
- * The text recognition (OCR) model role: switch, connection type, endpoint, key and — for a
- * vision model — the model, with a connection test in the stages „Adresse · Anmeldung ·
+ * The text recognition (OCR) model role: checkbox and the fields of the assistant's step
+ * (`TextRecognitionFields`), with a connection test in the stages „Adresse · Anmeldung ·
  * Erkennung". While the operation has not released text recognition, only a notice is shown.
  * The key is write-only, as for the other roles.
  */
 export default function TextRecognitionSection() {
   const [settings, setSettings] = useState<TextRecognitionModelSettingsResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
   const [enabled, setEnabled] = useState(false)
-  const [connectionType, setConnectionType] =
-    useState<TextRecognitionConnectionType>('DOCLING_SERVE')
-  const [baseUrl, setBaseUrl] = useState('')
-  const [model, setModel] = useState('')
-  const [apiKey, setApiKey] = useState<ApiKeyDraft>(UNTOUCHED_API_KEY)
+  const [draft, setDraft] = useState<TextRecognitionDraft>(() => textRecognitionDraftOf(null))
+  // Remounts the fields after a load or save, so service and stored key follow the stored state.
+  const [storedCount, setStoredCount] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TextRecognitionTestView | null>(null)
   const [checking, setChecking] = useState(false)
-  const connectionLabelId = useId()
   const catchUpHintId = useId()
 
   function apply(stored: TextRecognitionModelSettingsResponse) {
     setSettings(stored)
     setEnabled(stored.enabled)
-    setConnectionType(stored.connectionType)
-    setBaseUrl(stored.baseUrl ?? '')
-    setModel(stored.model ?? '')
-    setApiKey(UNTOUCHED_API_KEY)
+    setDraft(textRecognitionDraftOf(stored))
+    setStoredCount((count) => count + 1)
   }
 
   useEffect(() => {
@@ -122,7 +96,7 @@ export default function TextRecognitionSection() {
     return () => {
       current = false
     }
-  }, [])
+  }, [attempt])
 
   useEffect(() => {
     if (!checking) return
@@ -139,31 +113,29 @@ export default function TextRecognitionSection() {
     }
   }, [checking])
 
-  /** A changed connection field makes the last test result stale. */
-  function changeConnection(update: () => void, field: string) {
-    update()
+  /** A changed connection field makes the last test result stale and clears its own error. */
+  function changeConnection(patch: Partial<TextRecognitionDraft>) {
+    setDraft((current) => ({ ...current, ...patch }))
     setTestResult(null)
-    setErrors((current) => {
-      const next = { ...current }
-      delete next[field]
-      return next
-    })
+    setErrors((current) =>
+      Object.fromEntries(Object.entries(current).filter(([field]) => !(field in patch))),
+    )
   }
 
-  const isVision = connectionType === 'OPENAI_VISION'
+  const isVision = isVisionDraft(draft)
+  const connection = {
+    connectionType: draft.connectionType,
+    baseUrl: draft.baseUrl.trim(),
+    model: isVision ? draft.model.trim() : null,
+    apiKey: secretPart(draft.apiKey.trim(), draft.removeKey),
+  }
 
   async function handleSave() {
     setSaving(true)
     setErrors({})
     setError(null)
     try {
-      const saved = await updateTextRecognitionModelSettings({
-        enabled,
-        connectionType,
-        baseUrl: baseUrl.trim(),
-        model: isVision ? model.trim() : null,
-        apiKey: resolveApiKey(apiKey),
-      })
+      const saved = await updateTextRecognitionModelSettings({ enabled, ...connection })
       apply(saved)
       setChecking(saved.enabled && saved.state !== 'ACTIVE')
       notify('Die Texterkennung wurde gespeichert.', 'success')
@@ -177,16 +149,19 @@ export default function TextRecognitionSection() {
   }
 
   async function handleTest() {
+    const missing = {
+      ...(draft.baseUrl.trim() === '' ? { baseUrl: 'Basis-Adresse fehlt' } : {}),
+      ...(isVision && draft.model.trim() === '' ? { model: 'Modell-Kennung fehlt' } : {}),
+    }
+    if (Object.keys(missing).length > 0) {
+      setErrors((current) => ({ ...current, ...missing }))
+      return
+    }
     setTesting(true)
     setTestResult(null)
     setError(null)
     try {
-      const response = await testTextRecognitionModel({
-        connectionType,
-        baseUrl: baseUrl.trim(),
-        model: isVision ? model.trim() : null,
-        apiKey: resolveApiKey(apiKey),
-      })
+      const response = await testTextRecognitionModel(connection)
       setTestResult({ kind: 'outcome', response })
     } catch (err) {
       const fields = fieldErrorsOf(err)
@@ -201,19 +176,26 @@ export default function TextRecognitionSection() {
     }
   }
 
-  if (loadError) return <Alert severity="error">{loadError}</Alert>
-  if (!settings) {
+  if (loadError) {
     return (
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-        Einstellungen werden geladen …
-      </Typography>
+      <LoadError
+        message="Die Einstellungen konnten nicht geladen werden."
+        detail={loadError}
+        onRetry={() => {
+          setLoadError(null)
+          setAttempt((n) => n + 1)
+        }}
+      />
     )
   }
+  if (!settings) return <LoadingState shape="lines" count={4} />
 
   if (!settings.textRecognitionAvailable) {
     return (
-      <Box sx={{ maxWidth: '72ch' }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>{INTRO}</Typography>
+      <Box sx={{ maxWidth: formWidth.column }}>
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+          {INTRO}
+        </Typography>
         <Alert severity="info">
           Der Betrieb hat die Texterkennung nicht freigegeben (OPAA_OCR_ENABLED). Gescannte PDFs
           ohne Textebene werden weiter abgewiesen.
@@ -223,122 +205,70 @@ export default function TextRecognitionSection() {
     )
   }
 
-  const type = CONNECTION_TYPES[connectionType]
+  const stored = textRecognitionDraftOf(settings)
+  const dirty =
+    enabled !== settings.enabled ||
+    (Object.keys(stored) as (keyof TextRecognitionDraft)[]).some(
+      (key) => draft[key] !== stored[key],
+    )
+
+  function discard() {
+    apply(settings!)
+    setErrors({})
+    setError(null)
+    setTestResult(null)
+  }
 
   return (
-    <Box sx={{ maxWidth: '72ch' }}>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>{INTRO}</Typography>
-      <Typography role="status" sx={{ fontSize: 13, mb: 2 }}>
+    <Box sx={{ maxWidth: formWidth.column }}>
+      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+        {INTRO}
+      </Typography>
+      <Typography role="status" sx={{ fontSize: fontSize.text, mb: 2 }}>
         Zustand: {checking ? 'Wird geprüft …' : STATE_TEXT[settings.state]}
       </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Stack spacing={2}>
-        <Box>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                slotProps={{ input: { 'aria-describedby': catchUpHintId } }}
-              />
-            }
-            label="Texterkennung einschalten"
+      <SettingsForm
+        aria-label="Texterkennung"
+        onSave={handleSave}
+        busy={saving}
+        dirty={dirty}
+        onDiscard={discard}
+        secondaryAction={<ConnectionTestButton busy={testing} onTest={() => void handleTest()} />}
+        result={
+          <Stack spacing={2}>
+            <Box role="status">{testResult && <StagedTestResult result={testResult} />}</Box>
+            {error && <Alert severity="error">{error}</Alert>}
+          </Stack>
+        }
+      >
+        <Stack spacing={3}>
+          <Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.target.checked)}
+                  slotProps={{ input: { 'aria-describedby': catchUpHintId } }}
+                />
+              }
+              label="Texterkennung einschalten"
+            />
+            <Typography
+              id={catchUpHintId}
+              sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}
+            >
+              {CATCH_UP_HINT}
+            </Typography>
+          </Box>
+          <TextRecognitionFields
+            key={storedCount}
+            value={draft}
+            onChange={changeConnection}
+            apiKeyStored={settings.apiKeySet}
+            errors={errors}
           />
-          <Typography id={catchUpHintId} sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-            {CATCH_UP_HINT}
-          </Typography>
-        </Box>
-        <FormControl>
-          <FormLabel id={connectionLabelId} sx={{ fontSize: 12.5, mb: 0.5 }}>
-            Anbindung
-          </FormLabel>
-          <RadioGroup
-            aria-labelledby={connectionLabelId}
-            value={connectionType}
-            onChange={(e) =>
-              changeConnection(
-                () => setConnectionType(e.target.value as TextRecognitionConnectionType),
-                'connectionType',
-              )
-            }
-          >
-            {CONNECTION_TYPE_ORDER.map((key) => (
-              <FormControlLabel
-                key={key}
-                value={key}
-                control={<Radio size="small" />}
-                sx={{ alignItems: 'flex-start', mb: 0.5, '& .MuiRadio-root': { pt: 0.25 } }}
-                label={
-                  <Box>
-                    <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
-                      {CONNECTION_TYPES[key].label}
-                    </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                      {CONNECTION_TYPES[key].description}
-                    </Typography>
-                  </Box>
-                }
-              />
-            ))}
-          </RadioGroup>
-        </FormControl>
-        {isVision && <Alert severity="info">{VISION_NOTICE}</Alert>}
-        <TextField
-          id="model-role-text-recognition-base-url"
-          label="Basis-Adresse"
-          required={enabled}
-          value={baseUrl}
-          onChange={(e) => changeConnection(() => setBaseUrl(e.target.value), 'baseUrl')}
-          error={Boolean(errors.baseUrl)}
-          helperText={errors.baseUrl ?? type.addressHint}
-          size="small"
-          fullWidth
-        />
-        {isVision && (
-          <TextField
-            id="model-role-text-recognition-model"
-            label="Modell-Kennung"
-            required={enabled}
-            value={model}
-            onChange={(e) => changeConnection(() => setModel(e.target.value), 'model')}
-            error={Boolean(errors.model)}
-            helperText={errors.model}
-            size="small"
-            fullWidth
-          />
-        )}
-        <RoleApiKeyField
-          id="model-role-text-recognition-api-key"
-          value={apiKey}
-          onChange={(next) => changeConnection(() => setApiKey(next), 'apiKey')}
-          apiKeySet={settings.apiKeySet}
-          error={errors.apiKey}
-        />
-        <Box role="status">{testResult && <StagedTestResult result={testResult} />}</Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-          <BusyButton
-            variant="outlined"
-            busy={testing}
-            busyAnnouncement="Verbindung wird getestet"
-            disabled={baseUrl.trim() === '' || (isVision && model.trim() === '')}
-            onClick={() => void handleTest()}
-          >
-            Verbindung testen
-          </BusyButton>
-          <BusyButton
-            variant="contained"
-            busy={saving}
-            busyAnnouncement="Wird gespeichert"
-            onClick={() => void handleSave()}
-          >
-            Speichern
-          </BusyButton>
         </Stack>
-      </Stack>
+      </SettingsForm>
     </Box>
   )
 }
@@ -364,13 +294,15 @@ function StagedTestResult({ result }: { result: TextRecognitionTestView }) {
             <Box component="li" key={stage} sx={{ mb: 0.75 }}>
               <StateDot tone={state.tone} label={`${TEST_STAGE_LABELS[stage]}: ${state.word}`} />
               {stage === failed && (
-                <Typography sx={{ fontSize: 12.5, pl: 2, mt: 0.25 }}>{message}</Typography>
+                <Typography sx={{ fontSize: fontSize.meta, pl: 2, mt: 0.25 }}>{message}</Typography>
               )}
             </Box>
           )
         })}
       </Box>
-      {failed === null && <Typography sx={{ fontSize: 12.5, mt: 0.5 }}>{message}</Typography>}
+      {failed === null && (
+        <Typography sx={{ fontSize: fontSize.meta, mt: 0.5 }}>{message}</Typography>
+      )}
     </Box>
   )
 }

@@ -44,7 +44,7 @@ geteilter Bibliotheken gilt die Obergrenze des Betriebs allein.
 | Vollabgleich-Rhythmus | je Quellart die gesetzten Tage oder `null` für die Werkseinstellung |
 | Schwellen und Fristen der Verbindungen | Inaktivitätsschwelle, Löschfrist privater Bibliotheken und Warnschwelle abgelaufener Konten, je der gesetzte Wert oder `null` für die Werkseinstellung |
 | Externe KI-Werkzeuge | Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle, Einleitungstext, Erinnerung vor Ablauf einer Freigabe |
-| Ohne Zuständigkeit | ab wie vielen Monaten ein Eintrag als „lange offen“ gilt |
+| Ohne Zuständigkeit | ab wie vielen Monaten ein Eintrag als „lange offen“ gilt und nach wie vielen Tagen ohne verantwortliche Stelle ein Agent oder eine Vorlage gesperrt wird |
 | Verzeichnisabgleich | die Plausibilitätsschwelle in Prozent |
 | Sperren und „Nur über Zugänge“ | je Quellart die Sperre und, wo ein Zugang wählbar ist, „Nur über Zugänge“ mit dem Umgang mit Bibliotheken mit eigener Adresse |
 
@@ -57,10 +57,14 @@ Vorschau nicht, wohl aber der Dialog „Nur über Zugänge“ der Quellart.
 **Nicht in der Datei** stehen Passwörter und Schlüssel, auch nicht, ob einer hinterlegt ist, und
 nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
 
-- **Modelle** für Chat, Embedding, Rerank, Transkription und Texterkennung. Ihre Adresse bestimmt,
+- **Modelle** für Chat, Embedding, Rerank, Transkription samt Live-Transkript und Texterkennung. Ihre Adresse bestimmt,
   wohin Chats, Spracheingaben und Seiten von Dokumenten gehen, und ein Schlüssel folgt keiner neuen
   Adresse. Das Embedding-Modell gehört
   zum Suchindex dieser Installation.
+- **Virenscanner.** Seine Adresse empfängt jede aufgenommene Datei; er wird in jeder Installation
+  unter [Virenprüfung](virenpruefung.md) eingetragen.
+- **Agenten.** Wer sie einschaltet, wird Eigentümer des Agenten „Recherche“; sie werden in jeder
+  Installation unter [Agenten einschalten](agenten.md) eingeschaltet.
 - **Identitätsanbieter und der Schalter der lokalen Konten.** Sie legen fest, wer sich anmeldet und
   wer welche Systemrolle erhält. Ein Import könnte den Kreis der Systemverwaltung erweitern oder die
   Systemverwaltung aussperren.
@@ -91,7 +95,9 @@ Bibliotheken, die Inaktivitätsschwelle der Verbindungen (sie hält Zugangsdaten
 nutzbar), der Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelöschtes noch
 auffindbar bleibt) und die Plausibilitätsschwelle des Verzeichnisabgleichs (sie bestimmt, wie
 viele Mitgliedschaften und Konten ein Lauf ohne Bestätigung entzieht). Erst **Übernehmen** ändert
-die Installation, nach einer Rückfrage.
+die Installation, nach einer Rückfrage. Enthält der Import eine sicherheitsrelevante Änderung oder
+ändert er Mailserver, E-Mail-Vorlagen oder die lokale Benutzerverwaltung, fragt OPAA vorher nach einer
+[erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen).
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
   Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des

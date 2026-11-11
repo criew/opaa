@@ -233,18 +233,21 @@ test.describe("Fokusring nach Tastaturnavigation", () => {
       expectVisibleRing(await indicatorOf(link, link), "Link");
     });
 
-    test(`Feld mit schwebendem Label in der Verwaltung (${scheme})`, async ({ page }) => {
+    test(`Feld mit Beschriftung oberhalb in der Verwaltung (${scheme})`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
       await page.goto("/admin/branding");
-      const name = page.getByLabel("Produktname", { exact: true });
+      const name = page.getByLabel("Produktname (optional)", { exact: true });
       await expect(name).toBeVisible({ timeout: 20_000 });
 
       await tabTo(page, name);
       const label = page.locator("label", { hasText: "Produktname" });
-      // The label floats on the field's top edge: a ring around the field would cross it.
-      await expect(label).toHaveAttribute("data-shrink", "true");
-      expectFieldFrame(await fieldFrameOf(name), "Feld mit schwebendem Label");
+      // The label stands above the field (guidelines 5.2), never floating on its top edge.
+      await expect(label).not.toHaveAttribute("data-shrink");
+      const labelBox = (await label.boundingBox())!;
+      const fieldBox = (await name.boundingBox())!;
+      expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(fieldBox.y);
+      expectFieldFrame(await fieldFrameOf(name), "Feld mit Beschriftung oberhalb");
     });
   }
 });

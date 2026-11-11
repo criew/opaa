@@ -5,6 +5,7 @@ import io.opaa.compliance.ComplianceManifest.SettingEntry;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.DataSetDescription;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.RunningInstance;
@@ -116,7 +117,8 @@ public class InstanceDisclosureAssembler {
         connectorUsage(organizationId),
         modelProviders(),
         runningInstances(),
-        protocol);
+        protocol,
+        dataSetDescriptions());
   }
 
   /**
@@ -208,6 +210,14 @@ public class InstanceDisclosureAssembler {
         .sorted(
             Comparator.comparing(RunningInstance::startedAt)
                 .thenComparing(RunningInstance::version))
+        .toList();
+  }
+
+  /** Every module's described data sets, by id, so the order does not follow bean order. */
+  private List<DataSetDescription> dataSetDescriptions() {
+    return sources.stream()
+        .flatMap(source -> source.dataSetDescriptions().stream())
+        .sorted(Comparator.comparing(DataSetDescription::id))
         .toList();
   }
 

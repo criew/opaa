@@ -4,16 +4,24 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.api.types.MailEncryption;
+import io.opaa.api.types.MalwareScanUnavailablePolicy;
+import io.opaa.api.types.RealtimeTranscriptionProtocol;
+import io.opaa.api.types.TextRecognitionConnectionType;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
 import io.opaa.branding.BrandingSettingsRules;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
-import io.opaa.llm.EmbeddingEndpoint;
+import io.opaa.knowledge.MalwareScanSettingsRules;
+import io.opaa.knowledge.MalwareScanSettingsUpdate;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
-import io.opaa.llm.TranscriptionEndpoint;
+import io.opaa.llm.administration.ModelRoleAdministration;
+import io.opaa.llm.embedding.EmbeddingEndpoint;
+import io.opaa.llm.textrecognition.TextRecognitionEndpoint;
+import io.opaa.llm.transcription.RealtimeTranscriptionEndpoint;
+import io.opaa.llm.transcription.TranscriptionEndpoint;
 import io.opaa.mail.MailSettingsRules;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsSnapshot;
@@ -48,6 +56,11 @@ class StepRules {
   private static final String BRANDING_PREFIX = "branding.";
   private static final String RERANK_PREFIX = "rerankModel";
   private static final String TRANSCRIPTION_PREFIX = "transcriptionModel";
+  private static final String TEXT_RECOGNITION_PREFIX = "textRecognitionModel";
+  private static final String MALWARE_SCAN_PREFIX = "malwareScan.";
+
+  /** The only port of a scanner the assistant takes, the clamd default. */
+  static final int MALWARE_SCAN_PORT = MalwareScanSettingsRules.DEFAULT_PORT;
 
   /**
    * A host name or address: no whitespace and no control character in the Unicode sense (U+0085,
@@ -89,8 +102,37 @@ class StepRules {
   /** The rerank model without its key. */
   record RerankModelPayload(String baseUrl, String model) {}
 
-  /** The transcription model; {@code language} is never {@code null}, empty for detection. */
-  record TranscriptionModelPayload(String baseUrl, String model, String language) {}
+  /**
+   * The transcription model; {@code language} is never {@code null}, empty for detection; {@code
+   * realtime} {@code null} for dictation by recording only.
+   */
+  record TranscriptionModelPayload(
+      String baseUrl, String model, String language, RealtimePayload realtime) {}
+
+  /**
+   * The live upstream of the transcription step; {@code apiKeyCiphertext} is its own key, encrypted
+   * as the step's secret, {@code null} for none.
+   */
+  record RealtimePayload(
+      RealtimeTranscriptionProtocol protocol, String url, String model, String apiKeyCiphertext) {
+
+    /** Without the key, which must reach no log line. */
+    @Override
+    public String toString() {
+      return "RealtimePayload[protocol=" + protocol + ", url=" + url + ", model=" + model + "]";
+    }
+  }
+
+  /**
+   * The text recognition model without its key; {@code connectionType} is never {@code null},
+   * {@code model} is {@code null} for docling-serve.
+   */
+  record TextRecognitionModelPayload(
+      TextRecognitionConnectionType connectionType, String baseUrl, String model) {}
+
+  /** The clamd daemon of the malware scan, its defaults filled in; no secret. */
+  record MalwareScanPayload(
+      String host, int port, int timeoutSeconds, MalwareScanUnavailablePolicy onUnavailable) {}
 
   /** The mail server without its password; {@code encryption} is never {@code null}. */
   record MailPayload(
@@ -150,6 +192,9 @@ class StepRules {
       case StepInput.RerankModel model -> rerankModel(model, previousPayload, previousSecret);
       case StepInput.TranscriptionModel model ->
           transcriptionModel(model, previousPayload, previousSecret);
+      case StepInput.TextRecognitionModel model ->
+          textRecognitionModel(model, previousPayload, previousSecret);
+      case StepInput.MalwareScan scan -> malwareScan(scan);
       case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
       case StepInput.Branding branding -> branding(branding);
     };
@@ -187,7 +232,27 @@ class StepRules {
       case TRANSCRIPTION_MODEL -> {
         TranscriptionModelPayload model = transcriptionModelPayload(payload);
         yield new InstallationOverview.TranscriptionModel(
-            model.baseUrl(), model.model(), secret != null, model.language());
+            model.baseUrl(),
+            model.model(),
+            secret != null,
+            model.language(),
+            model.realtime() == null
+                ? null
+                : new InstallationOverview.TranscriptionRealtime(
+                    model.realtime().protocol(),
+                    model.realtime().url(),
+                    model.realtime().model(),
+                    model.realtime().apiKeyCiphertext() != null));
+      }
+      case TEXT_RECOGNITION_MODEL -> {
+        TextRecognitionModelPayload model = textRecognitionModelPayload(payload);
+        yield new InstallationOverview.TextRecognitionModel(
+            model.connectionType(), model.baseUrl(), model.model(), secret != null);
+      }
+      case MALWARE_SCAN -> {
+        MalwareScanPayload scan = malwareScanPayload(payload);
+        yield new InstallationOverview.MalwareScan(
+            scan.host(), scan.port(), scan.timeoutSeconds(), scan.onUnavailable());
       }
       case MAIL -> {
         MailPayload mail = mailPayload(payload);
@@ -224,6 +289,16 @@ class StepRules {
             branding.aiNotice(),
             branding.primaryColor())
         .errors();
+  }
+
+  MalwareScanPayload malwareScanPayload(String payload) {
+    return json.readValue(payload, MalwareScanPayload.class);
+  }
+
+  /** The saved scanner as the completion stores it, the scan switched on. */
+  static MalwareScanSettingsUpdate malwareScanUpdate(MalwareScanPayload scan) {
+    return new MalwareScanSettingsUpdate(
+        true, scan.host(), scan.port(), scan.timeoutSeconds(), scan.onUnavailable());
   }
 
   MailPayload mailPayload(String payload) {
@@ -336,6 +411,10 @@ class StepRules {
     return json.readValue(payload, TranscriptionModelPayload.class);
   }
 
+  TextRecognitionModelPayload textRecognitionModelPayload(String payload) {
+    return json.readValue(payload, TextRecognitionModelPayload.class);
+  }
+
   private Stored firstAdmin(StepInput.FirstAdmin input) {
     List<FieldError> errors = new ArrayList<>();
     String email = trimmed(input.email());
@@ -417,20 +496,15 @@ class StepRules {
         && (temperature.signum() < 0 || temperature.compareTo(MAX_TEMPERATURE) > 0)) {
       errors.add(error("chatModel.temperature", INVALID, "Die Temperatur liegt zwischen 0 und 2."));
     }
-    blockedAddressError("chatModel", baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.CHAT_MODEL,
-            "chatModel",
-            input.apiKey(),
-            previousSecret == null ? null : chatModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new ChatModelPayload(baseUrl, model, temperature, input.maxTokens())),
-        secret);
+    return modelStep(
+        InstallationStep.CHAT_MODEL,
+        "chatModel",
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : chatModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new ChatModelPayload(baseUrl, model, temperature, input.maxTokens()));
   }
 
   private Stored embeddingModel(
@@ -447,20 +521,15 @@ class StepRules {
               INVALID,
               "Die Eingabegrenze liegt zwischen 1 und " + MAX_INPUT_TOKENS + " Tokens."));
     }
-    blockedAddressError("embeddingModel", baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.EMBEDDING_MODEL,
-            "embeddingModel",
-            input.apiKey(),
-            previousSecret == null ? null : embeddingModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null)),
-        secret);
+    return modelStep(
+        InstallationStep.EMBEDDING_MODEL,
+        "embeddingModel",
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : embeddingModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null));
   }
 
   /**
@@ -473,17 +542,15 @@ class StepRules {
     String baseUrl = trimmed(input.baseUrl());
     String model = trimmed(input.model());
     endpointErrors(RERANK_PREFIX, baseUrl, model, input.apiKey(), errors);
-    blockedAddressError(RERANK_PREFIX, baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.RERANK_MODEL,
-            RERANK_PREFIX,
-            input.apiKey(),
-            previousSecret == null ? null : rerankModelPayload(previousPayload).baseUrl(),
-            baseUrl,
-            previousSecret);
-    return new Stored(json.writeValueAsString(new RerankModelPayload(baseUrl, model)), secret);
+    return modelStep(
+        InstallationStep.RERANK_MODEL,
+        RERANK_PREFIX,
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : rerankModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new RerankModelPayload(baseUrl, model));
   }
 
   /**
@@ -502,23 +569,110 @@ class StepRules {
       errors.add(
           error(TRANSCRIPTION_PREFIX + ".language", INVALID, TranscriptionEndpoint.LANGUAGE_RULE));
     }
-    blockedAddressError(TRANSCRIPTION_PREFIX, baseUrl, errors);
-    requireNoErrors(errors);
-    String secret =
-        secretOf(
-            InstallationStep.TRANSCRIPTION_MODEL,
-            TRANSCRIPTION_PREFIX,
-            input.apiKey(),
-            previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
+    StepInput.TranscriptionRealtime realtime = realtimeOf(input.realtime());
+    RealtimePayload previousLive =
+        previousPayload == null ? null : transcriptionModelPayload(previousPayload).realtime();
+    RealtimePayload live = null;
+    if (realtime != null) {
+      ModelRoleAdministration.realtimeErrors(
+          TRANSCRIPTION_PREFIX + ".realtime",
+          ModelRoleAdministration.RealtimeChange.installed(
+              realtime.protocol(), realtime.url(), realtime.model(), realtime.apiKey()),
+          errors);
+      if (errors.isEmpty()) {
+        String blocked =
+            blockedModelAddress(
+                modelAddresses, RealtimeTranscriptionEndpoint.httpEquivalent(realtime.url()));
+        if (blocked != null) {
+          errors.add(
+              error(
+                  TRANSCRIPTION_PREFIX + ".realtime.url",
+                  "BLOCKED",
+                  blocked.replace("Basis-Adresse", "Live-Adresse")));
+        }
+      }
+      if (errors.isEmpty()) {
+        String liveSecret = liveSecretOf(realtime, previousLive);
+        boolean batchKey =
+            input.apiKey() == null ? previousSecret != null : !input.apiKey().isBlank();
+        if (RealtimeTranscriptionEndpoint.lacksRequiredKey(
+            realtime.protocol(), realtime.url(), liveSecret != null, baseUrl, batchKey)) {
+          errors.add(
+              error(
+                  TRANSCRIPTION_PREFIX + ".realtime.apiKey",
+                  REQUIRED,
+                  RealtimeTranscriptionEndpoint.KEY_RULE));
+        }
+        live =
+            new RealtimePayload(realtime.protocol(), realtime.url(), realtime.model(), liveSecret);
+      }
+    }
+    return modelStep(
+        InstallationStep.TRANSCRIPTION_MODEL,
+        TRANSCRIPTION_PREFIX,
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new TranscriptionModelPayload(
             baseUrl,
-            previousSecret);
-    return new Stored(
-        json.writeValueAsString(
-            new TranscriptionModelPayload(
-                baseUrl,
-                model,
-                language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language)),
-        secret);
+            model,
+            language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language,
+            live));
+  }
+
+  /**
+   * The live key to store, as {@link #secretOf} for the live address: a new one encrypted, an empty
+   * one removed, none kept from {@code previous} only for an unchanged live address.
+   */
+  private String liveSecretOf(StepInput.TranscriptionRealtime realtime, RealtimePayload previous) {
+    String previousSecret = previous == null ? null : previous.apiKeyCiphertext();
+    return secretOf(
+        InstallationStep.TRANSCRIPTION_MODEL,
+        TRANSCRIPTION_PREFIX + ".realtime",
+        realtime.apiKey(),
+        previousSecret == null
+            ? null
+            : RealtimeTranscriptionEndpoint.httpEquivalent(previous.url()),
+        RealtimeTranscriptionEndpoint.httpEquivalent(realtime.url()),
+        previousSecret);
+  }
+
+  /** The live part of a step with stripped texts; {@code null} stays {@code null}. */
+  private static StepInput.TranscriptionRealtime realtimeOf(StepInput.TranscriptionRealtime input) {
+    if (input == null) {
+      return null;
+    }
+    return new StepInput.TranscriptionRealtime(
+        input.protocol(), trimmed(input.url()), trimmed(input.model()), input.apiKey());
+  }
+
+  /**
+   * The rules of the text recognition administration for a switched-on role (an address, a model
+   * only for a vision model), with the address check of the installation for every address.
+   */
+  private Stored textRecognitionModel(
+      StepInput.TextRecognitionModel input, String previousPayload, String previousSecret) {
+    TextRecognitionConnectionType type =
+        input.connectionType() == null
+            ? TextRecognitionEndpoint.DEFAULT_CONNECTION_TYPE
+            : input.connectionType();
+    String baseUrl = trimmed(input.baseUrl());
+    String model = TextRecognitionEndpoint.needsModel(type) ? trimmed(input.model()) : "";
+    List<FieldError> errors =
+        new ArrayList<>(
+            ModelRoleAdministration.textRecognitionErrors(
+                TEXT_RECOGNITION_PREFIX, true, type, baseUrl, model, input.apiKey()));
+    return modelStep(
+        InstallationStep.TEXT_RECOGNITION_MODEL,
+        TEXT_RECOGNITION_PREFIX,
+        baseUrl,
+        input.apiKey(),
+        errors,
+        previousSecret == null ? null : textRecognitionModelPayload(previousPayload).baseUrl(),
+        previousSecret,
+        new TextRecognitionModelPayload(type, baseUrl, model.isEmpty() ? null : model));
   }
 
   /**
@@ -589,6 +743,36 @@ class StepRules {
     return new Stored(
         json.writeValueAsString(payload),
         mailSecret(input.password(), previousPayload, previousSecret, payload));
+  }
+
+  /**
+   * The rules of the scanner administration ({@link MalwareScanSettingsRules}), each problem named
+   * under {@code malwareScan.}, and the one rule of the assistant: only the clamd port {@value
+   * #MALWARE_SCAN_PORT}, so a token cannot probe other ports of the internal network.
+   */
+  private Stored malwareScan(StepInput.MalwareScan input) {
+    MalwareScanSettingsRules.Result checked =
+        MalwareScanSettingsRules.check(
+            MALWARE_SCAN_PREFIX, input.host(), input.port(), input.timeoutSeconds(), true);
+    List<FieldError> errors = new ArrayList<>(checked.errors());
+    if (input.port() != null && input.port() != MALWARE_SCAN_PORT && errors.isEmpty()) {
+      errors.add(
+          error(
+              MALWARE_SCAN_PREFIX + "port",
+              "BLOCKED",
+              "Im Assistenten ist nur der clamd-Port "
+                  + MALWARE_SCAN_PORT
+                  + " zugelassen. Einen anderen Port nach der Installation unter „Administration →"
+                  + " Virenprüfung“ eintragen."));
+    }
+    requireNoErrors(errors);
+    MalwareScanSettingsRules.Checked values = checked.values();
+    MalwareScanUnavailablePolicy policy =
+        input.onUnavailable() == null ? MalwareScanUnavailablePolicy.REJECT : input.onUnavailable();
+    return new Stored(
+        json.writeValueAsString(
+            new MalwareScanPayload(values.host(), values.port(), values.timeoutSeconds(), policy)),
+        null);
   }
 
   /**
@@ -671,6 +855,26 @@ class StepRules {
   }
 
   /**
+   * Completes a model step whose own rules left their violations in {@code errors}: the address
+   * check of the installation for every address, the key carried as {@link #secretOf} decides, and
+   * {@code payload} stored.
+   */
+  private Stored modelStep(
+      InstallationStep step,
+      String prefix,
+      String baseUrl,
+      String apiKey,
+      List<FieldError> errors,
+      String previousBaseUrl,
+      String previousSecret,
+      Object payload) {
+    blockedAddressError(prefix, baseUrl, errors);
+    requireNoErrors(errors);
+    String secret = secretOf(step, prefix, apiKey, previousBaseUrl, baseUrl, previousSecret);
+    return new Stored(json.writeValueAsString(payload), secret);
+  }
+
+  /**
    * The key to store: a new one encrypted, an empty one removed, none kept from {@code
    * previousSecret} only for an unchanged endpoint.
    */
@@ -686,8 +890,11 @@ class StepRules {
         throw FieldValidationException.of(
             prefix + ".apiKey",
             REQUIRED,
-            "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben oder"
-                + " das Feld leeren, um ihn zu entfernen.");
+            prefix.endsWith(".realtime")
+                ? "Die Live-Adresse hat sich geändert: Bitte den Live-Schlüssel erneut eingeben oder"
+                    + " das Feld leeren, um ihn zu entfernen."
+                : "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben"
+                    + " oder das Feld leeren, um ihn zu entfernen.");
       }
       return previousSecret;
     }

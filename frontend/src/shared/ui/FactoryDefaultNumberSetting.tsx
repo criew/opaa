@@ -1,17 +1,19 @@
-import { useState, type FormEvent } from 'react'
-import Box from '@mui/material/Box'
+import { useState } from 'react'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from './form/FormField'
+import { formWidth } from '../theme/tokens'
 import Typography from '@mui/material/Typography'
 import { apiFieldErrors } from '../api/apiErrorDetails'
 import { confirmAction } from '../stores/confirmStore'
 import { notify } from '../stores/notificationStore'
-import BusyButton from './a11y/BusyButton'
+import SettingValueRow from './settings/SettingValueRow'
 
 export interface FactoryDefaultNumberSettingProps {
   /** The field's visible label and accessible name. */
   label: string
+  /** The row's title, where the label is too long for it; the label otherwise. */
+  title?: string
   /** The API field of the value, to find its own message among the field errors. */
   field: string
   value: number
@@ -43,12 +45,13 @@ export interface FactoryDefaultNumberSettingProps {
 }
 
 /**
- * One whole number the system administration may set, with its factory default named and
- * restorable. A change and a reset are confirmed first; a failed save is told at the field and
- * announced as a message, and kept until the next edit.
+ * One whole number the system administration may set, as a value row with „Ändern“, with its
+ * factory default named and restorable. A change and a reset are confirmed first; a failed save
+ * is told at the field and announced as a message, and kept until the next edit.
  */
 export default function FactoryDefaultNumberSetting({
   label,
+  title = label,
   field,
   value,
   defaultValue,
@@ -69,27 +72,30 @@ export default function FactoryDefaultNumberSetting({
   const changed = parsed !== null && (parsed !== value || !overridden)
   const rangeError = `Bitte eine ganze Zahl von ${min} bis ${max} eingeben.`
 
-  async function save(next: number | null) {
+  async function save(next: number | null): Promise<boolean> {
     setBusy(true)
     setSaveError(null)
     try {
       const inForce = await onSave(next)
       setDraft(String(inForce))
       notify(savedMessage(inForce), 'success')
+      return true
     } catch (err: unknown) {
       const own = apiFieldErrors(err).find((error) => error.field.endsWith(field))
       const message =
         own?.message ?? (err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
       setSaveError(message)
       notify(`${failedMessage}: ${message}`, 'error')
+      return false
     } finally {
       setBusy(false)
     }
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !changed || parsed === null) return
+  /** Whether the row may close: saved or unchanged. */
+  async function handleSave(): Promise<boolean> {
+    if (busy || parsed === null) return false
+    if (!changed) return true
     const { question, consequence, danger } = confirmChange(parsed)
     const confirmed = await confirmAction({
       question,
@@ -97,7 +103,7 @@ export default function FactoryDefaultNumberSetting({
       confirmLabel: 'Ändern',
       tone: danger ? 'danger' : 'caution',
     })
-    if (confirmed) await save(parsed)
+    return confirmed ? save(parsed) : false
   }
 
   async function handleReset() {
@@ -106,21 +112,24 @@ export default function FactoryDefaultNumberSetting({
     const confirmed = await confirmAction({
       question: `Auf die Werkseinstellung von ${format(defaultValue)} zurücksetzen?`,
       consequence: warning ? `${warning} ${consequence}` : consequence,
-      confirmLabel: 'Werkseinstellung wiederherstellen',
+      confirmLabel: 'Zurücksetzen',
       tone: warning || danger ? 'danger' : 'caution',
     })
     if (confirmed) await save(null)
   }
 
   return (
-    <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-      <Box
-        component="form"
-        onSubmit={(event) => void handleSubmit(event)}
-        noValidate
-        sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: 'wrap' }}
-      >
-        <TextField
+    <SettingValueRow
+      title={title}
+      headingLevel="h3"
+      value={format(value)}
+      onOpen={() => {
+        setDraft(String(value))
+        setSaveError(null)
+      }}
+      onSave={handleSave}
+      editor={
+        <FormField
           label={label}
           size="small"
           value={draft}
@@ -133,31 +142,24 @@ export default function FactoryDefaultNumberSetting({
             parsed === null ? rangeError : (saveError ?? `Von ${format(min)} bis ${format(max)}.`)
           }
           slotProps={{ htmlInput: { inputMode: 'numeric' } }}
-          sx={{ width: 280 }}
+          numeric
+          sx={{ maxWidth: formWidth.column }}
         />
-        <BusyButton
-          type="submit"
-          variant="outlined"
-          size="small"
-          busy={busy}
-          busyAnnouncement="Wird gespeichert"
-          disabled={!changed && !busy}
-          sx={{ mt: 0.25 }}
-        >
-          Speichern
-        </BusyButton>
-      </Box>
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        {overridden
-          ? `Eigener Wert: ${format(value)} (Werkseinstellung: ${format(defaultValue)})`
-          : `Werkseinstellung: ${format(defaultValue)}`}
-      </Typography>
-      {overridden && (
-        <Button variant="text" size="small" disabled={busy} onClick={() => void handleReset()}>
-          Werkseinstellung wiederherstellen
-        </Button>
-      )}
-    </Stack>
+      }
+    >
+      <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          {overridden
+            ? `Eigener Wert: ${format(value)} (Werkseinstellung: ${format(defaultValue)})`
+            : `Werkseinstellung: ${format(defaultValue)}`}
+        </Typography>
+        {overridden && (
+          <Button variant="text" size="small" disabled={busy} onClick={() => void handleReset()}>
+            Werkseinstellung wiederherstellen
+          </Button>
+        )}
+      </Stack>
+    </SettingValueRow>
   )
 }
 

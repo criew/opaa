@@ -13,6 +13,10 @@ export const BUDGETS = {
   helpTextsPerForm: 3,
   helpTextLines: 1,
   uiWords: 150,
+  fontSizes: 6,
+  disabledSubmits: 0,
+  tableColumns: 7,
+  rowPrimaryButtons: 0,
 }
 const WORD_BUDGET_SCENARIOS = ['small', 'default']
 
@@ -64,11 +68,24 @@ const PAGE_METRICS = () => {
     if (!el.innerText || !el.innerText.trim()) continue
     clipped++
   }
-  const SUBMIT = /^(Weiter|Bibliothek anlegen|Anlegen|Erstellen|Speichern|Übernehmen|Prüfen)$/
+  const SUBMIT =
+    /^(Weiter|Bibliothek anlegen|Anlegen|Erstellen|Speichern|Übernehmen|Prüfen|Zuordnen|Übertragen|Einsetzen|Ausstellen|Erzeugen|Umbenennen|Ergänzen|Verbinden|Ersetzen|Abbilden|Übergeben|Einschalten|Freigeben|Zuweisen|Löschen)$/
   const buttons = [...document.querySelectorAll('button, [role=button]')].filter(visible)
-  const disabledSubmits = buttons
-    .filter((b) => SUBMIT.test((b.innerText || '').trim()) && (b.disabled || b.getAttribute('aria-disabled') === 'true'))
-    .map((b) => b.innerText.trim())
+  // a submit that is unavailable only while its own request runs (aria-busy) is not counted
+  const lockedSubmits = buttons.filter(
+    (b) =>
+      SUBMIT.test((b.innerText || '').trim()) &&
+      (b.disabled || b.getAttribute('aria-disabled') === 'true') &&
+      b.getAttribute('aria-busy') !== 'true',
+  )
+  const disabledSubmits = lockedSubmits.map((b) => b.innerText.trim())
+  // how many of them are footer actions of a dialog
+  const disabledDialogSubmits = lockedSubmits.filter((b) => b.closest('[role=dialog]')).length
+  // widest table by column heads (the trailing actions column counts), at desktop width only
+  const tables = [...main.querySelectorAll('table')].filter(visible)
+  const tableColumns = Math.max(0, ...tables.map((t) => t.querySelectorAll('thead th').length))
+  // filled buttons inside a table row or a card of the list that replaces it below 900 px
+  const rowPrimaryButtons = [...main.querySelectorAll('tbody .MuiButton-contained, ul[aria-label] > li > article .MuiButton-contained')].filter(visible).length
   const alerts = [...new Set([...document.querySelectorAll('[role=alert], .MuiAlert-root')].filter(visible))].map((el) => {
     const m = /MuiAlert-(?:standard|outlined|filled|color)(Error|Warning|Info|Success)/.exec(el.className)
     return m ? m[1].toLowerCase() : el.getAttribute('role') === 'alert' ? 'role-alert' : 'unknown'
@@ -121,7 +138,10 @@ const PAGE_METRICS = () => {
     docHeight,
     clippedText: clipped,
     disabledSubmits: disabledSubmits.length,
+    disabledDialogSubmits,
     disabledSubmitLabels: disabledSubmits,
+    tableColumns,
+    rowPrimaryButtons,
     alertCount: alerts.length,
     alertSeverities: severities,
     invalidFields: [...main.querySelectorAll('[aria-invalid=true]')].filter(visible).length,
@@ -143,6 +163,10 @@ export function budgetViolations(metrics, width, scenario) {
   if (metrics.helpTextsPerForm > BUDGETS.helpTextsPerForm) over.push('helpTextsPerForm')
   if (width >= 1280 && metrics.helpTextMaxLines > BUDGETS.helpTextLines) over.push('helpTextLines')
   if (WORD_BUDGET_SCENARIOS.includes(scenario) && metrics.uiWords > BUDGETS.uiWords) over.push('uiWords')
+  if (metrics.fontSizes > BUDGETS.fontSizes) over.push('fontSizes')
+  if (metrics.disabledSubmits > BUDGETS.disabledSubmits) over.push('disabledSubmits')
+  if (width >= 1280 && metrics.tableColumns > BUDGETS.tableColumns) over.push('tableColumns')
+  if (metrics.rowPrimaryButtons > BUDGETS.rowPrimaryButtons) over.push('rowPrimaryButtons')
   return over
 }
 

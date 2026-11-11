@@ -9,12 +9,11 @@ import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CreateGroupDialog from './CreateGroupDialog'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
+import CreateButton from '@/shared/ui/CreateButton'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import GroupStewardsSection from './GroupStewardsSection'
@@ -26,12 +25,17 @@ import {
   useRequiredChoice,
 } from '@/features/principal'
 import { confirmGroupDeactivation } from './groupDeactivation'
+import { GROUP_DELETE_CONSEQUENCE } from './groupListLabels'
 import type { GroupListResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import { fontSize, readingWidth } from '@/shared/theme/tokens'
 
 function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -77,14 +81,39 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   }
 
   return (
-    <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
+    // The summary is the group's heading below the page title (MUI's heading slot, h3 by default).
+    <Accordion
+      expanded={expanded}
+      onChange={(_event, isExpanded) => setExpanded(isExpanded)}
+      slotProps={{ heading: { component: 'h2' } }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-          <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
+        {/* Name, badges and count wrap onto further lines on a phone instead of overflowing. */}
+        <Stack
+          direction="row"
+          spacing={1.5}
+          useFlexGap
+          sx={{ alignItems: 'center', flexGrow: 1, flexWrap: 'wrap', rowGap: 0.5, minWidth: 0 }}
+        >
+          <Typography
+            component="span"
+            sx={{ fontSize: fontSize.text, fontWeight: 600, overflowWrap: 'anywhere' }}
+          >
+            {group.name}
+          </Typography>
           {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
           <MetaBadge>{group.releasedForUse ? 'freigegeben' : 'nicht freigegeben'}</MetaBadge>
           {group.deactivated && <MetaBadge>deaktiviert</MetaBadge>}
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
+          <Typography
+            component="span"
+            sx={{
+              fontSize: fontSize.text,
+              color: 'text.secondary',
+              ml: 'auto',
+              mr: 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
             {group.memberCount} {group.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
           </Typography>
         </Stack>
@@ -98,8 +127,8 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Box>
-            <FieldLabel htmlFor={`my-group-${group.id}-name`}>Name der Gruppe</FieldLabel>
-            <TextField
+            <FormField
+              label="Name der Gruppe"
               id={`my-group-${group.id}-name`}
               fullWidth
               value={name}
@@ -108,14 +137,13 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
             />
           </Box>
           <Box>
-            <FieldLabel htmlFor={`my-group-${group.id}-description`}>Beschreibung</FieldLabel>
-            <TextField
+            <FormField
+              label="Beschreibung"
               id={`my-group-${group.id}-description`}
               fullWidth
               value={description}
               onChange={(e) => setDraft({ groupId: group.id, name, description: e.target.value })}
               multiline
-              minRows={2}
               size="small"
             />
           </Box>
@@ -138,8 +166,8 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
               size="small"
               onClick={async () => {
                 const confirmed = await confirmAction({
-                  question: `Gruppe "${group.name}" löschen?`,
-                  consequence: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+                  question: `„${group.name}“ löschen?`,
+                  consequence: GROUP_DELETE_CONSEQUENCE,
                   confirmLabel: 'Löschen',
                   tone: 'danger',
                 })
@@ -170,7 +198,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
             }
             label="Zur Verwendung freigeben"
           />
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Erst freigegeben kann jemand anderes diese Gruppe berechtigen. Name und Herkunft werden
             damit für alle sichtbar, denen die Gruppe zur Auswahl steht.
           </Typography>
@@ -180,7 +208,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 
         <SectionHead>Wirkung</SectionHead>
         <Stack spacing={1} sx={{ mb: 2, alignItems: 'flex-start' }}>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             {group.deactivated
               ? 'Die Gruppe ist deaktiviert und wirkt zurzeit für niemanden. Ihre Freigaben, Space-Mitgliedschaften und Anlegerechte sind gespeichert und gelten mit dem Reaktivieren wieder.'
               : 'Eine deaktivierte Gruppe wirkt vorübergehend für niemanden – etwa bei einem ruhenden Projekt. Alles bleibt gespeichert und gilt mit dem Reaktivieren wieder.'}
@@ -212,7 +240,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
         <SectionHead>Mitglieder</SectionHead>
         <Stack spacing={1}>
           {members.length === 0 && (
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               Diese Gruppe hat noch keine Mitglieder.
             </Typography>
           )}
@@ -311,30 +339,21 @@ export default function MyGroupsSection() {
 
   return (
     <Box>
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={1}
-        sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between', mb: 2 }}
-      >
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+      <CreateButton disabled={missingCapability} onClick={() => setCreateDialogOpen(true)}>
+        Gruppe anlegen
+      </CreateButton>
+      <Stack spacing={1.5} sx={{ alignItems: 'flex-start', mb: 2 }}>
+        <Typography
+          sx={{ fontSize: fontSize.text, color: 'text.secondary', maxWidth: readingWidth }}
+        >
           Gruppen, für die Sie verantwortlich sind. Sie pflegen deren Mitglieder, geben sie zur
           Verwendung frei und geben die Verantwortung ab, wenn Sie die Aufgabe wechseln.
         </Typography>
-        <Stack direction="row" spacing={1}>
-          {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
-             automatism, but a visible way out on a change of duties. */}
-          <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
-            Verantwortung und Eigentum abgeben
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            disabled={missingCapability}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            Gruppe anlegen
-          </Button>
-        </Stack>
+        {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
+           automatism, but a visible way out on a change of duties. */}
+        <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
+          Verantwortung und Eigentum abgeben
+        </Button>
       </Stack>
 
       {missingCapability && (
@@ -343,18 +362,31 @@ export default function MyGroupsSection() {
         </Alert>
       )}
 
-      {error && (
+      {error && (isLoading || groups.length > 0) && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
       {isLoading ? (
-        <Typography sx={{ color: 'text.secondary' }}>Gruppen werden geladen …</Typography>
+        <LoadingState shape="rows" count={2} />
+      ) : error && groups.length === 0 ? (
+        <LoadError
+          message="Ihre Gruppen konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => void loadGroups('STEWARDED')}
+        />
       ) : groups.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          Sie sind für keine Gruppe verantwortlich.
-        </Typography>
+        <EmptyState
+          message="Noch keine Gruppen in Ihrer Verantwortung."
+          action={
+            missingCapability ? undefined : (
+              <CreateButton placement="empty" onClick={() => setCreateDialogOpen(true)}>
+                Gruppe anlegen
+              </CreateButton>
+            )
+          }
+        />
       ) : (
         <Stack spacing={1}>
           {groups.map((group) => (

@@ -11,7 +11,7 @@ import AppShell from './shell/AppShell'
 import PageLoading from './shell/PageLoading'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import { emptyChatHint, renderSpaceChats } from './themeSeams'
+import { emptyChatHint, renderSpaceChats } from './shell/themeSeams'
 // shared
 import {
   CATALOG_ROUTE,
@@ -20,6 +20,7 @@ import {
   CONNECTION_LOG_ROUTE,
   CONNECTION_PROFILES_ROUTE,
   CONNECTIONS_ADMIN_ROUTE,
+  DOCUMENT_TEMPLATE_SETTINGS_ROUTE,
   EXTERNAL_TOOLS_LIBRARIES_ROUTE,
   EXTERNAL_TOOLS_ROUTE,
   EXTERNAL_TOOLS_SETTINGS_ROUTE,
@@ -34,6 +35,7 @@ import {
   VERIFY_EMAIL_ROUTE,
 } from '@/shared/routes'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useAgentAvailability } from '@/shared/session/agentAvailability'
 import { catalogRoute } from '@/shared/assetTypes'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 // pages, loaded on demand
@@ -61,10 +63,19 @@ import {
   LlmModelManagementPage,
   LoginPage,
   MailSettingsPage,
+  MalwareScanSettingsPage,
   OidcProviderManagementPage,
   PrivacySettingsPage,
   PromptLibraryCreatePage,
+  DocumentTemplateCreatePage,
+  DocumentTemplateDetailPage,
+  DocumentTemplateSettingsPage,
   PromptLibraryDetailPage,
+  AgentCreatePage,
+  AgentDetailPage,
+  AgentSettingsPage,
+  AgentDirectoryPage,
+  AgentDirectoryDetailPage,
   ProviderGroupWorklistPage,
   RegisterPage,
   RightsHistoryPage,
@@ -96,6 +107,10 @@ const ADMIN_SECTIONS = [
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
+  { label: 'Virenprüfung', to: '/admin/malware-scan' },
+  { label: 'Agenten', to: '/admin/agents' },
+  { label: 'Agentenverzeichnis', to: '/agent-directory' },
+  { label: 'Vorlagen', to: DOCUMENT_TEMPLATE_SETTINGS_ROUTE },
   // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
   { label: 'Suche & Indexierung', to: '/admin/search' },
@@ -148,6 +163,8 @@ export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const promptLibraries = useFeatureEnabled('promptLibraries')
   const externalAccess = useFeatureEnabled('externalAccess')
+  // Unknown until the shell asked; the routes stay until the answer is a clear „off“.
+  const agentsOff = useAgentAvailability((s) => s.enabled === false)
   const themeMode = useUiStore((s) => s.themeMode)
   const branding = useBrandingStore((s) => s.branding)
   const loadBranding = useBrandingStore((s) => s.loadBranding)
@@ -263,6 +280,34 @@ export default function App() {
                   ) : (
                     <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
                   )}
+                  {/* The agents switch (a runtime setting): off, every agent address leads to the catalog. */}
+                  {agentsOff ? (
+                    <Route path="agents/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
+                  ) : (
+                    <>
+                      <Route
+                        path="agents"
+                        element={<Navigate to={catalogRoute('AGENT')} replace />}
+                      />
+                      <Route path="agents/new" element={<AgentCreatePage />} />
+                      <Route path="agents/:agentId" element={<AgentDetailPage />} />
+                      <Route path="agents/:agentId/:tab" element={<AgentDetailPage />} />
+                    </>
+                  )}
+                  {/* Switched off at run time, the backend answers 404 and the page says so. */}
+                  <Route
+                    path="templates"
+                    element={<Navigate to={catalogRoute('DOCUMENT_TEMPLATE')} replace />}
+                  />
+                  <Route path="templates/new" element={<DocumentTemplateCreatePage />} />
+                  <Route
+                    path="templates/:documentTemplateId"
+                    element={<DocumentTemplateDetailPage />}
+                  />
+                  <Route
+                    path="templates/:documentTemplateId/:tab"
+                    element={<DocumentTemplateDetailPage />}
+                  />
                 </Route>
                 {/* Global areas render inside the global frame: no space
                   column, a light secondary column with the area navigation instead. */}
@@ -338,6 +383,17 @@ export default function App() {
                     </>
                   )}
                   <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
+                  <Route path="admin/agents" element={<AgentSettingsPage />} />
+                  {/* Not under /admin: the staff council holds the right without administering. */}
+                  <Route path="agent-directory" element={<AgentDirectoryPage />} />
+                  <Route
+                    path="agent-directory/agents/:agentId"
+                    element={<AgentDirectoryDetailPage />}
+                  />
+                  <Route
+                    path="agent-directory/templates/:templateId"
+                    element={<AgentDirectoryDetailPage />}
+                  />
                   <Route
                     path="admin/succession"
                     element={<Navigate to="/admin/succession/open" replace />}
@@ -347,6 +403,11 @@ export default function App() {
                      template management lands there. */}
                   <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                   <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
+                  <Route path="admin/malware-scan" element={<MalwareScanSettingsPage />} />
+                  <Route
+                    path={DOCUMENT_TEMPLATE_SETTINGS_ROUTE.slice(1)}
+                    element={<DocumentTemplateSettingsPage />}
+                  />
                   <Route
                     path="admin/search"
                     element={<Navigate to="/admin/search/overview" replace />}

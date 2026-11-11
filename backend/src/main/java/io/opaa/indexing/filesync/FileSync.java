@@ -21,6 +21,7 @@ import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.observability.IndexingStage;
 import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
@@ -51,6 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * The file sync of one library over one open {@link FileStore} (ADR-0045): every listed entry is
@@ -935,13 +937,23 @@ public final class FileSync implements AutoCloseable {
     while (pending.size() >= concurrency) {
       drainOne();
     }
+    // the download logs with the run's MDC (request and indexing run id); the pool thread is
+    // left without it, so the next download of another run cannot carry it
+    Map<String, String> runContext = MDC.getCopyOfContextMap();
     Future<FetchedFile> future =
         downloadPool()
             .submit(
                 () -> {
-                  FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
-                  landed.add(fetched.file());
-                  return fetched;
+                  if (runContext != null) {
+                    MDC.setContextMap(runContext);
+                  }
+                  try {
+                    FetchedFile fetched = timedFetch(entry);
+                    landed.add(fetched.file());
+                    return fetched;
+                  } finally {
+                    MDC.clear();
+                  }
                 });
     pending.add(new PendingDownload(entry, folderId, page, future));
   }
@@ -1143,10 +1155,18 @@ public final class FileSync implements AutoCloseable {
     return true;
   }
 
+  /** The store's download of {@code entry}, timed as {@link IndexingStage#FETCH} when it lands. */
+  private FetchedFile timedFetch(FileEntry entry) throws FileAccessException, InterruptedException {
+    long start = IndexingStage.start();
+    FetchedFile fetched = store.fetch(entry, settings.maxFileSizeBytes());
+    IndexingStage.FETCH.recordSince(start);
+    return fetched;
+  }
+
   /** The entry's bytes in a temp file, or {@code null} once the failure was handled. */
   private FetchedFile fetch(FileEntry entry) throws InterruptedException {
     try {
-      return store.fetch(entry, settings.maxFileSizeBytes());
+      return timedFetch(entry);
     } catch (FileAccessException e) {
       unsettle(entry);
       handleFailure(entry.filePath(), e);

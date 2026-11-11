@@ -98,8 +98,8 @@ final class ConfluenceHttp {
    * edition detection, which have no run to continue in. Counted are calls, not wire requests: a
    * redirect chain the fetcher follows counts once, a retry after a {@code 429} counts again.
    * {@code requestPolicy} contributes {@code User-Agent} and sleeper; the rate-limit numbers are
-   * {@code properties}' own, and its per-run bounds do not apply - Confluence has its own budget
-   * and no cap on the waiting time.
+   * {@code properties}' own, and of its per-run bounds only the one of hosts applies - Confluence
+   * has its own budget and no cap on the waiting time.
    */
   ConfluenceHttp(
       HttpClient httpClient,
@@ -110,7 +110,7 @@ final class ConfluenceHttp {
       SourceRequestMeter meter,
       Duration requestTimeout,
       int requestBudget) {
-    this.budget = new RequestBudget(meter, requestBudget, null);
+    this.budget = new RequestBudget(meter, requestBudget, null, requestPolicy.maxHostsPerRun());
     this.requestTimeout = requestTimeout == null ? properties.requestTimeout() : requestTimeout;
     this.httpClient = httpClient;
     this.connection = connection;
@@ -327,6 +327,9 @@ final class ConfluenceHttp {
 
   private ConfluenceAccessException connectionFailure(IOException e, String resource) {
     String host = connection.baseUrl().getHost();
+    if (e instanceof RequestBudget.HostLimitExceededException) {
+      return new ConfluenceAccessException(e.getMessage(), e);
+    }
     if (e instanceof TargetAddressValidator.TargetAddressBlockedException) {
       return new ConfluenceAccessException(e.getMessage() + " " + ALLOWLIST_HINT, e);
     }

@@ -1,7 +1,10 @@
-# Overlay for the run_code tool: OPAA_SANDBOX_API_KEY=<random> docker compose -f docker-compose.yml
-# -f docker-compose.sandbox.yml up --build
-# Adds the OpenSandbox lifecycle server, which starts one container per sandbox through the host's
-# Docker socket. Whoever holds that socket controls the host: development use only.
+# Overlay for the agent tool run_code (ADR-0073): OPAA_SANDBOX_API_KEY=<random> docker compose
+# -f docker-compose.yml -f docker-compose.sandbox.yml up --build
+# Adds the OpenSandbox lifecycle server, which starts one container per agent run through the
+# host's Docker socket. Whoever holds that socket controls the host: run this stack on a VM of its
+# own, on Linux preferably with gVisor ([secure_runtime] in sandbox/config.toml).
+# Only an agent run uses the sandbox: agents switched on and the tool allowed under Administration >
+# Agenten, and the tool chosen at the agent.
 services:
   # One-off build step: produces the sandbox image locally and exits. The server never pulls it.
   sandbox-image:
@@ -12,7 +15,8 @@ services:
     network_mode: none
 
   opensandbox-server:
-    image: opensandbox/server:release-1.1.1
+    # Version and index digest; Renovate keeps both, together with execd in sandbox/config.toml.
+    image: opensandbox/server:release-1.1.1@sha256:bcd5f264101262cebfa7e1ff9cd0424403e42f31a6596e4364cf90d8cb5c936b
     restart: unless-stopped
     environment:
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
@@ -20,6 +24,17 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./sandbox/config.toml:/etc/opensandbox/config.toml:ro
+      # The server's own state (SQLite store); the only path it writes besides /tmp.
+      - opensandbox-state:/root/.opensandbox
+    # The server talks to Docker through the socket only and needs no capability for that; the root
+    # file system stays read-only.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     # "default" carries the backend's calls; "sandboxes" is how the server reaches execd in each
     # sandbox. The backend never joins "sandboxes", so sandbox code cannot reach it. Sandbox code
     # can reach this server, though: its API needs the key (no default, so no guessable value),
@@ -38,10 +53,16 @@ services:
     depends_on:
       sandbox-image:
         condition: service_completed_successfully
+    # The server logs request lines and sandbox ids, never scripts or files ([log] level INFO in
+    # sandbox/config.toml); rotation bounds how long even those stay on the host.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     environment:
-      OPAA_SPIKE_TOOL_LOOP_ENABLED: "true"
       OPAA_SANDBOX_ENABLED: "true"
       OPAA_SANDBOX_BASE_URL: http://opensandbox-server:8090
       OPAA_SANDBOX_API_KEY: ${OPAA_SANDBOX_API_KEY:?set OPAA_SANDBOX_API_KEY to a random value}
@@ -56,3 +77,6 @@ networks:
   sandboxes:
     name: opaa-sandboxes
     internal: true
+
+volumes:
+  opensandbox-state:

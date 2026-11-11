@@ -20,7 +20,7 @@ Zwei Dinge werden getrennt gehalten:
   und Absender stehen in der Oberfläche unter „Administration → E-Mail → SMTP-Zugang" und wirken
   ohne Neustart. Das Passwort liegt verschlüsselt in der Datenbank, erscheint in keiner Antwort und
   in keinem Protokoll. Wer den Mailserver schon bei der Einrichtung kennt, trägt ihn im optionalen
-  Schritt „E-Mail-Versand“ der [Installation](../betrieb/installation.md#schritte) ein; der Abschluss übernimmt
+  Schritt „E-Mail“ der [Installation](../betrieb/installation.md#schritte) ein; der Abschluss übernimmt
   ihn mit denselben Regeln und schaltet den Versand ein. Übersprungen bleibt der Versand aus.
 - **Die öffentliche Adresse ist eine Bereitstellungsentscheidung.** `OPAA_PUBLIC_BASE_URL` steht in
   der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
@@ -37,20 +37,25 @@ Zwei Dinge werden getrennt gehalten:
    Zugangsdaten, Absenderadresse und Absendername. Der Versand lässt sich erst einschalten, wenn
    Server, Port und Absenderadresse gesetzt sind. Fehlt `OPAA_PUBLIC_BASE_URL`, weist die Seite
    darauf hin, dass Links in E-Mails unbrauchbar blieben.
-3. Testnachricht auslösen. Sie geht an die eigene Adresse des aufrufenden Verwalters. Das Ergebnis
+3. „Testnachricht an mich senden“ wählen. Sie geht an die eigene Adresse des aufrufenden Verwalters. Das Ergebnis
    steht sofort in der Oberfläche: zugestellt, übersprungen oder fehlgeschlagen mit Grund.
 
 | Feld | Bedeutung |
 |---|---|
 | Versand aktiv | Hauptschalter. Aus bedeutet: OPAA versendet nichts und meldet jeden Versand als übersprungen |
-| Server, Port | Adresse des Mailservers. In der Verwaltung findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten. Der Schritt E-Mail-Versand der Installation, den nur das Installations-Token schützt, prüft dagegen und lässt einen internen Mailserver nur über `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` zu ([Adressprüfung der Mailserver](../betrieb/installation.md#schritte)) |
+| Server, Port | Adresse des Mailservers. In der Verwaltung findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten. Der Schritt E-Mail der Installation, den nur das Installations-Token schützt, prüft dagegen und lässt einen internen Mailserver nur über `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` zu ([Adressprüfung der Mailserver](../betrieb/installation.md#schritte)) |
 | Verschlüsselung | `STARTTLS` verlangt die Aufwertung der Verbindung und bricht ab, wenn der Server sie nicht anbietet; `SSL` verschlüsselt ab dem ersten Byte; `NONE` überträgt unverschlüsselt und ist nur für einen Mailserver im selben vertrauenswürdigen Netz vertretbar. Bei `STARTTLS` und `SSL` muss der eingetragene Server im Zertifikat des Mailservers stehen; eine IP-Adresse oder ein interner Alias, den das Zertifikat nicht nennt, lässt den Versand scheitern |
-| Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als `***` angezeigt; wer `***` zurückschickt, lässt es unverändert, ein leeres Feld löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab |
+| Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und nie wieder angezeigt: Das Feld zeigt „Gesetzt“, „Ersetzen“ öffnet ein leeres Feld für ein neues, „Gespeichertes Passwort löschen“ entfernt es beim Speichern. Die API zeigt es als `***`; wer `***` zurückschickt, lässt es unverändert, ein leerer Wert löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab |
 | Absenderadresse, Absendername | Stehen als Absender in jeder Nachricht |
 
-Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel wie die Zugangsschlüssel
+Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel wie die API-Schlüssel
 der Chat-Modelle ([Schlüssel und Geheimnisse](../betrieb/netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
+
+Über den Versand laufen Einladungen und Rücksetzlinks. Deshalb fragt OPAA vor dem Speichern des
+Zugangs und einer Vorlage nach einer
+[erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen),
+wenn die letzte nicht gerade eben war; die Testnachricht braucht keine.
 
 ## Zustellung über die Warteschlange
 
@@ -137,7 +142,7 @@ steht im Log, dort ohne die Empfängeradresse.
 | Zeitüberschreitung | Mailserver antwortet nicht innerhalb der Timeouts | Erreichbarkeit prüfen; notfalls `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` anpassen |
 | Testnachricht scheitert mit „Can't verify identity of server: …“, im Assistenten „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | Das Zertifikat des Mailservers nennt den eingetragenen Server nicht, etwa weil eine IP-Adresse oder ein interner Alias eingetragen ist | Den Namen eintragen, auf den das Zertifikat lautet, oder das Zertifikat um den eingetragenen Namen ergänzen |
 | Meldung zu STARTTLS | Der Server bietet STARTTLS nicht an; OPAA bricht ab, statt unverschlüsselt fortzufahren | Beim Mailserver TLS einrichten, oder — nur im vertrauenswürdigen Netz — Verschlüsselung `NONE` wählen |
-| „535" oder Authentifizierungsfehler | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen; das Feld `***` lässt das gespeicherte Passwort unverändert, zum Ersetzen den neuen Wert eintragen |
+| „535" oder Authentifizierungsfehler | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen; „Gesetzt“ lässt das gespeicherte Passwort unverändert, „Ersetzen“ nimmt ein neues an |
 | Speichern abgelehnt, Hinweis am Passwortfeld | Server, Port, Benutzername oder Verschlüsselung wurden geändert, während ein Passwort hinterlegt ist | Passwort für die neue Verbindung eintragen oder löschen und erneut speichern |
 | Passwort lässt sich nicht speichern | Verschlüsselungsschlüssel fehlt oder ist ungültig | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |
 | Testnachricht kommt an, „Passwort vergessen" oder Erinnerungen nicht | Ohne Verschlüsselungsschlüssel geht keine Mail in die Warteschlange; das Protokoll meldet „Mailversand abgebrochen" mit dem Schlüssel als Grund | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |

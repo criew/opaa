@@ -1,10 +1,10 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type { MailTemplatePreviewResponse } from '@/shared/api/types'
-import { radius } from '@/shared/theme/tokens'
+import { fontSize, radius } from '@/shared/theme/tokens'
 import SectionHead from '@/shared/ui/SectionHead'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 interface MailTemplatePreviewPaneProps {
   preview: MailTemplatePreviewResponse | null
@@ -34,23 +34,23 @@ export default function MailTemplatePreviewPane({
         </Alert>
       )}
 
-      {!preview && !error && (
-        <Box aria-busy={isLoading}>
-          <Skeleton variant="rounded" height={180} />
-        </Box>
-      )}
+      {!preview && !error && <LoadingState shape="block" />}
 
       {preview && (
         <Box sx={{ opacity: isLoading ? 0.6 : 1 }}>
-          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Betreff</Typography>
-          <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 2 }}>{preview.subject}</Typography>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>Betreff</Typography>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 2 }}>
+            {preview.subject}
+          </Typography>
 
-          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Textfassung</Typography>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
+            Textfassung
+          </Typography>
           <Box
             component="pre"
             sx={{
               fontFamily: 'monospace',
-              fontSize: 12.5,
+              fontSize: fontSize.meta,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               border: 1,
@@ -64,7 +64,7 @@ export default function MailTemplatePreviewPane({
             {preview.bodyPlain}
           </Box>
 
-          <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 0.5 }}>
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 0.5 }}>
             HTML-Fassung
           </Typography>
           <Box

@@ -1,4 +1,4 @@
-import TextField from '@mui/material/TextField'
+import FormField from '../form/FormField'
 import {
   isVocabularyTooLong,
   TRANSCRIPTION_TEXTS,
@@ -36,7 +36,7 @@ export default function VocabularyField({
       ? `Höchstens ${VOCABULARY_MAX_LENGTH} Zeichen. ${counter}`
       : `${TRANSCRIPTION_TEXTS.vocabularyHint}${hint ? ` ${hint}` : ''} ${counter}`)
   return (
-    <TextField
+    <FormField
       id={id}
       label={TRANSCRIPTION_TEXTS.vocabularyLabel}
       value={value}
@@ -45,7 +45,6 @@ export default function VocabularyField({
       helperText={helper}
       placeholder="Einspruchsfrist, Grunderwerbsteuer, AO, BZSt"
       multiline
-      minRows={2}
       maxRows={6}
       size="small"
       fullWidth

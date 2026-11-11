@@ -2,6 +2,8 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { fontSize, iconSize, readingWidth } from '@/shared/theme/tokens'
+import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
 
 /** The accessible name of the notice region; screen readers announce it before the text. */
 const NOTICE_NAME = 'Hinweis zur KI-Nutzung'
@@ -10,8 +12,8 @@ const NOTICE_NAME = 'Hinweis zur KI-Nutzung'
  * The authority's notice that answers come from an AI (Art. 50 AI Act), in the wording the
  * branding carries. The store always holds a text - the OPAA standard until the branding arrives
  * or when its request fails - so the notice cannot be off. `variant="prominent"` is the empty
- * chat's notice before the first question, `variant="line"` the quiet permanent line under the
- * input.
+ * chat's notice before the first question, `variant="line"` the quiet line under the input from
+ * the first question on - one notice per surface.
  */
 export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
   const notice = useBrandingStore((s) => s.branding.aiNotice)
@@ -23,10 +25,11 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         role="note"
         aria-label={NOTICE_NAME}
         data-testid="ai-notice-line"
+        {...tourAnchor('ai-notice')}
         // the full text stays in the DOM (screen readers, title); the line itself shows two rows
         title={notice}
         sx={{
-          fontSize: 12,
+          fontSize: fontSize.meta,
           color: 'text.secondary',
           display: '-webkit-box',
           WebkitBoxOrient: 'vertical',
@@ -44,11 +47,12 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
       role="note"
       aria-label={NOTICE_NAME}
       data-testid="ai-notice"
+      {...tourAnchor('ai-notice')}
       sx={{
         display: 'flex',
         alignItems: 'flex-start',
         gap: 1,
-        maxWidth: 520,
+        maxWidth: readingWidth,
         px: 2,
         py: 0.5,
         borderLeft: 3,
@@ -57,7 +61,10 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         textAlign: 'left',
       }}
     >
-      <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: 20, mt: '1px', color: 'text.secondary' }} />
+      <SmartToyOutlinedIcon
+        aria-hidden
+        sx={{ fontSize: iconSize.md, mt: '1px', color: 'text.secondary' }}
+      />
       <Typography variant="body2">{notice}</Typography>
     </Box>
   )
@@ -75,13 +82,13 @@ export function AiAnswerMark() {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 0.5,
-        fontSize: 12,
+        fontSize: fontSize.meta,
         fontWeight: 500,
         color: 'text.secondary',
         whiteSpace: 'nowrap',
       }}
     >
-      <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: 14 }} />
+      <SmartToyOutlinedIcon aria-hidden sx={{ fontSize: iconSize.xs }} />
       KI-erzeugt
     </Typography>
   )

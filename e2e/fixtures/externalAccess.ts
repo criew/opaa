@@ -169,8 +169,8 @@ export async function mcpSearch(
  */
 export async function setChannelEnabled(adminPage: Page, enabled: boolean): Promise<void> {
   await adminPage.goto('/admin/connections/external-tools?panel=settings')
-  const panel = adminPage.getByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' })
-  const toggle = panel.getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' })
+  const panel = adminPage.getByRole('dialog', { name: 'Einstellungen' })
+  const toggle = panel.getByRole('checkbox', { name: 'Externe KI-Werkzeuge zulassen' })
   await expect(toggle).toBeVisible()
   if ((await toggle.isChecked()) !== enabled) {
     await toggle.click()
@@ -282,9 +282,9 @@ export async function setLibraryReleaseInDialog(
     await expect(dialog).toBeHidden()
     await expect(row).toContainText(/Freigegeben bis/)
   } else {
-    await dialog.getByRole('button', { name: 'Freigabe beenden' }).click()
+    await dialog.getByRole('button', { name: 'Freigabe widerrufen' }).click()
     const confirm = page.getByRole('dialog').filter({ has: page.locator('#confirm-question') })
-    await expect(confirm).toContainText('Freigabe für externe KI-Werkzeuge beenden?')
+    await expect(confirm).toContainText('Freigabe für externe KI-Werkzeuge widerrufen?')
     await confirm.locator('#confirm-accept').click()
     await expect(dialog).toBeHidden()
     await expect(row).toContainText(/Nicht freigegeben · am .* zurückgenommen/)
@@ -324,7 +324,7 @@ export async function createToken(
   await expect(value).toBeVisible()
   const token = (await value.textContent()) ?? ''
   expect(token).toMatch(/^opaa_pat_/)
-  await page.getByRole('button', { name: 'Kopiert, schließen' }).click()
+  await page.getByRole('button', { name: 'Schließen' }).click()
   await expect(value).toHaveCount(0)
   return token
 }

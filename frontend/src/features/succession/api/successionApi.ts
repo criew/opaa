@@ -1,5 +1,4 @@
 import type {
-  SuccessionCountsResponse,
   SuccessionKind,
   SuccessionListResponse,
   SuccessionSettingsRequest,
@@ -27,16 +26,6 @@ export async function getSuccessionEntries(
   }
 }
 
-/** How many entries each tab holds - per kind of entry only, never per person. */
-export async function getSuccessionCounts(): Promise<SuccessionCountsResponse> {
-  try {
-    const { data } = await apiClient.get<SuccessionCountsResponse>('/v1/admin/succession/counts')
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
 /** From which age an entry is highlighted, with factory default and bounds. */
 export async function getSuccessionSettings(): Promise<SuccessionSettingsResponse> {
   try {
@@ -49,12 +38,14 @@ export async function getSuccessionSettings(): Promise<SuccessionSettingsRespons
   }
 }
 
-/** Sets the aging threshold in months; `null` returns to the factory default. */
+/**
+ * Sets the aging threshold in months and the days until an agent or a template without a
+ * responsible unit is locked; `null` returns a value to its factory default.
+ */
 export async function updateSuccessionSettings(
-  agingThresholdMonths: number | null,
+  body: SuccessionSettingsRequest,
 ): Promise<SuccessionSettingsResponse> {
   try {
-    const body: SuccessionSettingsRequest = { agingThresholdMonths }
     const { data } = await apiClient.put<SuccessionSettingsResponse>(
       '/v1/admin/succession/settings',
       body,

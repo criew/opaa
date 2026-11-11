@@ -10,6 +10,8 @@ import type {
   LlmModelResponse,
   LlmModelTestRequest,
   LlmModelTestResponse,
+  LlmModelToolCapabilityRequest,
+  LlmModelToolCheckResponse,
   ModelRoleTestRequest,
   RerankModelSettingsRequest,
   RerankModelSettingsResponse,
@@ -18,8 +20,10 @@ import type {
   TextRecognitionTestRequest,
   TextRecognitionTestResponse,
   TranscriptionModelSettingsRequest,
+  TranscriptionRealtimeTestRequest,
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
+import { isAxiosError } from 'axios'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // managed chat models ('s admin API) - SYSTEM_ADMIN only, same as the group/branding
@@ -66,6 +70,69 @@ export async function deleteLlmModel(modelId: string): Promise<void> {
 export async function activateLlmModel(modelId: string): Promise<LlmModelResponse> {
   try {
     const { data } = await client.post<LlmModelResponse>(`/v1/admin/models/${modelId}/activate`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Records whether the model calls tools reliably; UNVERIFIED resets the statement. */
+export async function setLlmModelToolCapability(
+  modelId: string,
+  request: LlmModelToolCapabilityRequest,
+): Promise<LlmModelResponse> {
+  try {
+    const { data } = await client.put<LlmModelResponse>(
+      `/v1/admin/models/${modelId}/tool-capability`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Starts a run of the tool-calling case base against the model; 409 while another check runs. */
+export async function startLlmModelToolCheck(
+  modelId: string,
+  repetitions: number,
+): Promise<LlmModelToolCheckResponse> {
+  try {
+    const { data } = await client.post<LlmModelToolCheckResponse>(
+      `/v1/admin/models/${modelId}/tool-checks`,
+      { repetitions },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The newest check of the model, `null` when there is none. */
+export async function getLatestLlmModelToolCheck(
+  modelId: string,
+): Promise<LlmModelToolCheckResponse | null> {
+  try {
+    const { data } = await client.get<LlmModelToolCheckResponse>(
+      `/v1/admin/models/${modelId}/tool-checks/latest`,
+    )
+    return data
+  } catch (err) {
+    if (isAxiosError(err) && err.response?.status === 404) return null
+    normalizeError(err)
+  }
+}
+
+/** The Markdown report of a completed check. */
+export async function getLlmModelToolCheckReport(
+  modelId: string,
+  checkId: string,
+): Promise<string> {
+  try {
+    const { data } = await client.get<string>(
+      `/v1/admin/models/${modelId}/tool-checks/${checkId}/report`,
+      { responseType: 'text' },
+    )
     return data
   } catch (err) {
     normalizeError(err)
@@ -169,6 +236,21 @@ export async function testTranscriptionModel(
   try {
     const { data } = await client.post<LlmModelTestResponse>(
       '/v1/admin/models/transcription/test',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Opens a session of the draft live service without audio and closes it again. */
+export async function testTranscriptionRealtimeModel(
+  request: TranscriptionRealtimeTestRequest,
+): Promise<LlmModelTestResponse> {
+  try {
+    const { data } = await client.post<LlmModelTestResponse>(
+      '/v1/admin/models/transcription/realtime/test',
       request,
     )
     return data

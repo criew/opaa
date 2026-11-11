@@ -11,6 +11,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { AssetType } from '@/shared/api/types'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './AssetFilterChips'
+import { fieldWidth, iconSize } from '@/shared/theme/tokens'
 
 const ALL_TYPES = 'all'
 
@@ -71,14 +72,14 @@ export default function AssetFilterBar({
         placeholder="Name oder Beschreibung …"
         sx={{
           flex: '1 1 240px',
-          maxWidth: 420,
+          maxWidth: fieldWidth.long,
           '& input::-webkit-search-cancel-button': { display: 'none' },
         }}
         slotProps={{
           input: {
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 16 }} />
+                <SearchIcon sx={{ fontSize: iconSize.sm }} />
               </InputAdornment>
             ),
             endAdornment: search.value ? (
@@ -88,7 +89,7 @@ export default function AssetFilterBar({
                   aria-label="Suche zurücksetzen"
                   onClick={() => search.onChange('')}
                 >
-                  <CloseIcon sx={{ fontSize: 16 }} />
+                  <CloseIcon sx={{ fontSize: iconSize.sm }} />
                 </IconButton>
               </InputAdornment>
             ) : undefined,
@@ -110,7 +111,7 @@ export default function AssetFilterBar({
               }}
               aria-label="Typ"
             >
-              <ToggleButton value={ALL_TYPES} sx={{ px: { xs: 1, sm: 1.5 } }}>
+              <ToggleButton value={ALL_TYPES} sx={{ px: { xs: 0.75, sm: 1.5 } }}>
                 Alle
               </ToggleButton>
               {types.offered.map((definition) => {
@@ -119,11 +120,14 @@ export default function AssetFilterBar({
                   <ToggleButton
                     key={definition.type}
                     value={definition.type}
-                    sx={{ px: { xs: 1, sm: 1.5 }, gap: 0.75 }}
+                    sx={{ px: { xs: 0.75, sm: 1.5 }, gap: 0.75 }}
                   >
                     <Icon
                       aria-hidden
-                      sx={(theme) => ({ fontSize: 16, [narrow(theme)]: { display: 'none' } })}
+                      sx={(theme) => ({
+                        fontSize: iconSize.sm,
+                        [narrow(theme)]: { display: 'none' },
+                      })}
                     />
                     {definition.label}
                   </ToggleButton>

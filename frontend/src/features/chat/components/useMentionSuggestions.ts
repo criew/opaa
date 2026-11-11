@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { SearchScope } from '../stores/chatSettingsPersistence'
 import { SPACE_KNOWLEDGE_LABEL, findActiveMention } from './chatInputText'
-import type { ActiveMention, MentionSuggestion, SpaceLibrary } from './chatInputText'
+import type { ActiveMention, MentionAgent, MentionSuggestion, SpaceLibrary } from './chatInputText'
 
 interface MentionSuggestionsOptions {
   value: string
@@ -13,6 +13,11 @@ interface MentionSuggestionsOptions {
   referencedLibraryIds: string[]
   setScopeAll: () => void
   addReferencedLibrary: (libraryId: string) => void
+  /** The agents on offer, listed after the knowledge entries; empty while agents are off. */
+  agents?: MentionAgent[]
+  /** The agent chosen for the next question, not offered again. */
+  chosenAgentId?: string | null
+  chooseAgent?: (agent: MentionAgent) => void
 }
 
 /**
@@ -28,6 +33,9 @@ export function useMentionSuggestions({
   referencedLibraryIds,
   setScopeAll,
   addReferencedLibrary,
+  agents = [],
+  chosenAgentId = null,
+  chooseAgent,
 }: MentionSuggestionsOptions) {
   const [mention, setMention] = useState<ActiveMention | null>(null)
   // -1 means "nothing explicitly highlighted yet" - Enter only selects once ArrowDown/ArrowUp/
@@ -54,8 +62,13 @@ export function useMentionSuggestions({
       .filter((library) => library.name.toLowerCase().includes(query))
       .slice(0, 8 - suggestions.length)
       .forEach((library) => suggestions.push({ kind: 'library', library }))
+    agents
+      .filter((agent) => agent.id !== chosenAgentId)
+      .filter((agent) => agent.name.toLowerCase().includes(query))
+      .slice(0, 5)
+      .forEach((agent) => suggestions.push({ kind: 'agent', agent }))
     return suggestions
-  }, [spaceLibraries, mention, referencedLibraryIds, scope])
+  }, [spaceLibraries, mention, referencedLibraryIds, scope, agents, chosenAgentId])
 
   /** Closes the suggestion popup without recording a dismissal (used on selection/send). */
   const closeMention = () => {
@@ -72,6 +85,8 @@ export function useMentionSuggestions({
     setValue(nextValue)
     if (suggestion.kind === 'all') {
       setScopeAll()
+    } else if (suggestion.kind === 'agent') {
+      chooseAgent?.(suggestion.agent)
     } else {
       addReferencedLibrary(suggestion.library.id)
     }

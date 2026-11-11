@@ -29,8 +29,22 @@ export function toChatMessage(message: ChatMessageResponse): ChatMessage {
     ...(message.attachments?.length ? { attachments: message.attachments } : {}),
     ...(message.privateSourcesInContext ? { privateSourcesInContext: true } : {}),
     ...(message.evidence ? { evidence: message.evidence } : {}),
+    ...(message.agentRun ? { agentRun: message.agentRun } : {}),
     timestamp: new Date(message.createdAt),
   }
+}
+
+/**
+ * The messages with each question that an agent answered marked by the agent's name, which the
+ * server keeps with the answer's run.
+ */
+export function withAgentNames(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((message, index) => {
+    const answerAgent = messages[index + 1]?.agentRun?.agentName
+    return message.role === 'user' && answerAgent && !message.agentName
+      ? { ...message, agentName: answerAgent }
+      : message
+  })
 }
 
 /**
@@ -51,7 +65,10 @@ export function reloadChatTurns(
       confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
       set({
         title: detail.title ?? null,
-        messages: withOutstandingQuestions(chatId, detail.messages.map(toChatMessage)),
+        messages: withOutstandingQuestions(
+          chatId,
+          withAgentNames(detail.messages.map(toChatMessage)),
+        ),
         noteItems: visibleNoteItems(chatId, detail.noteItems ?? []),
       })
     })
@@ -84,7 +101,10 @@ export function applyChatDetail(detail: ChatDetail) {
     // 'none' keeps the chip bar an exact mirror of what the server applies.
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
-    messages: withOutstandingQuestions(detail.id, detail.messages.map(toChatMessage)),
+    messages: withOutstandingQuestions(
+      detail.id,
+      withAgentNames(detail.messages.map(toChatMessage)),
+    ),
     noteItems: visibleNoteItems(detail.id, detail.noteItems ?? []),
     archivedAt: detail.archivedAt ?? null,
     deletionDueAt: detail.deletionDueAt ?? null,

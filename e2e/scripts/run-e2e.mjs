@@ -20,7 +20,7 @@
 //   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
 //   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
 //   node scripts/run-e2e.mjs --target installation # set-up assistant (pnpm run test:installation)
-//   node scripts/run-e2e.mjs --target sandbox      # agent spike with run_code (pnpm run test:sandbox)
+//   node scripts/run-e2e.mjs --target sandbox      # agent with run_code (pnpm run test:sandbox)
 //   node scripts/run-e2e.mjs --target ocr          # text recognition with the real opaa-ocr (pnpm run test:ocr)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, demo/README.md) with ai-stub standing in
@@ -153,6 +153,9 @@ const backendPort =
         : isOcr
           ? '18088'
           : '18081')
+// The management port (probes, metrics) sits 100 above the backend port of the same target.
+const backendManagementPort =
+  process.env.OPAA_BACKEND_MANAGEMENT_PORT ?? String(Number(backendPort) + 100)
 const frontendPort =
   process.env.OPAA_FRONTEND_PORT ??
   (isDemo
@@ -290,6 +293,7 @@ const composeEnv = {
   // A copy with this run's AES keys; every stack of the run (one per installation variant) uses it.
   OPAA_ENV_FILE: envFileWithRunKeys(repoRoot, envFile),
   OPAA_BACKEND_PORT: backendPort,
+  OPAA_BACKEND_MANAGEMENT_PORT: backendManagementPort,
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
@@ -316,7 +320,8 @@ const composeEnv = {
         : '172.29.0.10',
   ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
   // Loopback port of the OpenSandbox server, off the default so a developer's own overlay can run;
-  // its API key is random per run, since sandbox code can reach the server.
+  // its API key is random per run, since sandbox code can reach the server. The specs switch
+  // agents on themselves and choose an agent with run_code.
   ...(isSandbox
     ? {
         OPAA_SANDBOX_PORT: process.env.OPAA_SANDBOX_PORT ?? '18092',
@@ -333,6 +338,7 @@ const composeEnv = {
         OPAA_OCR_STUB_API_KEY: ocrApiKey,
       }),
   ...(isOcr ? { OPAA_OCR_API_KEY: ocrApiKey } : {}),
+  ...(isInstallation ? { OPAA_OCR_STUB_API_KEY: ocrApiKey } : {}),
   ...(usesMailpit
     ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
     : {}),
@@ -549,8 +555,18 @@ async function runStack(variantArgs = [], variantEnv = {}) {
         // scenario connects, for an entry in the connection log.
         ['ai-stub', 'mailpit', 'dropbox-stub', 'postgres', 'backend', 'frontend']
       : isInstallation
-        ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server.
-          ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
+        ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server,
+          // oidc-stub, ocr-stub and clamd-stub the provider, OCR service and scanner of its steps.
+          [
+            'ai-stub',
+            'mailpit',
+            'oidc-stub',
+            'ocr-stub',
+            'clamd-stub',
+            'postgres',
+            'backend',
+            'frontend',
+          ]
         : [
             'ai-stub',
             'rss-feed',
@@ -674,6 +690,7 @@ async function runStack(variantArgs = [], variantEnv = {}) {
         ? {
             E2E_INSTALLATION_TOKEN: envFileValue('OPAA_INSTALLATION_TOKEN') ?? '',
             E2E_MAILPIT_BASE_URL: `http://localhost:${mailpitWebPort}`,
+            E2E_OCR_API_KEY: ocrApiKey,
           }
         : {}),
     },

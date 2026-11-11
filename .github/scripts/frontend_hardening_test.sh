@@ -5,15 +5,18 @@
 # proxy paths, every response carries the Permissions-Policy and the cross-origin isolation headers
 # (Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy), only the self-disclosure download
 # may be framed (by the application itself), the access log leaves out the marker of the
-# quick-tour hint, and the start refuses an invalid
-# OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
-# OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
+# quick-tour hint, a valid X-Request-Id reaches the upstream and the access log while any other is
+# replaced by 32 hex characters, both also on the dictation WebSocket, a caller's trace context
+# reaches no upstream, and the start refuses
+# an invalid OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy,
+# and with OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 # Under parallel requests one of two containers behind the name stops: every request is answered
 # by the other, with its body and URI intact, within a few seconds. A slow answer, a streamed /mcp
 # answer, a streamed chat answer and uploads up to the size limits pass unchanged. A request other
 # than GET and HEAD that a backend has received is never sent to a second one, neither when that
 # backend closes the connection without an answer nor when the answer outlasts
 # OPAA_BACKEND_READ_TIMEOUT; next to an address that refuses connections it is still answered.
+# The access log names neither the token of a mail link nor the code of a callback.
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -66,6 +69,18 @@ echo_conf="server {
     location / {
         default_type text/plain;
         return 200 $echo_body;
+    }
+    location = /api/v1/trace-context {
+        default_type text/plain;
+        return 200 \"trace=[\$http_traceparent\$http_tracestate\$http_baggage\$http_b3\$http_x_b3_traceid\$http_x_b3_sampled]\\n\";
+    }
+    location = /api/v1/request-id {
+        default_type text/plain;
+        return 200 \"request-id=[\$http_x_request_id]\\n\";
+    }
+    location = /api/v1/transcriptions/stream {
+        default_type text/plain;
+        return 200 \"request-id=[\$http_x_request_id] trace=[\$http_traceparent\$http_tracestate\$http_baggage\$http_b3\$http_x_b3_traceid\$http_x_b3_sampled]\\n\";
     }
     location = /api/v1/me/self-disclosure/download {
         default_type text/plain;
@@ -151,7 +166,8 @@ echo "--- access log"
 # control request beside it does.
 for path in /api/v1/me/quick-tour-hint "/api/v1/me/quick%2Dtour-hint" \
   "/api/v1/me/quick-tour-hint?x=1" /api/v1/me/quick-tour-control; do
-  curl -sS -o /dev/null --max-time 10 -X PUT "$base$path" || true
+  curl -sS -o /dev/null --max-time 10 -X PUT -H 'X-Request-Id: quick-tour-marker-id' "$base$path" ||
+    true
 done
 access_lines="$(docker logs "$frontend" 2>/dev/null | grep '" [0-9][0-9][0-9] ' || true)"
 if grep -q 'quick%2Dtour-hint\|quick-tour-hint' <<<"$access_lines"; then
@@ -162,6 +178,69 @@ fi
 grep -q '"PUT /api/v1/me/quick-tour-control ' <<<"$access_lines" &&
   echo "logged as expected: the control request" ||
   fail "the access log lacks the control request"
+# The request id of the hint's marker appears in no line; the control request carries it.
+[[ "$(grep -c 'quick-tour-marker-id' <<<"$access_lines" || true)" == 1 ]] &&
+  echo "logged as expected: the request id of the control request only" ||
+  fail "the request id of the quick-tour marker is in the access log, or the control's is not"
+# The token of a mail link and the code of a callback stay out of the access log, in the request
+# line and in the Referer of the page's own asset requests; the page itself is logged.
+link_secret="maillinksentinel0123456789"
+for page in /set-password /verify-email /handover /auth/callback /connections/callback; do
+  curl -sS -o /dev/null --max-time 10 "$base$page?token=$link_secret&state=x" || true
+  curl -sS -o /dev/null --max-time 10 -H "Referer: $base$page/?token=$link_secret" \
+    "$base/runtime-config.js" || true
+done
+access_lines="$(docker logs "$frontend" 2>/dev/null | grep '" [0-9][0-9][0-9] ' || true)"
+if grep -q "$link_secret" <<<"$access_lines"; then
+  fail "the access log carries the token of a mail link or the code of a callback"
+else
+  echo "left out as expected: the token of a mail link and the code of a callback"
+fi
+grep -q '"GET /set-password HTTP' <<<"$access_lines" &&
+  echo "logged as expected: the page of a mail link without its query" ||
+  fail "the access log lacks the page of a mail link"
+
+echo "--- request id"
+# A valid X-Request-Id reaches the upstream and the access log unchanged; any other is replaced
+# by nginx's own id, 32 hex characters.
+valid_id="client-id_0123456789"
+received="$(curl -sS --max-time 10 -H "X-Request-Id: $valid_id" "$base/api/v1/request-id" || true)"
+[[ "$received" == "request-id=[$valid_id]" ]] && echo "kept as expected: a valid request id" ||
+  fail "a valid request id reached the upstream as '${received:-no answer}'"
+docker logs "$frontend" 2>/dev/null | grep -q "\"GET /api/v1/request-id .*\"$valid_id\"\$" &&
+  echo "logged as expected: the valid request id" ||
+  fail "the access log lacks the valid request id"
+for invalid in "short" "with space inside" "$(printf 'a%.0s' $(seq 1 65))" 'line%0Abreak' \
+  'id"quote12'; do
+  received="$(curl -sS --max-time 10 -H "X-Request-Id: $invalid" "$base/api/v1/request-id" || true)"
+  if [[ "$received" =~ ^request-id=\[[0-9a-f]{32}\]$ ]]; then
+    echo "replaced as expected: '${invalid:0:20}'"
+  else
+    fail "the request id '${invalid:0:20}' reached the upstream as '${received:-no answer}'"
+  fi
+done
+received="$(curl -sS --max-time 10 "$base/api/v1/request-id" || true)"
+[[ "$received" =~ ^request-id=\[[0-9a-f]{32}\]$ ]] && echo "generated as expected: no request id" ||
+  fail "a request without id reached the upstream as '${received:-no answer}'"
+# A caller's trace context reaches no backend: its trace id would decide the backend's sampling.
+received="$(curl -sS --max-time 10 -H 'traceparent: 00-ffffffffffffffff0000000000000001-0000000000000001-01' \
+  -H 'tracestate: a=b' -H 'baggage: user=x' -H 'b3: 1-2-1' -H 'X-B3-TraceId: 1' -H 'X-B3-Sampled: 1' \
+  "$base/api/v1/trace-context" || true)"
+[[ "$received" == "trace=[]" ]] && echo "dropped as expected: the caller's trace context" ||
+  fail "the caller's trace context reached the upstream: ${received:-no answer}"
+# The dictation WebSocket has a location of its own; it keeps a valid request id, replaces an
+# invalid one and drops the trace context exactly like /api/.
+received="$(curl -sS --max-time 10 -H "X-Request-Id: $valid_id" \
+  -H 'traceparent: 00-ffffffffffffffff0000000000000001-0000000000000001-01' -H 'tracestate: a=b' \
+  -H 'baggage: user=x' -H 'b3: 1-2-1' -H 'X-B3-TraceId: 1' -H 'X-B3-Sampled: 1' \
+  "$base/api/v1/transcriptions/stream" || true)"
+[[ "$received" == "request-id=[$valid_id] trace=[]" ]] &&
+  echo "kept and dropped as expected: request id and trace context of the dictation WebSocket" ||
+  fail "the dictation WebSocket reached the upstream as '${received:-no answer}'"
+received="$(curl -sS --max-time 10 -H 'X-Request-Id: short' "$base/api/v1/transcriptions/stream" || true)"
+[[ "$received" =~ ^request-id=\[[0-9a-f]{32}\]\ trace=\[\]$ ]] &&
+  echo "replaced as expected: an invalid request id on the dictation WebSocket" ||
+  fail "an invalid request id reached the dictation WebSocket's upstream as '${received:-no answer}'"
 
 echo "--- OPAA_CSP_CONNECT_SRC_EXTRA"
 # Starts the image with the value and reports whether nginx came up within a few seconds.

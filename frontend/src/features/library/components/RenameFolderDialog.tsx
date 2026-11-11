@@ -1,14 +1,9 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import TextField from '@mui/material/TextField'
 import type { LibraryFolderListItem } from '@/shared/api/types'
-import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import FormField from '@/shared/ui/form/FormField'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
 
 interface RenameFolderDialogProps {
   open: boolean
@@ -27,9 +22,13 @@ export default function RenameFolderDialog({
   const [name, setName] = useState(folder?.name ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nameMissing, setNameMissing] = useState(false)
 
   async function handleSubmit() {
-    if (!name.trim()) return
+    if (!name.trim()) {
+      setNameMissing(true)
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -43,38 +42,35 @@ export default function RenameFolderDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Ordner umbenennen</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Box sx={{ pt: 0.5 }}>
-          <FieldLabel htmlFor="rename-folder-name">Ordnername</FieldLabel>
-          <TextField
-            id="rename-folder-name"
-            fullWidth
-            size="small"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleSubmit()
-            }}
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleSubmit()}
-          disabled={saving || !name.trim()}
-        >
-          {saving ? 'Wird umbenannt …' : 'Umbenennen'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      open={open}
+      title={folder ? `„${folder.name}“ umbenennen` : 'Ordner umbenennen'}
+      submitLabel="Umbenennen"
+      onSubmit={() => void handleSubmit()}
+      onClose={onClose}
+      busy={saving}
+      busyAnnouncement="Der Ordner wird umbenannt"
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Box sx={{ pt: 0.5 }}>
+        <FormField
+          label="Ordnername"
+          id="rename-folder-name"
+          fullWidth
+          size="small"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value)
+            setNameMissing(false)
+          }}
+          error={nameMissing}
+          helperText={nameMissing ? 'Bitte einen Namen angeben.' : undefined}
+        />
+      </Box>
+    </FormDialog>
   )
 }

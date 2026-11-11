@@ -11,7 +11,7 @@ interface ModelRoleTexts {
 /** Shared by the model administration and the set-up assistant, so both say the same. */
 export const MODEL_ROLE_TEXTS: Record<ModelRoleKind, ModelRoleTexts> = {
   rerank: {
-    purpose: 'Das Rerank-Modell ordnet die Kandidaten jeder Suche neu, bevor die Antwort entsteht.',
+    purpose: 'Das Reranking ordnet die Kandidaten jeder Suche neu, bevor die Antwort entsteht.',
     addressHint: 'Ohne den Pfad /rerank, etwa http://reranker:80.',
   },
   transcription: {

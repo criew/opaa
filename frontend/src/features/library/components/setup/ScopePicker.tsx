@@ -8,7 +8,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import Typography from '@mui/material/Typography'
 import SelectionDialog from '../sourceKit/SelectionDialog'
 import { incompleteNote } from '../sourceKit/incompleteNote'
-import { plainMessage } from '../sourceKit/plainMessage'
+import { plainMessage } from '../sourceCore/plainMessage'
 import {
   toggle,
   type BrowseResult,
@@ -16,10 +16,14 @@ import {
   type SelectionItem,
   type SelectionSource,
 } from '../sourceKit/selection'
-import { counted } from './connectors/common'
-import PathLabel from './PathLabel'
+import { counted } from '../sourceCore/common'
+import PathLabel from '../sourceCore/PathLabel'
 import { SummaryValue } from './SummaryRow'
 import { TEXT_LINK } from './rowStyles'
+import { fontSize } from '@/shared/theme/tokens'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Up to this many flat entries stand as checkboxes in the row; more go through the dialog. */
 const INLINE_MAX = 7
@@ -150,24 +154,29 @@ export default function ScopePicker({
       const detail = plainMessage(current.error)
       body = (
         <Box>
-          <Typography sx={{ fontSize: 13.5, color: 'text.primary' }}>
-            {deniedWords.test(current.error)
-              ? `Kein Zugriff auf die ${plural}.`
-              : `${plural} ließen sich nicht laden.`}
-          </Typography>
-          {detail && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{detail}</Typography>
+          {deniedWords.test(current.error) ? (
+            <>
+              <EmptyState kind="noAccess" message={`Kein Zugriff auf die ${plural}.`} />
+              {detail && (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {detail}
+                </Typography>
+              )}
+            </>
+          ) : (
+            <LoadError
+              message={`${plural} konnten nicht geladen werden.`}
+              detail={detail}
+              onRetry={() => setAttempt((n) => n + 1)}
+            />
           )}
-          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-            <TextLink onClick={() => setAttempt((n) => n + 1)}>Erneut laden</TextLink>
-            {manualLink}
-          </Box>
+          {manualLink && <Box sx={{ mt: 0.5 }}>{manualLink}</Box>}
         </Box>
       )
     } else if (wantsList && entries.length === 0 && current?.result?.complete) {
       body = (
         <Box>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Keine {plural} vorhanden.
           </Typography>
           {manualLink && <Box sx={{ mt: 0.5 }}>{manualLink}</Box>}
@@ -177,7 +186,7 @@ export default function ScopePicker({
       body = (
         <Box>
           {current?.result && incompleteNote(current.result) && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {incompleteNote(current.result)}
             </Typography>
           )}
@@ -195,7 +204,7 @@ export default function ScopePicker({
                   />
                 }
                 label={
-                  <Box sx={{ fontSize: 14, minWidth: 0 }}>
+                  <Box sx={{ fontSize: fontSize.text, minWidth: 0 }}>
                     <PathLabel path={entry.name} />
                   </Box>
                 }
@@ -209,7 +218,7 @@ export default function ScopePicker({
       body = (
         <Box>
           {current?.result && incompleteNote(current.result) && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
               {incompleteNote(current.result)}
             </Typography>
           )}
@@ -231,11 +240,7 @@ export default function ScopePicker({
       )
     }
   } else {
-    body = showLoading ? (
-      <Typography role="status" sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-        {plural} werden geladen …
-      </Typography>
-    ) : null
+    body = showLoading ? <LoadingState shape="lines" count={3} /> : null
   }
 
   return (
@@ -273,7 +278,7 @@ export default function ScopePicker({
       {all && (all.active ? all.hint : all.unavailable) && (
         <Typography
           id={`${id}-all-note`}
-          sx={{ fontSize: 13, color: 'text.secondary', pl: 3.5, mb: 0.5 }}
+          sx={{ fontSize: fontSize.text, color: 'text.secondary', pl: 3.5, mb: 0.5 }}
         >
           {all.active ? all.hint : all.unavailable}
         </Typography>
@@ -281,7 +286,7 @@ export default function ScopePicker({
       {all?.active && all.content && <Box sx={{ pl: 3.5, mt: 0.5 }}>{all.content}</Box>}
       {!all?.active && <Box sx={{ pl: all ? 3.5 : 0, mt: all ? 0.5 : 0 }}>{body}</Box>}
       {error && (
-        <Typography id={errorId} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+        <Typography id={errorId} sx={{ fontSize: fontSize.meta, color: 'error.main', mt: 0.5 }}>
           {error}
         </Typography>
       )}

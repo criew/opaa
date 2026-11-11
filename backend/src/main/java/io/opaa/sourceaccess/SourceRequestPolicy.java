@@ -10,17 +10,18 @@ import java.util.Objects;
 /**
  * What every request to a source OPAA does not operate carries and tolerates: the truthful {@code
  * User-Agent}, the {@link RateLimitPolicy} a {@code 429} is waited out under, the {@link Sleeper}
- * that waits, and the bounds of one run - how many requests it may send ({@code 0}: unbounded) and
- * how long it may wait on throttled answers in total. One instance per deployment ({@code
- * opaa.indexing.http}); a connector with rate-limit numbers of its own derives from it via {@link
- * #withRateLimit}.
+ * that waits, and the bounds of one run - how many requests it may send ({@code 0}: unbounded), how
+ * long it may wait on throttled answers in total and how many distinct hosts it may contact. One
+ * instance per deployment ({@code opaa.indexing.http}); a connector with rate-limit numbers of its
+ * own derives from it via {@link #withRateLimit}.
  */
 public record SourceRequestPolicy(
     String userAgent,
     RateLimitPolicy rateLimit,
     Sleeper sleeper,
     int requestBudgetPerRun,
-    Duration maxRateLimitWaitPerRun) {
+    Duration maxRateLimitWaitPerRun,
+    int maxHostsPerRun) {
 
   /** Truthful default {@code User-Agent} - never a value that impersonates a browser. */
   public static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
@@ -31,6 +32,12 @@ public record SourceRequestPolicy(
 
   public static final Duration DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN = Duration.ofMinutes(15);
 
+  /**
+   * Distinct host names one run may contact (ADR-0063, Entscheidung 9): far above the few hosts of
+   * an ordinary source, far below the table of pinned names a flood of fresh names would fill.
+   */
+  public static final int DEFAULT_MAX_HOSTS_PER_RUN = 100;
+
   public SourceRequestPolicy {
     if (userAgent == null || userAgent.isBlank()) {
       userAgent = DEFAULT_USER_AGENT;
@@ -40,9 +47,26 @@ public record SourceRequestPolicy(
     requestBudgetPerRun = Math.max(0, requestBudgetPerRun);
     maxRateLimitWaitPerRun =
         positiveOr(maxRateLimitWaitPerRun, DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN);
+    maxHostsPerRun = positiveOr(maxHostsPerRun, DEFAULT_MAX_HOSTS_PER_RUN);
   }
 
-  /** Without a request budget and with the default wait cap per run. */
+  /** With the default bound of hosts per run. */
+  public SourceRequestPolicy(
+      String userAgent,
+      RateLimitPolicy rateLimit,
+      Sleeper sleeper,
+      int requestBudgetPerRun,
+      Duration maxRateLimitWaitPerRun) {
+    this(
+        userAgent,
+        rateLimit,
+        sleeper,
+        requestBudgetPerRun,
+        maxRateLimitWaitPerRun,
+        DEFAULT_MAX_HOSTS_PER_RUN);
+  }
+
+  /** Without a request budget and with the default wait cap and bound of hosts per run. */
   public SourceRequestPolicy(String userAgent, RateLimitPolicy rateLimit, Sleeper sleeper) {
     this(userAgent, rateLimit, sleeper, 0, DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN);
   }
@@ -57,16 +81,23 @@ public record SourceRequestPolicy(
 
   public SourceRequestPolicy withRateLimit(RateLimitPolicy other) {
     return new SourceRequestPolicy(
-        userAgent, other, sleeper, requestBudgetPerRun, maxRateLimitWaitPerRun);
+        userAgent, other, sleeper, requestBudgetPerRun, maxRateLimitWaitPerRun, maxHostsPerRun);
   }
 
   public SourceRequestPolicy withSleeper(Sleeper other) {
     return new SourceRequestPolicy(
-        userAgent, rateLimit, other, requestBudgetPerRun, maxRateLimitWaitPerRun);
+        userAgent, rateLimit, other, requestBudgetPerRun, maxRateLimitWaitPerRun, maxHostsPerRun);
   }
 
   public SourceRequestPolicy withRunBounds(int requestBudget, Duration maxRateLimitWait) {
-    return new SourceRequestPolicy(userAgent, rateLimit, sleeper, requestBudget, maxRateLimitWait);
+    return new SourceRequestPolicy(
+        userAgent, rateLimit, sleeper, requestBudget, maxRateLimitWait, maxHostsPerRun);
+  }
+
+  /** The same with at most {@code hosts} distinct hosts per run; zero or less is the default. */
+  public SourceRequestPolicy withMaxHostsPerRun(int hosts) {
+    return new SourceRequestPolicy(
+        userAgent, rateLimit, sleeper, requestBudgetPerRun, maxRateLimitWaitPerRun, hosts);
   }
 
   /**

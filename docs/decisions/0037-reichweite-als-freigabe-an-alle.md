@@ -2,11 +2,11 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-03 · geändert durch
+Akzeptiert · zuletzt geändert 2026-11-10 · geändert durch
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidung 4 und die
 `listed`-Teile von 5, 6, 7 und 9) · ändert
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidungen 5 und 12) · betrifft
-[ADR-0032](0032-zeitquelle-rechtehistorie.md) und die Freigabe-Obergrenze aus #797
+[ADR-0032](0032-zeitquelle-rechtehistorie.md)
 
 ## Kontext
 
@@ -61,16 +61,15 @@ deshalb `AssetGrantSubjectType` (`USER`, `GROUP`, `ALL_ACCOUNTS`); `PermissionSu
 
 Entfallen mit #2091, siehe ADR-0039 Entscheidung 3.
 
-### 5. Die Freigabe-Obergrenze (#797) ist ein Boolean am Freigabe-Pfad
+### 5. Keine Obergrenze je Bibliothek; wer an „Alle" freigeben kann, regelt das Anlegerecht
 
-`knowledge_libraries.all_accounts_grant_allowed` (ausgeliefert `true`) ersetzt `visibility_cap`; seit
-#2091 ist es die ganze Obergrenze. Geprüft wird am Freigabe-Pfad, nicht am Schalen-Pfad:
-`AssetTypeDefinition#requireAllAccountsGrantAllowed`, aufgerufen aus `AssetGrantService#upsertGrant`,
-antwortet `409` mit dem Text der Systemverwaltung — die Rolle der Person steht nicht in Frage, der
-verlangte Zustand widerspricht einer Decke. Das Absenken der Obergrenze **widerruft die Freigabe an
-„Alle"** sofort über den Freigabe-Pfad (Grant-Historie, Audit, Cache-Invalidierung), ohne die
-`MANAGER`-Prüfung von `revokeGrant`, weil die Systemverwaltung aufruft; einen Zustand „verletzt, aber
-geduldet" gibt es nicht.
+Eine Freigabe an „Alle Konten" kennt keine weitere Decke je Asset. Wer eine Bibliothek anlegen darf, ist
+ihr `OWNER` und darf sie an „Alle" freigeben (höchstens `EDITOR`, Entscheidung 1). Will ein Haus das für
+Konnektorbibliotheken einschränken, schränkt es das Anlegerecht je Quellart oder Zugang ein
+(ADR-0036, Entscheidung 5). Der Asset-Typ hat dafür keinen eigenen Prüfpunkt am Freigabe-Pfad.
+
+Eine Spalte für diese Decke gibt es nicht mehr. `CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` hat keinen Schreiber und bleibt
+für alte Protokollzeilen lesbar.
 
 ### 6. Nachfolge-Sperre: eine Formel
 
@@ -119,7 +118,7 @@ Fassungen von „erweitert die Reichweite" werden eine, ein Enum mit bedeutungst
 verschwindet. Der Widerruf ist ein gewöhnlicher Widerruf.
 
 **Schwieriger:** Eine Freigabe an alle ist leichter zu vergeben als die Stufe; dagegen stehen
-Bestätigungsschritt, Audit, Obergrenze und Nachfolge-Sperre. `EDITOR` an „Alle" lässt jedes Konto
+Bestätigungsschritt, Audit, Anlegerecht und Nachfolge-Sperre. `EDITOR` an „Alle" lässt jedes Konto
 Dokumente hochladen und löschen — bewusst offen, wer es nicht will, vergibt `VIEWER`. Drei
 Subjekt-Enums stehen nebeneinander, zwei mit demselben dritten Wert.
 
@@ -134,6 +133,10 @@ Subjekt-Enums stehen nebeneinander, zwei mit demselben dritten Wert.
 - Systemseitig angelegte Gruppe je Organisation — müsste aus jedem Weg, der Gruppen verarbeitet, einzeln
   herausgehalten werden (Gruppenliste, Abgleich, Verantwortliche, Übertragung, Offenlegung,
   Space-Mitgliedschaft, Löschung); `activeMemberCount` lieferte `0`.
+- Freigabe-Obergrenze je Bibliothek, gesetzt von der Systemverwaltung — greift
+  erst nach der Neuanlage und ist mit jeder weiteren Bibliothek umgangen; ein Vorgabewert je Quellart
+  oder Zugang hätte eine zweite Regel neben dem Anlegerecht geschaffen, das dieselbe Frage schon
+  beantwortet.
 - Obergrenze als Grenze der Empfängerzahl — eine Grenze, die von einer außerhalb veränderlichen Größe
   abhängt, sperrt nach der nächsten Verzeichnisübernahme gestern erlaubte Arbeit.
 

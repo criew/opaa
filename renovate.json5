@@ -221,6 +221,19 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*ZAP_IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
       ],
     },
+    // Den Ausführungsagenten execd startet der Sandbox-Dienst aus seiner Konfiguration
+    // sandbox/config.toml, die kein regulärer Manager liest. Der Digest ist optional, und die
+    // Vorlage schreibt ihn mit: So setzt Renovate einen fehlenden Digest selbst (pinDigests in der
+    // Regel für sandbox/** unten). test_sandbox_image_pins.py prüft, dass der Ausdruck greift.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['sandbox/config.toml'],
+      matchStrings: [
+        'execd_image = "(?<depName>[^:"]+):(?<currentValue>[^@"]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"',
+      ],
+      datasourceTemplate: 'docker',
+      autoReplaceStringTemplate: 'execd_image = "{{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"',
+    },
   ],
 
   packageRules: [
@@ -335,6 +348,15 @@
         '.github/requirements-release.txt',
         '.github/requirements-seed.txt',
       ],
+      addLabels: ['ci'],
+      automerge: false,
+    },
+    // Python-Pakete, die ocr/Dockerfile im Basis-Image durch eine CVE-freie Version ersetzt, mit
+    // Hashes. Nie automatisch: Erst der Bau in ocr-image.yml (kein Required Check) zeigt mit
+    // pip check und Rauchtest, ob die neue Version zur Umgebung des Basis-Images passt.
+    {
+      matchManagers: ['pip_requirements'],
+      matchFileNames: ['ocr/requirements-overrides.txt'],
       addLabels: ['ci'],
       automerge: false,
     },
@@ -485,6 +507,23 @@
       matchFileNames: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       enabled: false,
     },
+    // Die Jobs mit requirements-docs.txt oder requirements-ci.txt installieren nur aus Wheels;
+    // PyYAML hat für Python 3.15 keines, ihr python-version bleibt deshalb unter 3.15. Nur die
+    // Schritte auf '3.14' sind gemeint; die übrigen (etwa das Update-Paket in ci.yml) gehen mit
+    // publish-images.yml weiter. Aufheben, sobald die gepinnte PyYAML-Version cp315-Wheels liefert.
+    {
+      matchManagers: ['github-actions'],
+      matchDepNames: ['python'],
+      matchCurrentValue: '3.14',
+      matchFileNames: [
+        '.github/workflows/ci.yml',
+        '.github/workflows/data-impact.yml',
+        '.github/workflows/dependency-graph.yml',
+        '.github/workflows/landing-page.yml',
+        '.github/workflows/zap-baseline.yml',
+      ],
+      allowedVersions: '<3.15',
+    },
     // Alle Workflows pinnen ihre Actions auf den Commit-SHA mit exaktem Versionskommentar
     // (docs/renovate.md); Renovate pflegt beides gemeinsam. Ein neues Release wird erst nach
     // drei Tagen vorgeschlagen; vorher entsteht kein Branch, also auch kein PR-Lauf. Beide Regeln
@@ -535,6 +574,31 @@
       matchDepNames: ['ghcr.io/docling-project/docling-serve-cpu'],
       matchUpdateTypes: ['digest'],
       dependencyDashboardApproval: true,
+    },
+    // Dritte Ausnahme: Die Images der Sandbox tragen Version und Digest. Der Sandbox-Dienst
+    // (docker-compose.sandbox.yml) hält den Docker-Socket des Hosts, execd (sandbox/config.toml)
+    // und das Basis-Image (sandbox/Dockerfile) laufen mit fremdem Code, ebenso die Python-Pakete
+    // des Images mit ihren Hashes (sandbox/requirements.txt, Manager pip_requirements). Keine
+    // Pflichtprüfung startet den Stapel; ein Update kommt deshalb erst nach drei Tagen und mergt nie
+    // automatisch.
+    {
+      matchFileNames: ['docker-compose.sandbox.yml', 'sandbox/**'],
+      pinDigests: true,
+      minimumReleaseAge: '3 days',
+      automerge: false,
+    },
+    // Ein neuer Digest bei gleicher Version heißt, dass der Tag umgehängt wurde; erst nach Freigabe.
+    {
+      matchFileNames: ['docker-compose.sandbox.yml', 'sandbox/**'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
+    },
+    // Dienst und execd gehören zur selben Version von OpenSandbox und kommen in einem PR. Nur
+    // Release-Tags zählen, keine Vorabversionen, staging-Builds oder die alten v0-Tags.
+    {
+      matchDepNames: ['opensandbox/server', 'opensandbox/execd'],
+      versioning: 'regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$',
+      groupName: 'OpenSandbox',
     },
     // gradle/actions bringt im Dependency Graph ein Plugin mit, dem
     // backend/gradle/verification-metadata.xml in genau einer Version vertraut. Hebt ein Update

@@ -1,9 +1,10 @@
 buildscript {
     dependencies {
-        // Lifts the Jackson versions the build plugins pin on the buildscript classpath to the
-        // CVE-fixed releases; the dependencyManagement override only reaches project configurations.
+        // Lifts the Jackson and Guava versions the build plugins pin on the buildscript classpath to
+        // the CVE-fixed releases; the dependencyManagement override only reaches project configurations.
         classpath(platform(libs.jackson3.bom))
         classpath(platform(libs.jackson2.buildscript.bom))
+        classpath(libs.guava.buildscript)
     }
 }
 
@@ -126,6 +127,11 @@ val typeMappingsConfig = mapOf(
     "DirectoryConnectorType" to "DirectoryConnectorType",
     "AssetOwnerType" to "AssetOwnerType",
     "AssetOrigin" to "AssetOrigin",
+    "AgentPlanStep" to "AgentPlanStep",
+    "AssetLockCause" to "AssetLockCause",
+    "ToolCapability" to "ToolCapability",
+    "ToolCapabilityBasis" to "ToolCapabilityBasis",
+    "ToolCheckStatus" to "ToolCheckStatus",
     "ExternalAccessState" to "ExternalAccessState",
     "DocumentStatus" to "DocumentStatus",
     "AssetRole" to "AssetRole",
@@ -151,6 +157,7 @@ val typeMappingsConfig = mapOf(
     "SearchModelRole" to "ModelRole",
     "SearchModelRoleState" to "ModelRoleCondition",
     "TextRecognitionConnectionType" to "TextRecognitionConnectionType",
+    "RealtimeTranscriptionProtocol" to "RealtimeTranscriptionProtocol",
     "SearchDiagnosisContextType" to "DiagnosisContextType",
     "RetrievalCandidateOutcome" to "CandidateOutcome",
     "RetrievalVerdictReason" to "VerdictReason",
@@ -178,6 +185,7 @@ val typeMappingsConfig = mapOf(
     "ProviderType" to "ProviderType",
     "PasswordChangeReason" to "PasswordChangeReason",
     "MailEncryption" to "MailEncryption",
+    "MalwareScanUnavailablePolicy" to "MalwareScanUnavailablePolicy",
     "LocalAccountState" to "LocalAccountState",
     "LockReason" to "LockReason",
     "ChatCleanupAfterLockStatus" to "ChatCleanupAfterLockStatus",
@@ -255,6 +263,11 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "DirectoryConnectorType" to "io.opaa.api.types.DirectoryConnectorType",
         "AssetOwnerType" to "io.opaa.api.types.AssetOwnerType",
         "AssetOrigin" to "io.opaa.api.types.AssetOrigin",
+        "AgentPlanStep" to "io.opaa.api.types.AgentPlanStep",
+        "AssetLockCause" to "io.opaa.api.types.AssetLockCause",
+        "ToolCapability" to "io.opaa.api.types.ToolCapability",
+        "ToolCapabilityBasis" to "io.opaa.api.types.ToolCapabilityBasis",
+        "ToolCheckStatus" to "io.opaa.api.types.ToolCheckStatus",
         "ExternalAccessState" to "io.opaa.api.types.ExternalAccessState",
         "DocumentStatus" to "io.opaa.api.types.DocumentStatus",
         "AssetRole" to "io.opaa.api.types.AssetRole",
@@ -280,6 +293,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ModelRole" to "io.opaa.api.types.ModelRole",
         "ModelRoleCondition" to "io.opaa.api.types.ModelRoleCondition",
         "TextRecognitionConnectionType" to "io.opaa.api.types.TextRecognitionConnectionType",
+        "RealtimeTranscriptionProtocol" to "io.opaa.api.types.RealtimeTranscriptionProtocol",
         "DiagnosisContextType" to "io.opaa.api.types.DiagnosisContextType",
         "CandidateOutcome" to "io.opaa.api.types.CandidateOutcome",
         "VerdictReason" to "io.opaa.api.types.VerdictReason",
@@ -307,6 +321,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ProviderType" to "io.opaa.api.types.ProviderType",
         "PasswordChangeReason" to "io.opaa.api.types.PasswordChangeReason",
         "MailEncryption" to "io.opaa.api.types.MailEncryption",
+        "MalwareScanUnavailablePolicy" to "io.opaa.api.types.MalwareScanUnavailablePolicy",
         "LocalAccountState" to "io.opaa.api.types.LocalAccountState",
         "LockReason" to "io.opaa.api.types.LockReason",
         "ChatCleanupAfterLockStatus" to "io.opaa.api.types.ChatCleanupAfterLockStatus",

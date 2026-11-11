@@ -3,6 +3,7 @@ import {
   askQuestion,
   createFromReview,
   expectCitedSource,
+  nameNewLibrary,
   openNewLibraryWizard,
   startFreshChat,
 } from '../fixtures/chat'
@@ -27,6 +28,7 @@ import {
   triggerIndexingInUi,
 } from '../fixtures/connectionProfiles'
 import { deleteLibraryCompletely, libraryIdFromCurrentUrl } from '../fixtures/libraries'
+import { headerCreateButton } from '../fixtures/pageHeader'
 import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 import type { Page } from '@playwright/test'
 
@@ -72,20 +74,16 @@ function lockNotice(page: Page) {
   return page.getByTestId('source-lock-notice')
 }
 
-/** Im Assistenten bis zum Schritt „Quelle einrichten“ einer RSS-Bibliothek. */
-async function openRssSourceStep(page: Page): Promise<void> {
+/** Im Assistenten bis zum Schritt „Quelle“ einer RSS-Bibliothek. */
+async function openRssSourceStep(page: Page, name = 'E2E Assistent'): Promise<void> {
   await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /RSS-Feed/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await expect(
-    page.getByRole('heading', {
-      level: 2,
-      name: 'Quelle einrichten',
-    }),
-  ).toBeVisible()
+  await nameNewLibrary(page, name)
+  await expect(page.getByRole('heading', { level: 2, name: 'Quelle', exact: true })).toBeVisible()
 }
 
-/** Die Wahl „Zugang“ im Schritt „Quelle einrichten“ (ConnectionProfileSelect). */
+/** Die Wahl „Zugang“ im Schritt „Quelle“ (ConnectionProfileSelect). */
 function connectionChoice(page: Page) {
   return page.getByRole('radiogroup', { name: 'Zugang' })
 }
@@ -131,8 +129,8 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     authenticatedPage: page,
   }) => {
     await gotoConnectionProfiles(page)
-    await page.getByRole('button', { name: 'Neuer Zugang' }).click()
-    const form = page.getByRole('dialog', { name: 'Zugang anlegen' })
+    await headerCreateButton(page, 'Neuer Zugang').click()
+    const form = page.getByRole('dialog', { name: 'Neuer Zugang' })
     await form.getByRole('combobox', { name: /Quellart/ }).click()
     await page.getByRole('option', { name: /RSS-Feed/ }).click()
     await form.getByLabel('Name').fill(PROFILE_NAME)
@@ -170,7 +168,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   test('1b. Gruppenmitglied legt eine Bibliothek über den Zugang an, sie läuft und wird gefunden', async ({
     regularUserPage: page,
   }) => {
-    await openRssSourceStep(page)
+    await openRssSourceStep(page, PROFILE_LIBRARY)
     const choice = connectionChoice(page)
     // Der freigegebene Zugang ist vorgewählt, „Eigene Adresse“ steht als letzte Wahl daneben.
     const profileWay = choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })
@@ -192,9 +190,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
       timeout: 15_000,
     })
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
-    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Name', { exact: true }).fill(PROFILE_LIBRARY)
+    await page.getByRole('checkbox', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await createFromReview(page)
     const libraryId = libraryIdFromCurrentUrl(page)
@@ -292,11 +288,11 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await dialog.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) }).click()
     // Die Adresse liegt unter dem Zugang und wandert unverändert mit.
     await expect(dialog.getByTestId('library-connection-address')).toContainText(FEED_URL)
-    await dialog.getByRole('button', { name: 'Verbindung prüfen' }).click()
+    await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
     await expect(dialog.getByTestId('library-connection-test')).toContainText('erreichbar', {
       timeout: 15_000,
     })
-    await dialog.getByRole('button', { name: 'Prüfen und zuordnen' }).click()
+    await dialog.getByRole('button', { name: 'Zuordnen' }).click()
     await expect(dialog).toHaveCount(0)
 
     await expect(lockNotice(page)).toHaveCount(0)
@@ -313,7 +309,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await gotoConnectionProfiles(adminPage)
     let profilePanel = await openProfilePanel(adminPage, PROFILE_NAME)
     await profilePanel.getByRole('button', { name: `${PROFILE_NAME} sperren` }).click()
-    await acceptConfirm(adminPage, `Den Zugang „${PROFILE_NAME}“ sperren?`)
+    await acceptConfirm(adminPage, `„${PROFILE_NAME}“ sperren?`)
     await expect(profilePanel).toContainText('Gesperrt')
 
     await openSourceTab(page, stockLibraryId)
@@ -330,7 +326,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await gotoConnectionProfiles(adminPage)
     profilePanel = await openProfilePanel(adminPage, PROFILE_NAME)
     await profilePanel.getByRole('button', { name: `Sperre von ${PROFILE_NAME} aufheben` }).click()
-    await acceptConfirm(adminPage, `Sperre für den Zugang „${PROFILE_NAME}“ aufheben?`)
+    await acceptConfirm(adminPage, `„${PROFILE_NAME}“ entsperren?`)
     await expect(profilePanel.getByRole('button', { name: `${PROFILE_NAME} sperren` })).toBeVisible()
 
     await openSourceTab(page, stockLibraryId)

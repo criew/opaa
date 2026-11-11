@@ -9,6 +9,7 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
+import io.opaa.instance.ScheduledRunFailures;
 import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -109,6 +110,7 @@ public class LibraryIndexingScheduler {
             "Scheduled tick could not evaluate library {} - skipping it for this tick",
             library.getId(),
             e);
+        ScheduledRunFailures.report();
       }
     }
   }
@@ -150,6 +152,7 @@ public class LibraryIndexingScheduler {
       recordSkipEvent(library);
     } catch (Exception e) {
       log.error("Scheduled indexing trigger for library {} failed", library.getId(), e);
+      ScheduledRunFailures.report();
     }
   }
 

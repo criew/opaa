@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Skeleton from '@mui/material/Skeleton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import StateDot from '@/shared/ui/StateDot'
@@ -15,8 +14,13 @@ import type {
 import { detachSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { assetTypeLabel } from '../../../shared/assetTypes'
+import { assetTheNominative, assetThisAccusative } from '../../../shared/assetTypes'
 import { useSpaceListLoader } from './spaceListContext'
+import { fontSize } from '@/shared/theme/tokens'
+import { formatDate } from '@/shared/utils/formatDate'
+import EmptyState from '@/shared/ui/states/EmptyState'
+import LoadError from '@/shared/ui/states/LoadError'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** From this many spaces the list gets a search. */
 const SEARCH_FROM = 8
@@ -32,14 +36,6 @@ interface AssetSpacesListProps {
   canManage: boolean
   /** Called after an association was detached. */
   onChanged?: () => void
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 /** Who associated and when - both only ever sent to a caller who manages the asset. */
@@ -69,15 +65,17 @@ export default function AssetSpacesList({
   const [curatedSpaceIds, setCuratedSpaceIds] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const loadSpaces = useSpaceListLoader()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
-  const noun = assetTypeLabel(assetType)
 
   useEffect(() => {
     let cancelled = false
     getAssetSpaceAssociations(assetType, assetId)
       .then((data) => {
-        if (!cancelled) setLinks(data)
+        if (cancelled) return
+        setLinks(data)
+        setError(null)
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Laden fehlgeschlagen')
@@ -85,7 +83,7 @@ export default function AssetSpacesList({
     return () => {
       cancelled = true
     }
-  }, [assetType, assetId])
+  }, [assetType, assetId, attempt])
 
   useEffect(() => {
     let cancelled = false
@@ -113,9 +111,9 @@ export default function AssetSpacesList({
 
   async function handleDetach(spaceId: string, spaceName: string) {
     const confirmed = await confirmAction({
-      question: `Zuordnung zum Space „${spaceName}“ lösen?`,
-      consequence: `Die ${noun} steht in diesem Space danach nicht mehr zur Verfügung.`,
-      confirmLabel: 'Lösen',
+      question: `Aus „${spaceName}“ entfernen?`,
+      consequence: `${assetTheNominative(assetType)} steht in diesem Space danach nicht mehr zur Verfügung.`,
+      confirmLabel: 'Entfernen',
       tone: 'neutral',
     })
     if (!confirmed) return
@@ -127,7 +125,7 @@ export default function AssetSpacesList({
       )
       onChanged?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
+      setError(err instanceof Error ? err.message : 'Entfernen fehlgeschlagen')
     }
   }
 
@@ -143,19 +141,21 @@ export default function AssetSpacesList({
 
   return (
     <Box>
-      {error && (
+      {links !== null && error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
-      {links === null ? (
-        // Loading without a layout jump (guidelines 5.7) - one skeleton row where the first
-        // association will land.
-        <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
+      {links === null && error ? (
+        <LoadError
+          message="Die Spaces konnten nicht geladen werden."
+          detail={error}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
+      ) : links === null ? (
+        <LoadingState shape="lines" count={2} />
       ) : links.items.length === 0 && hiddenCount === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Noch keinem Space zugeordnet.
-        </Typography>
+        <EmptyState message="Noch keinem Space zugeordnet." />
       ) : (
         <>
           {links.items.length >= SEARCH_FROM && (
@@ -173,9 +173,9 @@ export default function AssetSpacesList({
             sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
           >
             {matching.length === 0 && (
-              <Typography component="li" sx={{ py: 1.25, fontSize: 13.5, color: 'text.secondary' }}>
-                Kein Space entspricht dieser Suche.
-              </Typography>
+              <Box component="li" sx={{ py: 1.25 }}>
+                <EmptyState kind="noMatch" onReset={() => setQuery('')} />
+              </Box>
             )}
             {matching.map((association) => {
               const origin = provenance(association)
@@ -198,17 +198,17 @@ export default function AssetSpacesList({
                     <Typography
                       noWrap
                       title={association.spaceName}
-                      sx={{ fontSize: 13.5, fontWeight: 600 }}
+                      sx={{ fontSize: fontSize.text, fontWeight: 600 }}
                     >
                       {association.spaceName}
                     </Typography>
                     {(origin || association.narrowerReaderCircle) && (
-                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
                         {origin}
                         {origin && association.narrowerReaderCircle && ' · '}
                         {association.narrowerReaderCircle && (
                           <Tooltip
-                            title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
+                            title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf ${assetThisAccusative(assetType)}.`}
                           >
                             <Box component="span" tabIndex={0}>
                               <StateDot tone="warning" label="nicht für alle Mitglieder lesbar" />
@@ -224,7 +224,7 @@ export default function AssetSpacesList({
                       context={`Zuordnung zum Space „${association.spaceName}“`}
                       sx={{ flex: 'none' }}
                     >
-                      Lösen
+                      Entfernen
                     </TextAction>
                   )}
                 </Box>

@@ -75,8 +75,20 @@ sealed class SmbAccessException extends Exception {
    * refused signature, or a share the connector does not serve (DFS namespace, printer).
    */
   static final class Unreachable extends SmbAccessException {
+    private final boolean timedOut;
+
     Unreachable(String message) {
+      this(message, false);
+    }
+
+    Unreachable(String message, boolean timedOut) {
       super(message);
+      this.timedOut = timedOut;
+    }
+
+    /** Whether the server did not answer in time, rather than not at all. */
+    boolean timedOut() {
+      return timedOut;
     }
   }
 

@@ -4,6 +4,8 @@ import {
   askQuestion,
   chatSidebarEntries,
   clearSearchScope,
+  expectAnswerSettled,
+  nameNewLibrary,
   openNewLibraryWizard,
   startFreshChat,
 } from "../fixtures/chat";
@@ -13,6 +15,7 @@ import {
   gotoConnectionProfiles,
 } from "../fixtures/connectionProfiles";
 import { apiAs } from "../fixtures/externalAccess";
+import { headerCreateButton } from "../fixtures/pageHeader";
 import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
 /**
@@ -111,7 +114,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
   test("Chat in beiden Farbschemata", async ({ authenticatedPage: page }) => {
     await startFreshChat(page);
-    const input = page.getByRole("combobox", { name: "Nachricht eingeben" });
+    const input = page.getByRole("textbox", { name: "Nachricht eingeben" });
     await expect(input).toBeVisible();
 
     // The theme preference defaults to "system" (uiStore.themeMode), so emulating the media
@@ -133,6 +136,11 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await clearSearchScope(page);
     await askQuestion(page, `Frage für das Chat-Menü (${Date.now()})`);
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/);
+    // While the answer is pending the scope chips are disabled; the scan is of the settled page.
+    await expectAnswerSettled(page);
+    await expect(
+      page.getByRole("button", { name: "@Space-Wissen nutzen" }),
+    ).toBeEnabled();
 
     const menuTrigger = chatSidebarEntries(page).first();
     const deleteEntry = page.getByRole("menuitem", {
@@ -336,9 +344,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
   });
 
-  // Der Schritt „Quelle einrichten" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
+  // Der Schritt „Quelle" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
   // frisch angelegten, wählbaren Zugang.
-  test("Wissens-Assistent: Schritt Quelle einrichten mit Zugangswahl in beiden Farbschemata", async ({
+  test("Wissens-Assistent: Schritt Quelle mit Zugangswahl in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
     const profileName = `A11y Zugang ${Date.now()}`;
@@ -350,6 +358,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await openNewLibraryWizard(page);
       await page.getByRole("radio", { name: /RSS-Feed/ }).click();
       await page.getByRole("button", { name: "Weiter", exact: true }).click();
+      await nameNewLibrary(page, "E2E Assistent");
       await expect(
         page
           .getByRole("radiogroup", { name: "Zugang" })
@@ -375,8 +384,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     authenticatedPage: page,
   }) => {
     await gotoConnectionProfiles(page);
-    await page.getByRole("button", { name: "Neuer Zugang" }).click();
-    const form = page.getByRole("dialog", { name: "Zugang anlegen" });
+    await headerCreateButton(page, "Neuer Zugang").click();
+    const form = page.getByRole("dialog", { name: "Neuer Zugang" });
     await form.getByRole("combobox", { name: /Quellart/ }).click();
     const locked = page
       .locator('[role="option"][aria-disabled="true"]')
@@ -691,7 +700,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.waitForURL("**/admin/mail/templates");
     await page
       .getByRole("navigation", { name: "Vorlagen" })
-      .getByText("Testnachricht")
+      .getByText("Testnachricht", { exact: true })
       .click();
     // The debounced preview iframe is the last thing to appear; analysing before it is there
     // would skip exactly the pattern this block exists for.
@@ -717,7 +726,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     authenticatedPage: page,
   }) => {
     const tabs = [
-      ["access", "Zugänge", page.getByRole("button", { name: "Neuer Zugang" })],
+      ["access", "Zugänge", headerCreateButton(page, "Neuer Zugang")],
       [
         "source-types",
         "Quellarten",
@@ -751,7 +760,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
     // Das Seitenpanel einer Quellart: Zustand, Pflicht und die Zugänge der Quellart.
     await page.goto("/admin/connections/source-types");
-    await page.getByRole("button", { name: "Details: RSS-Feed" }).click();
+    await page.getByRole("button", { name: "RSS-Feed", exact: true }).click();
     const typePanel = page.getByRole("dialog", { name: "RSS-Feed" });
     await expect(
       typePanel.getByRole("switch", { name: "Nur über Zugänge für RSS-Feed" }),
@@ -772,10 +781,10 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       .getByRole("button", { name: "Einstellungen", exact: true })
       .click();
     const panel = page.getByRole("dialog", {
-      name: "Einstellungen für externe KI-Werkzeuge",
+      name: "Einstellungen",
     });
     await expect(
-      panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" }),
+      panel.getByRole("checkbox", { name: "Externe KI-Werkzeuge zulassen" }),
     ).toBeVisible();
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });

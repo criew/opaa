@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { alpha, keyframes, useTheme } from '@mui/material/styles'
-import { fontFamily, motion, radius } from '@/shared/theme/tokens'
+import { fontFamily, fontSize, motion, radius } from '@/shared/theme/tokens'
 
 const markIn = keyframes`
   from { opacity: 0; transform: translateY(3px) scale(0.6); }
@@ -25,7 +25,7 @@ function Mark({ n, delayMs }: { n: number; delayMs: number }) {
         bgcolor: alpha(theme.palette.primary.main, tint),
         color: 'primary.main',
         fontFamily: fontFamily.mono,
-        fontSize: 10,
+        fontSize: fontSize.label,
         fontWeight: 600,
         verticalAlign: 'super',
         lineHeight: 1,
@@ -57,7 +57,7 @@ export default function AnswerMiniature() {
         userSelect: 'none',
       }}
     >
-      <Typography sx={{ fontSize: 14, lineHeight: 1.7, color: 'text.primary' }}>
+      <Typography sx={{ fontSize: fontSize.text, lineHeight: 1.7, color: 'text.primary' }}>
         Fristverlängerungen bearbeitet das Referat 21 in zehn Arbeitstagen.
         <Mark n={1} delayMs={500} /> Für Eilfälle gilt die Dienstanweisung 4/2025.
         <Mark n={2} delayMs={800} />

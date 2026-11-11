@@ -1,7 +1,9 @@
 # Overlay applied only by scripts/run-e2e.mjs --target installation (`-f docker-compose.yml -f
 # e2e/docker-compose.installation.yml --profile mail`): the operating mode "oidc" in installation
 # mode (ADR-0060), with ai-stub as the chat, embedding and rerank endpoint the set-up assistant
-# checks and mailpit as the mail server of its optional mail step. No answer file, no seed.
+# checks, oidc-stub as the identity provider of its sign-in step, ocr-stub as the text recognition
+# service, clamd-stub as the virus scanner and mailpit as the mail server of its optional steps.
+# No answer file, no seed.
 
 # Same anchor pattern as e2e/docker-compose.local-auth.yml: pgvector's column width and ai-stub's
 # own default change together.
@@ -13,6 +15,12 @@ services:
       ai-stub:
         condition: service_healthy
       mailpit:
+        condition: service_healthy
+      oidc-stub:
+        condition: service_healthy
+      ocr-stub:
+        condition: service_healthy
+      clamd-stub:
         condition: service_healthy
     environment:
       # Both depend on the frontend's host port, which run-e2e.mjs chooses.
@@ -30,6 +38,62 @@ services:
       EMBEDDING_DIMENSIONS: *embedding-dimensions
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # The identity provider of the sign-in step (e2e/oidc-stub/server.mjs). The browser reads its
+  # discovery document under the issuer on the fixed loopback port 18095, which installation.env
+  # pins (allowlist, CSP); the backend reaches only the JWK set, under the service name.
+  oidc-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/oidc-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8095"
+      ISSUER: http://localhost:18095
+    ports:
+      - "127.0.0.1:18095:8095"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8095/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # The docling-serve stand-in of the text recognition step, as in docker-compose.e2e.yml; its
+  # key is random per run (run-e2e.mjs), the scenario enters it as E2E_OCR_API_KEY.
+  ocr-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ocr-stub:/app:ro
+      - ./demo/seed/e2e-data/text-recognition:/fixtures:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "5001"
+      FIXTURE_DIR: /fixtures
+      OCR_STUB_API_KEY: ${OPAA_OCR_STUB_API_KEY:?run-e2e.mjs sets OPAA_OCR_STUB_API_KEY}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # The clamd stand-in of the virus scan step, as in docker-compose.e2e.yml: the check asks it for
+  # its version.
+  clamd-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/clamd-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "3310"
+      HEALTH_PORT: "3311"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3311/health"]
       interval: 2s
       timeout: 2s
       retries: 10

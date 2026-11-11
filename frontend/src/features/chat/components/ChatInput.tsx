@@ -2,19 +2,16 @@ import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'reac
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
-import ListItemButton from '@mui/material/ListItemButton'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import { darkRoles, fontFamily, gray, shadow } from '@/shared/theme/tokens'
+import { darkRoles, fontFamily, fontSize, gray, iconSize, shadow } from '@/shared/theme/tokens'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import StopIcon from '@mui/icons-material/Stop'
 import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
@@ -23,7 +20,6 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
 import { tourAnchor } from '@/shared/ui/a11y/tourAnchor'
-import MetaBadge from '@/shared/ui/MetaBadge'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
 import { useChatAttachmentDraft } from '../hooks/useChatAttachmentDraft'
@@ -32,6 +28,8 @@ import { ChatAttachmentDraftChips } from './ChatAttachmentChips'
 import ChatActionMenu from './ChatActionMenu'
 import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
+import DictationField from './DictationField'
+import { useChatDictation } from './useChatDictation'
 import { withDictatedText } from './dictationText'
 import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
@@ -39,6 +37,10 @@ import { CHAT_ACTION_SOURCES } from './chatActionSources'
 import { useChatActions } from './useChatActions'
 import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
 import { useMentionSuggestions } from './useMentionSuggestions'
+import { useChatAgentChoice } from './useChatAgentChoice'
+import type { ChosenAgent } from './agentFollowUp'
+import MentionOption from './MentionOption'
+import { mentionGroups, mentionKey } from './mentionSuggestionText'
 import { useNarrowField } from './useNarrowField'
 import { useSpaceLibraryScope } from './useSpaceLibraryScope'
 import {
@@ -58,6 +60,8 @@ import {
 export interface SendOutcome {
   restoreDraft?: string
   onRestored?: () => void
+  /** The question's agent comes back with the draft. */
+  keepAgent?: boolean
 }
 
 interface ChatInputProps {
@@ -69,6 +73,7 @@ interface ChatInputProps {
     message: string,
     usedPrompt?: ChatActionMark,
     attachments?: ChatAttachmentRef[],
+    agent?: ChosenAgent,
   ) => void | SendOutcome | Promise<void | SendOutcome>
   /** Locks the whole input, typing included. */
   disabled?: boolean
@@ -93,6 +98,10 @@ interface ChatInputProps {
    * page's arrival focus target meanwhile - a new chat opens ready for its first question.
    */
   focusRequest?: string | null
+  /** The AI notice line under the input; off where the surface shows the notice already. */
+  showAiNotice?: boolean
+  /** An agent the latest answer waits on, chosen once per key (see `useChatAgentChoice`). */
+  followUpAgent?: { key: string; agent: ChosenAgent } | null
 }
 
 export default function ChatInput({
@@ -104,8 +113,17 @@ export default function ChatInput({
   onReturnedQuestionHandled,
   actionSources = CHAT_ACTION_SOURCES,
   focusRequest = null,
+  showAiNotice = true,
+  followUpAgent = null,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
@@ -217,6 +235,7 @@ export default function ChatInput({
 
   const { chatSpaceId, spaceRole, spaceLibraries, knowledgeGap, libraryChips, scopeNotice } =
     useSpaceLibraryScope(scope, referencedLibraryIds)
+  const { agents, agent, chooseAgent, clearAgent } = useChatAgentChoice(chatSpaceId, followUpAgent)
   const {
     mention,
     highlightedIndex,
@@ -236,6 +255,9 @@ export default function ChatInput({
     referencedLibraryIds,
     setScopeAll,
     addReferencedLibrary,
+    agents,
+    chosenAgentId: agent?.id ?? null,
+    chooseAgent,
   })
 
   useEffect(() => {
@@ -274,8 +296,8 @@ export default function ChatInput({
     trackMention(nextValue, cursor, scopeLocked)
   }
 
-  const handleSend = () => {
-    const trimmed = value.trim()
+  const handleSend = (text: string = value) => {
+    const trimmed = text.trim()
     if (
       sendLocked ||
       !trimmed ||
@@ -283,7 +305,7 @@ export default function ChatInput({
       actions.isInserting ||
       attachmentsPending
     )
-      return
+      return false
     // Only a mark its source sends as the prompt reaches the question; any other stays a chip.
     const selected = actions.selected
     const mark =
@@ -291,29 +313,34 @@ export default function ChatInput({
         ? { id: selected.mark.id, title: selected.mark.title }
         : undefined
     const attachments = draft.take()
-    const outcome =
-      attachments.length > 0
+    const chosen = agent ? { id: agent.id, name: agent.name } : undefined
+    const outcome = chosen
+      ? onSend(trimmed, mark, attachments, chosen)
+      : attachments.length > 0
         ? onSend(trimmed, mark, attachments)
         : mark
           ? onSend(trimmed, mark)
           : onSend(trimmed)
+    clearAgent()
     setValue('')
     resetMention()
     actions.reset()
     // Sending by button would leave the focus on the button, which is locked from now on.
     inputRef.current?.focus()
     // A refused question comes back without its prompt, before any draft typed since, unless the
-    // input is gone.
+    // input is gone; a running dictation keeps it in the draft above the recording.
     void Promise.resolve(outcome).then((result) => {
       const restoreDraft = result?.restoreDraft
-      if (!restoreDraft || !inputRef.current) return
+      if (!restoreDraft || !mountedRef.current) return
       setValue((current) => withRestoredQuestion(restoreDraft, current))
       draft.restore(attachments)
+      if (chosen && result.keepAgent) chooseAgent(chosen)
       result.onRestored?.()
     })
+    return true
   }
 
-  // Dictation only ever fills the input; sending stays the person's own action.
+  // Dictation fills the input; only the send button sends, during a recording with its final text.
   const [dictationError, setDictationError] = useState<string | null>(null)
   const appendDictatedText = useCallback((text: string) => {
     setValue((draft) => withDictatedText(draft, text))
@@ -324,6 +351,34 @@ export default function ChatInput({
       input.setSelectionRange(input.value.length, input.value.length)
     })
   }, [])
+  const dictation = useChatDictation({ onText: appendDictatedText, onError: setDictationError })
+  // Send during a recording: the final text joins the draft, and the send itself runs once the
+  // field is back, with the state of that moment - a question that cannot go out then (too long,
+  // answer running, upload pending) stays in the field.
+  const sendAfterDictationRef = useRef(false)
+  const sendDictation = async () => {
+    const text = await dictation.stop(false)
+    if (!text) return
+    sendAfterDictationRef.current = true
+    setValue((current) => withDictatedText(current, text))
+  }
+  const wasDictatingRef = useRef(false)
+  useEffect(() => {
+    const wasDictating = wasDictatingRef.current
+    wasDictatingRef.current = dictation.busy
+    if (dictation.busy) return
+    if (sendAfterDictationRef.current) {
+      sendAfterDictationRef.current = false
+      handleSend()
+    } else if (wasDictating) {
+      // Discarded, failed or taken over: the field is back and gets the focus, unless the person
+      // has moved on to another part of the page meanwhile.
+      const active = document.activeElement
+      if (!active || active === document.body || inputBoxEl?.contains(active)) {
+        inputRef.current?.focus()
+      }
+    }
+  })
 
   const chooseAction = (index: number) => {
     const entry = actions.matches[index]
@@ -388,7 +443,7 @@ export default function ChatInput({
 
   // Drives the Popper itself - it opens for both the suggestion list and the "no match" message.
   const mentionOpen = mention !== null
-  // aria-expanded/aria-controls must only claim an open *listbox* while that listbox is actually
+  // aria-controls must only claim an open *listbox* while that listbox is actually
   // rendered - suggestions.length === 0 renders a plain "no match" message instead, with no
   // element carrying mentionListboxId.
   const mentionListOpen = mentionOpen && suggestions.length > 0
@@ -397,8 +452,7 @@ export default function ChatInput({
   // The '/' listbox is rendered only while it has options and no load error - the same honesty
   // rule as the '@' listbox above.
   const actionListOpen = actions.isOpen && actions.error === null && actions.matches.length > 0
-  const comboboxExpanded = mentionListOpen || actionListOpen
-  const comboboxControls = actionListOpen
+  const listboxControls = actionListOpen
     ? actionListboxId
     : mentionListOpen
       ? mentionListboxId
@@ -424,6 +478,8 @@ export default function ChatInput({
       <ChatScopeChipBar
         selected={actions.selected}
         onClearSelected={actions.clearSelected}
+        agentName={agent?.name ?? null}
+        onClearAgent={clearAgent}
         disabled={disabled}
         scope={scope}
         scopeLocked={scopeLocked}
@@ -476,55 +532,59 @@ export default function ChatInput({
           }),
         })}
       >
-        <TextField
-          {...(actions.enabled ? tourAnchor('prompts') : {})}
-          ref={setFieldEl}
-          fullWidth
-          multiline
-          maxRows={6}
-          placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={disabled}
-          inputRef={inputRef}
-          variant="standard"
-          slotProps={{
-            htmlInput: {
-              role: 'combobox',
-              'aria-expanded': comboboxExpanded,
-              'aria-haspopup': 'listbox',
-              'aria-controls': comboboxControls,
-              'aria-autocomplete': 'list',
-              'aria-activedescendant': activeDescendant,
-              'aria-invalid': questionTooLong,
-              'aria-label': INPUT_LABEL,
-              [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
-              'aria-describedby':
-                [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
-                  .filter((id) => id !== null)
-                  .join(' ') || undefined,
-            },
-          }}
-          sx={{
-            '& .MuiInputBase-root': {
-              borderRadius: 0,
-              background: 'none',
-              px: 1.5,
-              py: 1,
-              alignItems: 'flex-start',
-              '&::before, &::after': { display: 'none' },
-            },
-            '& textarea': {
-              overflowY: 'auto !important',
-              resize: 'none',
-            },
-            // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
-            '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
-          }}
-        />
-        {uploadsEnabled && (
+        {dictation.busy ? (
+          <DictationField dictation={dictation} draft={value} />
+        ) : (
+          <TextField
+            {...(actions.enabled ? tourAnchor('prompts') : {})}
+            ref={setFieldEl}
+            fullWidth
+            multiline
+            maxRows={6}
+            placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            disabled={disabled}
+            inputRef={inputRef}
+            variant="standard"
+            slotProps={{
+              htmlInput: {
+                // The textarea keeps its implicit textbox role: ARIA allows role=combobox only on
+                // input-type elements (axe: aria-allowed-role), and aria-expanded is not valid on a
+                // textbox. aria-controls + aria-activedescendant expose the open listbox.
+                'aria-controls': listboxControls,
+                'aria-autocomplete': 'list',
+                'aria-activedescendant': activeDescendant,
+                'aria-invalid': questionTooLong,
+                'aria-label': INPUT_LABEL,
+                [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
+                'aria-describedby':
+                  [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
+                    .filter((id) => id !== null)
+                    .join(' ') || undefined,
+              },
+            }}
+            sx={{
+              '& .MuiInputBase-root': {
+                borderRadius: 0,
+                background: 'none',
+                px: 1.5,
+                py: 1,
+                alignItems: 'flex-start',
+                '&::before, &::after': { display: 'none' },
+              },
+              '& textarea': {
+                overflowY: 'auto !important',
+                resize: 'none',
+              },
+              // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
+              '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
+            }}
+          />
+        )}
+        {uploadsEnabled && !dictation.busy && (
           <>
             <input
               ref={fileInputRef}
@@ -541,15 +601,11 @@ export default function ChatInput({
               {...tourAnchor('attach')}
               sx={{ alignSelf: 'flex-end', p: 1, color: 'text.secondary' }}
             >
-              <AttachFileIcon sx={{ fontSize: 18 }} />
+              <AttachFileIcon sx={{ fontSize: iconSize.md }} />
             </IconButton>
           </>
         )}
-        <DictationControl
-          onText={appendDictatedText}
-          onError={setDictationError}
-          disabled={disabled}
-        />
+        <DictationControl dictation={dictation} disabled={disabled} />
         {/* Ends the pending answer; the send button beside it stays locked until it is over. */}
         {answerPending && onCancelAnswer && (
           <IconButton
@@ -564,16 +620,17 @@ export default function ChatInput({
               p: 1,
             }}
           >
-            <StopIcon sx={{ fontSize: 18 }} />
+            <StopIcon sx={{ fontSize: iconSize.md }} />
           </IconButton>
         )}
         {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"
-          onClick={handleSend}
+          onClick={() => (dictation.status === 'recording' ? void sendDictation() : handleSend())}
           disabled={
             sendLocked ||
-            !value.trim() ||
+            dictation.status === 'processing' ||
+            (!value.trim() && dictation.status !== 'recording') ||
             questionTooLong ||
             actions.isInserting ||
             attachmentsPending
@@ -589,7 +646,7 @@ export default function ChatInput({
             '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' },
           }}
         >
-          <SendIcon sx={{ fontSize: 18 }} />
+          <SendIcon sx={{ fontSize: iconSize.md }} />
         </IconButton>
       </Box>
 
@@ -610,7 +667,7 @@ export default function ChatInput({
                 px: 1.5,
                 py: 1,
                 fontFamily: fontFamily.mono,
-                fontSize: 9.5,
+                fontSize: fontSize.label,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 color: 'text.secondary',
@@ -618,70 +675,65 @@ export default function ChatInput({
                 borderColor: 'divider',
               }}
             >
-              Suchbereich eingrenzen
+              {agents.length > 0 ? 'Wissen oder Agent wählen' : 'Suchbereich eingrenzen'}
             </Typography>
             {suggestions.length > 0 ? (
-              <List id={mentionListboxId} role="listbox" aria-label="Suchbereich" dense>
-                {suggestions.map((suggestion, index) => {
-                  const key = suggestion.kind === 'all' ? '@all-knowledge' : suggestion.library.id
-                  const name = suggestion.kind === 'all' ? '@Space-Wissen' : suggestion.library.name
-                  const badge =
-                    suggestion.kind === 'all'
-                      ? 'Wissen des Space · hebt Eingrenzung auf'
-                      : 'Bibliothek · verengt die Suche'
-                  const query = mention?.query ?? ''
-                  const matchIndex =
-                    query.length > 0 ? name.toLowerCase().indexOf(query.toLowerCase()) : -1
-                  return (
-                    <ListItemButton
-                      key={key}
-                      id={`${mentionListboxId}-option-${index}`}
-                      role="option"
-                      aria-selected={index === highlightedIndex}
-                      selected={index === highlightedIndex}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      onClick={() => selectSuggestion(suggestion)}
-                      sx={{
-                        gap: 1.25,
-                        py: 1,
-                        '&.Mui-selected': {
-                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                        },
-                      }}
-                    >
-                      {suggestion.kind === 'all' ? (
-                        <AllInclusiveIcon sx={{ fontSize: 15, color: 'text.primary' }} />
-                      ) : (
-                        <MenuBookOutlinedIcon sx={{ fontSize: 15, color: 'text.primary' }} />
-                      )}
+              <List
+                id={mentionListboxId}
+                role="listbox"
+                aria-label={agents.length > 0 ? 'Suchbereich oder Agent' : 'Suchbereich'}
+                dense
+              >
+                {mentionGroups(suggestions).map((group, groupIndex) => (
+                  <Box component="li" role="presentation" key={group.kind} sx={{ p: 0 }}>
+                    {/* With agents on offer each group gets a visible heading of its own. */}
+                    {agents.length > 0 && (
                       <Typography
-                        component="span"
-                        noWrap
-                        sx={{ flex: 1, fontSize: 13.5, color: 'text.primary' }}
+                        id={`${mentionListboxId}-${group.kind}`}
+                        component="div"
+                        sx={{
+                          px: 1.5,
+                          pt: 1,
+                          pb: 0.5,
+                          fontFamily: fontFamily.mono,
+                          fontSize: fontSize.label,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          color: 'text.secondary',
+                          ...(groupIndex > 0 ? { borderTop: 1, borderColor: 'divider' } : {}),
+                        }}
                       >
-                        {matchIndex >= 0 ? (
-                          <>
-                            {name.slice(0, matchIndex)}
-                            <Box component="strong" sx={{ fontWeight: 600 }}>
-                              {name.slice(matchIndex, matchIndex + query.length)}
-                            </Box>
-                            {name.slice(matchIndex + query.length)}
-                          </>
-                        ) : (
-                          name
-                        )}
+                        {group.kind === 'agent' ? 'Agenten' : 'Wissen'}
                       </Typography>
-                      <Box component="span" sx={{ flex: 'none', display: 'inline-flex' }}>
-                        <MetaBadge>{badge}</MetaBadge>
-                      </Box>
-                    </ListItemButton>
-                  )
-                })}
+                    )}
+                    <Box
+                      component="ul"
+                      role="group"
+                      {...(agents.length > 0
+                        ? { 'aria-labelledby': `${mentionListboxId}-${group.kind}` }
+                        : { 'aria-label': 'Wissen' })}
+                      sx={{ listStyle: 'none', m: 0, p: 0 }}
+                    >
+                      {group.items.map(({ suggestion, index }) => (
+                        <MentionOption
+                          key={mentionKey(suggestion)}
+                          suggestion={suggestion}
+                          optionId={`${mentionListboxId}-option-${index}`}
+                          highlighted={index === highlightedIndex}
+                          query={mention?.query ?? ''}
+                          onHighlight={() => setHighlightedIndex(index)}
+                          onSelect={() => selectSuggestion(suggestion)}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
               </List>
             ) : (
               <Typography variant="body2" sx={{ color: 'text.secondary', p: 1.5 }}>
-                Keine passende Bibliothek in diesem Space
+                {agents.length > 0
+                  ? 'Keine passende Bibliothek und kein passender Agent in diesem Space'
+                  : 'Keine passende Bibliothek in diesem Space'}
               </Typography>
             )}
           </Paper>
@@ -698,6 +750,7 @@ export default function ChatInput({
         highlightedIndex={actions.highlightedIndex}
         isLoading={actions.isLoading}
         error={actions.error}
+        onRetry={actions.reload}
         onHighlight={actions.setHighlightedIndex}
         onSelect={(entry) => chooseAction(actions.matches.indexOf(entry))}
         onClose={actions.close}
@@ -713,15 +766,17 @@ export default function ChatInput({
           </Box>
         )}
         {scopeNotice && (
-          <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
+          <Typography component="div" sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
             {scopeNotice}
           </Typography>
         )}
-        <Box {...tourAnchor('ai-notice')}>
-          <AiNotice variant="line" />
-        </Box>
+        {showAiNotice && <AiNotice variant="line" />}
         {dictationError && (
-          <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
+          <Typography
+            component="div"
+            role="alert"
+            sx={{ fontSize: fontSize.meta, color: 'error.main' }}
+          >
             {dictationError}
           </Typography>
         )}
@@ -729,7 +784,10 @@ export default function ChatInput({
           <Typography
             id={lengthCounterId}
             component="div"
-            sx={{ fontSize: 12, color: questionTooLong ? 'error.main' : 'text.secondary' }}
+            sx={{
+              fontSize: fontSize.meta,
+              color: questionTooLong ? 'error.main' : 'text.secondary',
+            }}
           >
             {lengthCounter}
           </Typography>

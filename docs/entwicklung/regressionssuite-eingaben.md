@@ -18,6 +18,8 @@ Review.
 | Klasse | Weg | Lauf |
 |---|---|---|
 | `io.opaa.format.hostile.FormatHostileInputTest` | Format-Pipeline wie in Produktion: alle registrierten Formate (`ProductionDocumentFormats.registry(...)`, gegen den Spring-Kontext gehalten von `DocumentFormatRegistryRoutingIntegrationTest`), Weiterleitung nach erkanntem Inhalt, `DocumentFormatRunner`, Produktionsgrenzen | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **5 s** (unter einer Sekunde im behobenen Stand) oder **20 s** |
+| `io.opaa.format.file.pdf.PdfPagesHostileInputTest` | Seitendarstellung der Texterkennung (`PdfPages#render`, Weg „Vision-Modell“) mit Produktionsgrenzen: übergroße Seiten, Bilder samt Masken und Schablonen, Inline-Bilder, CCITT, Kachelmuster, Soft-Masks, Transparenzgruppen, Type-3-Zeichen, Schattierungen und Funktionen, Anmerkungen, Lesebudget und Lesezeit je Seite; PDFs erzeugt der Test selbst mit PDFBox | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **20 s** |
+| `io.opaa.format.file.pdf.PdfFontHostileInputTest` | Eingebettete Schriftprogramme (TrueType, Type 1, Nachfahrschriften) und CMap-Ströme als Entpackbombe, in der Textextraktion (`PdfDocumentFormat`) und in der Seitendarstellung, auch mit der Schrift nur in einer Anmerkung, in einem Grafikzustand (`gs`) oder in den Formularressourcen einer FreeText-Anmerkung ohne Erscheinungsbild, und ein Schriftdeskriptor, dessen Eintrag in der Querverweistabelle als frei markiert ist; PDFs erzeugt der Test selbst mit PDFBox | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **20 s** |
 | `io.opaa.library.HostileUploadIntegrationTest` | Upload-Verarbeitung im gemeinsamen Spring-Kontext: Upload-Pool, Anhänge, Zeilenstatus, Folge-Upload | `./gradlew test` (Shard `api`), je Datei **90 s** bis zum Endstatus |
 
 Die Wächter der Parser-Fixes stehen in `FormatHostileInputTest`. Der Upload-Test prüft den Weg bis
@@ -58,6 +60,9 @@ Ausgangsdateien nutzen kann:
   (`demo/corpus/formate/13_rahmenvertrag-scandienstleister.doc`), weil keine Bibliothek im
   Klassenpfad das alte Word-Format schreibt — erzeugt wird nur der Objektpool
 - PPTX, das auf jeder Folie ein Word-Dokument als OLE-Objekt einbettet
+- ODF- und OOXML-Container mit einem Eintrag in Zstandard-Kompression (Methode 93), deren Codec
+  (zstd-jni) nicht ausgeliefert wird: Erkennung meldet unbekannten Inhalt, das Lesen endet als
+  `PARSE_FAILED` (#3619)
 
 Neue Fälle kommen als Fabrikmethode in `HostileFiles` und als Testfall in beide Klassen, sofern der
 Weg über den Upload etwas zusätzlich prüft (Status, Anhänge, Folge-Upload).

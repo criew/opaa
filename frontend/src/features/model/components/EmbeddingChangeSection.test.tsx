@@ -70,7 +70,7 @@ describe('EmbeddingChangeSection', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toHaveTextContent('Vektorsuche ausgesetzt')
-    await user.click(within(dialog).getByRole('button', { name: 'Wechsel starten' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Wechseln' }))
 
     await waitFor(() => expect(started).toHaveLength(1))
     expect(started[0]).toMatchObject({
@@ -130,14 +130,14 @@ describe('EmbeddingChangeSection', () => {
     const probed = capture('post', '/api/v1/admin/models/embedding/probe', mockEmbeddingModelProbe)
     renderSection({ ...mockEmbeddingInfo, apiKeySet: true })
 
-    expect(screen.getByRole('radio', { name: 'beibehalten' })).toBeChecked()
+    expect(screen.getByText('Gesetzt')).toBeInTheDocument()
     const address = screen.getByLabelText(/Basis-Adresse/)
     await user.clear(address)
     await user.type(address, 'https://api.anderer-anbieter.example/v1')
 
-    expect(screen.getByRole('radio', { name: 'beibehalten' })).toBeDisabled()
     expect(screen.getByText(/der gespeicherte Schlüssel geht nicht mit/)).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Neuer Zugangsschlüssel'), 'sk-neu')
+    await user.click(screen.getByRole('button', { name: 'API-Schlüssel ersetzen' }))
+    await user.type(screen.getByLabelText(/^API-Schlüssel/, { selector: 'input' }), 'sk-neu')
     await user.click(screen.getByRole('button', { name: 'Probeeinbettung' }))
 
     await waitFor(() => expect(probed).toHaveLength(1))
@@ -217,7 +217,7 @@ describe('EmbeddingChangeSection', () => {
     await user.clear(address)
     await user.type(address, 'http://ersatz:11434/v1')
     await user.click(screen.getByRole('button', { name: 'Probeeinbettung' }))
-    await user.click(await screen.findByRole('button', { name: 'Ersatz-Endpunkt speichern' }))
+    await user.click(await screen.findByRole('button', { name: 'Ersatz-Endpunkt festlegen' }))
 
     await waitFor(() => expect(moved).toHaveLength(1))
     expect(moved[0]).toMatchObject({ model: 'bge-m3', baseUrl: 'http://ersatz:11434/v1' })

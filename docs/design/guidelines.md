@@ -224,30 +224,27 @@ später über die Branding-Konfiguration nachladen; die Schriftstapel enden desh
 
 ### 3.2 Skala
 
-Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehören Markenmomenten
-(Anmeldeseite, Leerzustände):
+Sechs Schriftstufen in ganzen Pixeln, benannt im Theme (`fontSize` in
+`frontend/src/shared/theme/tokens.ts`). Andere Größen gibt es nicht, auch keine halben Pixel:
 
-| Stufe   | Größe     | Typische Verwendung                  |
-| ------- | --------- | ------------------------------------ |
-| 2xs     | 11 px     | Versal-Etiketten, Tabellen-Metadaten |
-| xs      | 12 px     | Metadaten, Chips, Eyebrow            |
-| sm      | 14 px     | Sekundärtext, Tabellen, Seitenleiste |
-| base    | 16 px     | Fließtext, Chat-Antworten            |
-| md      | 18 px     | Chat-Titel, hervorgehobener Text     |
-| lg      | 20 px     | h4-Äquivalent                        |
-| xl      | 24 px     | Abschnittsüberschriften (h3)         |
-| 2xl     | 30 px     | Seitenüberschriften (h2)             |
-| 3xl     | 36 px     | große Seitenköpfe                    |
-| 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI     |
+| Stufe         | Größe | Verwendung                                                                 |
+| ------------- | ----- | -------------------------------------------------------------------------- |
+| `label`       | 11 px | Versal-Etiketten, Abschnittsüberschriften (4.6), Tabellenköpfe, Fußnotenzeichen |
+| `meta`        | 12 px | Chips und Etiketten (5.5), Metadaten neben einem Wert, Hilfetext am Feld    |
+| `text`        | 14 px | Fließtext, Feldwerte, Schaltflächen, Menüeinträge, Listen                   |
+| `title`       | 16 px | Titel von Bereichsseite, Dialog und Seitenpanel; Chat-Text                  |
+| `detailTitle` | 20 px | Titel einer Detailseite                                                    |
+| `wizardTitle` | 24 px | Schritttitel im Assistenten, Einzweckseiten (Installation, Fehlerseite)     |
 
-Die Arbeitsflächen folgen zusätzlich dem **Feinraster** (#658): Fließtext
-14,5 px / 1.65, UI-Listen 13 px, Metadaten 11–12,5 px, Versal-Etiketten 9,5 px / +0.12em,
-Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
-bleiben das Vokabular für Markenmomente.
+Frage und Antwort im Chat stehen in 16 px (`MarkdownRenderer` mit `reading`), weil Antworten
+Lesetext sind; die übrige Oberfläche bleibt bei 14 px. **Kein Thema schreibt eine Schriftgröße als
+Zahl**: Komponenten nennen eine Stufe (`fontSize.meta`), Icons eine Icongröße (`iconSize`, 14–48
+px). ESLint weist eine Zahl als `fontSize` unter `features/` und `app/` ab, ein Theme-Test hält
+Stufen und Typografie-Varianten fest.
 
-**Titel einer Detailseite** (Asset, Space, Lauf), abweichend vom Seitentitel (27 px): 20 px / 28 px
-ab 600 px Breite, darunter 17 px / 22 px. Er steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine
-Leerzeilen. Bei 320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
+**Titel einer Detailseite** (Asset, Space, Lauf): 20 px ab 600 px Breite, darunter 16 px. Er
+steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine Leerzeilen. Bei
+320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
 
 ### 3.3 Gewichte, Zeilenhöhen, Laufweiten
 
@@ -259,8 +256,10 @@ Leerzeilen. Bei 320 px beginnt die Reiterleiste spätestens 360 px unter der Obe
   UI-Texte) · 1.5 (Fließtext) · 1.7 (lange Lesetexte, z. B. Chat-Antworten).
 - **Laufweiten:** −0.02em (Überschriften ab xl) · −0.005em (Fließtext) · +0.08em
   (Versal-Etiketten).
-- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten): 11–12 px, Versalien,
-  +0.08em, Gewicht 500, Farbe `accent` über Überschriften bzw. `fg-3` in Tabellen.
+- **Eyebrow-Muster** (Etikett über Überschriften und Tabellenspalten, Abschnittskopf): 11–12 px,
+  Versalien, +0.08em, Gewicht 500, Farbe `fg-2` bzw. `fg-3` in Tabellen. Nie `accent`: Blau bleibt
+  Handlung und Zustand vorbehalten (2.3), auch auf den Seiten vor der Anmeldung und im
+  Installationsassistenten.
 
 ---
 
@@ -332,6 +331,15 @@ Warum so:
   positioniert und wird ohne Versatz breiter; der Eingaberahmen des Chats legt das zweite Pixel
   als inneren Schatten an (`focusFrameStyle`).
 
+**Ausnahme: Überschriften, die nur das Programm fokussiert.** Seitentitel (`PageHeading`) und
+Schritttitel eines Assistenten tragen `tabIndex={-1}` und erhalten den Fokus beim Ankommen und
+nach „Weiter“, damit ein Screenreader die neue Seite ansagt. Sie sind kein Bedienelement, man
+erreicht sie nicht mit Tab, und sie zeigen deshalb keinen Ring; der Fokus selbst bleibt. Die Regel
+steht global im Theme (`h1`–`h6` mit `tabindex="-1"`); geprüft in
+`frontend/src/shared/theme/programmaticFocus.test.tsx`. Ein Akkordeon nennt die Ebene seiner
+Überschrift ausdrücklich (`slotProps.heading`, unter dem Seitentitel `h2`), weil MUI sonst `h3`
+setzt und eine Ebene überspringt (`frontend/src/shared/ui/ariaSource.test.ts`).
+
 Umsetzung: `focusVisible` im MUI-Theme und `*:focus-visible` für alle übrigen Elemente
 (`frontend/src/shared/theme/theme.ts`), Werte in `tokens.ts`; Nachweis gegen alle Flächenrollen in
 `frontend/src/shared/theme/focusRing.contrast.test.ts`. Prüfung:
@@ -343,6 +351,85 @@ Dauern 120 ms (klein: Hover, Chips), 200 ms (Standard: Menüs, Einblendungen), 3
 Belegfenster, Drawer); Kurve `cubic-bezier(0.22, 1, 0.36, 1)` (ease-out). Nur `transform` und
 `opacity` animieren. Unter `prefers-reduced-motion` entfallen Bewegungen bzw. schrumpfen auf
 Zustandswechsel.
+
+### 4.6 Seitenraster
+
+**Seitenkopf.** Jede Bereichsseite – eine Seite hinter einer Bereichsnavigation, etwa in
+Administration, Anbindungen, Revision oder „Ihre Einstellungen" – beginnt mit `AreaPageHeader`
+(`frontend/src/shared/ui/AreaPageHeader.tsx`): Zeichen und Titel, daneben die Anzahl der Liste,
+rechts der Anlege-Knopf (5.1), darunter höchstens zwei Zeilen Beschreibung. Zwischen Kopf und
+Inhalt stehen nur Reiter, Hinweise und die Filterzeile.
+
+- **Anzahl:** mit Substantiv neben dem Titel („3 Anbieter", „1 Konto"); solange ein Filter die
+  Liste kürzt, „12 von 40 Konten". Sie steht nicht über der Tabelle, nicht in der Fußzeile und
+  nicht im Reiter (Prüfliste P2).
+- **Seiten mit Reitern:** Anzahl und Anlege-Knopf gehören zum gewählten Reiter, stehen aber im
+  Kopf und wechseln mit dem Reiter. Der Inhalt des Reiters schreibt dafür `AreaPageCount` und
+  `CreateButton`; beide erscheinen im Kopf der Seite, gleich wo sie im Reiter stehen.
+
+**Drei Inhaltsbreiten** (`contentWidth` in `frontend/src/shared/theme/tokens.ts`):
+
+| Token    | Breite  | Seitentyp                                                         |
+| -------- | ------- | ----------------------------------------------------------------- |
+| `form`   | 720 px  | Formular, Assistent, Seite aus Lesetext (Hinweis, kein Zugriff)   |
+| `detail` | 880 px  | Detailseite eines Arbeitsmittels oder Space, samt Einstellungen   |
+| `list`   | 1180 px | Bereichsseite mit Liste oder Tabelle                              |
+
+Seiten derselben Art haben dieselbe Breite; die rechte Kante springt nicht beim Wechsel zwischen
+zwei Menüpunkten (Prüfliste P46). **Kein Thema schreibt eine Breite als Zahl.** Ein einzelnes
+Feld oder ein kleiner Block, der seinen Behälter nicht füllen soll, nimmt eine Stufe aus
+`fieldWidth` (240, 360, 480 px). Formulare haben eigene Breiten aus `formWidth` (5.2):
+`formWidth.number` für Zahlenfelder, `formWidth.column` für die Spalte eines
+Einstellungsformulars.
+
+**Erklärtexte in Lesebreite.** Ein erklärender Absatz ist höchstens 72 Zeichen breit
+(`readingWidth`), auch über einer breiten Tabelle. Die Beschreibung im Seitenkopf und unter einer
+Abschnittsüberschrift hält das von selbst ein.
+
+**Eine Abschnittsüberschrift.** Abschnitte einer Seite beginnen mit `SectionHead`: Versalien in
+11 px auf einer Haarlinie. `PageSection` (Bereichsseite) und `DetailSection` (Reiter einer
+Detailseite) setzen sie mit Beschreibung und Aktion zusammen. Eine fette Zeile als zweite Form
+gibt es nicht. Den Abstand zum Inhalt davor (32 px) setzt der Baustein, nicht die Seite.
+
+Ein Quelltext-Test (`frontend/src/shared/ui/pageGrid.test.tsx`) hält Breiten, Plus-Icon und
+Reiter ohne Zähler fest; `AreaPageHeader.test.tsx` führt die Liste der Bereichsseiten.
+
+### 4.7 Telefon und schmale Fenster
+
+**Zwei Schwellen, 600 und 900 px** (`sm` und `md` im Theme). Darunter ändert sich die Form, nicht
+nur die Breite:
+
+| Unter | Was sich ändert |
+| --- | --- |
+| 900 px | Die Seitenleiste wird zur Schublade hinter „Menü öffnen“. Die Bereichsnavigation steht als eine Zeile über der Seite. Jede Liste aus `AdminList` ist eine Kartenliste (5.3); eine `<table>` ist nicht sichtbar. Die Schrittliste des Installationsassistenten zeigt nur „Schritt 2 von 12 · Erstes Konto“ (5.17). |
+| 600 px | Dialoge und Seitenpanels füllen den Bildschirm, die Fußzeile steht unten (5.6). Der Anlege-Knopf steht in voller Breite in einer eigenen Zeile unter dem Titel (`AreaPageHeader`, 4.6). Die Schrittleiste der übrigen Assistenten (`WizardStepBar`) nennt nur beim aktiven Schritt den Namen, die anderen zeigen ihre Nummer; vorgelesen werden alle mit Namen (5.15). |
+
+**Bereichsnavigation in einer Zeile** (`frontend/src/app/shell/AreaSectionRow.tsx`): Unter 900 px
+stehen die Einträge von Administration und Revision nebeneinander in einer Zeile, die sich
+waagerecht scrollen lässt. Der aktive Eintrag steht beim Öffnen einer Seite in der Mitte; ein
+Verlauf am Rand zeigt, dass dort weitere Einträge folgen. Die Einträge bleiben Links einer Liste,
+der Tabulator scrollt sie herein. Titel und Kennzeichen „Global“ der Spalte entfallen, die
+Landmarke behält den Namen. Nur diese Datei kennt die schmale Form; wer sie ändert, ändert nur
+sie.
+
+**Inhalt oben.** Bei 360 px beginnt der Seitentitel spätestens 200 px unter der Oberkante.
+
+**Beschriftungen brechen nie um.** Knöpfe, Reiter und Einträge der Bereichsnavigation bleiben
+einzeilig. Passt eine Fußzeile nicht in eine Zeile, brechen die Knöpfe als Ganzes in die nächste
+Zeile, nicht ihr Text.
+
+**Zwei Breiten, zwei Zwecke:**
+
+- **320 px** ist die Untergrenze für Reflow nach WCAG 1.4.10
+  ([Barrierefreiheit](./accessibility.md), 2.5): Nichts bricht, nichts ist abgeschnitten,
+  nichts scrollt waagerecht. Gemessen in `e2e/ui-lab/capture.mjs` (`overflowX`, `clippedText`),
+  in `mobile-pass.mjs` (`overflowX`, `cutOff`) und in der E2E-Suite
+  (`admin-area-navigation.spec.ts`).
+- **360 px** ist das Telefon, an dem die Regeln dieses Abschnitts gemessen und Screenshots
+  bewertet werden: `e2e/ui-lab/mobile-pass.mjs` lädt alle Verwaltungs- und Hauptseiten mit den
+  Mock-Profilen `admin`, `user` und `auditor` und misst Inhaltsbeginn, waagerechtes Scrollen,
+  sichtbare Tabellen, umbrechende Beschriftungen, Anlege-Knopf und den Dialog, den er öffnet
+  (Prüfliste P25).
 
 ---
 
@@ -356,19 +443,30 @@ Zustandswechsel.
 | Sekundär           | `bg-1` mit `border-strong`                | `bg-2`                     | `bg-3`           |
 | Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
-Radius sm, Gewicht 500, 13,5 px, Höhe 34 px (kompakt 28 px), Beschriftung als Verb („Fragen",
-„Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche. Auf Navy-Flächen gilt die
+Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
+Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche:
+der Anlege-Knopf oder „Speichern". Was nur ein Panel oder einen Dialog öffnet („Einstellungen"), ist
+sekundär; stehen zwei Handlungen gleichen Rangs auf einer Seite, ist nur die dringlichere primär. Auf Navy-Flächen gilt die
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
-rote Primärfläche als Standardaktion.
+rote Primärfläche als Standardaktion. Einzige Ausnahme ist die Handlung einer Bestätigung im Ton
+`danger` (5.10).
+
+**Kompakte Schaltflächen** (`size="small"`) stehen nur in Tabellenzeilen, Abschnittsköpfen,
+Filterzeilen und Werkzeugleisten. Seitenkopf, Formular- und Dialogfußzeile tragen die normale
+Größe.
 
 **Nur-Icon-Schaltflächen** tragen immer beides: ein deutsches `aria-label` mit konkretem Bezug
 („Original von bescheid.pdf öffnen") **und** einen `Tooltip`, der die Funktion beim Zeigen mit
 der Maus erklärt („Original öffnen"). Ein Icon allein ist keine Beschriftung — weder für
 Sehende, die das Symbol nicht kennen, noch für Screenreader.
 
-**Anlege-Knöpfe** — die Schaltfläche oben rechts über einer Übersicht oder Verwaltungsliste, die
-ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der Beschriftung, und
-die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
+**Anlege-Knöpfe** — die Schaltfläche, die ein neues Objekt anlegt — stehen rechts im Seitenkopf
+(4.6), nie unter Reitern, neben einem Hinweis oder Erklärtext oder im Abschnittskopf. Sie kommen
+aus `CreateButton` (`frontend/src/shared/ui/CreateButton.tsx`), tragen das Plus-Icon (`Add`) vor
+der Beschriftung und sind die primäre Schaltfläche der Seite. **Ein Knopf mit Plus-Icon steht nur
+im Seitenkopf, in der Seitenleiste und im Leerzustand** (dort sekundär, `placement="empty"`). Ist
+der Knopf gesperrt, nennt ein Tooltip den Grund (`disabledReason`). Die Beschriftung nennt das
+Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
 Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
 und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
 Je Objekt gibt es eine Beschriftung: Seitenkopf, Leerzustand und Menüeinträge wie der
@@ -389,8 +487,8 @@ zuordnen"), bleibt die Aktion dieses Hinweises.
 „Hinzufügen" — in den Space-Mitgliedern, in „Meine Gruppen" und im Mitgliederdialog der
 Gruppenverwaltung. Fachlich begründet sind drei andere Verben:
 
-- „Vormerken" im Assistenten (Space, Wissens- und Prompt-Bibliothek): Gespeichert wird erst mit dem
-  Anlegen.
+- „Vormerken" im Assistenten (Space, Wissensbibliothek, Prompt-Bibliothek, Vorlage, Agent; 5.15):
+  Gespeichert wird erst mit dem Anlegen.
 - „Freigeben" an einem bestehenden Arbeitsmittel: Die Handlung erteilt eine Berechtigung mit Rolle
   und Befristung, keine Mitgliedschaft.
 - „Als verantwortlich benennen" bei internen Gruppen: Verantwortliche werden nicht Mitglied.
@@ -409,7 +507,7 @@ eine Schaltfläche, auch wenn sie wie ein Link aussieht (`component="button"`). 
 Schaltfläche steht für die Hinzufügen-Aktion im Abschnittskopf, für „Ändern" in einer Wertzeile
 (5.12), zum Auf- und Zuklappen („alle anzeigen", „Mitglieder ausblenden") und für kleine Schritte
 in einer Liste oder einem Auswahldialog, die nichts speichern („Auswahl ansehen", „Suche
-zurücksetzen", „Erneut laden"). Sie kommt aus `TextAction`
+zurücksetzen", „Filter zurücksetzen"). Sie kommt aus `TextAction`
 (`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema. Was einen Lauf
 startet oder Daten ändert, ist eine sichtbare Schaltfläche, auch im Abschnittskopf: „Vollabgleich
 starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche. Ein Umschalter in einer
@@ -425,7 +523,8 @@ beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"
 ist. Wie eine Schaltfläche sieht ein solcher Verweis nur aus, wenn er die eine Handlung eines
 Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
 zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
-Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs („Zur Anmeldung")
+Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs ohne Formular
+(„Zur Anmeldung" nach Installation, Kontoübergabe und gescheiterter Rückkehr vom Anbieter)
 sind Handlungen und bleiben Schaltflächen. Reiter, globale Leiste, Zeilen der Seitenleiste und von
 Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
@@ -434,14 +533,56 @@ nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf
 Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
 Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
 
+**Seiten vor der Anmeldung** (Anmelden, Systemanmeldung, Registrieren, Passwort vergessen,
+Passwort festlegen, E-Mail-Adresse bestätigen, Kontoübergabe) folgen denselben Regeln und
+Bausteinen wie die Anwendung (`FormField`, `SecretField`, `TextLink`, `SectionHead`):
+
+- Die Primärschaltfläche trägt das Verb der Seite, nicht ihren Titel: „Anmelden", „Registrieren",
+  „Link anfordern", „Passwort festlegen".
+- Der Rückweg heißt überall „Zur Anmeldung" und steht als Textlink unter dem Formular, nach einem
+  Ergebnishinweis unter diesem. Andere Wortlaute („Zurück zur Anmeldung", „Sie haben schon ein
+  Konto?") gibt es nicht.
+- Frei stehende Verweise („Passwort vergessen?", „Anmeldung für die Systemverwaltung", „Neuen Link
+  anfordern") sind Textlinks in 14 px, unterstrichen beim Zeigen; nur der Link im Satz („Noch kein
+  Konto? Konto registrieren") bleibt dauerhaft unterstrichen.
+- Identitätsanbieter stehen zuerst, der vorgeschlagene gefüllt; die lokale Anmeldung darunter ist
+  dann sekundär (eine primäre Schaltfläche je Fläche).
+
+`preSignInRules.test.ts` prüft Wortlaut, Bausteine und Verben im Quelltext.
+
 ### 5.2 Formularfelder
 
-Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
-schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
-Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
-das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
-sichtbare Beschriftung, sondern Platzhalter plus `aria-label`.
-Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
+Jedes Eingabefeld – Text, Auswahl, Autocomplete, Datum – kommt aus dem Baustein `FormField`
+(`frontend/src/shared/ui/form/`). Kein Thema setzt `label=` direkt an ein MUI-Feld; das prüft
+`FormField.test.tsx` am Quelltext.
+
+Bewusste Ausnahmen: Felder ohne sichtbare Beschriftung, die ihren Namen über `aria-label` tragen
+und in einer Tabellenzeile, einer Titelzeile oder einem Such-Baustein stehen (`ListSearch`,
+`SubjectPicker`, `UserPicker`, `GroupPicker`, die Gruppenwahl in `AssetOwnerFields` unter der
+Beschriftung „Eigentümer"), bleiben MUI-Felder. Der Installationsassistent und die
+Einstellungsseiten, die dasselbe abfragen, nehmen ihre Felder aus den Feldblöcken (5.17).
+
+**Beschriftung.** Oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
+schwebendes Label im Feld), mit dem Feld verbunden (`htmlFor`, bei einer Auswahl
+`aria-labelledby`). Pflichtfelder tragen kein Sternchen, auch nicht über `required`; optionale
+Felder tragen „(optional)" (Eigenschaft `optional`). Ein Bedienelement, das `FormField` nicht
+umschließen kann (Optionsgruppe, Kachelauswahl), bekommt dieselbe Beschriftung über
+`FormFieldLabel`.
+
+**Feld.** Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
+Haarlinien-Schatten und Höhe 36 px für jedes einzeilige Feld, gleich welche MUI-Größe
+(`controlHeight` im Theme, geprüft in `frontend/src/shared/theme/fieldHeight.test.tsx`) — keine
+gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
+das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Ein mehrzeiliges Feld beginnt
+mit drei Zeilen und wächst mit dem Inhalt. Ein leeres Feld zeigt höchstens ein Beispiel als
+Platzhalter, nie seine eigene Beschriftung.
+
+**Such- und Filterfelder** über einer Liste tragen keine sichtbare Beschriftung
+(`FormField hideLabel`): Beim Suchfeld nennt der Platzhalter den Inhalt, beim Filter der
+Vorgabewert („Alle Zustände"); das `aria-label` nennt die Dimension („Zustand").
+
+**Hilfetext und Fehler.** Hilfetext unterhalb in `fg-3`, bündig mit der linken Feldkante wie die
+Beschriftung. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
 Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 (Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7). Der Fehlerrahmen bleibt
@@ -449,8 +590,24 @@ auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahm
 ohne Fokusring, für Textfelder, Auswahllisten und Autocomplete
 gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
 behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
-Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
-Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
+
+**Geheimnisse.** Passwort, Schlüssel und Token haben ein Feld: `SecretField`
+(`frontend/src/shared/ui/form/SecretField.tsx`). Es ist verdeckt und trägt ein Auge, das die
+Eingabe zeigt; das Auge nennt sein Feld („Passwort anzeigen") und bleibt in der Tabreihenfolge.
+Ein hinterlegtes Geheimnis wird nie zurückgespiegelt: Das Feld zeigt „Gesetzt" mit „Ersetzen",
+erst „Ersetzen" öffnet ein leeres Feld, „Gespeicherten Wert behalten" nimmt das zurück. Lässt
+sich ein hinterlegtes Geheimnis löschen, steht dafür eine Textaktion am Feld („Gespeichertes
+Passwort löschen"), still und nicht rot; ein leeres Feld löscht nie. Einen zweiten Baustein für
+Geheimnisse gibt es nicht (`setupRules.test.ts`).
+
+**Breite und Anordnung.** Formulare auf Einstellungsseiten sind einspaltig und 640 px breit
+(`formWidth.column` im Theme). Nebeneinander stehen nur Wertepaare, die als ein
+Wert gelesen werden (Server und Port, `FormFieldRow`). Die Schaltfläche, die ein einzelnes Feld
+absendet, steht direkt neben dessen Feld, zwischen Beschriftung und Hilfetext
+(`FormField action`). Ein
+reines Zahlenfeld ist 160 px breit (`formWidth.number`, `FormField numeric` oder
+`type="number"`); Beschriftung und Hilfetext behalten die Spaltenbreite. In Dialogen gilt die
+Breite des Dialogs.
 
 **Personen- und Gruppensuche.** Wo Personen und Gruppen Empfänger sein können (Freigaben,
 Space-Mitglieder, Eigentum), gibt es **ein** Suchfeld ohne Umschalter „Person / Gruppe"
@@ -474,6 +631,70 @@ Tabellen**: Der Katalog zeigt Wissen, Prompts und künftige Asset-Arten ausschli
 bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
 (Issue #595).
+
+**Ein Baustein für jede Verwaltungsliste** (#3730). Jede Tabelle entsteht aus `AdminList`
+(`frontend/src/shared/ui/list/`): ab Tablet-Breite Tabelle, darunter Kartenliste mit denselben
+Spalten. ESLint verbietet `Table` und seine Teile außerhalb von `shared/ui`. Der Baustein setzt
+diese Regeln um:
+
+1. **Zeile als Link.** Führt eine Zeile in eine Detailansicht, ist die ganze Zeile das Ziel, mit
+   einer Tab-Position und dem Namen des Eintrags als zugänglichem Namen. Kein unterstrichener
+   Name, kein Chevron, keine Schaltfläche „Details“ oder „Beheben“. Öffnet die Zeile Einzelheiten
+   an Ort und Stelle, trägt sie `aria-expanded`.
+2. **Höchstens eine sichtbare Handlung je Zeile**: kompakt, sekundär, mit Verb (`RowAction`). Nie
+   primär, nie roter Text. Alles Weitere, auch Löschen und Widerrufen, steht hinter „⋯“
+   (`RowMenu`). Ausnahme: Ist die Reihenfolge der Zeilen selbst der Inhalt (Identitätsanbieter
+   auf der Anmeldeseite), stehen die beiden Pfeile zum Verschieben als Symbolschaltflächen neben
+   „⋯“; sie zählen zusammen als die eine Handlung. Zweite Ausnahme ist die Entscheidungszeile
+   (unten).
+3. **Anzahl neben dem Seitentitel** (`AreaPageCount`), bei gefilterter Liste „12 von 40“. Die Zahl
+   steht nicht über oder unter der Tabelle.
+4. **Blättern in einer Form** (`ListPager`): unten rechts „Seite 2 von 5“ mit Pfeilen; bei einer
+   Seite entfällt die Leiste. Kennt die Schnittstelle die Gesamtzahl nicht, steht „Seite 2“.
+   „Weitere laden“ bleibt Ereignislisten und Auswahldialogen vorbehalten.
+5. **Sortierbar** sind Namens- und Datumsspalten, sobald die Liste blättert und die Schnittstelle
+   sortiert.
+6. **Höchstens sieben Spalten** bei 1280 px, Spaltenkopf einzeilig; eine Erläuterung zum Kopf
+   steht im Info-Symbol daneben. Jede Spalte ist mindestens so breit wie ihr Kopf samt
+   Sortierpfeil; reicht der Platz unterhalb von 1280 px nicht, scrollt die Tabelle in ihrem
+   Bereich seitlich (`minWidth`), statt Köpfe zu stauchen. Ein Kopf läuft nie in die Nachbarspalte,
+   im Notfall endet er mit „…“. Was nicht passt, wandert in die Einzelheiten der Zeile oder auf
+   die Detailseite (Beispiel: Indexstatus zeigt fünf Spalten, die Indexstände stehen in den
+   Einzelheiten).
+7. **Zellen brechen nicht um, und nichts wird stumm abgeschnitten.** Namen werden gekürzt und
+   tragen den vollen Text als Tooltip (`ListText`); Badges einzeilig, höchstens zwei je Zelle.
+   Mehrere Zustände derselben Art werden ein Badge („Zugang und Quellart gesperrt“). Auch ein
+   Zustandswort (`StateDot`) und ein Badge (`MetaBadge`) enden in einer zu schmalen Spalte mit
+   „…“ und Tooltip. Ausnahme ist eine Spalte für ein Ergebnis oder eine Meldung (`wrap`, etwa
+   „Letzter Lauf“ und „Handlungsbedarf“): Dort bricht das Zustandswort unter seinem Punkt um, die
+   Erläuterung darunter bleibt einzeilig. Die Spaltenbreiten sind so gewählt, dass bei 1280 px
+   Namen und Zustandswörter der Beispieldaten ganz stehen; was zuerst weicht, ist eine Nebenangabe
+   wie der Server eines Zugangs. Ein Monogramm oder Symbol vor dem Namen steht in der führenden
+   Spalte (`leading`), nicht im Link der Zeile, sonst passt dessen sichtbarer Text nicht mehr zu
+   seinem Namen (WCAG 2.5.3).
+8. **Filterzeile:** Suche links, danach Auswahlfelder; ein Schalter nur für ein einzelnes Ja/Nein.
+
+Die Zählbudgets `tableColumns` und `rowPrimaryButtons` der
+[UI-Prüfliste](./ui-pruefliste.md#zählbudgets) messen Spaltenzahl und Primärschaltflächen in
+Zeilen.
+
+**Abfrage vor der Liste** (#3742). Zeigt eine Seite erst nach einer Abfrage etwas
+(Stichtagsauskunft, Verbindungsprotokoll), steht über der Liste ein Abfrageformular aus
+`QueryForm` (`frontend/src/shared/ui/list/QueryForm.tsx`):
+
+1. Das Formular ist 720 px breit (`contentWidth.form`), die Felder kommen aus `FormField`, der
+   Zeitraum steht als Wertepaar „Von“ und „Bis“ nebeneinander (`QueryPeriod`). Es gibt genau eine
+   primäre Schaltfläche mit Verb („Auskunft erstellen“), immer aktiv; was fehlt, nennt das Feld
+   nach dem Klick.
+2. Das Ergebnis erscheint darunter als `AdminList`. Vor der ersten Abfrage steht an seiner Stelle
+   ein Satz, was erscheinen wird (`QueryPrompt`), kein leerer Rahmen.
+3. Die Pflichtangabe „Anlass“ heißt auf allen Revisionsseiten gleich und trägt denselben Hilfetext
+   (`QueryReason`).
+
+**Entscheidungszeile.** Verlangt eine Zeile eine Antwort aus zwei Möglichkeiten (Rollenanträge),
+trägt sie beide sichtbar, beide als kompakte Sekundär-Schaltfläche mit Verb, die annehmende zuerst:
+„Bestätigen“, „Ablehnen“ (`RowDecision`). Das ist neben den Verschiebepfeilen die einzige
+Ausnahme von Regel 2; ein „⋯“ steht dann nicht in der Zeile.
 
 **Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
 Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit
@@ -526,8 +747,8 @@ erscheint nie.
   nicht neu zuordnen, solange die Nachfolge offen ist." in `warning`, nicht ausgegraut, außerhalb des
   Umschalters und als `aria-describedby` angebunden. Die Beschreibung des Umschalters folgt der
   sichtbaren Reihenfolge, Zustandszeilen eingeschlossen. Eine gewählte Kachel ist eine bestehende
-  Zuordnung: Sie bleibt lösbar und nennt denselben Grund vorab; nach dem Lösen ist sie gesperrt. Wo
-  das Lösen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
+  Zuordnung: Sie lässt sich entfernen und nennt denselben Grund vorab; nach dem Entfernen ist sie
+  gesperrt. Wo das Entfernen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
   dass die Zuordnung bis zum Abschluss der Nachfolge nicht wiederherzustellen ist. Im
   Space-Assistenten ist jede Wahl neu: Eine Vorauswahl aus „In Space verwenden" mit offener
   Nachfolge übernimmt er nicht, sagt das im Schritt „Inhalte" als Warnung und legt den Space erst an,
@@ -569,7 +790,7 @@ farbiger Chip.
 **Ein Etikett, eine Form.** Die Regel gilt für jedes Etikett, ob MUI-`Chip` oder selbst gebaut
 (Rolle in Tabelle und Kopf, Asset-Art auf der Kachel, „Privat", „Global", Hinweis-Etiketten in
 Listen und Vorschlagslisten). Ein eckiges oder fettes Etikett ist ein Fehler. Selbst gebaute
-Etiketten nehmen Radius, Größe (12 px, `fontSize.xs`) und Gewicht aus `badgeShape`
+Etiketten nehmen Radius, Größe (12 px, `fontSize.meta`) und Gewicht aus `badgeShape`
 (`frontend/src/shared/theme/tokens.ts`), den Umriss aus `outlinedBadgeSx`
 (`frontend/src/shared/ui/badgeStyles.ts`); für ein reines Textetikett gibt es `MetaBadge`, das
 `MuiChip` des Themes hat dieselben Werte. Passt ein Etikett nicht in eine schmale Tabellenspalte,
@@ -620,21 +841,135 @@ Auslöser oder Menü nach. Der Baustein legt fest:
 
 Geprüft in `frontend/src/shared/ui/RowMenu.test.tsx` und `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
-**Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
-Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
-`aria-label` „Schließen" und Tooltip (5.1). Formulardialoge mit „Abbrechen" bekommen kein
-zusätzliches ✕: eine Abbruchstelle genügt. Bestätigungen folgen 5.10. Escape und ein Klick daneben
-schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
-`frontend/src/shared/ui/`, nie ein Nachbau je Dialog.
+**Dialoge.** Jeder Dialog ist einer der Bausteine unter `frontend/src/shared/ui/dialog/`; kein
+Thema baut `Dialog` oder `Drawer` selbst zusammen (ESLint, `no-restricted-imports`).
+
+| Baustein | Wofür | Schließen | Fußzeile |
+| --- | --- | --- | --- |
+| `FormDialog` | anlegen, bearbeiten, eine Wahl treffen | „Abbrechen", kein ✕ | links höchstens eine Nebenhandlung, rechts „Abbrechen" und die Handlung |
+| `ViewDialog` | Ansicht, Vorschau, Ereignisliste | ✕ im Titel, kein „Schließen" | keine |
+| `SecretDialog` | ein Geheimnis, das nur einmal erscheint | nur „Schließen" | „Kopieren" und „Schließen" |
+| `SidePanel` | Seitenpanel (siehe unten) | wie der Dialog gleicher Art | – |
+
+Die Bestätigung bleibt das Overlay aus 5.10.
+
+1. **Titel.** Der Titel ist wörtlich die Beschriftung des Knopfs, der den Dialog öffnet („Gruppe
+   anlegen" öffnet „Gruppe anlegen", „Neuer Anbieter" öffnet „Neuer Anbieter"). Beim Bearbeiten
+   heißt er „„<Name>" bearbeiten", bei einem Menüeintrag ohne Objekt („Umbenennen") entsprechend
+   „„<Name>" umbenennen". Der Dialog zu einer Wertzeile (5.12) trägt den Titel der Zeile. Größe
+   und Gewicht kommen aus dem Baustein: Stufe Titel (16 px), 600.
+2. **Handlung.** Die Handlung in der Fußzeile ist das Verb allein: „Anlegen" oder „Speichern",
+   bei anderen Handlungen deren Verb („Zuordnen", „Übertragen", „Umbenennen"). Kein Objekt („Prompt
+   speichern"), kein Fortschrittstext als Beschriftung („Wird gespeichert …").
+3. **Fußzeile.** Links steht höchstens eine Nebenhandlung als Sekundär-Schaltfläche („Verbindung
+   testen", „Vorschau erstellen", eine zerstörende mit Gefahr-Text), rechts „Abbrechen" (still) und
+   die Handlung (primär). Die Handlung ist nur gesperrt, solange sie läuft – nie wegen fehlender
+   oder unveränderter Eingaben (Prüfliste P28). Fehlt etwas, steht es nach dem Absenden am Feld,
+   und der Fokus geht in das erste solche Feld; in Formularen mit vielen bedingten Feldern nennt
+   ein Hinweis über dem Formular die fehlenden Felder. Ist nichts geändert, schließt „Speichern"
+   den Dialog. Die Handlung ist das Absenden des Formulars: Enter in einem Zeilenfeld löst sie
+   aus, außer das Feld filtert oder ergänzt eine Liste (Auswahldialog).
+4. **Schließen.** Formulardialoge schließen über „Abbrechen" und tragen kein ✕; Ansichten tragen
+   rechts im Titel ein ✕ mit `aria-label` „Schließen" und Tooltip (5.1) und keinen Knopf
+   „Schließen". Einzige Ausnahme ist der Dialog, der ein Geheimnis nur einmal zeigt (Token,
+   erzeugtes Passwort, Einrichtungslink): Er trägt „Kopieren" (sekundär) und „Schließen" (primär)
+   und schließt weder über Escape noch über einen Klick daneben. Alle anderen Dialoge schließen
+   Escape und ein Klick daneben weiterhin (bei Änderungen nach Rückfrage, 5.10), außer während die
+   Handlung läuft.
+5. **Startfokus.** Ein Formulardialog öffnet mit dem Fokus im ersten Feld (auch einem Suchfeld
+   über dem Inhalt, bei Optionsfeldern auf dem gewählten), nicht auf dem Dialog selbst; ein Feld,
+   das der Inhalt mit `autoFocus` wählt, behält ihn. Eine Bestätigung mit `tone="danger"` öffnet
+   mit dem Fokus auf „Abbrechen“ (5.10), eine mit `tone="caution"` und ein Dialog ohne Feld auf dem
+   Dialog selbst.
+6. **Breite.** 600 px für Formulare und einfache Ansichten, 900 px nur für einen Editor mit
+   Vorschau, eine Dokumentvorschau oder eine Liste (`width="editor"`). 444 px bleibt der
+   Bestätigung vorbehalten – dem Overlay aus 5.10 und der Bestätigung, die erst ihre Folgen lädt
+   (`width="confirm"` mit `tone`). Unter 600 px Bildschirmbreite füllt jeder Dialog den Bildschirm.
+7. **Keine Trennlinien** an Titel und Fußzeile, auch nicht über `dividers`.
+8. **Dialog oder Seitenpanel.** Anlegen und Bearbeiten geschehen im Dialog. Ein Seitenpanel
+   (`SidePanel`) steht nur, wenn die Liste dahinter beim Arbeiten gebraucht wird – zum Vergleichen
+   oder um mehrere Einträge nacheinander zu ändern: Anlegerechte, Zugang und Quellart in
+   „Verbindungen". Es folgt denselben Regeln: Der Titel nennt das Objekt, eine Ansicht schließt
+   über das ✕ ohne „Schließen", ein Formular über „Abbrechen" ohne ✕, keine Trennlinie am Titel,
+   unter 600 px bildschirmfüllend. Das Muster für eine Ansicht im Seitenpanel ist das Belegfenster
+   des Chats (5.8): ✕ im Titel, Suche ohne Beschriftung, Stand unten.
+
+Geprüft in `frontend/src/shared/ui/dialog/*.test.tsx`; das Zählbudget `disabledSubmits` = 0 der
+[Prüfliste](./ui-pruefliste.md) misst gesperrtes Absenden im UI-Lab.
+
+**Ansichten im Seitenpanel folgen dem Belegfenster des Chats** (5.8). Das Panel öffnet rechts
+neben dem Inhalt, der dahinter lesbar bleibt, und ist unter 600 px Bildschirmbreite
+bildschirmfüllend. Sein Kopf trägt nur den Titel der Ansicht und rechts das ✕ mit einem Namen,
+der das Panel nennt („Belegfenster schließen“); eine Trennlinie setzt den Kopf vom Inhalt ab.
+Darunter folgen, wo die Ansicht sie braucht, ein Suchfeld über der Liste und die Liste selbst; keine
+Fußzeile mit „Schließen“. Das Panel ist ein benannter Dialog (`role="dialog"` mit `aria-label`);
+öffnet es an einer bestimmten Stelle, liegt der Fokus dort, beim Schließen kehrt er auf den
+Auslöser zurück. Escape und ein Klick daneben schließen es.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
-- **Leer:** ein Satz, was hier stünde, plus die eine Handlung, die ihn füllt. Keine
-  Illustrationsfriedhöfe.
-- **Laden:** Skeleton in `bg-3` ohne Layoutsprung; laufende Hintergrundvorgänge bleiben über
-  Seitenwechsel sichtbar (Muster Indizierung).
-- **Fehler:** deutsch, ruhig, mit nächstem Schritt. Signalfarbe nur am betroffenen Element,
-  nicht flächig.
+Jeder Bereich, der Daten lädt, kennt fünf Zustände: lädt, erstmals leer, kein Treffer, kein
+Zugriff, Ladefehler. Sie sehen überall gleich aus und kommen aus drei Bausteinen unter
+`frontend/src/shared/ui/states/`, nicht aus einem Nachbau je Thema:
+
+| Baustein | Zustand |
+|---|---|
+| `LoadingState` | lädt: Skeleton in der Form des Inhalts (`rows`, `lines`, `cards`, `detail`, `block`, `inline`) |
+| `EmptyState` | erstmals leer (`initial`), kein Treffer (`noMatch`), kein Zugriff (`noAccess`) |
+| `LoadError` | Ladefehler mit „Erneut laden“ |
+
+1. **Laden:** ein Skeleton in der Form des Inhalts, das erst nach 300 ms erscheint; was schneller
+   da ist, flackert nicht. Ein Spinner steht nur im Knopf, der den Vorgang ausgelöst hat
+   (`Button`/`IconButton` mit `loading`), nie frei auf der Fläche. „Wird geladen“ ist nie als
+   Text sichtbar; Screenreader hören es aus der Statusregion des Skeletons. Ein Fortschrittsbalken
+   steht nur, wo er Fortschritt misst (`variant="determinate"`).
+2. **Erstmals leer:** „Noch keine <Objekte>.“ plus die Anlege-Handlung mit derselben Beschriftung
+   wie im Kopf, als Sekundär-Schaltfläche (die Primäre bleibt die im Kopf). Wer nichts anlegen darf,
+   liest stattdessen, wer es kann: „Noch keine Dokumente. Hochladen kann, wer die Bibliothek
+   verwaltet.“
+3. **Kein Treffer:** „Keine Treffer.“ plus „Filter zurücksetzen“, das Suche und Filter auf den
+   Ausgangsstand stellt. Suche und Filter bleiben dabei stehen; der Fokus geht danach ins
+   Suchfeld.
+4. **Kein Zugriff:** was fehlt und wer zuständig ist, etwa „Zugänge kann nur abrufen, wer
+   Konnektorbibliotheken anlegen darf. Dieses Anlegerecht erteilt die Systemverwaltung.“ Ein 403
+   ist kein Ladefehler und bekommt kein „Erneut laden“.
+5. **Leertexte sind ganze Sätze mit Punkt** — auch in Auswahllisten, Menüs und Feldern. Keine
+   Illustrationen.
+6. **Ladefehler:** „<Objekte> konnten nicht geladen werden.“ (für ein Objekt „… konnte …“) als
+   Hinweis mit „Erneut laden“ an der Stelle des Inhalts. Die Ursache des Servers darf folgen, wo
+   sie mehr sagt. Nie roter Fließtext, nie zusammen mit einem Leertext: „fehlgeschlagen“ und „leer“
+   sind nicht zu verwechseln. Nach „Erneut laden“ steht der Fokus auf dem Inhaltsbereich. Ist
+   schon Inhalt geladen, bleibt er stehen; ein Fehler beim Nachladen erscheint unter ihm. In
+   einer schmalen Spalte wie der Seitenleiste steht der Hinweis dicht (`LoadError dense`): nur der
+   Satz, ohne Symbol und ohne Ursache des Servers, „Erneut laden“ darunter statt daneben.
+7. **„Erneut laden“ nach einem Ladefehler, „Erneut versuchen“ nach einer fehlgeschlagenen
+   Aktion** (Speichern, Senden, Hochladen). „Neu laden“ gibt es nicht; die Fehlerseite der
+   Anwendung bietet „Seite neu laden“.
+8. **Hintergrundvorgänge** (Indizierung, Export, Abgleich) melden Ende und Fehler über `notify`
+   (5.9), nie über eine eigene Snackbar; ihr laufender Zustand bleibt am Ort sichtbar und über
+   Seitenwechsel erhalten.
+
+**Ausnahme:** Die Statuszeile der laufenden Chat-Antwort (`ChatStatusLine` in
+`frontend/src/features/chat/components/`) ist die einzige Stelle mit Spinner und sichtbarem Text.
+Sie ist eine Auskunft, kein Ladezustand: Spinner und ein kurzer Satz, was gerade geschieht („Denkt
+nach …“, „Antwort wird geschrieben …“, bei Agenten der laufende Schritt). Sie bleibt von der Frage
+bis zur fertigen Antwort stehen und wechselt nur ihren Text, den ein Screenreader höflich ansagt;
+Spinnergröße und Abstände ändern sich dabei nicht. Anmeldung und Installation stehen vor der
+Anwendung und folgen eigenen Mustern. Der Quelltext-Test nimmt die Statuszeile nur von der
+Spinner-Regel aus, Anmeldung und Installation von allen Regeln.
+
+Das Satzformat prüft schon der Compiler: `EmptyState` nimmt nur Texte mit Punkt, `LoadError` nur
+Sätze auf „… nicht geladen werden.“. Den Rest prüft der Quelltext-Test
+`frontend/src/shared/ui/states/stateRules.test.ts` über alle Dateien unter `frontend/src/`: kein
+Skeleton und kein freier Spinner außerhalb der Bausteine, kein unbestimmter Fortschrittsbalken,
+kein sichtbares „wird geladen“, „Erneut laden“ nur über `LoadError`, Leertexte mit Punkt, keine
+eigene Snackbar.
+
+**Ansehen im Mock-Modus:** Die Szenarien `?mockScenario=empty`, `slow` und `failed` wirken auf
+alle Themen (`frontend/src/app/mocks/scenarioHandler.ts`): `empty` leert jede Liste, `failed`
+beantwortet jede Liste mit 502, `slow` verzögert jede lesende Anfrage um drei Sekunden (länger mit
+`opaa.mockSlowMs` im sessionStorage). Anmeldung, Health, Branding, Installation, die eigenen Rechte
+(`me/capabilities`) und die erlaubten Linkziele bleiben unberührt.
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 
@@ -666,6 +1001,21 @@ Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Ak
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
 Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259).
+
+**Während die Antwort entsteht** steht sie vorläufig unter der Statuszeile (5.7), ohne Fußnoten,
+Belegknopf und Aktionen. Der Hinweis, dass die Belege noch nicht geprüft sind, steht genau einmal,
+in der Statuszeile; die fertige Antwort ersetzt die vorläufige an derselben Stelle. Das gilt auch
+für Agentenläufe: Ihre Schritte stehen unter derselben Statuszeile, die den laufenden Schritt nennt.
+
+**Kopf des Chats.** Der Kopf steht von Anfang an, auch im leeren Chat, mit „Neuer Chat“ als
+Titel, bis der Chat einen eigenen hat; hat er nach der ersten Runde keinen, zeigt der Kopf
+„Unbenannter Chat“ wie die Chatliste. Nichts rutscht, wenn die erste Antwort fertig ist oder der
+Titel eintrifft: Die erste Nachricht steht während der laufenden und nach der fertigen Antwort an
+derselben Stelle (geprüft in `e2e/tests/chat-streaming.spec.ts`).
+
+**KI-Hinweis einmal je Fläche.** Der Hinweis auf die KI-Nutzung steht im leeren Chat einmal in
+der Mitte, sobald eine Frage gestellt ist, einmal als ruhige Zeile unter dem Eingabefeld – nie an
+beiden Stellen zugleich.
 
 ### 5.9 Popup-Benachrichtigungen
 
@@ -716,23 +1066,35 @@ if (!(await confirmAction({ question, consequence, confirmLabel, tone }))) retur
 ```
 
 **Aufbau.** Die **Folge ist der Hauptinhalt**, nicht die Frage. Die Frage steht als Titel darüber
-in 17 px, die Folge darunter in 13,5 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
+in 16 px, die Folge darunter in 14 px `fg-2` in Lesebreite. Links trägt der Dialog eine 3 px
 starke Signalkante, bei gewichtigen Tönen zusätzlich ein Symbol neben dem Titel.
 
-**Die Schaltfläche trägt das Verb der Handlung** — „Löschen", „Abschalten", „Verwerfen",
-„Sperren". Nie „OK", nie „Ja". Wer nur die Schaltfläche liest, muss trotzdem wissen, was er
-zusagt.
+**Die Frage** lautet „`<Name>`“ `<Verb>`? — mit typografischen Anführungszeichen, ohne Objektart
+davor und ohne „wirklich“: `„Dienstanweisungen“ löschen?`, nicht
+`Bibliothek "Dienstanweisungen" wirklich löschen?`. Hat das Objekt keinen Namen, steht „Diesen Chat löschen?“.
+
+**Die Folge nennt, was verloren geht oder wen es trifft**, mit Zahl, wo sie bekannt ist („Der
+Ordner wird mit 7 Dokumenten darin gelöscht.“). „Diese Aktion kann nicht rückgängig gemacht
+werden“ allein ist keine Folge; das sagt der Ton `danger` bereits. Jede Bestätigung hat eine Folge.
+
+**Die Schaltfläche trägt genau das Verb aus der Frage** — „Löschen“, „Ausschalten“, „Verwerfen“,
+„Sperren“, nach der Verbliste in Abschnitt 6. Nie „OK“, „Ja“, „Weiter“, „Fortfahren“ oder
+„Bestätigen“. Wer nur die Schaltfläche liest, muss trotzdem wissen, was er zusagt.
 
 **Drei Töne**, mehr nicht:
 
 | Ton | Wofür | Kante | Vorgabefokus |
 | --- | --- | --- | --- |
-| `danger` | unwiderruflich: löschen, Zugang entziehen | Gefahr | **Abbrechen** |
-| `caution` | folgenreich, aber umkehrbar: abschalten, einschalten | Warnung | die Handlung |
-| `neutral` | Eingaben verwerfen, Zuordnung lösen | Rahmen | die Handlung |
+| `danger` | unwiderruflich: löschen, Freigabe widerrufen | Gefahr | **Abbrechen** |
+| `caution` | folgenreich, aber umkehrbar: ausschalten, einschalten | Warnung | die Handlung |
+| `neutral` | Eingaben verwerfen, Zuordnung entfernen | Rahmen | die Handlung |
 
 Bei `danger` liegt der Fokus bewusst auf „Abbrechen": Ein Enter aus dem Reflex heraus bricht dann
-ab, statt zu löschen.
+ab, statt zu löschen. Deshalb ist die Handlung dort eine rote Gefahr-Fläche, als einzige Ausnahme
+von 5.1.
+
+`frontend/src/shared/stores/confirmTexts.test.ts` liest jeden Aufruf von `confirmAction` aus dem
+Quelltext und prüft Frage, Folge und Schaltfläche gegen diese Regeln und die Verbliste.
 
 **Abbruch ist die sichere Antwort.** Escape, ein Klick daneben und eine verdrängende zweite
 Anfrage lösen alle zu „nein" auf. Eine Bestätigung entsteht nur durch den Klick auf die
@@ -824,9 +1186,10 @@ folgt „Nur ausgewählte" — es zeigt die Auswahl zum Zeitpunkt des Einschalte
 ausgewählt". Die Umschalter verbinden sich mit UND; keiner gedrückt heißt „alle". Auf schmalen
 Bildschirmen bricht die Zeile als Einheit um: Die Suche steht oben, Typgruppe und Umschalter darunter;
 ein Umschalter steht nie allein in einer Zeile. Unter etwa 600 px Breite entfallen die Icons der
-Typknöpfe, und Knöpfe und
-Chips rücken enger zusammen, damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite nach
-WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
+Typknöpfe, Knöpfe und Chips rücken enger zusammen, der Trennstrich entfällt und der
+Favoriten-Chip zeigt nur noch den Stern, mit „Favoriten" als zugänglichem Namen und Tooltip
+(5.1, Nur-Icon-Schaltflächen), damit Typgruppe und Favoriten bis hinab zu 320 px (Reflow-Breite
+nach WCAG 1.4.10) in eine Zeile passen. Weitere Filter (Sichtbarkeit, Gruppenherkunft) und eine
 Sortierauswahl gibt es nicht; die Reihenfolge ist fest: Favoriten zuerst, dann nach Name — auch
 unter „Nur ausgewählte" bzw. „Nur zugeordnete". Angeboten
 wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m angezeigt".
@@ -846,9 +1209,18 @@ eines Panels ist eine h2 unter der h1 der Seite (siehe
 [Barrierefreiheits-Richtlinie](./accessibility.md), 2.3). Ein Panel braucht keine Überschrift, wenn
 es nichts weiter zu gliedern gibt.
 
+**Eine Form der Abschnittsüberschrift.** Wo eine Überschrift gliedert, ist sie ein `SectionHead`
+(4.6), auf Bereichs- wie auf Detailseiten.
+
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
+Eine einzelne Einstellung mit Feld ist dieselbe Zeile aus `SettingValueRow` (5.16).
+
+**Abschnittsköpfe sind überall grau.** Der Versal-Abschnittskopf (`SectionHead`, Eyebrow-Muster
+aus 3.3) steht in `fg-2`, auch auf den Seiten vor der Anmeldung („Identitätsanbieter", „Konto
+dieser Installation") und über dem Schritttitel des Installationsassistenten. Akzentfarbe an einem
+Abschnittskopf gibt es nicht (2.3; Prüfliste P54, geprüft durch `preSignInRules.test.ts`).
 
 ### 5.13 Seitenleiste des Space
 
@@ -916,6 +1288,127 @@ genutzten nicht archivierten Space, ohne einen solchen im privaten Bereich. Die 
 man in der Spalte über die Lupe im Kopf „Spaces", in der Schublade über „Alle Spaces anzeigen" im
 Space-Menü.
 
+### 5.15 Assistenten
+
+Ein Assistent legt ein Objekt in mehreren Schritten an: Space, Wissensbibliothek,
+Prompt-Bibliothek, Vorlage, Agent. Alle rendern denselben Rahmen `WizardLayout`
+(`frontend/src/shared/ui/wizard/WizardLayout.tsx`); kein Thema baut Kopf, Schrittleiste oder
+Fußzeile selbst nach.
+
+- **Kopf.** Über dem Titel steht als Dachzeile das Objekt („Neuer Space", „Neue Vorlage"), sie ist
+  die Seitenüberschrift. Der Titel ist der Name des aktuellen Schritts, darunter die Schrittleiste.
+  Der Inhalt ist 720 px breit, die Felder nutzen die volle Breite.
+- **Schrittnamen** bestehen aus einem Wort. Der erste Schritt heißt „Stammdaten" (Name und
+  Beschreibung), der letzte „Prüfen". Davor darf eine Typwahl stehen („Quellart"). „Grunddaten",
+  „Name" und „Zusammenfassung" gibt es nicht. Wo Eigentum und Freigaben abgefragt werden, heißt
+  der Schritt „Freigaben", die Quelle einer Bibliothek „Quelle". Der Typ `WizardSteps`
+  (`wizardSteps.ts`) lässt nur Schrittlisten zu, die so beginnen und enden.
+- **Fußzeile.** Links „Abbrechen" (still), rechts „Zurück" (sekundär, ab dem zweiten Schritt) und
+  „Weiter" (primär); im letzten Schritt heißt die Handlung „Anlegen". Beschriftungen wie „Weiter zu
+  Rechten", „Zur Prüfung" oder „Space anlegen" entfallen. Eine Zählung wie „2 Freigaben
+  vorgemerkt" steht still links neben den Knöpfen.
+- **„Weiter" und „Anlegen" sind immer aktiv.** Fehlt eine Eingabe, steht der Fehler am Feld, und
+  der Fokus geht hinein (`useFieldError`); der Seitentitel beginnt dann mit „Fehler: ". Der
+  Fehlertext ist ein kurzer Satz in einer Form: „<Feld> fehlt" („Name fehlt", „Gruppe fehlt",
+  „Word-Datei fehlt"). Lehnt der Server ein Feld ab, führt der Assistent zu dessen Schritt, setzt
+  die Meldung des Servers an das Feld und den Fokus hinein, auch wenn ein Schritt mehrere Felder
+  zugleich meldet. Einzige Ausnahme ist der Schritt „Quelle" einer Wissensbibliothek: Seine Zeilen
+  und der Verbindungstest melden über eine Fehlerzusammenfassung über dem Schritt (P29).
+  Fehlt das Anlegerecht, steht der Grund als Hinweis über dem Schritt, und „Anlegen" führt den
+  Fokus dorthin, statt gesperrt zu sein. Während das Anlegen läuft, schluckt der Knopf weitere Klicks.
+- **Prüfen.** Ein Assistent hat mindestens drei Schritte und endet mit „Prüfen": jede Antwort in
+  einer Zeile Titel | Inhalt | „Ändern" (`WizardReview`). „Ändern" führt zum Schritt der Antwort,
+  „Weiter" von dort zurück zu „Prüfen". Was mit weniger Schritten auskommt, ist ein Dialog (5.6).
+- **Navigation.** Der Assistent erscheint in der Navigation des Bereichs, in dem das Objekt danach
+  liegt: der Space-Assistent neben der Seitenleiste des Space (5.13), die Assistenten der
+  Arbeitsmittel im Rahmen des Katalogs, nie neben einer fremden Seitenleiste.
+- **Nach dem Anlegen** öffnet sich die Detailseite des neuen Objekts, und ein Popup (5.9) nennt
+  es beim Namen, etwa: „Bauamt" wurde angelegt.
+
+Der Messlauf des UI-Labs prüft, dass kein Assistent „Weiter" oder „Anlegen" sperrt (Prüfliste,
+Zählbudget `disabledSubmits`).
+
+### 5.16 Einstellungen: Speichern, Schalter, Verbindungstest
+
+Eine Einstellungsseite, ein Reiter oder ein Abschnitt mit eigenem Speichern ist entweder ein
+Formular oder eine Wertzeile. Beides kommt aus `frontend/src/shared/ui/settings/`; kein Thema baut
+die Fußzeile eines Einstellungsformulars selbst.
+
+- **Mehrere Felder sind ein Formular mit genau einem „Speichern"** (`SettingsForm`): primär, unten
+  links, immer aktiv. Die Beschriftung ist nur „Speichern", nie „Regeln speichern" oder „Zugang
+  speichern". Fehlt oder stimmt eine Eingabe nicht, steht der Fehler am Feld, und der Fokus geht
+  hinein. Ohne Änderung speichert „Speichern" nichts und sagt das im Popup.
+- **„Verwerfen" steht still daneben, nur solange etwas geändert ist**, und stellt den gespeicherten
+  Stand wieder her. Wer die Seite mit Änderungen über einen Link verlässt, wird gefragt:
+  „Änderungen verwerfen?" (Ton `neutral`, Handlung „Verwerfen"); beim Schließen oder Neuladen des
+  Tabs fragt der Browser. Die Zurück-Taste des Browsers fängt die Nachfrage nicht ab: Abfangen
+  ließe sie sich nur mit `useBlocker`, und der setzt einen Daten-Router voraus, den die
+  Anwendung nicht nutzt (`BrowserRouter`). Wer zurückgeht, verliert die Eingaben ohne Frage.
+- **Ein einzelner Wert ist eine Wertzeile mit „Ändern"** (`SettingValueRow`, 5.12): Titel, Wert,
+  rechts „Ändern". „Ändern" öffnet das Feld unter dem Wert mit „Speichern" (primär, kompakt) und
+  „Abbrechen" (still). Neben einem Feld steht kein Speichern-Knopf. Der Weg zurück zur
+  Werkseinstellung steht in der geschlossenen Zeile unter dem Wert.
+- **Ein Schalter wirkt immer sofort** und meldet das per Popup (5.9). Ist die Wirkung folgenreich,
+  fragt er vorher (Ton `caution`, 5.10). Was erst mit „Speichern" oder „Anlegen" gilt, ist ein
+  Auswahlkästchen; in einem `SettingsForm` steht deshalb nie ein Schalter. Ausgenommen ist der
+  Schalter als Filter über einer Liste (5.3).
+- **Rückmeldung nach dem Speichern ist das Popup**, kein Erfolgshinweis in der Seite. Fehler stehen
+  am Feld; ein Fehler ohne Feld (Server nicht erreichbar) steht als Hinweis unter der Fußzeile, bis
+  der nächste Versuch gelingt.
+- **„Verbindung testen"** (`ConnectionTestButton`) ist sekundär und immer aktiv: auf Seiten neben
+  „Speichern", in Dialogen links in der Fußzeile. Der Test nimmt die Eingaben, wie sie stehen,
+  gespeichert oder nicht; fehlt ihm eine Angabe, steht das am Feld. Das Ergebnis steht inline
+  unter der Fußzeile, in Dialogen im Inhalt, nie im Popup. Im Assistenten gilt P33 der
+  [Prüfliste](./ui-pruefliste.md).
+- **Reihenfolge der Fußzeile:** „Speichern", dann höchstens eine Nebenhandlung, dann „Verwerfen".
+  „Verwerfen" steht zuletzt, damit sein Erscheinen nichts verschiebt.
+
+Geprüft in `frontend/src/shared/ui/settings/*.test.ts(x)`: `settingsSource.test.ts` lässt keine
+Beschriftung „… speichern" außer „Speichern", keinen an Eingaben gebundenen gesperrten
+Speichern-Knopf, keinen `Switch` in einem `SettingsForm` und „Verbindung testen" nur aus dem
+Baustein zu. Das Zählbudget `disabledSubmits` = 0 der Prüfliste gilt damit auch für
+Einstellungsseiten.
+
+### 5.17 Einrichten und Verwalten
+
+Der Installationsassistent fragt ab, was die Verwaltung danach pflegt: Chat-Modell, Einbettung,
+Reranking, Spracheingabe, Texterkennung, Virenprüfung, E-Mail und Branding. Beide zeigen dafür
+dasselbe Formular.
+
+1. **Ein Feldblock je Einstellung.** Was Assistent und Verwaltung beide abfragen, kommt aus einem
+   Feldblock unter `frontend/src/shared/ui/setup/` (`SmtpFields`, `MalwareScanFields`,
+   `BrandingFields`, `ModelEndpointFields` mit `ModelParameterFields`, `TranscriptionFields`,
+   `TextRecognitionFields`): dieselben Felder in derselben Reihenfolge, mit denselben
+   Beschriftungen, Hilfetexten und Bedienelementen. Der Rahmen unterscheidet sich (Schritt oder
+   Einstellungsseite), der Inhalt nicht. Kein Schritt und keine dieser Einstellungsseiten baut
+   ein Feld daneben aus `TextField`; ein Feld, das es nur auf einer Seite gibt, nimmt `SetupField`
+   oder `FormField`.
+2. **Unterschiede nur durch Weglassen.** Der Assistent darf ein Feld weglassen, wenn sein Text
+   sagt, wo es später steht („später unter Modelle", „… lädt die Systemverwaltung später unter
+   „Administration → Allgemein & Branding" hoch"). Verschiedene Bedienelemente für denselben Wert
+   gibt es nicht. Was nur eine Seite kennt, steht außerhalb des Blocks: im Assistenten
+   „Testnachricht an" (vor dem Abschluss gibt es kein Konto, an das die Verwaltung testen
+   könnte), in der Verwaltung das Auswahlkästchen, das eine Funktion einschaltet, und ihr Zustand.
+3. **Ein Name je Einstellung.** Der Schritt heißt wie der Reiter oder der Eintrag der Verwaltung:
+   Identitätsanbieter, Chat-Modell, Einbettung, Reranking, Spracheingabe, Texterkennung,
+   Virenprüfung, E-Mail, Branding (`SETUP_NAMES` in `setupNames.ts`, Begriffe in Abschnitt 6).
+4. **Geheimnisse** stehen im `SecretField` (5.2).
+5. **Schaltflächen sind immer aktiv.** „Prüfen und weiter", „Installation abschließen" und
+   „Modelle abrufen" sind nie gesperrt. Fehlt eine Eingabe, steht der Grund am Feld, und der Fokus
+   geht hinein. Hält ein Schritt den Abschluss auf, nennt ein Hinweis über der Übersicht die
+   Schritte als Links. Jede Zeile der Abschlussübersicht ist ein Link zu ihrem Schritt.
+6. **Fußzeile eines Schritts.** Rechts „Zurück" (sekundär), bei optionalen Schritten
+   „Überspringen" (still) und die Primärschaltfläche „Prüfen und weiter". Einen Schalter gibt es
+   in einem Schritt nicht: Was mit der Schaltfläche wirksam wird, ist ein Auswahlkästchen.
+7. **Schrittliste.** Eine Schrittliste mit mehr als fünf Schritten steht ab 900 px Breite links
+   als Liste. Darunter zeigt sie nur Position und Namen („Schritt 2 von 12 · Erstes Konto") und
+   klappt auf Antippen auf; die Wahl eines Schritts klappt sie wieder zu.
+8. **Einleitung.** Höchstens zwei Sätze: was hier eingestellt wird und was passiert, wenn man den
+   Schritt überspringt. Alles Weitere steht im Handbuch hinter dem „?" neben der Dachzeile.
+
+`setupRules.test.ts` prüft die Regeln 1, 3 und 4 am Quelltext, `fieldBlocks.test.tsx` jeden
+Feldblock einmal.
+
 ---
 
 ## 6 · Sprache und Begriffe
@@ -932,6 +1425,14 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch.
   unter genau diesem Wort.
 - **Keine Doppel-Labels** in Klammern („Token (Kennwort)") und kein künstlich allgemeines
   „Kennwort" für ein Token.
+
+**Datum und Zeit.** Ein Datum steht als „TT.MM.JJJJ“, ein Zeitpunkt als „TT.MM.JJJJ, HH:MM“,
+beide mit führender Null und in der Zeitzone des Browsers; Sekunden nur in Protokollen (Revision,
+Verbindungsprotokoll). Relative Angaben („vor 3 Tagen“) nur, wo die Dauer die Aussage ist, der
+genaue Zeitpunkt dann im Tooltip. Fehlt ein Wert, steht „–“; für kein Ablaufdatum steht
+„unbefristet“. Alle Formen kommen aus `frontend/src/shared/utils/formatDate.ts` (dort auch
+`formatNumber` für Zahlen); ESLint weist `toLocaleString`, `toLocaleDateString`,
+`toLocaleTimeString` und `Intl.DateTimeFormat` an jeder anderen Stelle ab.
 
 **Erklärtexte knapp.** Die Beschreibung unter einem Seiten- oder Abschnittstitel sagt in einem Satz,
 wofür die Seite da ist, höchstens zwei Zeilen bei 1280 px. Ein Hilfetext am Feld hat eine Zeile
@@ -958,6 +1459,13 @@ Verbindliche Begriffe:
 | **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11) |
 | **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                |
 | **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |
+| **Identitätsanbieter**    | der Dienst, über den sich Konten anmelden (OIDC); Schritt und Eintrag der Verwaltung heißen so. Nicht „Anmeldeverfahren", nicht „OIDC-Anbieter" |
+| **Einbettung**            | Name von Schritt und Reiter für das Modell, das Inhalte und Fragen in Vektoren umsetzt. Nicht „Embedding-Modell" als Name der Einstellung |
+| **Reranking**             | Name von Schritt und Reiter für das Neuordnen der Suchkandidaten. Nicht „Rerank-Modell" als Name der Einstellung |
+| **Spracheingabe**         | Name von Schritt und Reiter für Diktat und Live-Transkript. Nicht „Transkriptionsmodell" als Name der Einstellung |
+| **Texterkennung**         | Name von Schritt und Reiter für das Lesen gescannter PDFs (OCR)                              |
+| **API-Schlüssel**         | das Geheimnis, mit dem sich OPAA an einem Modell-Endpunkt ausweist. Nicht „Zugangsschlüssel" |
+| **Testnachricht**         | die E-Mail, die den Versand prüft. Nicht „Testmail"                                          |
 | **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
 | **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
@@ -969,6 +1477,22 @@ Verbindliche Begriffe:
 | **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
 | **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
 | Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
+
+**Verben für Handlungen.** Für diese Handlungen gelten in Schaltflächen und Bestätigungen (5.10)
+genau diese Verben; Ändern, Festlegen, Zurücksetzen, Übertragen und Ähnliches bleiben daneben
+erlaubt:
+
+| Verb | Wann |
+| --- | --- |
+| Löschen | das Objekt gibt es danach nicht mehr |
+| Entfernen | das Objekt bleibt, es verschwindet aus einer Liste oder Zuordnung |
+| Widerrufen | ein Token, eine Einladung oder eine Freigabe endet |
+| Trennen | die Verbindung zu einem fremden System endet |
+| Ausschalten · Einschalten | eine Funktion |
+| Sperren · Entsperren | ein Konto, ein Zugang, eine Quellart |
+| Verwerfen | ungespeicherte Eingaben |
+
+„Abschalten“, „Lösen“ (außer als Gegenstück zu „Anheften“), „Entziehen“ und „Beenden“ entfallen.
 
 Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),
 „User", englische Mischformen in Nutzertexten. Technische Enum-Werte und API-Felder bleiben

@@ -17,7 +17,7 @@ data:
           - system_role
           - directory_locked_at
           - quick_tour_hint_done
-        nonPersonalColumns: [id, created_at, organization_id, erased_at]
+        nonPersonalColumns: [id, created_at, organization_id, erased_at, version]
         person:
           columns: [subject, issuer]
           note: Die Zeile ist das Konto der Person selbst
@@ -37,9 +37,10 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Ein deaktiviertes Konto, lokal oder eines Identitätsanbieters, verliert durch „Personenbezug
-      entfernen“ der Systemverwaltung Name, Adresse und Kennung beim Anbieter; mit ihm gehen Chats,
-      persönlicher Space, private Bibliotheken, Anmeldedaten und Tokens. Die Zeile bleibt namenlos
-      stehen, damit Rechtehistorie und Protokoll gültig bleiben. Ein offener Antrag oder eine noch
+      entfernen“ der Systemverwaltung Name, Adresse, Kennung beim Anbieter und letzte Anmeldung;
+      mit ihm gehen Chats, persönlicher Space, private Bibliotheken, Anmeldedaten und Tokens. Die
+      Zeile bleibt namenlos stehen, damit Rechtehistorie und Protokoll gültig bleiben. Ein offener
+      Antrag oder eine noch
       nutzbare Freigabe der anlassbezogenen Klärung und eine laufende oder beantragte Anhaltung der Chat-Löschung
       halten das auf. Ganz gelöscht werden nur lokale Konten, auf die nichts verweist (u. a. kein
       Chat, kein Besitz, keine Rechtevergabe, keine Verbindung, kein Eintrag der Rechtehistorie),
@@ -50,7 +51,7 @@ data:
       lokaler Konten (90-Tage-Fenster), keine Zeitreihe. Der Merker zum Rundgang-Hinweis ist ein
       reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; OPAA wertet ihn nicht aus, und
       sein Setzen erzeugt keinen Revisionseintrag, keine Zeile im Anfrageprotokoll des Backends oder
-      im Zugriffslog des Frontend-Containers und keine Metrik; Spuren bleiben nur in einem
+      im Zugriffslog des Frontend-Containers, keine Metrik und keinen Trace; Spuren bleiben nur in einem
       vorgelagerten Proxy, im Fehlerlog des Frontend-Containers bei unerreichbarem Backend, im
       Fehlerlog des Backends bei gescheitertem Datenbankzugriff (ohne Konto) und in der
       Debug-Ausgabe der Spring-Komponenten (Anmeldeschicht, Web-Schicht, Datenbankzugriff), die der
@@ -85,7 +86,6 @@ data:
         nonPersonalColumns:
           - password_change_required
           - password_change_reason
-          - password_invalidated_before
           - is_bootstrap
           - created_at
           - updated_at
@@ -287,6 +287,16 @@ data:
           - version
         person:
           columns: [updated_by]
+      - name: agent_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, enabled, updated_at, version]
+        person:
+          columns: [updated_by]
+      - name: document_template_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, enabled, updated_at]
+        person:
+          columns: [updated_by]
       - name: self_disclosure_settings
         personalColumns: [updated_by]
         nonPersonalColumns: [id, enabled, daily_limit, updated_at]
@@ -440,16 +450,48 @@ data:
     personalReference: IDENTIFIABLE
     tables: []
     personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
-    storage: Standardausgabe des Prozesses, abgelegt durch den Betrieb (Container-Log)
+    storage: >-
+      Standardausgabe des Prozesses, abgelegt durch den Betrieb (Container-Log); ebenso das
+      Zugriffslog des Frontend-Containers mit Client-Adresse
     retention:
       rule: Legt der Betrieb fest; OPAA speichert das Log nicht selbst
       settings: []
     visibility: [Betrieb der Installation]
     accessPaths: [STORAGE]
     deletion: Durch den Betrieb
-    evaluations: Keine Auswertungsoberfläche in OPAA
+    evaluations: >-
+      Keine Auswertungsoberfläche in OPAA. Jede Zeile einer Anfrage trägt deren Request-ID, eine
+      technische Kennung ohne eigenen Personenbezug, die aber personenbeziehbar über Verknüpfung
+      ist: Über sie lassen sich die Zeile im Zugriffslog des Frontend-Containers (Client-Adresse),
+      die Zeilen des Anwendungslogs (teils mit Konto-Kennung), der Revisionseintrag derselben Anfrage
+      (correlation_ref) und ein Trace eindeutig zusammenführen; die Ausleitung an das
+      Sicherheitsmonitoring trägt sie nicht
     notes:
       - Kurze Frist im Betrieb festlegen; Konto-Kennung statt Adresse
+      - >-
+        Die Request-ID ersetzt die bisher nur ungefähre Verknüpfung über Zeitstempel durch eine
+        eindeutige; die Zusammenführung der Logs ist ein Zugriffsweg der Dienstvereinbarung
+  - id: traces
+    title: Traces beim Trace-Collector
+    purpose: >-
+      Betrieb und Fehlersuche: wo eine Anfrage Zeit verliert oder scheitert; nur bei eingeschaltetem
+      Tracing und nur für die Stichprobe
+    personalReference: IDENTIFIABLE
+    tables: []
+    personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
+    storage: Der Trace-Collector und sein Speicher beim Betrieb
+    retention:
+      rule: Legt der Betrieb fest; OPAA speichert Traces nicht selbst
+      settings: []
+    visibility: [Betrieb der Installation]
+    accessPaths: [STORAGE]
+    deletion: Durch den Betrieb
+    evaluations: >-
+      Zeitlicher Ablauf jeder erfassten Anfrage mit Zeitstempel, Route, Dauer und Ergebnis, ohne
+      Konto und ohne Inhalte; über die Trace-ID im Anwendungslog personenbeziehbar über
+      Verknüpfung. Bei einer Stichprobe von 1.0 ein lückenloses Ablaufprotokoll aller Anfragen
+    notes:
+      - Kurze Frist beim Collector festlegen; Stichprobe niedrig halten
 nonPersonalTables:
   organizations: [id, name, created_at]
   admin_review_reminders: [organization_id, reminded_on]
@@ -476,6 +518,7 @@ nonPersonalTables:
     - is_external
     - directory_sync_enabled
     - directory_sync_interval_minutes
+    - version
   oidc_provider_seed_marker: [id, seeded_at]
   oidc_provider_removals: [issuer_uri_normalized, removed_at]
   local_admin_seed_marker: [id, seeded_at, forced_reset_at]
@@ -642,3 +685,13 @@ capabilities:
     seesAboutOthers: Anzeigenamen der Personen, die in die eigene Gruppe aufgenommen werden
   - id: CREATE_PROMPT_LIBRARY
     seesAboutOthers: Nichts über andere Personen
+  - id: CREATE_AGENT
+    seesAboutOthers: Nichts über andere Personen
+  - id: CREATE_TEMPLATE
+    seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage
+  - id: VIEW_AGENT_DIRECTORY
+    seesAboutOthers: >-
+      Nichts über andere Personen; öffnet das Agentenverzeichnis mit Zweck, Anweisung,
+      Bibliotheksnamen, Werkzeugen, Grenzen, Vorlagen, verantwortlicher Stelle, Fassung und
+      Sperrzustand jedes Agenten und jeder Vorlage der Organisation, ohne Bibliotheksinhalte,
+      Eigentümer und Nutzungsangaben. Ab Werk niemand außer der Systemverwaltung

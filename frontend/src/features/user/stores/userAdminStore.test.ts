@@ -337,4 +337,56 @@ describe('userAdminStore', () => {
       (err: unknown) => apiErrorCode(err) === 'LAST_LOGIN_CAPABLE_ADMIN',
     )
   })
+
+  describe('count beside the title', () => {
+    /** Counts the requests for the unfiltered total and lets them fail on demand. */
+    function watchCount(fail = false) {
+      const seen = { count: 0 }
+      server.use(
+        http.get('/api/v1/admin/accounts', ({ request }) => {
+          if (new URL(request.url).searchParams.get('size') !== '1') return undefined
+          seen.count += 1
+          return fail ? HttpResponse.json({ message: 'boom' }, { status: 500 }) : undefined
+        }),
+      )
+      return seen
+    }
+
+    it('asks for the unfiltered total once while the filters change', async () => {
+      const seen = watchCount()
+      await state().loadAccounts()
+      const all = state().total
+
+      await state().setFilters({ query: 'vo' })
+      await state().setFilters({ query: 'vog' })
+
+      expect(seen.count).toBe(0)
+      expect(state().total).toBeLessThan(all)
+      expect(state().overallTotal).toBe(all)
+    })
+
+    it('counts again when a filtered list is reloaded, as after a write', async () => {
+      const seen = watchCount()
+      await state().setFilters({ query: 'vo' })
+      expect(seen.count).toBe(1)
+
+      await state().loadAccounts()
+
+      expect(seen.count).toBe(2)
+      expect(state().overallTotal).toBeGreaterThan(state().total)
+    })
+
+    it('falls back to the filtered total when the count fails, and counts anew afterwards', async () => {
+      const seen = watchCount(true)
+      await state().setFilters({ query: 'vo' })
+
+      expect(state().error).toBeNull()
+      expect(state().total).toBeGreaterThan(0)
+      expect(state().overallTotal).toBe(state().total)
+
+      // a figure that is only the fallback is not reused for the next filter
+      await state().setFilters({ query: 'vog' })
+      expect(seen.count).toBe(2)
+    })
+  })
 })

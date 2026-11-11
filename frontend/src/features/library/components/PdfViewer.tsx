@@ -1,6 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -15,7 +14,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist'
 import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import type { ChunkAnchor } from '@/shared/api/types'
-import { markHighlight } from '@/shared/theme/tokens'
+import { fontSize, markHighlight } from '@/shared/theme/tokens'
 import { isRecognizedText, RECOGNIZED_TEXT_NOTICE } from '@/shared/utils/recognizedText'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
@@ -24,6 +23,7 @@ import { NO_ANCHOR_NOTICE } from '../utils/textPassage'
 import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/recognizedRegions'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
 import RecognizedTextPanel from './RecognizedTextPanel'
+import LoadingState from '@/shared/ui/states/LoadingState'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
 const SEARCH_PAGE_LIMIT = 50
@@ -270,8 +270,8 @@ export default function PdfViewer({
             </IconButton>
           </Tooltip>
         )}
-        <Typography component="span" sx={{ fontSize: 14, mx: 1 }}>
-          {numPages > 0 ? `Seite ${page} von ${numPages}` : 'Lädt …'}
+        <Typography component="span" sx={{ fontSize: fontSize.text, mx: 1 }}>
+          {numPages > 0 ? `Seite ${page} von ${numPages}` : <LoadingState shape="inline" />}
         </Typography>
         {recognized && (
           <Tooltip
@@ -308,9 +308,9 @@ export default function PdfViewer({
         role="status"
         sx={
           changed || markState === 'not-found'
-            ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
+            ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
             : markState === 'no-anchor' || markState === 'framed' || markState === 'page-only'
-              ? { fontSize: 13, color: 'text.secondary' }
+              ? { fontSize: fontSize.text, color: 'text.secondary' }
               : visuallyHidden
         }
       >
@@ -354,10 +354,9 @@ export default function PdfViewer({
           }}
         >
           {!pdf && (
-            <CircularProgress
-              aria-label="PDF wird geladen"
-              sx={{ position: 'absolute', top: 32, left: '50%' }}
-            />
+            <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
+              <LoadingState shape="block" />
+            </Box>
           )}
           <Box
             ref={containerRef}

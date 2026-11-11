@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+Akzeptiert · zuletzt geändert 2026-11-07 · ergänzt durch ADR-0013 (Fehlerkriterium) und
 ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
@@ -31,9 +31,9 @@ deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Numm
 #### 6. Jede Vertragsänderung erhöht die Versionsnummer ihres Pfads
 
 Jeder Pfad führt seine Vertragsversion als Konstante im Report und als Festpunkt der Baseline:
-`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` (Rohvektor, heute 16),
-`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` (Pipeline, 21),
-`ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION` (Mehrrunden, 11). Die
+`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` (Rohvektor, heute 17),
+`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` (Pipeline, 22),
+`ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION` (Mehrrunden, 12). Die
 Version steigt, wenn sich ändert, was „dieselbe Messung“ heißt: eine Metrikdefinition, ein Fenster,
 die Schwellenbehandlung, die Mittelungsart, ein neuer, umbenannter oder enger definierter
 Festpunkt — auch wenn kein gemessener Wert sich bewegt. Sie steigt nicht, wenn nur der **Wert**
@@ -128,7 +128,7 @@ ungültig und keine Metrik wird verglichen.
 
 | Festpunkt | Wert heute | seit Version | Warum |
 |---|---|---|---|
-| `measurementContractVersion` | 16 | 1 | ordnet die Baseline einem Vertragsstand zu |
+| `measurementContractVersion` | 17 | 1 | ordnet die Baseline einem Vertragsstand zu |
 | `embeddingModel`, `embeddingModelDigest` | `nomic-embed-text:v1.5`, `0a109f42…` | 1 | Modell und Gewichte (ADR-0011) |
 | `embeddingDimensions` | 768 | 1 | andere Dimension, anderer Vektorraum |
 | `chunkSize`, `chunkSizeMatchesApplicationDefault` | 1000, `true` | 1 | die Zerlegung bestimmt, was eingebettet wird |
@@ -139,7 +139,7 @@ ungültig und keine Metrik wird verglichen.
 | `pgvectorIndexType` | `hnsw` | 1 | ein Wechsel auf exakte Suche ist eine Messänderung (ADR-0011) |
 | `corpusManifestSha256`, `corpusDocumentCount` | je Domäne | 1 | der Korpus |
 | `goldenDatasetFile`, `goldenDatasetSha256`, `goldenCaseCount` | je Domäne | 1 | der Datensatz samt Zuständen |
-| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:5,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
+| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pdf-ocr:1,pptx:4,tabular:5,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
 | `metadataFilterEnabled` | `true` | 6 | ob die Golden-Filter in der Suche wirkten (Entscheidung 32) |
 | `ollamaImage` | `ollama/ollama:0.40.3` | 10 | das Laufzeitsystem, das die Vektoren berechnet (Entscheidung 45) |
 | `ollamaCpuBackend` | `haswell` | 11 | die ggml-Kernelvariante bewegt Rangfolgen (Entscheidung 55) |
@@ -165,6 +165,7 @@ ungültig und keine Metrik wird verglichen.
 | 14 | 2026-10-08 | #2330 | Fingerabdruck-Schritt: `pdf` 2→3 |
 | 15 | 2026-10-08 | #2327, #2328 | Fingerabdruck-Schritt: übergroße Abschnitte, neun Formate |
 | 16 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks, `markdown` 2→3 und acht weitere |
+| 17 | 2026-11-07 | #3622 | Fingerabdruck-Schritt: `pdf-ocr` 1 neu (Texterkennung) |
 
 ### Pipeline-Pfad
 
@@ -301,6 +302,7 @@ des Rohvektor-Pfads, zählt aber Chunk-Plätze.
 | 19 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks |
 | 20 | 2026-10-09 | #2373 | Fenster @8 → @20; neu gemessen |
 | 21 | 2026-10-14 | #2386 | `fusion` und `relevanceCutoff`; neu gemessen |
+| 22 | 2026-11-07 | #3622 | Fingerabdruck-Schritt: `pdf-ocr` 1 neu (Texterkennung) |
 
 ### Mehrrunden-Pfad
 
@@ -399,6 +401,7 @@ unvergleichbar; sie steht als Beobachtungsfeld im Bericht.
 | 9 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks |
 | 10 | 2026-10-09 | #2373 | Fenster @8 → @20; neu gemessen |
 | 11 | 2026-10-14 | #2386 | `fusion` und `relevanceCutoff`; neu gemessen |
+| 12 | 2026-11-07 | #3622 | Fingerabdruck-Schritt: `pdf-ocr` 1 neu (Texterkennung) |
 
 ### Zustandsfelder der Datensätze
 
@@ -477,10 +480,13 @@ Festpunkt wird dagegen nicht abgewiesen, sondern als `null` unvergleichbar gemel
 
 `PipelinePathIsolationTest` (sechs Einzelfragen-Baselines) und `ConversationPathIsolationTest`
 (Mehrrunden-Baseline) halten die committeten Dateien gegen `EvalOllamaEndpoint.PINNED_IMAGE`,
-`EvalOllamaCpuBackend.PINNED`, `ContextPrefixFingerprint.current()`, die reale
-`DocumentFormatRegistry`, `QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`.
-Ein Pin- oder Vorgabewechsel ohne Baseline-Nachzug fällt damit im `check` des verursachenden PRs auf,
-nicht erst im nächtlichen Docker-Lauf.
+`EvalOllamaCpuBackend.PINNED`, `ContextPrefixFingerprint.current()`,
+`QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`. Den
+`ingestionPipelineFingerprint` aller sieben Baselines prüft `PipelinePathIsolationTest` gegen eine
+nachgebaute `DocumentFormatRegistry`; ein Klassenpfad-Scan verlangt, dass sie jede konkrete
+`DocumentFormat`-Klasse des Produktionscodes enthält, damit ein neues Format nicht am Wächter
+vorbeiläuft. Ein Pin- oder Vorgabewechsel ohne Baseline-Nachzug fällt damit im `check` des
+verursachenden PRs auf, nicht erst im nächtlichen Docker-Lauf.
 
 #### 28. `ingestionPipelineFingerprint` (mit 24, 25)
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt durch [ADR-0071](0071-betriebsbeobachtung.md)
 
 ## Kontext
 
@@ -129,7 +129,8 @@ aller Organisationen umfasst und ihre Zahlen nennt, steht der Weg nur der Revisi
 Standardorganisation offen. Die Prüferin belegt die Vollständigkeit
 eines Monats mit dieser Antwort und der Kopf-Prüfsumme aus dem Sicherheitsmonitoring, ohne
 Datenbankzugang. Die Metriken `opaa.audit.chain.lag` und `opaa.audit.chain.unsealed.months`
-zeigen, wie weit die Kette hinterherläuft, je Instanz alle fünf Minuten gelesen; der Alarm
+zeigen, wie weit die Kette hinterherläuft, je Instanz alle fünf Minuten gelesen (Grundsätze der
+Metriken: ADR-0071); der Alarm
 `OpaaAuditChainStalled` meldet einen Stillstand, auch wenn kein Wert lesbar ist, und
 `OpaaAuditChainUnsealed` einen abgeschlossenen Monat, der seit Stunden ohne Siegel ist, auch den,
 dessen Siegelzeile fehlt.

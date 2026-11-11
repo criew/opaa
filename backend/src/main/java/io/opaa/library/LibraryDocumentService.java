@@ -45,7 +45,8 @@ import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
-import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.embedding.EmbeddingModelService;
+import io.opaa.ratelimit.RefusedBeforeWork;
 import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
 import java.io.InputStream;
@@ -482,6 +483,22 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * {@link OriginalAccess} resolves the original; an attachment is re-extracted from its parent.
    */
   public DocumentContent loadContent(UUID documentId, CurrentUser caller) {
+    // only these checks refuse before any original is fetched (RefusedBeforeWork)
+    ReadableDocument readable = RefusedBeforeWork.check(() -> readableDocument(documentId, caller));
+    Document document = readable.document();
+    KnowledgeLibrary library = readable.library();
+
+    requireNoMalwareFinding(document);
+    if (isReExtractableAttachment(document)) {
+      return loadAttachmentContent(document, library);
+    }
+    return loadOriginal(document, library);
+  }
+
+  private record ReadableDocument(Document document, KnowledgeLibrary library) {}
+
+  /** The document and its library, once the caller may read its content. */
+  private ReadableDocument readableDocument(UUID documentId, CurrentUser caller) {
     Document document =
         documentRepository
             .findById(documentId)
@@ -498,12 +515,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       // its originals may already be gone while the erasure waits or resumes
       throw new NotFoundException("Die Bibliothek wird gelöscht", LIBRARY_BEING_ERASED);
     }
-
-    requireNoMalwareFinding(document);
-    if (isReExtractableAttachment(document)) {
-      return loadAttachmentContent(document, library);
-    }
-    return loadOriginal(document, library);
+    return new ReadableDocument(document, library);
   }
 
   /** An original the malware scan found malware in is never served, nor anything extracted. */
@@ -819,40 +831,21 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       documentRepository.delete(descendant);
     }
 
-    // Row first, chunks after commit: a racing upload task's conditional markIndexed then affects
-    // zero rows and removes the chunks it just wrote itself.
+    // Row first, then the chunks in the same transaction: a racing upload task's conditional
+    // markIndexed affects zero rows once this commits and removes the chunks it just wrote itself.
     documentRepository.delete(document);
     noteRevisit(document);
     assetRepository.markContentChanged(document.getLibraryId(), Instant.now(clock));
+    // The row deletes must hold their locks before the chunk deletes run over JDBC.
+    documentRepository.flush();
 
-    // Chunks and file go only after commit, so a rollback keeps them. Each step is guarded on its
-    // own: a failed chunk delete neither fails the committed request nor skips the file, and leaves
-    // orphaned chunks without a retry (accepted).
-    deleteAfterCommit(
-        () -> {
-          for (UUID attachmentId : attachmentChunkFilterIds) {
-            try {
-              vectorChunkStore.deleteByDocumentId(attachmentId);
-            } catch (RuntimeException e) {
-              log.error(
-                  "Failed to remove vector store chunks for deleted attachment {} of document {} -"
-                      + " orphaned chunks may remain",
-                  attachmentId,
-                  chunkFilterDocumentId,
-                  e);
-            }
-          }
-          try {
-            vectorChunkStore.deleteByDocumentId(chunkFilterDocumentId);
-          } catch (RuntimeException e) {
-            log.error(
-                "Failed to remove vector store chunks for deleted document {} - orphaned chunks may"
-                    + " remain",
-                chunkFilterDocumentId,
-                e);
-          }
-          ownOriginal.ifPresent(uploadedOriginalStore::delete);
-        });
+    // A failed chunk delete fails the whole deletion, so the row stays and no chunk outlives its
+    // document; the stored original goes only after commit, so a rollback keeps it.
+    for (UUID attachmentId : attachmentChunkFilterIds) {
+      vectorChunkStore.deleteByDocumentId(attachmentId);
+    }
+    vectorChunkStore.deleteByDocumentId(chunkFilterDocumentId);
+    deleteAfterCommit(() -> ownOriginal.ifPresent(uploadedOriginalStore::delete));
   }
 
   /**

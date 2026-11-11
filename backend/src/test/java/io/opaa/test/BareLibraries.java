@@ -14,6 +14,14 @@ public final class BareLibraries {
 
   /** Inserts library {@code libraryId} with a fresh owner in the default organization. */
   public static void create(JdbcTemplate jdbc, UUID libraryId) {
+    create(jdbc, libraryId, false);
+  }
+
+  /**
+   * {@link #create(JdbcTemplate, UUID)}, as a private library of its owner when {@code ownerOnly}:
+   * the mark is fixed at creation.
+   */
+  public static void create(JdbcTemplate jdbc, UUID libraryId, boolean ownerOnly) {
     UUID owner = ownerOf(libraryId);
     jdbc.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
@@ -24,12 +32,13 @@ public final class BareLibraries {
         Organization.DEFAULT_ID);
     jdbc.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?)"
-            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " owner_user_id, owner_only) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER',"
+            + " ?, ?) RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
         Organization.DEFAULT_ID,
-        owner);
+        owner,
+        ownerOnly);
   }
 
   /** Removes what {@link #create} inserted; the chunks are the caller's. */

@@ -1,21 +1,15 @@
 import { useId, useState } from 'react'
-import InfoOutlined from '@mui/icons-material/InfoOutlined'
-import Box from '@mui/material/Box'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
-import Typography from '@mui/material/Typography'
-import type { MailEncryption } from '@/shared/api/types'
-import PublicBaseUrlMissingAlert from '@/shared/ui/smtp/PublicBaseUrlMissingAlert'
 import {
-  SMTP_DEFAULT_ENCRYPTION,
-  SMTP_ENCRYPTION_OPTIONS,
-  SMTP_LABELS,
-  SMTP_TEXTS,
-  isMailAddress,
-  parseSmtpPort,
-  smtpTargetChanged,
-} from '@/shared/ui/smtp/smtpSettings'
+  secretPart,
+  smtpDraftOf,
+  smtpPasswordNeeded,
+  type SmtpDraft,
+  type StoredSmtp,
+} from '@/shared/ui/setup/setupDrafts'
+import SetupField from '@/shared/ui/setup/SetupField'
+import SmtpFields from '@/shared/ui/setup/SmtpFields'
+import PublicBaseUrlMissingAlert from '@/shared/ui/smtp/PublicBaseUrlMissingAlert'
+import { SMTP_TEXTS, isMailAddress, parseSmtpPort } from '@/shared/ui/smtp/smtpSettings'
 import type {
   InstallationStepCheckRequest,
   InstallationStepState,
@@ -23,12 +17,9 @@ import type {
 } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
-import { apiKeyPart } from '../../utils/apiKey'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank } from '../../utils/validation'
-import ApiKeyField, { type StoredSecretWording } from '../ApiKeyField'
-import FormField from '../FormField'
-import StepFrame from '../StepFrame'
+import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 const MAIL_FIELDS = [
   'host',
@@ -41,17 +32,10 @@ const MAIL_FIELDS = [
   'testRecipient',
 ]
 
-const PASSWORD_WORDING: StoredSecretWording = {
-  label: SMTP_LABELS.password,
-  removed: 'Das gespeicherte Passwort wird beim Speichern gelöscht.',
-  keep: 'Löschen des Passworts abbrechen',
-  remove: 'Gespeichertes Passwort löschen',
-}
-
 const TEST_RECIPIENT_INVALID =
   'Die Adresse der Testnachricht muss eine E-Mail-Adresse sein, zum Beispiel it-betrieb@stadt.example.'
 
-interface MailStepProps {
+interface MailStepProps extends StepNavigationProps {
   step: InstallationStepState
   /** Whether `OPAA_PUBLIC_BASE_URL` is set; without it no mail carries a usable link. */
   publicBaseUrlConfigured: boolean
@@ -59,57 +43,41 @@ interface MailStepProps {
     values: StepInput['MAIL'],
     checkOptions: InstallationStepCheckRequest,
   ) => Promise<WizardResult>
-  /** Skips the step in the backend, so the completion leaves sending off. */
-  skip: () => Promise<WizardResult>
-  onBack?: () => void
+}
+
+function storedOf(step: InstallationStepState): StoredSmtp | null {
+  const mail = step.mail
+  if (!mail) return null
+  return {
+    host: mail.host,
+    port: mail.port,
+    username: mail.username ?? null,
+    encryption: mail.encryption,
+    fromAddress: mail.fromAddress,
+    fromName: mail.fromName,
+    passwordSet: Boolean(mail.passwordSet),
+  }
 }
 
 /**
- * The optional mail server, with the fields and rules of „Administration → E-Mail". Its check
- * connects and signs in without sending; a test message goes out only to an address typed here,
- * which the sentence at the check action names before the check runs. Skipping discards what was
- * saved, and sending stays off until the administration sets it up.
+ * The optional mail server, with the fields and rules of „Administration → E-Mail“. Its check
+ * connects and signs in without sending; a test message goes out only to an address typed under
+ * „Testnachricht an“, which exists here alone: before the installation is complete there is no
+ * account whose address the administration's test could use.
  */
 export default function MailStep({
   step,
   publicBaseUrlConfigured,
   submit,
-  skip,
   onBack,
+  onSkip,
 }: MailStepProps) {
   const id = useId()
-  const stored = step.mail ?? null
-  const [host, setHost] = useState(stored?.host ?? '')
-  const [port, setPort] = useState(stored?.port == null ? '' : String(stored.port))
-  const [encryption, setEncryption] = useState<MailEncryption>(
-    stored?.encryption ?? SMTP_DEFAULT_ENCRYPTION,
-  )
-  const [username, setUsername] = useState(stored?.username ?? '')
-  const [password, setPassword] = useState('')
-  const [removePassword, setRemovePassword] = useState(false)
-  const [fromAddress, setFromAddress] = useState(stored?.fromAddress ?? '')
-  const [fromName, setFromName] = useState(stored?.fromName ?? '')
+  const [stored] = useState(() => storedOf(step))
+  const [draft, setDraft] = useState<SmtpDraft>(() => smtpDraftOf(stored))
   const [testRecipient, setTestRecipient] = useState('')
   const form = useStepForm(step.checked ? null : step.checkMessage)
-  const encryptionLabelId = `${id}-encryption`
-  const checkHintId = `${id}-check-hint`
-
-  const portNumber = parseSmtpPort(port)
-  const passwordStored = Boolean(stored?.passwordSet)
-  const passwordNeeded =
-    passwordStored &&
-    !removePassword &&
-    password === '' &&
-    stored !== null &&
-    smtpTargetChanged(
-      {
-        host: stored.host,
-        port: stored.port,
-        username: stored.username ?? null,
-        encryption: stored.encryption,
-      },
-      { host, port: portNumber, username, encryption },
-    )
+  const portNumber = parseSmtpPort(draft.port)
 
   function portError(): string | undefined {
     if (portNumber === null) return SMTP_TEXTS.portMissing
@@ -117,51 +85,35 @@ export default function MailStep({
   }
 
   function fromAddressError(): string | undefined {
-    if (isBlank(fromAddress)) return SMTP_TEXTS.fromAddressMissing
-    return isMailAddress(fromAddress) ? undefined : SMTP_TEXTS.fromAddressInvalid
+    if (isBlank(draft.fromAddress)) return SMTP_TEXTS.fromAddressMissing
+    return isMailAddress(draft.fromAddress) ? undefined : SMTP_TEXTS.fromAddressInvalid
   }
 
   function handleSubmit() {
     const localErrors = compact({
-      host: isBlank(host) ? SMTP_TEXTS.hostMissing : undefined,
+      host: isBlank(draft.host) ? SMTP_TEXTS.hostMissing : undefined,
       port: portError(),
-      password: passwordNeeded ? SMTP_TEXTS.passwordFollowsTarget : undefined,
+      password: smtpPasswordNeeded(stored, draft) ? SMTP_TEXTS.passwordFollowsTarget : undefined,
       fromAddress: fromAddressError(),
       testRecipient:
         isBlank(testRecipient) || isMailAddress(testRecipient) ? undefined : TEST_RECIPIENT_INVALID,
     })
     const recipient = testRecipient.trim()
-    const { apiKey: passwordPart } = apiKeyPart(password, removePassword)
+    const password = secretPart(draft.password, draft.removePassword)
     void form.submit(localErrors, MAIL_FIELDS, () =>
       submit(
         {
-          host: host.trim(),
+          host: draft.host.trim(),
           port: portNumber ?? 0,
-          encryption,
-          username: isBlank(username) ? null : username.trim(),
-          ...(passwordPart === undefined ? {} : { password: passwordPart }),
-          fromAddress: fromAddress.trim(),
-          fromName: isBlank(fromName) ? null : fromName.trim(),
+          encryption: draft.encryption,
+          username: isBlank(draft.username) ? null : draft.username.trim(),
+          ...(password === undefined ? {} : { password }),
+          fromAddress: draft.fromAddress.trim(),
+          fromName: isBlank(draft.fromName) ? null : draft.fromName.trim(),
         },
         recipient === '' ? {} : { testRecipient: recipient },
       ),
     )
-  }
-
-  /** What the check will do, matching the backend's outcome: sign-in only with a user name. */
-  function checkHint(): string {
-    if (isBlank(testRecipient)) {
-      const checked = isBlank(username) ? 'die Verbindung' : 'Verbindung und Anmeldung'
-      return `Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur ${checked} und sendet keine Nachricht.`
-    }
-    return isMailAddress(testRecipient)
-      ? `Die Prüfung sendet eine Testnachricht an ${testRecipient.trim()}.`
-      : 'Die Testnachricht braucht eine gültige Adresse.'
-  }
-
-  function passwordHint(): string {
-    if (passwordNeeded) return SMTP_TEXTS.passwordFollowsTarget
-    return passwordStored ? SMTP_TEXTS.passwordStored : SMTP_TEXTS.passwordNone
   }
 
   return (
@@ -169,112 +121,23 @@ export default function MailStep({
       title={STEP_INFO.MAIL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.MAIL.laterUnder}
-      description={
-        <>
-          Der Mailserver, über den OPAA Einladungen, Rücksetzlinks und Hinweise versendet. Der
-          Schritt ist optional: Übersprungen versendet OPAA nichts, und der Server lässt sich später
-          unter „Administration → E-Mail“ eintragen. Die Prüfung baut eine Verbindung auf und meldet
-          sich bei Bedarf an; eine Testnachricht sendet sie nur an eine Adresse unter „Testnachricht
-          an“.
-        </>
-      }
+      description="Der Mailserver, über den OPAA Einladungen, Rücksetzlinks und Hinweise versendet. Übersprungen versendet OPAA nichts, bis die Systemverwaltung ihn unter „Administration → E-Mail“ einträgt."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Verbindung zum Mailserver wird geprüft"
-      describedBy={checkHintId}
       onSubmit={handleSubmit}
       onBack={onBack}
-      onSkip={skip}
+      onSkip={onSkip}
     >
       {!publicBaseUrlConfigured && <PublicBaseUrlMissingAlert />}
-      <FormField
-        id={`${id}-host`}
-        label={SMTP_LABELS.host}
-        value={host}
-        onChange={setHost}
-        error={form.errors.host}
-        hint={SMTP_TEXTS.hostHint}
+      <SmtpFields
+        idPrefix={id}
+        value={draft}
+        onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+        errors={form.errors}
+        stored={stored}
       />
-      <FormField
-        id={`${id}-port`}
-        label={SMTP_LABELS.port}
-        inputMode="numeric"
-        value={port}
-        onChange={setPort}
-        error={form.errors.port}
-        hint={SMTP_TEXTS.portHint}
-      />
-      <Box>
-        <Typography
-          id={encryptionLabelId}
-          sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}
-        >
-          {SMTP_LABELS.encryption}
-        </Typography>
-        <RadioGroup
-          value={encryption}
-          onChange={(event) => setEncryption(event.target.value as MailEncryption)}
-          aria-labelledby={encryptionLabelId}
-        >
-          {SMTP_ENCRYPTION_OPTIONS.map((option) => (
-            <FormControlLabel
-              key={option.value}
-              value={option.value}
-              control={<Radio size="small" />}
-              sx={{ alignItems: 'flex-start', mb: 1, '& .MuiRadio-root': { mt: -0.5 } }}
-              label={
-                <Box>
-                  <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{option.label}</Typography>
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                    {option.hint}
-                  </Typography>
-                </Box>
-              }
-            />
-          ))}
-        </RadioGroup>
-      </Box>
-      <FormField
-        id={`${id}-username`}
-        label={SMTP_LABELS.username}
-        optional
-        autoComplete="off"
-        value={username}
-        onChange={setUsername}
-        error={form.errors.username}
-        hint={SMTP_TEXTS.usernameHint}
-      />
-      <ApiKeyField
-        id={`${id}-password`}
-        keyStored={passwordStored}
-        value={password}
-        onChange={setPassword}
-        remove={removePassword}
-        onRemoveChange={setRemovePassword}
-        error={form.errors.password}
-        hint={passwordHint()}
-        wording={PASSWORD_WORDING}
-        autoComplete="new-password"
-      />
-      <FormField
-        id={`${id}-from-address`}
-        label={SMTP_LABELS.fromAddress}
-        inputMode="email"
-        value={fromAddress}
-        onChange={setFromAddress}
-        error={form.errors.fromAddress}
-        hint={SMTP_TEXTS.fromAddressHint}
-      />
-      <FormField
-        id={`${id}-from-name`}
-        label={SMTP_LABELS.fromName}
-        optional
-        value={fromName}
-        onChange={setFromName}
-        error={form.errors.fromName}
-        hint={SMTP_TEXTS.fromNameHint}
-      />
-      <FormField
+      <SetupField
         id={`${id}-test-recipient`}
         label="Testnachricht an"
         optional
@@ -283,14 +146,8 @@ export default function MailStep({
         value={testRecipient}
         onChange={setTestRecipient}
         error={form.errors.testRecipient}
-        hint="Nur für diese Prüfung; die Adresse wird nicht gespeichert."
+        hint="Ohne Adresse prüft der Schritt nur die Verbindung und sendet nichts; die Adresse wird nicht gespeichert."
       />
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-        <InfoOutlined aria-hidden sx={{ fontSize: 18, color: 'text.secondary', mt: '1px' }} />
-        <Typography id={checkHintId} sx={{ fontSize: 14 }}>
-          {checkHint()}
-        </Typography>
-      </Box>
     </StepFrame>
   )
 }

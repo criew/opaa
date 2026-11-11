@@ -1,0 +1,428 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Stack from '@mui/material/Stack'
+import Checkbox from '@mui/material/Checkbox'
+import FormField from '@/shared/ui/form/FormField'
+import Typography from '@mui/material/Typography'
+import type {
+  ExternalAccessSettingsResponse,
+  ExternalAccessSettingsUpdateRequest,
+} from '@/shared/api/types'
+import { updateExternalAccessSettings } from '../api/externalAccessApi'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import SectionHead from '@/shared/ui/SectionHead'
+import { formatDate } from './tokenLabels'
+import FormDialog from '@/shared/ui/dialog/FormDialog'
+import { fontSize } from '@/shared/theme/tokens'
+
+export const SWITCH_CONSEQUENCE =
+  'Beschäftigte können Zugangstokens für externe KI-Werkzeuge erzeugen. Das Ausschalten wirkt ' +
+  'sofort und bei jedem Aufruf; laufende Verbindungen enden. Die Tokens bleiben erhalten und ' +
+  'wirken beim Wiedereinschalten weiter.'
+
+export const CODETERMINATION_HINT =
+  'Vor dem Einschalten: Die Beteiligung der Personalvertretung ist zu klären, und die ' +
+  'Beschäftigten sind über diesen Zugriffsweg, die dabei erhobenen Angaben und die Freiwilligkeit ' +
+  'der Nutzung zu unterrichten. Aus der Nichtnutzung entsteht kein Nachteil.'
+
+export const SAVED_MESSAGE =
+  'Die Einstellungen wurden gespeichert und wirken ab dem nächsten Aufruf.'
+
+interface Draft {
+  enabled: boolean
+  tokenMaxLifetimeDays: string
+  tokenRateLimitPerHour: string
+  allowedCidrs: string
+  massRetrievalAlertThreshold: string
+  serverInstructions: string
+  /** `null` while the factory default applies. */
+  releaseReminderLeadDays: string | null
+}
+
+/** Days in words: „1 Tag“, „14 Tage“. */
+function daysLabel(days: number): string {
+  return days === 1 ? '1 Tag' : `${days} Tage`
+}
+
+function draftOf(settings: ExternalAccessSettingsResponse): Draft {
+  return {
+    enabled: settings.enabled,
+    tokenMaxLifetimeDays: String(settings.tokenMaxLifetimeDays),
+    tokenRateLimitPerHour: String(settings.tokenRateLimitPerHour),
+    allowedCidrs: settings.allowedCidrs.join('\n'),
+    massRetrievalAlertThreshold: String(settings.massRetrievalAlertThreshold),
+    serverInstructions: settings.serverInstructions,
+    releaseReminderLeadDays:
+      settings.storedReleaseReminderLeadDays == null
+        ? null
+        : String(settings.storedReleaseReminderLeadDays),
+  }
+}
+
+function parseCidrs(value: string): string[] {
+  return value
+    .split(/[,;\s]+/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '')
+}
+
+function requestOf(draft: Draft): ExternalAccessSettingsUpdateRequest {
+  return {
+    enabled: draft.enabled,
+    tokenMaxLifetimeDays: Number(draft.tokenMaxLifetimeDays),
+    tokenRateLimitPerHour: Number(draft.tokenRateLimitPerHour),
+    allowedCidrs: parseCidrs(draft.allowedCidrs),
+    massRetrievalAlertThreshold: Number(draft.massRetrievalAlertThreshold),
+    serverInstructions: draft.serverInstructions,
+    releaseReminderLeadDays:
+      draft.releaseReminderLeadDays === null ? null : Number(draft.releaseReminderLeadDays),
+  }
+}
+
+function sameDraft(a: Draft, b: Draft): boolean {
+  return (Object.keys(a) as Array<keyof Draft>).every((key) => a[key] === b[key])
+}
+
+/**
+ * The saved state deliberately stands next to and not in the switch label: as long as a
+ * change is not saved yet, a name „derzeit aus“ next to `aria-checked="true"` would report two
+ * different states right at the control that opens the path.
+ */
+function storedStateLine(settings: ExternalAccessSettingsResponse): string {
+  return `Gespeichert: ${settings.enabled ? 'ein' : 'aus'} — zuletzt geändert am ${formatDate(settings.updatedAt)} durch ${settings.updatedBy ?? 'die Installation selbst'}`
+}
+
+function PanelSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <Box component="section" aria-labelledby={id}>
+      <SectionHead id={id} component="h3">
+        {title}
+      </SectionHead>
+      {children}
+    </Box>
+  )
+}
+
+interface ExternalAccessSettingsDialogProps {
+  /** The stored settings; null keeps the dialog closed. */
+  settings: ExternalAccessSettingsResponse | null
+  onClose: () => void
+  onSaved: (stored: ExternalAccessSettingsResponse) => void
+}
+
+/**
+ * The settings for external AI tools in a form dialog: the installation-wide switch, the
+ * limits including network ranges and the introduction text for external tools. Everything is
+ * saved together because the interface replaces the settings as a whole.
+ *
+ * State and time of the last change are at the top: a restore from a backup rolls back
+ * switch, releases and tokens together - including the log that would prove the emergency
+ * stop. A visible change date makes such a backdating recognizable.
+ */
+export default function ExternalAccessSettingsDialog({
+  settings,
+  onClose,
+  onSaved,
+}: ExternalAccessSettingsDialogProps) {
+  // Mounted per stored state: the form's draft - and with it „unsaved" - ends whenever the
+  // dialog closes or a save returns.
+  if (!settings) return null
+  return (
+    <ExternalAccessSettingsEditor
+      key={settings.updatedAt}
+      settings={settings}
+      onClose={onClose}
+      onSaved={onSaved}
+    />
+  )
+}
+
+/** The fields that show a server's field error at themselves. */
+const FIELDS_WITH_MESSAGE = new Set([
+  'tokenMaxLifetimeDays',
+  'tokenRateLimitPerHour',
+  'massRetrievalAlertThreshold',
+  'allowedCidrs',
+  'releaseReminderLeadDays',
+  'serverInstructions',
+])
+
+function ExternalAccessSettingsEditor({
+  settings,
+  onClose,
+  onSaved,
+}: {
+  settings: ExternalAccessSettingsResponse
+  onClose: () => void
+  onSaved: (stored: ExternalAccessSettingsResponse) => void
+}) {
+  const [initial] = useState(() => draftOf(settings))
+  const [draft, setDraft] = useState<Draft>(initial)
+  const [error, setError] = useState<string | null>(null)
+  const [fieldMessages, setFieldMessages] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
+  const errorRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const dirty = !sameDraft(draft, initial)
+
+  async function requestClose() {
+    if (busy) return
+    if (
+      dirty &&
+      !(await confirmAction({
+        question: 'Ungespeicherte Änderungen verwerfen?',
+        consequence: 'Die Einstellungen bleiben, wie sie zuletzt gespeichert wurden.',
+        confirmLabel: 'Verwerfen',
+        cancelLabel: 'Weiter bearbeiten',
+        tone: 'caution',
+      }))
+    ) {
+      return
+    }
+    onClose()
+  }
+
+  // After a failed save the focus goes to the first field with an error, or to the message of an
+  // error without a field (guidelines 5.6, accessibility.md 2.7).
+  useEffect(() => {
+    const invalid = contentRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    if (invalid) invalid.focus()
+    else if (error) errorRef.current?.focus()
+  }, [error, fieldMessages])
+
+  function update(change: Partial<Draft>) {
+    setDraft((current) => ({ ...current, ...change }))
+  }
+
+  /** The factory default is shorter than the lead in the field: the reminder comes later. */
+  async function resetReminderLead() {
+    const factory = settings.defaultReleaseReminderLeadDays
+    const current = Number(draft.releaseReminderLeadDays ?? factory)
+    const shorter = current === 0 ? false : factory < current
+    const confirmed = await confirmAction({
+      question: `Erinnerung auf die Werkseinstellung von ${daysLabel(factory)} zurücksetzen?`,
+      consequence: shorter
+        ? `Die Erinnerung kommt dann erst ${daysLabel(factory)} statt ${daysLabel(current)} vor Ablauf einer Freigabe. Gilt nach dem Speichern.`
+        : 'Gilt nach dem Speichern.',
+      confirmLabel: 'Zurücksetzen',
+      tone: shorter ? 'danger' : 'caution',
+    })
+    if (confirmed) update({ releaseReminderLeadDays: null })
+  }
+
+  async function save() {
+    const typed = draft.releaseReminderLeadDays
+    if (typed !== null && !/^\d+$/.test(typed.trim())) {
+      const message = `Bitte eine ganze Zahl von 0 bis ${settings.maxReleaseReminderLeadDays} eingeben.`
+      setError(null)
+      setFieldMessages({ releaseReminderLeadDays: message })
+      return
+    }
+    const lead = typed === null ? settings.defaultReleaseReminderLeadDays : Number(typed)
+    const unchanged = typed !== null && lead === settings.storedReleaseReminderLeadDays
+    if (
+      !unchanged &&
+      lead < settings.releaseReminderLeadDays &&
+      !(await confirmAction({
+        question:
+          lead === 0
+            ? 'Erinnerung vor Ablauf einer Freigabe ausschalten?'
+            : `Erinnerung auf ${daysLabel(lead)} vor Ablauf einer Freigabe ändern?`,
+        consequence:
+          lead === 0
+            ? 'Freigaben erlöschen dann unangekündigt. Die Änderung steht im Revisionsprotokoll.'
+            : `Bisher kommt sie ${daysLabel(settings.releaseReminderLeadDays)} vorher. Die Änderung steht im Revisionsprotokoll.`,
+        confirmLabel: lead === 0 ? 'Ausschalten' : 'Ändern',
+        tone: 'danger',
+      }))
+    ) {
+      return
+    }
+    setError(null)
+    setFieldMessages({})
+    setBusy(true)
+    try {
+      onSaved(await updateExternalAccessSettings(requestOf(draft)))
+    } catch (err: unknown) {
+      // A field the dialog shows tells its error itself; only the rest becomes the message.
+      const perField = apiFieldErrors(err)
+      const shown = perField.filter((e) => FIELDS_WITH_MESSAGE.has(e.field))
+      setFieldMessages(Object.fromEntries(shown.map((e) => [e.field, e.message])))
+      const unshown = perField.filter((e) => !FIELDS_WITH_MESSAGE.has(e.field))
+      setError(
+        shown.length > 0 && unshown.length === 0
+          ? null
+          : unshown.length > 0
+            ? unshown.map((e) => e.message).join(' ')
+            : err instanceof Error
+              ? err.message
+              : 'Speichern fehlgeschlagen.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <FormDialog
+      titleId="external-tools-settings-heading"
+      title="Einstellungen"
+      submitLabel="Speichern"
+      onSubmit={() => void save()}
+      onClose={() => void requestClose()}
+      busy={busy}
+      busyAnnouncement="Einstellungen werden gespeichert"
+      contentRef={contentRef}
+    >
+      <Stack spacing={3.5}>
+        <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
+          Einstellungen für externe KI-Werkzeuge. Sie gelten für die ganze Installation; jede
+          Änderung außer dem Einleitungstext wird protokolliert.
+        </Typography>
+
+        <PanelSection id="external-tools-settings-switch" title="Ein/Aus">
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={draft.enabled}
+                onChange={(event) => update({ enabled: event.target.checked })}
+              />
+            }
+            label="Externe KI-Werkzeuge zulassen"
+          />
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 0.5 }}>
+            {storedStateLine(settings)}
+          </Typography>
+          <Typography sx={{ fontSize: fontSize.text, mt: 1.5 }}>{SWITCH_CONSEQUENCE}</Typography>
+          <Alert severity="info" sx={{ mt: 1.5 }}>
+            {CODETERMINATION_HINT}
+          </Alert>
+        </PanelSection>
+
+        <PanelSection id="external-tools-settings-limits" title="Grenzen">
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+            Laufzeit und Anfragen gelten je Zugangstoken, Abflussalarm und Netzbereiche für alle
+            Zugriffe zusammen. Die Anfragegrenze ist eine Lastbremse, kein Schutz vor Massenabfluss:
+            Was in einer Nacht nicht geht, geht in neunzig Tagen.
+          </Typography>
+          <Stack spacing={2.5}>
+            <FormField
+              label="Zugangstokens höchstens gültig (Tage)"
+              type="number"
+              size="small"
+              value={draft.tokenMaxLifetimeDays}
+              onChange={(event) => update({ tokenMaxLifetimeDays: event.target.value })}
+              error={Boolean(fieldMessages.tokenMaxLifetimeDays)}
+              helperText={fieldMessages.tokenMaxLifetimeDays ?? 'Zwischen 1 und 365 Tagen.'}
+            />
+            <FormField
+              label="Anfragen je Token und Stunde"
+              type="number"
+              size="small"
+              value={draft.tokenRateLimitPerHour}
+              onChange={(event) => update({ tokenRateLimitPerHour: event.target.value })}
+              error={Boolean(fieldMessages.tokenRateLimitPerHour)}
+              helperText={fieldMessages.tokenRateLimitPerHour}
+            />
+            <FormField
+              label="Abflussalarm ab (Abrufe je Stunde)"
+              type="number"
+              size="small"
+              value={draft.massRetrievalAlertThreshold}
+              onChange={(event) => update({ massRetrievalAlertThreshold: event.target.value })}
+              error={Boolean(fieldMessages.massRetrievalAlertThreshold)}
+              helperText={
+                fieldMessages.massRetrievalAlertThreshold ??
+                'Die Überschreitung meldet sich der Systemverwaltung; ein Nachweisprotokoll entsteht daraus nicht.'
+              }
+            />
+            <FormField
+              label="Netzbereiche"
+              value={draft.allowedCidrs}
+              onChange={(event) => update({ allowedCidrs: event.target.value })}
+              error={Boolean(fieldMessages.allowedCidrs)}
+              helperText={
+                fieldMessages.allowedCidrs ??
+                'Eine Netzangabe je Zeile (z. B. 10.0.0.0/8). Voreinstellung ist das Hausnetz. Eine leere Liste schließt den Zugriff für jede Adresse. Geprüft wird die über die Trusted-Proxy-Auflösung ermittelte Adresse (OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS).'
+              }
+              multiline
+              fullWidth
+            />
+          </Stack>
+        </PanelSection>
+
+        <PanelSection
+          id="external-tools-settings-reminder"
+          title="Erinnerung vor Ablauf einer Freigabe"
+        >
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+            So viele Tage vor dem Ende der Befristung erinnert eine E-Mail die Person, die die
+            Freigabe einer Bibliothek zuletzt gesetzt hat. 0 schaltet die Erinnerung ab; die
+            Freigabe erlischt trotzdem, nur unangekündigt.
+          </Typography>
+          <FormField
+            label="Erinnerung vor Ablauf (Tage)"
+            type="number"
+            size="small"
+            value={draft.releaseReminderLeadDays ?? String(settings.defaultReleaseReminderLeadDays)}
+            onChange={(event) => update({ releaseReminderLeadDays: event.target.value })}
+            error={Boolean(fieldMessages.releaseReminderLeadDays)}
+            helperText={
+              fieldMessages.releaseReminderLeadDays ??
+              (draft.releaseReminderLeadDays === null
+                ? `Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}. Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`
+                : (settings.storedReleaseReminderLeadDays ?? 0) >
+                      settings.maxReleaseReminderLeadDays &&
+                    Number(draft.releaseReminderLeadDays) === settings.storedReleaseReminderLeadDays
+                  ? `Gespeichert, wirkt aber nur als ${daysLabel(settings.maxReleaseReminderLeadDays)}: einen Tag unter der längsten Befristung.`
+                  : `Eigener Wert (Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}). Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`)
+            }
+          />
+          {draft.releaseReminderLeadDays !== null && (
+            <Button size="small" sx={{ mt: 1 }} onClick={() => void resetReminderLead()}>
+              Werkseinstellung wiederherstellen
+            </Button>
+          )}
+        </PanelSection>
+
+        <PanelSection
+          id="external-tools-settings-instructions"
+          title="Einleitungstext für externe KI-Werkzeuge"
+        >
+          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
+            Er wird dem Modell des externen KI-Werkzeugs beim Verbindungsaufbau mitgegeben, damit es
+            erkennt, welche Fragen hierher gehören. Seine Änderung ändert keine Reichweite und wird
+            nicht protokolliert.
+          </Typography>
+          <FormField
+            label="Einleitungstext"
+            value={draft.serverInstructions}
+            onChange={(event) => update({ serverInstructions: event.target.value })}
+            error={Boolean(fieldMessages.serverInstructions)}
+            helperText={fieldMessages.serverInstructions ?? 'Höchstens 4000 Zeichen.'}
+            multiline
+            fullWidth
+          />
+          <Button
+            size="small"
+            sx={{ mt: 1 }}
+            onClick={() => update({ serverInstructions: settings.defaultServerInstructions })}
+            disabled={draft.serverInstructions === settings.defaultServerInstructions}
+          >
+            Vorgabetext
+          </Button>
+        </PanelSection>
+        {/* last in the content, right above the footer (guidelines 5.16) */}
+        {error && (
+          <Alert ref={errorRef} tabIndex={-1} severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+      </Stack>
+    </FormDialog>
+  )
+}

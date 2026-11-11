@@ -17,7 +17,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../referenz/wie-die-su
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Installation oder Modellverwaltung in der Oberfläche | jederzeit, ohne Neustart; berührt den Index nicht |
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation oder, wenn sie den Schritt übersprungen hat, Modellverwaltung, jeweils mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Installation oder Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
-| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
+| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, wahlweise schon beim Sprechen ([Live-Transkript](#live-transkript)), optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 | **Texterkennung** | liest gescannte PDF-Seiten ohne Textebene (OCR), optional | Modellverwaltung, Reiter „Texterkennung"; begrenzt durch `OPAA_OCR_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Texterkennung einschalten](#texterkennung-einschalten)) |
 
 Keine Rolle folgt einem Redirect, weder im Betrieb noch im Verbindungstest: Antwortet ein Modellserver
@@ -32,7 +32,7 @@ Schnittstelle**. (Die optionale Rerank-Rolle hat eigene Angaben, siehe
 eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschichten.
 
 **Voreingestellt sind lokal betriebene Modelle.** Chat- und Embedding-Modell legt die
-[Installation](installation.md) fest, mit Adresse und Zugangsschlüssel; die Modellverwaltung ändert
+[Installation](installation.md) fest, mit Adresse und API-Schlüssel; die Modellverwaltung ändert
 sie. Eine Umgebungsvariable für die Modelle gibt es im Betrieb nicht, und es gibt kein
 automatisches Ausweichen auf ein Modell außerhalb des Hauses: Betrieb ohne Netzanbindung ist der
 vorgesehene Fall.
@@ -40,7 +40,7 @@ vorgesehene Fall.
 **Nur im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` als Chat- und `bge-m3`
 als Embedding-Modell unter `OPAA_OPENAI_BASE_URL`. Die Voreinstellung zeigt auf
 `http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Ollama braucht keinen
-Zugangsschlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
+API-Schlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
 überschrieben:
 
 ```env
@@ -104,7 +104,7 @@ Betrieb zählt:
   aktiv, und der Chat beantwortet keine Frage, bis die Systemverwaltung eines aktiviert. Im Modus
   `dev` ist es `phi3:mini` unter `OPAA_OPENAI_BASE_URL`, ohne Schlüssel.
 - **Den Schlüssel** verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
-  ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)). Er geht nur an
+  ([Verschlüsselung](#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle)). Er geht nur an
   denselben Endpunkt (Schema, Host, Port, Pfad); eine Adresse mit Anmeldedaten wird abgelehnt.
 - **Eine interne Adresse** braucht einen Eintrag in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
   ([Adressprüfung](#adressprüfung-der-modelle)); der Compose-Stapel setzt `ollama:11434`.
@@ -159,7 +159,7 @@ dafür zu kurz ist.
 
 ## Embedding
 
-Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, Zugangsschlüssel und
+Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, API-Schlüssel und
 Eingabegrenze ([Installation](installation.md)); überspringt sie den Schritt, legt es später die
 Systemverwaltung fest ([Erstes Modell festlegen](#erstes-modell-festlegen)). Die Prüfung ist eine
 Probeeinbettung: Sie zeigt, dass der Endpunkt das Modell bedient, und ergibt die Zahl der
@@ -167,13 +167,13 @@ Dimensionen, mit der das Modell einbettet. Mit dieser Zahl legt OPAA die Vektora
 muss sie niemand. Ohne Embedding-Modell gibt es keine Vektorablage, und Indexierung, Upload und
 Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist. Danach zeigt die
 Modellverwaltung im Reiter „Einbettung" Modell, Endpunkt, Dimensionen, Eingabegrenze und ob ein
-Zugangsschlüssel gespeichert ist; dort läuft auch jeder Wechsel.
+API-Schlüssel gespeichert ist; dort läuft auch jeder Wechsel.
 
 `OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
 übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
-auf ([Konfiguration](../referenz/konfiguration.md#entfallene-und-veraltete-variablen)). Den Zugangsschlüssel
+auf ([Konfiguration](../referenz/konfiguration.md#entfallene-und-veraltete-variablen)). Den API-Schlüssel
 verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
-mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne Zugangsschlüssel.
+mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne API-Schlüssel.
 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar.
 OPAA führt ihn deshalb mit Probeeinbettung, Vorschau und ausdrücklicher Bestätigung
@@ -280,12 +280,12 @@ nicht mit der eingestellten Grenze.
 ### Erstes Modell festlegen
 
 > **Beispiel.** Ein Haus installiert OPAA, bevor der Modellserver freigeschaltet ist, und
-> überspringt den Schritt „Embedding-Modell“. Zwei Wochen später trägt die Systemverwaltung
+> überspringt den Schritt „Einbettung“. Zwei Wochen später trägt die Systemverwaltung
 > `bge-m3` im Reiter „Einbettung“ ein; ab dann lassen sich Bibliotheken indexieren.
 
 Ohne Embedding-Modell zeigt der Reiter „Einbettung" den Hinweis „Es ist noch kein Embedding-Modell
 eingerichtet“ und das Formular „Embedding-Modell festlegen“: Basis-Adresse, Modell-Kennung,
-Zugangsschlüssel und Eingabegrenze, mit derselben [Adressprüfung](#adressprüfung-der-modelle) wie in
+API-Schlüssel und Eingabegrenze, mit derselben [Adressprüfung](#adressprüfung-der-modelle) wie in
 der Installation. „Probeeinbettung“ prüft den Endpunkt und nennt die Zahl der Dimensionen;
 „Embedding-Modell festlegen“ fragt nach und legt dann Modell und Vektorablage an. Weil vor dem
 ersten Modell keine Inhalte angenommen werden, wird nichts neu eingebettet, und die Vektorsuche läuft
@@ -320,7 +320,7 @@ flowchart LR
   E -.-> G[Verwerfen]
 ```
 
-1. **Eintragen.** Basis-Adresse, Modell-Kennung, Eingabegrenze und Zugangsschlüssel, mit derselben
+1. **Eintragen.** Basis-Adresse, Modell-Kennung, Eingabegrenze und API-Schlüssel, mit derselben
    [Adressprüfung](#adressprüfung-der-modelle) wie in der Installation. „beibehalten" gibt es für
    den Schlüssel nur, solange die Adresse denselben Endpunkt nennt (Schema, Host, Port, Pfad); bei
    einem anderen ist er neu einzugeben oder „ohne" zu wählen. So geht ein Schlüssel nie an einen
@@ -408,7 +408,7 @@ ein weiterer Start auch die fehlenden eingebettet hat.
 
 ### Endpunkt wechseln
 
-Ein anderer Server mit demselben Modell, ein neuer Zugangsschlüssel oder eine andere Eingabegrenze
+Ein anderer Server mit demselben Modell, ein neuer API-Schlüssel oder eine andere Eingabegrenze
 brauchen keine Neueinbettung. Typischer Anlass ist der Ausfall des bisherigen Servers.
 
 Dafür im Reiter „Einbettung" die neue Adresse und den Schlüssel eintragen und „Probeeinbettung"
@@ -456,7 +456,7 @@ Zur Wahl des Endpunkts:
   nicht taugt; das voreingestellte `OPAA_RERANK_TIMEOUT` lässt den Fall nur zu, damit er nicht als
   Ausfall erscheint.
 
-Zum Einschalten gehören drei Angaben zusammen: der Schalter „Reranking einschalten", die
+Zum Einschalten gehören drei Angaben zusammen: das Auswahlkästchen „Reranking einschalten", die
 Basis-Adresse ohne den Pfad `/rerank` und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
 fortlaufend auf der Seite „Suche & Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.
@@ -523,9 +523,9 @@ der openai-kompatiblen Schnittstelle bedienen:
 - `GET {Basis-Adresse}/models` dient OPAA als Erreichbarkeitsprüfung, beim Start und danach
   regelmäßig. Sie überträgt kein Audio und kostet bei Anbietern mit Abrechnung je Aufruf nichts.
 
-Einzutragen sind unter **Modelle → Spracheingabe** der Schalter „Spracheingabe einschalten", die
+Einzutragen sind unter **Modelle → Spracheingabe** das Auswahlkästchen „Spracheingabe einschalten", die
 Basis-Adresse ohne den Pfad `/audio/transcriptions` (etwa `https://stt.landesverwaltung.de/v1`),
-die Modell-Kennung und, falls der Dienst ihn verlangt, der Zugangsschlüssel. Der Schlüssel liegt
+die Modell-Kennung und, falls der Dienst ihn verlangt, der API-Schlüssel. Der Schlüssel liegt
 verschlüsselt in der Datenbank und geht nur in den `Authorization`-Header der Anfrage, nie in ein
 Log oder eine Zustandsanzeige. Der
 Aufruf geht über denselben [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und dieselben vertrauten
@@ -623,6 +623,78 @@ Datum und enthält oft Namen und Vorgänge Dritter; eine solche Anbindung brauch
 datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Modellverwaltung weist nicht
 darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der Kachel OpenAI.
 
+### Live-Transkript
+
+Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Dafür hält der Browser während
+der Aufnahme eine WebSocket-Verbindung zu OPAA (`/api/v1/transcriptions/stream`), und OPAA eine zu
+einem Live-Dienst. Eingerichtet wird es unter **Modelle → Spracheingabe**, Abschnitt
+„Live-Transkript (optional)“ ([Live-Transkript einrichten](../administration/modelle.md#live-transkript-einrichten)),
+oder im Installationsschritt Transkriptionsmodell. Es setzt die eingeschaltete Spracheingabe voraus;
+die Aufnahme läuft daneben weiter und geht an das Transkriptionsmodell, sobald Live ausfällt, kein
+Platz frei ist oder nach dem Ende kein endgültiger Text kommt.
+
+| Live-Dienst | Adresse (Vorbelegung) | Modell (Vorbelegung) | Audio |
+|---|---|---|---|
+| OpenAI | `wss://api.openai.com/v1/realtime?intent=transcription` | `gpt-live-transcribe` | 24 kHz |
+| vLLM (eigener Server) | `ws://vllm:8000/v1/realtime` | `mistralai/Voxtral-Mini-4B-Realtime-2602` | 16 kHz |
+| Mistral | `wss://api.mistral.ai/v1/audio/transcriptions/realtime` | `voxtral-mini-transcribe-realtime-3` | 16 kHz |
+
+Das Protokoll ist eine Auswahl, kein Freitext; OPAA spricht genau diese drei. Die Live-Adresse
+beginnt mit `ws://` oder `wss://` und durchläuft dieselbe
+[Adressprüfung der Modelle](#adressprüfung-der-modelle) wie die übrigen Rollen, mit `http`/`https`
+an Stelle von `ws`/`wss`; ein Host im Haus kommt also in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`.
+Die Verbindung geht über den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und folgt keinem
+Redirect. Ohne eigenen Live-Schlüssel sendet OPAA den Schlüssel des Transkriptionsmodells mit, aber
+nur bei gleicher Adresse bis zum Port (Schema, Host, Port), wobei `ws`/`wss` wie `http`/`https`
+zählen; sonst geht keiner mit. OpenAI und Mistral verlangen einen Schlüssel: Ohne eigenen
+Live-Schlüssel und ohne Schlüssel des Transkriptionsmodells unter der gleichen Adresse bis zum Port
+lehnen Verwaltung, Assistent und Antwortdatei sie ab.
+
+**Hardware im Haus.** Voxtral Realtime auf vLLM braucht eine GPU mit mindestens 16 GB Speicher und
+trägt darauf erfahrungsgemäß etwa eine gleichzeitige Sitzung. „Gleichzeitige Live-Sitzungen“ ist
+deshalb ab Werk 1 und gilt für die ganze Installation, auch über mehrere Instanzen. Wer darüber
+diktiert, bekommt den Text nach dem Ende der Aufnahme. Eine Sitzung endet spätestens nach zwei
+Minuten, nach 30 Sekunden ohne Audio oder, wenn der Dienst nach dem Ende nicht antwortet, nach
+15 Sekunden. Sie endet außerdem, sobald Audio deutlich schneller als in Echtzeit eintrifft, wie
+beim Einspielen einer Datei; wie oft eine Person Live-Sitzungen startet, begrenzt
+`OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_*`.
+
+**Was an den Dienst geht:** die Aufnahme fortlaufend während des Sprechens, als PCM-Audio, dazu
+Modell, Sprache und bei OpenAI und Mistral die Begriffslisten. **Was OPAA behält:** nichts; Audio und
+Text laufen nur durch. **Ein externer Live-Dienst erhält die Stimme laufend**, nicht erst nach dem
+Ende; das braucht wie beim [externen Anbieter](#externer-anbieter) eine eigene
+datenschutzrechtliche Prüfung. Verwaltung und Assistent weisen bei OpenAI und Mistral darauf hin.
+
+Zwischen Browser und OPAA muss jeder Proxy das WebSocket-Upgrade weiterreichen
+([Netz und Sicherheit](netz-und-sicherheit.md#websocket-der-spracheingabe)). Fehlt es, bleibt es ohne
+Fehlermeldung beim Diktat mit ganzer Aufnahme. Zustand und Fehler zeigt der Abschnitt
+„Live-Transkript (optional)“ unter Modelle → Spracheingabe; im Log steht nur Code oder Typ eines Fehlers des
+Dienstes, nie Audio oder Text.
+
+#### Nur ein Live-Dienst vorhanden?
+
+Das Diktat mit ganzer Aufnahme bleibt Pflicht der Rolle; es ist der Rückfall, wenn Live ausfällt.
+Wer nur einen Live-Dienst hat, trägt ihn deshalb auch als Diktat-Endpunkt ein. Sind Basis-Adresse
+und Modell-Kennung des Diktats noch leer, belegen Assistent und Verwaltung sie bei der Wahl des
+Live-Dienstes vor:
+
+| Live-Dienst | Basis-Adresse des Diktats | Modell-Kennung des Diktats |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini-transcribe` |
+| vLLM | Schema, Host und Port der Live-Adresse mit `/v1`, etwa `http://vllm:8000/v1` | das Live-Modell |
+| Mistral | keine Vorbelegung | – |
+
+Bei OpenAI haben Diktat und Live die gleiche Adresse bis zum Port; ein Schlüssel im Feld des
+Diktats gilt dann für beide. Für Mistral belegt OPAA nichts vor: Dass dessen
+`/v1/audio/transcriptions` die Anfrage des Diktats (Datei, Modell und Sprache als Formular) so annimmt wie die OpenAI-kompatiblen
+Dienste, ist nicht geprüft; ein Diktat-Endpunkt wird dort selbst eingetragen und mit „Verbindung
+testen“ geprüft.
+
+Bei vLLM mit Voxtral Realtime kann der Endpunkt der ganzen Aufnahme hängen bleiben (vLLM-Fehler
+[#52926](https://github.com/vllm-project/vllm/issues/52926), offen). Dann kommt auch der Rückfall
+nicht an. Wo das auftritt, gehört das Diktat auf einen eigenen Dienst, etwa speaches mit einem
+Whisper-Modell.
+
 ### Spracheingabe und Mitbestimmung
 
 - *Worum es geht:* Die Spracheingabe verarbeitet die Stimme der Beschäftigten. Auch beim Betrieb im
@@ -653,12 +725,12 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
 
 1. **Betriebsschalter** `OPAA_OCR_ENABLED=true`, gelesen beim Start. Ohne ihn wird die Rolle weder
    ausgewertet noch kontaktiert; die Systemverwaltung kann sie nur vorbereiten, Gespeichertes bleibt.
-   Er steht wie der Virenscanner beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
+   Er steht beim Betrieb, weil ganze Seiten von Dokumenten an einen weiteren
    Dienst gehen. Bei mehreren Instanzen tragen alle denselben Wert.
-2. **Schalter der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
+2. **Auswahlkästchen der Rolle** in der Modellverwaltung, Reiter „Texterkennung“
    ([Texterkennung einrichten](../administration/modelle.md#texterkennung-einrichten)). Dazu
    gehören Anbindungsart, Basis-Adresse, bei einem Vision-Modell die Modell-Kennung und, falls
-   verlangt, der Zugangsschlüssel. Jede Änderung steht
+   verlangt, der API-Schlüssel. Jede Änderung steht
    im Revisionsprotokoll („Texterkennung“), der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 | Verbindungstyp | Was der Dienst bekommt | Schlüssel | Erreichbarkeitsprüfung |
@@ -729,21 +801,21 @@ OPAA_HTTP_FORCE_HTTP1=true
 Die Adresse des Servers, etwa `http://your-vllm-server:8000/v1`, trägt die Installation bzw. die
 Modellverwaltung ein.
 
-## Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle
+## Verschlüsselung der API-Schlüssel verwalteter Chat-Modelle
 
-Ein hinterlegter Zugangsschlüssel eines Chat-Modells liegt **verschlüsselt** in der Datenbank
+Ein hinterlegter API-Schlüssel eines Chat-Modells liegt **verschlüsselt** in der Datenbank
 (AES-256-GCM, zufälliger Initialisierungsvektor je Wert) und erscheint in keiner API-Antwort und keinem
 Log. Der Schlüssel dafür ist `OPAA_SETTINGS_ENCRYPTION_KEY`, getrennt von dem der Quellen
 ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)); er schützt auch das
 SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des Repositorys abgelegt.
 
 - **Ohne Schlüssel startet das Backend normal.** Eine Installation, die nur lokale Modelle ohne
-  Zugangsschlüssel führt, braucht ihn nie. Erst das Anlegen oder Ändern eines Modells **mit**
-  Zugangsschlüssel scheitert mit einer Meldung, die die Variable nennt; die Übernahme beim ersten
+  API-Schlüssel führt, braucht ihn nie. Erst das Anlegen oder Ändern eines Modells **mit**
+  API-Schlüssel scheitert mit einer Meldung, die die Variable nennt; die Übernahme beim ersten
   Start bricht den Start nicht ab, sondern schreibt einen Fehler ins Log und wird beim nächsten Start
   nachgeholt.
-- **Bei Schlüsselverlust** sind die gespeicherten Zugangsschlüssel nicht wiederherstellbar; der übrige
-  Modelleintrag bleibt. Abhilfe: den Zugangsschlüssel des Modells in der Oberfläche neu eintragen.
+- **Bei Schlüsselverlust** sind die gespeicherten API-Schlüssel nicht wiederherstellbar; der übrige
+  Modelleintrag bleibt. Abhilfe: den API-Schlüssel des Modells in der Oberfläche neu eintragen.
 - **Ein Schlüsselwechsel** braucht kein neues Eintragen: Der abgelöste Schlüssel entschlüsselt
   weiter, bis OPAA alle Werte umgestellt hat
   ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)).
@@ -855,6 +927,76 @@ Sie gehen an den angegebenen Endpunkt und an sonst niemanden. Beim ersten Lauf k
 Downloads aus den Voraussetzungen dazu: Gradle und Maven Central, Docker Hub und die
 Ollama-Registry; danach liegt alles im lokalen Zwischenspeicher.
 
+## Modell auf Werkzeugaufrufe messen
+
+Ob ein Modell ein Werkzeug verlässlich aufruft, hängt nicht am Modell allein, sondern an der
+Kombination aus Modell, Quantisierung, Laufzeit und deren Einstellungen. Dasselbe Modell kann unter
+Ollama Werkzeuge sauber aufrufen und unter einer anderen Laufzeit nicht. Eine feste Fallbasis misst
+das für die Kombination des Hauses, mit Fällen wie eine Gebührenfrage, die eine Suche verlangt, ein
+Dank, der keine verlangt, oder ein Suchergebnis mit eingeschmuggelter Anweisung. Das Werkzeug ist
+eine Attrappe mit festen Antworten; die laufende Installation wird nicht berührt.
+
+Sind Agenten eingeschaltet, startet die Systemverwaltung dieselbe Messung auch in der
+Anwendung, siehe [Werkzeuge prüfen](../administration/modelle.md#werkzeuge-prüfen); der Weg hier
+bleibt für Messungen vor der Installation, für Kombinationen außerhalb der Modellverwaltung und für
+Messreihen mit Ausgabe im Fluss oder der Definition der Agenten-Suche
+(`-Dopaa.eval.toolCalling.tool=production`).
+
+**Voraussetzungen:** ein Rechner mit JDK 21 und dem Quellstand der installierten Version, Netzzugang
+zum Endpunkt des Modells, beim ersten Lauf Internetzugang für Gradle und Maven Central. Docker ist
+nicht nötig.
+
+**Aufruf** aus dem Verzeichnis `backend/` des Quellstands:
+
+```bash
+export OPAA_EVAL_CHAT_API_KEY=...    # nur, wenn der Endpunkt einen Schlüssel verlangt
+./gradlew evaluateToolCalling \
+  -Dopaa.eval.chatBaseUrl=http://ollama.stadt.example:11434/v1 \
+  -Dopaa.eval.chatModel=modellname \
+  -Dopaa.eval.toolCalling.quantization=Q4_K_M \
+  -Dopaa.eval.toolCalling.runtime=ollama \
+  -Dopaa.eval.toolCalling.runtimeVersion=0.40.3 \
+  -Dopaa.eval.toolCalling.hardware="1 GPU, 24 GB" \
+  -Dopaa.eval.toolCalling.contextLength=8192
+```
+
+Adresse und Schlüssel folgen denselben Regeln wie unter
+[Modell gegen Prompt-Injection messen](#modell-gegen-prompt-injection-messen). Die Angaben zu
+Quantisierung, Laufzeit, Version, Hardware und Kontextlänge ändern nichts an der Messung; sie
+benennen die Kombination im Bericht und gehören vollständig dazu, sonst bleibt unklar, wofür das
+Ergebnis gilt. Mit `-Dopaa.eval.toolCalling.streaming=true` misst der Lauf die Ausgabe im Fluss,
+mit `-Dopaa.eval.toolCalling.repetitions` eine andere Zahl von Läufen je Fall als drei.
+
+**Bericht:** `backend/build/eval-reports/tool-calling.md` (dazu `.json`). Er beginnt mit der
+Kennung des Messlaufs und dem Datum und nennt je Fallklasse eine Zahl, etwa „12 von 12 Läufen
+bestanden“; für die eingeschmuggelte Anweisung „Anweisung wirksam in 1 von 12 erreichten Läufen“,
+nie ein bloßes Bestanden. Darunter stehen Laufdauer und jeder Lauf im Wortlaut.
+
+- **Untergrenze:** Als werkzeugfähig darf eine Kombination nur gelten, wenn jeder Lauf von
+  „ruft, wenn nötig“, „gültige Argumente“ und „hält die Grenze“ bestanden hat. Der Bericht sagt, ob
+  das zutrifft. Die übrigen Klassen wägt das Haus selbst.
+- **Ein Ergebnis gilt nur seiner Kombination.** Nach einem Wechsel von Laufzeit, Version,
+  Quantisierung oder Kontextlänge wird neu gemessen.
+- **Ergebnis eintragen:** Wert und Kennung des Messlaufs trägt die Systemverwaltung am Modelleintrag
+  mit der Grundlage „Gemessen“ ein, siehe
+  [Werkzeugfähigkeit festhalten](../administration/modelle.md#werkzeugfähigkeit-festhalten).
+- **Fällt ein sonst fähiges Modell durch,** kann die Laufzeit die Ursache sein, siehe Fehlerbilder
+  unten.
+
+**Fehlerbilder:** Die Ursachen in den ersten drei Zeilen sind noch an keiner Kombination
+nachgestellt und als Vermutung zu lesen; belegt ist nur die letzte Zeile, weil der Bericht den
+Abschlussgrund jedes Modellaufrufs festhält.
+
+| Bild im Bericht | Mögliche Ursache | Abhilfe |
+|---|---|---|
+| Das Modell sucht fast nie, antwortet aber flüssig | Kontextlänge der Laufzeit zu klein; die Laufzeit kürzt die Anfrage womöglich still um die Werkzeugbeschreibung | Kontextlänge am Server erhöhen (Ollama: `OLLAMA_CONTEXT_LENGTH`), neu messen |
+| Ohne Fluss gut, mit `streaming=true` sucht es kaum | Laufzeit verliert womöglich Werkzeugaufrufe bei der Ausgabe im Fluss | Laufzeit aktualisieren oder anderen Auswerter für Werkzeugaufrufe wählen |
+| Alle Läufe als Fehler | etwa vLLM ohne `--enable-auto-tool-choice` und passenden `--tool-call-parser` | Server mit beiden Schaltern starten |
+| Läufe als abgeschnitten | Die Antwort endete an der Längenbegrenzung (Abschlussgrund `length`), meist bei Modellen mit langem Denktext | `-Dopaa.eval.toolCalling.maxTokens` erhöhen, neu messen; dieselbe Grenze am Modelleintrag prüfen |
+
+**Datenfluss:** Fälle und Suchergebnisse sind frei erfunden und gehen nur an den angegebenen
+Endpunkt.
+
 ## Ausfall eines Modells
 
 Fällt ein Modell aus, arbeiten Anmeldung, Verwaltung und der Zugriff auf Dokumente weiter, weil kein
@@ -880,8 +1022,8 @@ Fragen und an der Fehlerquote.
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness))
-und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
+`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness);
+Details nur für die Systemverwaltung) und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
 `embedding-model` und `vector-store` `UNKNOWN` mit dem Detail `NOT_CONFIGURED`; das ist kein
 Ausfall, die Readiness bleibt `UP`. Eine Überwachung, die nur auf `DOWN` achtet, bemerkt ein nie
 eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus oder
@@ -893,7 +1035,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 |---|---|
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ | Der Host liegt in einem internen Bereich und fehlt in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, oder sein Name lässt sich nicht auflösen. Beides ergibt bewusst denselben Satz, damit die Meldung nicht verrät, ob ein interner Name existiert; die genaue Ursache nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise des Hosts prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Verbindung abgelehnt, Zeitlimit, Zertifikat, Host nicht gefunden (bei freigegebenem Host) | Der Endpunkt ist von OPAA aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers |
-| Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht |
+| API-Schlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht |
 | keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an; die Kennung von Hand eintragen |
 | Der Endpunkt meldet keine Modelle | Die Liste ist leer; bei Ollama ist noch kein Modell geladen (`ollama pull …`) |
 | Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt OPAA nicht; die Zieladresse direkt eintragen |
@@ -911,7 +1053,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell oder überspringt es ([Installation](installation.md)) |
 | Indexierung, Upload und Suche antworten „Es ist noch kein Embedding-Modell eingerichtet“, der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | Die Installation hat das Embedding-Modell übersprungen; ein regulärer Zustand, kein Fehler. Abhilfe: im Reiter „Einbettung" das erste Modell festlegen ([Erstes Modell festlegen](#erstes-modell-festlegen)). Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse, und OPAA versucht es erneut |
 | Der Start schreibt „The vector table holds chunks but no embedding model is installed“, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, „Probeeinbettung“ im Reiter „Einbettung" meldet, die Vektortabelle enthalte bereits Abschnitte | Die Vektorablage hat Abschnitte, aber es gibt kein Embedding-Modell, etwa nach einer Rücksicherung, die nur einen Teil der Datenbank zurückgespielt hat. Die Abschnitte gehören zu einem Modell, das OPAA nicht mehr kennt; ein erstes Modell darüber lehnt OPAA ab. Abhilfe: die Datenbank vollständig aus derselben Sicherung zurückspielen, die auch das Embedding-Modell enthält ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)), oder die Datenbank neu aufsetzen und installieren |
-| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modelle eines anlegen und aktivieren ([Chat-Modelle](#chat-modelle)) |
+| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modell eines anlegen und aktivieren ([Chat-Modelle](#chat-modelle)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Ein Wechsel des Embedding-Modells läuft, oder nach einer Rücksicherung passt das gespeicherte Modell nicht zum Index; den Fortschritt im Indexstatus verfolgen oder dort die Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | „Nicht alle laufenden Instanzen haben dieselbe Version" | Ein Rolling Update läuft noch; es abschließen und den Schritt wiederholen |
@@ -931,7 +1073,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Zustand unter Modelle → Spracheingabe oder Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
 | „Die Spracherkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
-| Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
+| Ein Modell mit API-Schlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Entweder liegt der Host im eigenen Netz und fehlt in der Liste der Modelle (ein Eintrag in der Liste der Quellen genügt nicht), oder der Name lässt sich nicht auflösen, etwa wegen eines Tippfehlers. Welches von beidem, steht in der WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Chat oder Einbettung scheitern, Log: „answered HTTP 3xx with a redirect; redirects are not followed“ | Der Modellserver leitet weiter, etwa von `http` auf `https` oder auf einen anderen Pfad. Die Zieladresse direkt eintragen |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |

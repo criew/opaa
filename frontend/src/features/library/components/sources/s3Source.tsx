@@ -8,7 +8,7 @@ import {
 } from '../../utils/s3Source'
 import { s3Setup } from '../setup/connectors/s3Setup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceRegistration } from '../sourceCore/types'
 
 export const s3Source: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.S3,
@@ -42,11 +42,6 @@ export const s3Source: SourceRegistration = {
       sourceCredentials: s3CredentialsOf(values),
       sourceSettings: s3SettingsOf(values),
     }),
-    nameFromSource: (values: S3SourceValues) => {
-      if (values.allBuckets) return ''
-      const first = values.scopes.find((scope) => scope.bucket.trim() !== '')
-      return first ? first.bucket.trim() : ''
-    },
     scopeNoteId: 's3-sharing-consequence',
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.',

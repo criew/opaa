@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
+import FormField from '@/shared/ui/form/FormField'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncPendingPlanResponse } from '@/shared/api/types'
 import { ageSinceLabel } from '@/features/principal'
 import DirectorySyncReportView from './DirectorySyncReportView'
 import { formatDateTime } from './directorySyncLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 interface PendingPlanSectionProps {
   plan: DirectorySyncPendingPlanResponse
@@ -31,59 +32,82 @@ export default function PendingPlanSection({
   onDiscard,
 }: PendingPlanSectionProps) {
   const [reason, setReason] = useState('')
+  const [reasonMissing, setReasonMissing] = useState(false)
+  const reasonRef = useRef<HTMLInputElement>(null)
+  const blockerRef = useRef<HTMLParagraphElement>(null)
   const trimmed = reason.trim()
 
-  async function decide(action: (reason: string) => Promise<boolean>) {
+  /** Both answers stay active: a missing reason is told at its field, a blocker takes the focus. */
+  async function decide(action: (reason: string) => Promise<boolean>, blocker: string | null) {
+    if (busy) return
+    if (trimmed === '') {
+      setReasonMissing(true)
+      reasonRef.current?.focus()
+      return
+    }
+    if (blocker) {
+      blockerRef.current?.focus()
+      return
+    }
     if (await action(trimmed)) setReason('')
   }
 
   return (
     <Box>
-      <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+      <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
         Wartet seit {ageSinceLabel(plan.createdAt)} auf Ihre Entscheidung
       </Typography>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
-        Vorgelegt am {formatDateTime(plan.createdAt)}. Der Lauf hätte mehr entzogen oder gesperrt,
-        als OPAA ohne Rückfrage anwendet; bis zu Ihrer Entscheidung gilt der bisherige Stand. Beim
-        Bestätigen liest OPAA das Verzeichnis neu — weicht es ab, wird der Plan neu vorgelegt statt
-        angewendet.
+      <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
+        Erstmals vorgelegt am {formatDateTime(plan.createdAt)}. Der Lauf hätte mehr entzogen oder
+        gesperrt, als OPAA ohne Rückfrage anwendet; bis zu Ihrer Entscheidung gilt der bisherige
+        Stand. Beim Bestätigen liest OPAA das Verzeichnis neu — weicht es ab, wird der Plan neu
+        vorgelegt statt angewendet.
       </Typography>
 
-      <Typography component="h4" sx={{ fontSize: 13, fontWeight: 600, mt: 2 }}>
+      <Typography component="h4" sx={{ fontSize: fontSize.text, fontWeight: 600, mt: 2 }}>
         Was der Plan ändern würde
       </Typography>
       <DirectorySyncReportView report={plan.report} showOutcome={false} />
 
-      <TextField
+      <FormField
         size="small"
         fullWidth
         required
         label="Grund der Entscheidung"
-        helperText="Pflichtangabe, geht ins Protokoll."
+        inputRef={reasonRef}
+        error={reasonMissing}
+        helperText={reasonMissing ? 'Grund fehlt' : 'Pflichtangabe, geht ins Protokoll.'}
         value={reason}
-        onChange={(event) => setReason(event.target.value)}
+        onChange={(event) => {
+          setReason(event.target.value)
+          setReasonMissing(false)
+        }}
         sx={{ mt: 2 }}
       />
       <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
         <Button
           variant="contained"
           size="small"
-          disabled={busy || trimmed === '' || Boolean(confirmBlocker)}
-          onClick={() => void decide(onConfirm)}
+          disabled={busy}
+          onClick={() => void decide(onConfirm, confirmBlocker)}
         >
           Plan bestätigen
         </Button>
         <Button
           size="small"
           color="error"
-          disabled={busy || trimmed === ''}
-          onClick={() => void decide(onDiscard)}
+          disabled={busy}
+          onClick={() => void decide(onDiscard, null)}
         >
           Plan verwerfen
         </Button>
       </Stack>
       {confirmBlocker && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+        <Typography
+          ref={blockerRef}
+          tabIndex={-1}
+          sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1 }}
+        >
           {confirmBlocker}
         </Typography>
       )}

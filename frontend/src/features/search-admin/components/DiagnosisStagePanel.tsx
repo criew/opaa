@@ -3,15 +3,10 @@ import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import Box from '@mui/material/Box'
 import StateDot from '@/shared/ui/StateDot'
+import AdminList, { ListText } from '@/shared/ui/list/AdminList'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -20,13 +15,18 @@ import type {
   RetrievalStageResponse,
 } from '@/shared/api/types'
 import { isUuid } from '@/shared/utils/format'
-import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
+import {
+  formatStageDuration,
+  translateListLabel,
+  translateStageNote,
+} from '../utils/retrievalProtocolText'
 import {
   OUTCOME_LABELS,
   REASON_LABELS,
   STAGE_LABELS,
   STAGE_STATUS_LABELS,
 } from '../utils/searchAdminLabels'
+import { fontSize } from '@/shared/theme/tokens'
 
 /** The two navigations every diagnosis row offers: open one chunk, or jump to its document. */
 export interface ChunkNavigation {
@@ -34,32 +34,47 @@ export interface ChunkNavigation {
   onShowDocument: (documentId: string) => void
 }
 
-/** The document cell of a diagnosis row: a link into the document's chunk list where the key is an id. */
-export function DocumentTitleCell({
+/**
+ * The document of a diagnosis row with its library below: a link into the document's chunk list
+ * where the key is an id.
+ */
+export function DocumentTitle({
   documentKey,
   documentTitle,
+  libraryName,
   onShowDocument,
 }: {
   documentKey: string
   documentTitle: string | null | undefined
+  libraryName: string | null | undefined
   onShowDocument: (documentId: string) => void
 }) {
   const label = documentTitle ?? documentKey
-  if (!isUuid(documentKey)) {
-    return <TableCell>{label}</TableCell>
-  }
   return (
-    <TableCell>
-      <Link
-        component="button"
-        type="button"
-        variant="body2"
-        onClick={() => onShowDocument(documentKey)}
-        sx={{ textAlign: 'left', wordBreak: 'break-word' }}
-      >
-        {label}
-      </Link>
-    </TableCell>
+    <Box sx={{ minWidth: 0 }}>
+      {isUuid(documentKey) ? (
+        <Link
+          component="button"
+          type="button"
+          variant="body2"
+          title={label}
+          onClick={() => onShowDocument(documentKey)}
+          sx={{
+            display: 'block',
+            maxWidth: '100%',
+            textAlign: 'left',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </Link>
+      ) : (
+        <ListText>{label}</ListText>
+      )}
+      <ListText secondary>{libraryName ?? '—'}</ListText>
+    </Box>
   )
 }
 
@@ -103,6 +118,7 @@ export default function StagePanel({
   stage: RetrievalStageResponse
   navigation: ChunkNavigation
 }) {
+  const duration = formatStageDuration(stage.durationMs)
   const showContributions = stage.verdicts.some(
     (verdict) => (verdict.contributions?.length ?? 0) > 0,
   )
@@ -110,15 +126,16 @@ export default function StagePanel({
     <Accordion slotProps={{ heading: { component: 'h3' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+          <Typography sx={{ fontSize: fontSize.text, fontWeight: 600 }}>
             {STAGE_LABELS[stage.stage]}
           </Typography>
           <StateDot
             tone={stage.status === 'EXECUTED' ? 'neutral' : 'warning'}
             label={STAGE_STATUS_LABELS[stage.status]}
           />
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
+          <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {stage.incomingCount} → {stage.outgoingCount} Kandidaten
+            {duration && ` · ${duration}`}
           </Typography>
         </Stack>
       </AccordionSummary>
@@ -137,53 +154,74 @@ export default function StagePanel({
             Diese Stufe hat über keinen einzelnen Kandidaten entschieden.
           </Typography>
         ) : (
-          <TableContainer>
-            <Table size="small" aria-label={`Kandidaten der Stufe ${STAGE_LABELS[stage.stage]}`}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Dokument</TableCell>
-                  <TableCell>Bibliothek</TableCell>
-                  <TableCell>Ergebnis</TableCell>
-                  <TableCell>Begründung</TableCell>
-                  <TableCell>Liste</TableCell>
-                  <TableCell align="right">Rang</TableCell>
-                  <TableCell align="right">Wert</TableCell>
-                  {showContributions && <TableCell>Beiträge</TableCell>}
-                  <TableCell align="center">Chunk</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {stage.verdicts.map((verdict) => (
-                  <TableRow key={`${verdict.chunkId}-${verdict.listLabel ?? 'fusioniert'}`}>
-                    <DocumentTitleCell
-                      documentKey={verdict.documentKey}
-                      documentTitle={verdict.documentTitle}
-                      onShowDocument={navigation.onShowDocument}
-                    />
-                    <TableCell>{verdict.libraryName ?? '—'}</TableCell>
-                    <TableCell>{OUTCOME_LABELS[verdict.outcome]}</TableCell>
-                    <TableCell>{REASON_LABELS[verdict.reason]}</TableCell>
-                    <TableCell>{translateListLabel(verdict.listLabel)}</TableCell>
-                    <TableCell align="right">{verdict.rank ?? '—'}</TableCell>
-                    <TableCell align="right">
-                      {verdict.value == null ? '—' : verdict.value.toFixed(4)}
-                    </TableCell>
-                    {showContributions && (
-                      <TableCell>
+          <AdminList
+            label={`Kandidaten der Stufe ${STAGE_LABELS[stage.stage]}`}
+            rows={stage.verdicts}
+            rowKey={(verdict) => `${verdict.chunkId}-${verdict.listLabel ?? 'fusioniert'}`}
+            rowLabel={(verdict) => verdict.documentTitle ?? verdict.documentKey}
+            minWidth={760}
+            columns={[
+              {
+                id: 'document',
+                head: 'Dokument',
+                cell: (verdict) => (
+                  <DocumentTitle
+                    documentKey={verdict.documentKey}
+                    documentTitle={verdict.documentTitle}
+                    libraryName={verdict.libraryName}
+                    onShowDocument={navigation.onShowDocument}
+                  />
+                ),
+              },
+              {
+                id: 'outcome',
+                head: 'Ergebnis',
+                width: '24%',
+                cell: (verdict) => (
+                  <>
+                    <ListText>{OUTCOME_LABELS[verdict.outcome]}</ListText>
+                    <ListText secondary>{REASON_LABELS[verdict.reason]}</ListText>
+                  </>
+                ),
+              },
+              {
+                id: 'list',
+                head: 'Liste',
+                width: '14%',
+                cell: (verdict) => translateListLabel(verdict.listLabel),
+              },
+              {
+                id: 'rank',
+                head: 'Rang',
+                width: 64,
+                align: 'right',
+                cell: (verdict) => verdict.rank ?? '—',
+              },
+              {
+                id: 'value',
+                head: 'Wert',
+                width: 88,
+                align: 'right',
+                cell: (verdict) => (verdict.value == null ? '—' : verdict.value.toFixed(4)),
+              },
+              ...(showContributions
+                ? [
+                    {
+                      id: 'contributions',
+                      head: 'Beiträge',
+                      width: '20%',
+                      wrap: true,
+                      cell: (verdict: (typeof stage.verdicts)[number]) => (
                         <ContributionList contributions={verdict.contributions ?? []} />
-                      </TableCell>
-                    )}
-                    <TableCell align="center">
-                      <ShowChunkButton
-                        chunkId={verdict.chunkId}
-                        onShowChunk={navigation.onShowChunk}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+            rowActions={(verdict) => (
+              <ShowChunkButton chunkId={verdict.chunkId} onShowChunk={navigation.onShowChunk} />
+            )}
+          />
         )}
       </AccordionDetails>
     </Accordion>
