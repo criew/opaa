@@ -1030,7 +1030,7 @@ describe('InstallationPage', () => {
       await openTranscriptionStep(user)
       await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
       await user.type(field('Modell-Kennung'), 'whisper-1')
-      const liveSwitch = screen.getByRole('switch', { name: 'Live-Transkript einschalten' })
+      const liveSwitch = screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' })
       expect(liveSwitch).not.toBeChecked()
       expect(screen.getByText(/Das Diktat bleibt immer verfügbar/)).toBeInTheDocument()
       expect(screen.queryByRole('radiogroup', { name: 'Live-Dienst' })).not.toBeInTheDocument()
@@ -1075,7 +1075,7 @@ describe('InstallationPage', () => {
       const user = userEvent.setup()
       await openTranscriptionStep(user)
 
-      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
       expect(field('Basis-Adresse')).toHaveValue('https://api.openai.com/v1')
       expect(field('Modell-Kennung')).toHaveValue('gpt-4o-mini-transcribe')
       expect(screen.getByText(/passend zum Live-Dienst vorbelegt/)).toBeInTheDocument()
@@ -1097,7 +1097,7 @@ describe('InstallationPage', () => {
       await openTranscriptionStep(user)
       await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
       await user.type(field('Modell-Kennung'), 'whisper-1')
-      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
 
       await submitStep(user)
 
@@ -1125,7 +1125,7 @@ describe('InstallationPage', () => {
       await openTranscriptionStep(user)
       await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
       await user.type(field('Modell-Kennung'), 'whisper-1')
-      await user.click(screen.getByRole('switch', { name: 'Live-Transkript einschalten' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Live-Transkript einschalten' }))
       const liveUrl = field('Live-Adresse')
       await user.clear(liveUrl)
       await user.type(liveUrl, 'https://api.openai.com/v1/realtime')

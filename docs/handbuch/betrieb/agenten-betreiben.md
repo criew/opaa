@@ -25,7 +25,7 @@ kleine Kontextlänge.
 
 Eine bestehende Installation ändert durch das Update nichts an ihrem Verhalten:
 
-- **Schalter „Agenten“ und „Vorlagen“ sind aus.** Niemand sieht Agenten oder Vorlagen, das `@` im
+- **„Agenten“ und „Vorlagen“ sind aus.** Niemand sieht Agenten oder Vorlagen, das `@` im
   Chat bietet nur Wissen an, und die Anlegerechte dafür erscheinen nicht.
 - **Die Werkzeugfähigkeit jedes Chat-Modells ist „Ungeprüft“.** Eine Frage an einen Agenten würde
   abgelehnt, bis sie festgehalten ist.
@@ -54,7 +54,8 @@ Zum Einschalten, in dieser Reihenfolge:
 6. Frist des Schrittprotokolls mit Datenschutz und Personalvertretung abstimmen
    ([Datenschutz einstellen](../administration/datenschutz.md)).
 
-**Zurückrollen:** Den Schalter „Agenten“ ausschalten genügt. Er wirkt ohne Neustart auf allen
+**Zurückrollen:** Den Haken bei „Agenten in dieser Installation anbieten“ entfernen und „Speichern“
+genügt. Das wirkt ohne Neustart auf allen
 Instanzen; danach beginnt kein Agentenlauf mehr, und der gewöhnliche Chat läuft weiter. Angelegte
 Agenten, Vorlagen und gespeicherte Antworten bleiben und sind nach dem Wiedereinschalten unverändert
 da. Ein Zurückgehen auf die vorige Version ist dafür nicht nötig.

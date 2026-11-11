@@ -87,8 +87,8 @@ läuft weiter.
 
 ## Werkzeuge prüfen
 
-Ist der Schalter „Agenten“ eingeschaltet, misst OPAA die Werkzeugfähigkeit eines Chat-Modells selbst,
-ohne Quellstand und ohne Kommandozeile. Ist er aus, fehlt der Menüpunkt.
+Sind Agenten eingeschaltet, misst OPAA die Werkzeugfähigkeit eines Chat-Modells selbst,
+ohne Quellstand und ohne Kommandozeile. Sind sie aus, fehlt der Menüpunkt.
 
 Für Agenten braucht OPAA ein Modell mindestens der Klasse Gemma 4 31B. Kleinere Modelle rufen
 Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorher.
@@ -143,7 +143,7 @@ ersetzt es nicht: Das Diktat bleibt immer verfügbar, und fällt der Live-Dienst
 Aufnahme wie beim Diktat verarbeitet. Im Chat gibt es keinen Umschalter; das Mikrofon nutzt Live von
 selbst, wenn es verfügbar ist. Reiter „Spracheingabe“, Abschnitt „Live-Transkript (optional)“:
 
-1. „Live-Transkript einschalten“ anschalten.
+1. „Live-Transkript einschalten“ ankreuzen.
 2. Den „Live-Dienst“ wählen: „OpenAI“, „vLLM (eigener Server)“ oder „Mistral“. „Live-Adresse“ und
    „Live-Modell“ werden dabei vorbelegt; beim eigenen Server den Host anpassen. Sind Basis-Adresse
    und Modell-Kennung des Diktats noch leer, belegt die Wahl auch sie vor, siehe
