@@ -13,9 +13,28 @@ import {
   createLocalAccount,
   fillReportWindow,
   firstAuditorLinkPath,
+  localDateTime,
   passSecond,
   setPasswordByLink,
 } from "../../fixtures/revision";
+
+// regression guard for #3803: Chromium stores a datetime-local value without its seconds when they
+// are 00, and fill() refuses a value the field does not keep as given ("Malformed value").
+test("Zeitfenster der Auskunft nimmt einen Zeitpunkt auf Sekunde 00 an", async ({ page }) => {
+  await page.setContent(
+    '<label>Von <input type="datetime-local"></label>' +
+      '<label>Bis <input type="datetime-local"></label>' +
+      "<label>Anlass <input></label>",
+  );
+  const onFullMinute = await page.evaluate(() => new Date(2026, 10, 11, 22, 31, 0).getTime());
+  const withSeconds = onFullMinute + 7_000;
+
+  await fillReportWindow(page, { from: onFullMinute, to: withSeconds, reason: "Sekunde 00" });
+
+  await expect(page.getByLabel("Von")).toHaveValue("2026-11-11T22:31");
+  await expect(page.getByLabel("Bis")).toHaveValue("2026-11-11T22:31:07");
+  expect(await localDateTime(page, onFullMinute)).toBe("2026-11-11T22:31");
+});
 
 /**
  * Revision and proof: the first auditor named by the operation, the four-eyes path of a role

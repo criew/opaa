@@ -132,15 +132,17 @@ export async function setPasswordByLink(page: Page, path: string, password: stri
 
 /**
  * The value a datetime-local field takes for `epochMillis`, in the browser's own time zone and to
- * the second - the report forms read the field as local time.
+ * the second - the report forms read the field as local time. Seconds of 00 are left out, as the
+ * field stores them; fill() refuses any value the field would keep differently.
  */
 export async function localDateTime(page: Page, epochMillis: number): Promise<string> {
   return page.evaluate((millis) => {
     const d = new Date(millis);
     const pad = (n: number) => String(n).padStart(2, "0");
+    const seconds = d.getSeconds() === 0 ? "" : `:${pad(d.getSeconds())}`;
     return (
       `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-      `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      `T${pad(d.getHours())}:${pad(d.getMinutes())}${seconds}`
     );
   }, epochMillis);
 }
