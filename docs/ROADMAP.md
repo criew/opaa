@@ -3,7 +3,7 @@
 Was im Zielbild der [Vision](./VISION.md) noch nicht gebaut ist, nach Phasen geordnet. Was gebaut ist,
 steht im [Handbuch](./handbuch/README.md) und im [Gesamtstand](./fortschritt/gesamtstand.md).
 
-Stand: 09.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
+Stand: 12.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
 angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ## Phase 1 — Souveräner Wissensassistent (Rest)
@@ -179,8 +179,10 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ### J · Betrieb & Deployment
 
-- **Getrennte Dienste für große Installationen** — Betriebsarchitektur mit getrennten Speicher-Backends.
-  _(Epic #1439)_
+- **Getrennte Dienste für große Installationen** — Betriebsarchitektur für große Installationen.
+  Getrennte Speicher-Backends sind entschieden: keine Trennung, eine PostgreSQL je Installation; erste
+  Ausbaustufe ist eine Lesereplik für den Suchpfad, sobald die Messung aus #3492 sie begründet
+  (ADR-0074). _(Epic #1439)_
 - **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation, Blau-Grün-Umschaltung,
   getrennte Netzbereiche für Oberfläche, Anwendung, Daten und Modelle.
 - **Offene Betriebsfragen** — Voreinstellungen für RTO/RPO, Bündelung von Abbildern, Modellgewichten und

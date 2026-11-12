@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch ADR-0005, ADR-0014, ADR-0025, ADR-0033, ADR-0034, ADR-0042, ADR-0053, ADR-0056
+Akzeptiert · zuletzt geändert 2026-11-12 · ergänzt durch ADR-0005, ADR-0014, ADR-0025, ADR-0033, ADR-0034, ADR-0042, ADR-0053, ADR-0056, ADR-0074
 
 ## Kontext
 
@@ -38,7 +38,8 @@ nach ADR-0034 und ADR-0056; die Tabelle `vector_store` legt die knowledge-Migrat
 Spring AI sie anlegen würde (HNSW-Index, Vorgabe Cosinus-Distanz). Schreibzugriff läuft über Spring AIs `PgVectorStore`
 (`indexing.chunk.VectorChunkStore`), die Suche über eigenes SQL mit `JdbcTemplate`
 (`retrieval.search.VectorChunkSearch`, iterativer HNSW-Scan innerhalb des Rechtefilters). pgvector
-ist der einzige unterstützte Vektorspeicher (ADR-0014).
+ist der einzige unterstützte Vektorspeicher (ADR-0014). Metadaten und Abschnitte bleiben in dieser einen
+Datenbank; eine Trennung nur nach den Ausbaustufen von [ADR-0074](0074-ein-datenspeicher-fuer-metadaten-und-abschnitte.md).
 
 ### 4. Dokumentformate: eigenes Modul `io.opaa.format`
 
