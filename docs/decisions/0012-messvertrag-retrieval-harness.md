@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-07 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+Akzeptiert · zuletzt geändert 2026-11-14 · ergänzt durch ADR-0013 (Fehlerkriterium) und
 ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
@@ -24,7 +24,7 @@ die Fallklassen und Zustandsfelder der Datensätze in `eval/golden/README.md`.
 ## Entscheidung
 
 Gegliedert nach Messpfad; die `####`-Überschriften tragen die stabilen Entscheidungsnummern, die
-deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–73 auf.
+deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–74 auf.
 
 ### Regeln für alle Messpfade
 
@@ -461,6 +461,22 @@ Pin nicht (`ollamaCpuBackend: null`); mit `-Dopaa.eval.allowGpu=true` trägt der
 `unpinned: gpu allowed`; mit externem Chat-Modell (`-Dopaa.eval.chatBaseUrl`/`chatModel`, #1674)
 verlangt die Prüfung nur den Embedding-Runner. Alle drei Läufe sind gegen keine Baseline vergleichbar.
 
+#### 74. Jeder zerlegende Lauf beginnt auf einem frisch geladenen Chat-Runner
+
+`MehrfachlaufRule` entlädt das gepinnte Chat-Modell im Ollama-Container des Harness vor jedem
+zerlegenden Lauf (`EvalChatRunner`, `keep_alive: 0`, wartet, bis `/api/ps` es nicht mehr führt).
+Jeder der drei Läufe beginnt damit im selben Zustand, unabhängig von Rechner, Laufzeit und
+Keep-alive; der Zustand gleicht dem, aus dem die Baselines stammen, und ist kein Festpunkt. Eine
+Streuung über 0 zwischen den Läufen zeigt deshalb eine verbliebene Quelle von Nichtdeterminismus an.
+Ein externes Chat-Modell und ein externer Ollama-Endpunkt werden nie entladen.
+
+Begründung: Der Chat-Runner von Ollama hält den KV-Zustand früherer Prompts und setzt jeden neuen
+Prompt auf dem längsten gemeinsamen Präfix eines gespeicherten auf. Ein so übernommenes Präfix wurde
+in einem anderen Stapel gerechnet und liefert minimal andere Logits, an denen die Zerlegung bei
+Temperatur 0 kippt; ohne Entladen hinge der Messzustand daran, ob die Bereitschaftsprüfung noch
+innerhalb der Keep-alive-Zeit lag. Ein externer Endpunkt gehört dem Entwickler, und sein Lauf ist
+ohnehin gegen keine Baseline vergleichbar.
+
 #### 69. Stetigkeitsprüfung vor jeder Messung
 
 `EvalEmbeddingContinuity.require` bettet nach dem Modell-Pull 21 Präfixe eines Korpustexts zwischen
@@ -510,7 +526,7 @@ modellgestützte Extraktion und Vokabular, Fundort und Schnittgrenzen (`ChunkLoc
 `HeadingSectionSplitter`), Bestandsläufe, Zweige ohne Beispiel — eine Änderung dort verlangt eine
 bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht.
 
-### Nummernverzeichnis der Entscheidungen 1–73
+### Nummernverzeichnis der Entscheidungen 1–74
 
 | Nummer | Steht heute in |
 |---|---|
@@ -543,7 +559,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 | 63 | Pipeline-Pfad, Entscheidung 63 |
 | 66 | Regeln, Entscheidung 66 |
 | 67 | Pipeline-Pfad, Entscheidung 11 (Tabelle: ohne Nachbar-Chunks) |
-| 68, 69 | Eval-Umgebung |
+| 68, 69, 74 | Eval-Umgebung |
 
 ## Konsequenzen
 

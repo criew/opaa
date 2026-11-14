@@ -7,9 +7,10 @@ import java.util.function.Supplier;
 
 /**
  * The Mehrfachlauf-Regel itself (ADR-0012, Entscheidung 42), in one place for every caller that
- * measures the pipeline: a configuration with active Teilfragen-Zerlegung has an LLM component and
- * is therefore not deterministic — it is measured {@link
- * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and represented by its median run. Every other
+ * measures the pipeline: a configuration with active Teilfragen-Zerlegung has an LLM component — it
+ * is measured {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times, each run on a freshly
+ * loaded chat runner (Entscheidung 74), and represented by its median run. The runs are expected to
+ * be identical; a spread above zero signals a remaining source of nondeterminism. Every other
  * configuration is measured exactly once.
  *
  * <p>Shared by {@link VariantRunner}, the single-configuration pipeline path ({@link
@@ -50,11 +51,26 @@ final class MehrfachlaufRule {
       boolean decompositionEnabled,
       Supplier<T> measure,
       Function<T, MultiRunAggregator.RunView> view) {
+    return measure(decompositionEnabled, measure, view, EvalChatRunner::startFresh);
+  }
+
+  /**
+   * The rule with an explicit {@code startFresh}, run before every decomposing run and never
+   * without decomposition: each of the repeated runs starts from the same chat-runner state instead
+   * of the cached prompts its predecessor (or the readiness probe) left behind, see {@link
+   * EvalChatRunner}.
+   */
+  static <T> Measurement<T> measure(
+      boolean decompositionEnabled,
+      Supplier<T> measure,
+      Function<T, MultiRunAggregator.RunView> view,
+      Runnable startFresh) {
     if (!decompositionEnabled) {
       return new Measurement<>(measure.get(), null);
     }
     List<T> runs = new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
     for (int i = 0; i < MultiRunAggregator.DECOMPOSITION_RUN_COUNT; i++) {
+      startFresh.run();
       runs.add(measure.get());
     }
     MultiRunSummary summary = MultiRunAggregator.summarizeViews(runs.stream().map(view).toList());
