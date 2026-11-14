@@ -182,11 +182,10 @@ public final class ConversationHarnessSupport {
               requestedNoteCap);
       ConversationRetrievalEvaluator.NoteExtraction noteExtraction =
           noteExtractionFor(memoryProfile, chatNoteExtractionService);
-      // Mehrfachlauf-Regel (ADR-0012), through the shared rule: this
-      // path always decomposes and is therefore never deterministic. It carries the highest LLM
-      // share of the three paths - one decomposition call per *turn*, not per case - so the spread
-      // and the deviation count are not decoration here but the statement about how stable the
-      // measurement is at all.
+      // Mehrfachlauf-Regel (ADR-0012), through the shared rule: this path always decomposes and
+      // carries the highest LLM share of the three paths - one decomposition call per *turn*, not
+      // per case. Every run starts on a fresh chat runner, so the runs are expected to agree; a
+      // spread or deviation count above zero points at a remaining nondeterminism source.
       MehrfachlaufRule.Measurement<ConversationEvaluationReport> measurement =
           MehrfachlaufRule.measure(
               true,

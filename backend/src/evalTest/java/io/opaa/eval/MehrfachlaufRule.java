@@ -7,9 +7,10 @@ import java.util.function.Supplier;
 
 /**
  * The Mehrfachlauf-Regel itself (ADR-0012, Entscheidung 42), in one place for every caller that
- * measures the pipeline: a configuration with active Teilfragen-Zerlegung has an LLM component and
- * is therefore not deterministic — it is measured {@link
- * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and represented by its median run. Every other
+ * measures the pipeline: a configuration with active Teilfragen-Zerlegung has an LLM component — it
+ * is measured {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times, each run on a freshly
+ * loaded chat runner (Entscheidung 74), and represented by its median run. The runs are expected to
+ * be identical; a spread above zero signals a remaining source of nondeterminism. Every other
  * configuration is measured exactly once.
  *
  * <p>Shared by {@link VariantRunner}, the single-configuration pipeline path ({@link

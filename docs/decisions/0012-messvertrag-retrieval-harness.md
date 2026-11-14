@@ -24,7 +24,7 @@ die Fallklassen und Zustandsfelder der Datensätze in `eval/golden/README.md`.
 ## Entscheidung
 
 Gegliedert nach Messpfad; die `####`-Überschriften tragen die stabilen Entscheidungsnummern, die
-deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–73 auf.
+deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–74 auf.
 
 ### Regeln für alle Messpfade
 
@@ -463,16 +463,19 @@ verlangt die Prüfung nur den Embedding-Runner. Alle drei Läufe sind gegen kein
 
 #### 74. Jeder zerlegende Lauf beginnt auf einem frisch geladenen Chat-Runner
 
-Der Chat-Runner von Ollama hält den KV-Zustand früherer Prompts und setzt jeden neuen Prompt auf dem
-längsten gemeinsamen Präfix eines gespeicherten auf. Ein so übernommenes Präfix wurde in einem
-anderen Stapel gerechnet und liefert minimal andere Logits; die Zerlegung bei Temperatur 0 kippt
-daran. Ohne Gegenmaßnahme hing der Messzustand an der Keep-alive-Zeit von fünf Minuten: Endete die
-Indizierung früher, rechnete der Lauf auf dem Runner der Bereitschaftsprüfung weiter, sonst auf
-einem neuen (#3814). `MehrfachlaufRule` entlädt das gepinnte Chat-Modell deshalb vor jedem
+`MehrfachlaufRule` entlädt das gepinnte Chat-Modell im Ollama-Container des Harness vor jedem
 zerlegenden Lauf (`EvalChatRunner`, `keep_alive: 0`, wartet, bis `/api/ps` es nicht mehr führt).
-Jeder der drei Läufe beginnt damit im selben Zustand, unabhängig von Rechner und Laufzeit. Der
-Zustand gleicht dem, aus dem die Baselines stammen, und ist kein Festpunkt. Ein externes Chat-Modell
-wird nicht entladen.
+Jeder der drei Läufe beginnt damit im selben Zustand, unabhängig von Rechner, Laufzeit und
+Keep-alive; der Zustand gleicht dem, aus dem die Baselines stammen, und ist kein Festpunkt. Eine
+Streuung über 0 zwischen den Läufen zeigt deshalb eine verbliebene Quelle von Nichtdeterminismus an.
+Ein externes Chat-Modell und ein externer Ollama-Endpunkt werden nie entladen.
+
+Begründung: Der Chat-Runner von Ollama hält den KV-Zustand früherer Prompts und setzt jeden neuen
+Prompt auf dem längsten gemeinsamen Präfix eines gespeicherten auf. Ein so übernommenes Präfix wurde
+in einem anderen Stapel gerechnet und liefert minimal andere Logits, an denen die Zerlegung bei
+Temperatur 0 kippt; ohne Entladen hinge der Messzustand daran, ob die Bereitschaftsprüfung noch
+innerhalb der Keep-alive-Zeit lag. Ein externer Endpunkt gehört dem Entwickler, und sein Lauf ist
+ohnehin gegen keine Baseline vergleichbar.
 
 #### 69. Stetigkeitsprüfung vor jeder Messung
 

@@ -291,12 +291,18 @@ final class EvalChatModel {
   }
 
   /**
-   * Installs {@link #MODEL} and registers its runner at {@code ollamaEndpoint}, so every
-   * decomposing measurement run starts on a freshly loaded one ({@link EvalChatRunner}).
+   * Installs {@link #MODEL} and, in the harness's own Ollama container, registers its runner so
+   * every decomposing measurement run starts on a freshly loaded one ({@link EvalChatRunner}). An
+   * external Ollama endpoint ({@link EvalOllamaEndpoint#isExternal()}) belongs to the developer and
+   * is never unloaded: such a run is not baseline-comparable anyway.
    */
   private static void installPinned(JdbcTemplate jdbcTemplate, String ollamaEndpoint) {
     install(jdbcTemplate, UUID.randomUUID(), ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
-    EvalChatRunner.register(ollamaEndpoint, MODEL);
+    if (EvalOllamaEndpoint.isExternal()) {
+      EvalChatRunner.clear();
+    } else {
+      EvalChatRunner.register(ollamaEndpoint, MODEL);
+    }
   }
 
   private static void install(

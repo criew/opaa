@@ -15,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Starts every decomposing measurement run on a freshly loaded chat runner (ADR-0012, Entscheidung
- * 54). The Ollama chat runner keeps the KV state of earlier prompts and reuses it for any later
+ * 74). The Ollama chat runner keeps the KV state of earlier prompts and reuses it for any later
  * prompt sharing a prefix; a prefix computed in another batch yields slightly different logits, so
  * greedy output at temperature 0 depends on which requests the runner has seen. Unloading the model
  * before each run makes that history the run's own, independent of keep-alive timing.
@@ -32,7 +32,7 @@ final class EvalChatRunner {
 
   private EvalChatRunner() {}
 
-  /** The pinned chat model at an Ollama endpoint this harness run owns. */
+  /** The pinned chat model in the Ollama container this harness run started. */
   record Target(String ollamaEndpoint, String model) {}
 
   /** Makes {@code model} at {@code ollamaEndpoint} the runner {@link #startFresh} unloads. */
@@ -41,8 +41,8 @@ final class EvalChatRunner {
   }
 
   /**
-   * Forgets the registered runner: an external chat model is not served by an endpoint this run
-   * controls, and its Befundlauf is not deterministic anyway.
+   * Forgets the registered runner: an external chat model or an external Ollama endpoint is not
+   * served by a container this run started, and such a run is never baseline-comparable anyway.
    */
   static void clear() {
     registered = null;
@@ -67,8 +67,7 @@ final class EvalChatRunner {
    * Throws if the endpoint refuses or the model is still loaded after {@link #UNLOAD_TIMEOUT}.
    */
   static void unload(String ollamaEndpoint, String model) {
-    HttpClient client = HttpClient.newHttpClient();
-    try {
+    try (HttpClient client = HttpClient.newHttpClient()) {
       HttpResponse<String> response =
           client.send(
               HttpRequest.newBuilder(URI.create(ollamaEndpoint + "/api/generate"))
