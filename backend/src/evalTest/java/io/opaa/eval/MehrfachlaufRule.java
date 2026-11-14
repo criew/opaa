@@ -50,11 +50,26 @@ final class MehrfachlaufRule {
       boolean decompositionEnabled,
       Supplier<T> measure,
       Function<T, MultiRunAggregator.RunView> view) {
+    return measure(decompositionEnabled, measure, view, EvalChatRunner::startFresh);
+  }
+
+  /**
+   * The rule with an explicit {@code startFresh}, run before every decomposing run and never
+   * without decomposition: each of the repeated runs starts from the same chat-runner state instead
+   * of the cached prompts its predecessor (or the readiness probe) left behind, see {@link
+   * EvalChatRunner}.
+   */
+  static <T> Measurement<T> measure(
+      boolean decompositionEnabled,
+      Supplier<T> measure,
+      Function<T, MultiRunAggregator.RunView> view,
+      Runnable startFresh) {
     if (!decompositionEnabled) {
       return new Measurement<>(measure.get(), null);
     }
     List<T> runs = new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
     for (int i = 0; i < MultiRunAggregator.DECOMPOSITION_RUN_COUNT; i++) {
+      startFresh.run();
       runs.add(measure.get());
     }
     MultiRunSummary summary = MultiRunAggregator.summarizeViews(runs.stream().map(view).toList());

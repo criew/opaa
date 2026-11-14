@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-07 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+Akzeptiert · zuletzt geändert 2026-11-14 · ergänzt durch ADR-0013 (Fehlerkriterium) und
 ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
@@ -461,6 +461,19 @@ Pin nicht (`ollamaCpuBackend: null`); mit `-Dopaa.eval.allowGpu=true` trägt der
 `unpinned: gpu allowed`; mit externem Chat-Modell (`-Dopaa.eval.chatBaseUrl`/`chatModel`, #1674)
 verlangt die Prüfung nur den Embedding-Runner. Alle drei Läufe sind gegen keine Baseline vergleichbar.
 
+#### 74. Jeder zerlegende Lauf beginnt auf einem frisch geladenen Chat-Runner
+
+Der Chat-Runner von Ollama hält den KV-Zustand früherer Prompts und setzt jeden neuen Prompt auf dem
+längsten gemeinsamen Präfix eines gespeicherten auf. Ein so übernommenes Präfix wurde in einem
+anderen Stapel gerechnet und liefert minimal andere Logits; die Zerlegung bei Temperatur 0 kippt
+daran. Ohne Gegenmaßnahme hing der Messzustand an der Keep-alive-Zeit von fünf Minuten: Endete die
+Indizierung früher, rechnete der Lauf auf dem Runner der Bereitschaftsprüfung weiter, sonst auf
+einem neuen (#3814). `MehrfachlaufRule` entlädt das gepinnte Chat-Modell deshalb vor jedem
+zerlegenden Lauf (`EvalChatRunner`, `keep_alive: 0`, wartet, bis `/api/ps` es nicht mehr führt).
+Jeder der drei Läufe beginnt damit im selben Zustand, unabhängig von Rechner und Laufzeit. Der
+Zustand gleicht dem, aus dem die Baselines stammen, und ist kein Festpunkt. Ein externes Chat-Modell
+wird nicht entladen.
+
 #### 69. Stetigkeitsprüfung vor jeder Messung
 
 `EvalEmbeddingContinuity.require` bettet nach dem Modell-Pull 21 Präfixe eines Korpustexts zwischen
@@ -510,7 +523,7 @@ modellgestützte Extraktion und Vokabular, Fundort und Schnittgrenzen (`ChunkLoc
 `HeadingSectionSplitter`), Bestandsläufe, Zweige ohne Beispiel — eine Änderung dort verlangt eine
 bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht.
 
-### Nummernverzeichnis der Entscheidungen 1–73
+### Nummernverzeichnis der Entscheidungen 1–74
 
 | Nummer | Steht heute in |
 |---|---|
@@ -543,7 +556,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 | 63 | Pipeline-Pfad, Entscheidung 63 |
 | 66 | Regeln, Entscheidung 66 |
 | 67 | Pipeline-Pfad, Entscheidung 11 (Tabelle: ohne Nachbar-Chunks) |
-| 68, 69 | Eval-Umgebung |
+| 68, 69, 74 | Eval-Umgebung |
 
 ## Konsequenzen
 

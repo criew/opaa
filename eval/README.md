@@ -297,6 +297,22 @@ Entscheidung 54). Zwei Fälle bleiben außerhalb des Pins, und beide sind nie ba
 - Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
   CPU-Variante und trägt `unpinned: gpu allowed` ein.
 
+### Frischer Chat-Runner je Lauf (Issue #3814)
+
+Der Chat-Runner von Ollama merkt sich frühere Prompts und rechnet einen neuen Prompt ab dem
+längsten gemeinsamen Anfang eines gemerkten weiter. Das übernommene Stück stammt aus einer anderen
+Rechnung und weicht minimal ab, und die Zerlegung bei Temperatur 0 kippt daran. Der Mehrrunden-Job
+lief deshalb auf schnellen Runnern rot: Endete die Indizierung vor Ablauf der fünf Minuten
+Keep-alive nach der Bereitschaftsprüfung, rechnete die Messung auf deren Runner weiter. Auf
+langsameren Runnern war das Modell bis dahin entladen. Beide Zustände waren für sich
+reproduzierbar, gemessen wurde also je nach Runner der eine oder der andere.
+
+Vor jedem zerlegenden Lauf entlädt der Harness das gepinnte Chat-Modell deshalb
+(`EvalChatRunner`, aufgerufen von `MehrfachlaufRule`) und wartet, bis `/api/ps` es nicht mehr
+führt. Jeder der drei Läufe beginnt so auf einem frisch geladenen Runner. Das ist der Zustand, aus
+dem die committeten Baselines stammen. Ein externes Chat-Modell (`-Dopaa.eval.chatBaseUrl`) wird
+nicht entladen. Herleitung: ADR-0012, Entscheidung 74.
+
 ### Stetige Einbettung langer Eingaben (Issue #2343)
 
 `ollama/ollama:0.6.5`, bis Oktober 2026 das gepinnte Image, wertete eine Eingabe über 511 Token in
