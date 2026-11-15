@@ -76,16 +76,24 @@ public class RealtimeTranscriptionRole extends OptionalModelRole<RealtimeTranscr
   /** No live session could be opened; nothing was sent. */
   public static class RealtimeUnusableException extends RuntimeException {
 
-    private final boolean busy;
+    private final RealtimeTranscriptionSlots.Refusal refusal;
 
-    public RealtimeUnusableException(String message, boolean busy) {
+    /**
+     * @param refusal why no slot was free, {@code null} when live transcription is off
+     */
+    public RealtimeUnusableException(String message, RealtimeTranscriptionSlots.Refusal refusal) {
       super(message);
-      this.busy = busy;
+      this.refusal = refusal;
     }
 
     /** Whether the person or the installation is at its limit, as opposed to live being off. */
     public boolean busy() {
-      return busy;
+      return refusal != null;
+    }
+
+    /** Why no slot was free, {@code null} when live transcription is off. */
+    public RealtimeTranscriptionSlots.Refusal refusal() {
+      return refusal;
     }
   }
 
@@ -155,11 +163,12 @@ public class RealtimeTranscriptionRole extends OptionalModelRole<RealtimeTranscr
     RealtimeTranscriptionEndpoint realtime = endpoint.realtime();
     if (role.statusFor(endpoint).state() != OptionalRoleState.READY
         || realtimeStatusFor(endpoint).state() != OptionalRoleState.READY) {
-      throw new RealtimeUnusableException("live transcription is not available", false);
+      throw new RealtimeUnusableException("live transcription is not available", null);
     }
     RealtimeTranscriptionSlots.Opening opening = slots.open(person, realtime.maxSessions());
     if (opening.slot() == null) {
-      throw new RealtimeUnusableException("no live session free: " + opening.refusal(), true);
+      throw new RealtimeUnusableException(
+          "no live session free: " + opening.refusal(), opening.refusal());
     }
     try {
       String vocabulary = TranscriptionVocabulary.prompt(endpoint.vocabulary(), personalVocabulary);

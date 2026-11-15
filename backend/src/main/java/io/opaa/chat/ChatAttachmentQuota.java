@@ -1,5 +1,7 @@
 package io.opaa.chat;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.common.ByteSizes;
 import io.opaa.common.PayloadTooLargeException;
 import java.util.UUID;
@@ -14,23 +16,41 @@ import org.springframework.transaction.support.TransactionTemplate;
  * of its attachments, a lower one per account over those not yet bound to a chat, and optionally
  * per organization. Every row counts by its {@code size_bytes} until it is deleted. {@link #admit}
  * checks and stores under a transaction-scoped advisory lock - the organization's while its quota
- * is set, the account's otherwise - so concurrent uploads on any instance never overshoot.
+ * is set, the account's otherwise - so concurrent uploads on any instance never overshoot. Every
+ * rejection counts in {@code opaa.chat.attachments.rejected} by the quota it hit ({@code account},
+ * {@code unbound}, {@code organization}), never by account or organization (ADR-0071).
  */
 @Component
 class ChatAttachmentQuota {
 
+  static final String REJECTED_METRIC = "opaa.chat.attachments.rejected";
+
   private final ChatAttachmentRepository repository;
   private final ChatAttachmentProperties properties;
   private final TransactionTemplate transaction;
+  private final Counter accountRejected;
+  private final Counter unboundRejected;
+  private final Counter organizationRejected;
 
   ChatAttachmentQuota(
       ChatAttachmentRepository repository,
       ChatAttachmentProperties properties,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      MeterRegistry meterRegistry) {
     this.repository = repository;
     this.properties = properties;
     this.transaction = new TransactionTemplate(transactionManager);
     this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+    this.accountRejected = rejected(meterRegistry, "account");
+    this.unboundRejected = rejected(meterRegistry, "unbound");
+    this.organizationRejected = rejected(meterRegistry, "organization");
+  }
+
+  private static Counter rejected(MeterRegistry registry, String quota) {
+    return Counter.builder(REJECTED_METRIC)
+        .tag("quota", quota)
+        .description("Chat attachments refused by a storage quota")
+        .register(registry);
   }
 
   /**
@@ -42,6 +62,7 @@ class ChatAttachmentQuota {
     if (accountQuota > 0) {
       long used = repository.sumSizeByAuthorId(authorId);
       if (used + bytes > accountQuota) {
+        accountRejected.increment();
         throw new PayloadTooLargeException(
             "Das Speicherkontingent Ihrer Chat-Anhänge ist erschöpft ("
                 + ByteSizes.format(used)
@@ -54,6 +75,7 @@ class ChatAttachmentQuota {
     if (unboundQuota > 0) {
       long unbound = repository.sumUnboundSizeByAuthorId(authorId);
       if (unbound + bytes > unboundQuota) {
+        unboundRejected.increment();
         throw new PayloadTooLargeException(
             "Ihre noch nicht gesendeten Anhänge belegen bereits "
                 + ByteSizes.format(unbound)
@@ -66,6 +88,7 @@ class ChatAttachmentQuota {
     long organizationQuota = properties.organizationQuotaBytes();
     if (organizationQuota > 0
         && repository.sumSizeByOrganizationId(organizationId) + bytes > organizationQuota) {
+      organizationRejected.increment();
       throw new PayloadTooLargeException(
           "Der Speicher für Chat-Anhänge Ihrer Organisation ist erschöpft. Bitte nicht mehr"
               + " benötigte Anhänge oder Chats löschen oder die Systemverwaltung informieren.");

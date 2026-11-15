@@ -261,13 +261,13 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
   /**
    * A fresh, uncached model for {@code model}, active or not, built like the client of the active
    * entry but without retries - e.g. to measure an entry before it is relied on. One call then
-   * lasts at most {@code requestTimeout}, so a caller can bound how long it goes without news.
+   * lasts at most {@code requestTimeout}, so a caller can bound how long it goes without news. Its
+   * calls are not observed: a measurement is no chat traffic and must not show in {@code gen_ai.*}
+   * or move the availability of a model role; the caller measures them itself.
    */
   public ChatModel chatModelFor(LlmModel model, Duration requestTimeout) {
-    ObservationRegistry observationRegistry =
-        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
     return new ReasoningTextStrippingChatModel(
-        chatModelBuilder(model, observationRegistry, requestTimeout, 0).build());
+        chatModelBuilder(model, ObservationRegistry.NOOP, requestTimeout, 0).build());
   }
 
   /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */

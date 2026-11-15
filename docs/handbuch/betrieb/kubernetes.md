@@ -1794,7 +1794,7 @@ Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen `OpaaBac
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
-| `metrics.prometheusRule.groups.<Gruppe>` | alle `true` | schaltet eine Gruppe ab: `platform`, `chat`, `model`, `indexing`, `directory`, `background`, `audit`, `security`; etwa `chat: false` für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“ |
+| `metrics.prometheusRule.groups.<Gruppe>` | alle `true` | schaltet eine Gruppe ab: `platform`, `chat`, `model`, `agent`, `indexing`, `directory`, `background`, `audit`, `security`; etwa `chat: false` für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“ |
 | `metrics.runbookBaseUrl` | die Alarmseite dieses Handbuchs im Netz | Adresse der Alarmseite für `runbook_url` und die Links der Dashboards |
 | `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt `metrics.prometheusRule.enabled` |
 | `metrics.grafanaDashboards.label`, `labelValue` | `grafana_dashboard`, `"1"` | Label, nach dem der Sidecar ConfigMaps auswählt |
@@ -1823,6 +1823,8 @@ Die Schwellen unter `metrics.prometheusRule`; Anteile sind Zahlen zwischen 0 und
 | `mailFailureShare`, `mailFailureMinAttempts` | `0.5`, `5` | `OpaaMailDeliveryFailing` |
 | `malwareScanFailureShare`, `malwareScanMinScans` | `0.5`, `3` | `OpaaMalwareScanFailing` |
 | `malwareSignatureMaxAgeDays` | `3` | `OpaaMalwareSignaturesOutdated` |
+| `agentWorkspaceRejectedMin` | `5` | `OpaaAgentWorkspaceSaturated`: mangels Platz abgewiesene Agentenläufe in 30 Minuten |
+| `agentRunErrorShare`, `agentRunErrorMinRuns` | `0.2`, `10` | `OpaaAgentRunErrorRate`: in 30 Minuten |
 | `loginFailureFactor`, `loginFailureMin` | `5`, `50` | `OpaaLoginFailureSpike`: abgewiesene lokale Anmeldungen in 15 Minuten über dem Mindestwert und dem Vielfachen des Medians derselben Viertelstunde der sieben Tage davor |
 | `siemExportLagMinutes` | `60` | `OpaaSiemExportLagging` |
 | `auditLogHorizonWarningDays`, `auditLogHorizonCriticalHours` | `14`, `48` | `OpaaAuditLogHorizon` |

@@ -37,7 +37,7 @@ TILE_ALERT_GROUPS = {
     "idp": ("directory", "platform"),
     "chat": ("chat",),
     "search": ("chat", "model"),
-    "models": ("model",),
+    "models": ("model", "agent"),
     "indexing": ("background", "indexing", "model"),
     "background": ("background", "directory", "platform"),
     "evidence": ("audit", "security"),
@@ -307,7 +307,7 @@ class Builder:
             A('alertname="OpaaRetrievalMostlyEmpty"'),
             A('alertname="OpaaModelRoleDown", role=~"embedding|rerank"'),
             base=f"-1 * (({b['searches_30m']} or on() vector(0)) < bool {num(r['retrievalEmptyMinQuestions'])})")
-        s["models"] = self.worst(A('component="model"'))
+        s["models"] = self.worst(A('component=~"model|agent"'))
         s["indexing"] = self.worst(A('component="indexing"'))
         s["background"] = self.worst(
             A('component=~"background|directory"'),
@@ -680,6 +680,19 @@ class Builder:
             self.ts("Trefferquote der Zwischenspeicher", "Anteil der Abrufe, die ein Zwischenspeicher selbst beantwortet.",
                     [(f'sum by (cache) (rate(cache_gets_total{{{SEL}, result="hit"}}[15m])) / sum by (cache) (rate(cache_gets_total{{{SEL}}}[15m]))', "{{cache}}")],
                     self.gp(16, 21, 8, 7), unit="percentunit", max_=1, fill=0),
+            self.ts("Belegung der Agentenplätze",
+                    "Belegte Plätze für gleichzeitige Agentenläufe gegen das Platzlimit der Installation.",
+                    [(f"max(opaa_agent_workspace_occupied{{{SEL}}}) / max(opaa_agent_workspace_capacity{{{SEL}}} > 0)", "belegt")],
+                    self.gp(0, 28, 12, 7), unit="percentunit", max_=1,
+                    thresholds=self.thr("transparent", ("orange", 1)), thr_style="dashed"),
+            self.ts("Abweisungen an Kapazitätsgrenzen",
+                    "Pro Stunde abgewiesen: Agentenläufe mangels Platz (full) oder am Anteil der Person "
+                    "(person_limit), Chat-Anhänge an einem Speicherkontingent, Live-Diktate, weil alle Plätze belegt sind. "
+                    "Steigt full stetig, das Platzlimit anheben.",
+                    [(f"sum by (reason) (increase(opaa_agent_workspace_rejected_total{{{SEL}}}[$__interval]))", "Agent {{reason}}"),
+                     (f"sum by (quota) (increase(opaa_chat_attachments_rejected_total{{{SEL}}}[$__interval]))", "Anhang {{quota}}"),
+                     (f'sum(increase(opaa_transcription_live_sessions_total{{{SEL}, end="installation_busy"}}[$__interval]))', "Live-Diktat belegt")],
+                    self.gp(12, 28, 12, 7), bars=True, stack=True, interval="1h", decimals=0),
         ]
         return self.dashboard("operations", "OPAA · Betrieb & Bereitschaft", panels, self.variables("connector-hidden"),
                               "Bereich Betrieb: Bausteine, Nutzerseite, Hintergrund und Plattform.")
@@ -789,6 +802,25 @@ class Builder:
             self.share_ts("Agentenläufe nach Ergebnis", "Anteil der Agentenläufe je Ergebnis pro Stunde, ohne "
                           "Agentennamen und ohne ihre Zahl.",
                           f"opaa_agent_runs_total{{{SEL}}}", "result", "{{result}}", self.gp(12, 27, 12, 7)),
+            self.ts("Dauer der Agentenläufe (p95)",
+                    "95. Perzentil der Laufdauer je Art (mitgelieferter oder angelegter Agent), samt Abschlussaufruf.",
+                    [(f"histogram_quantile(0.95, sum by (kind, le) (rate(opaa_agent_run_duration_seconds_bucket{{{SEL}}}[30m])))", "{{kind}}")],
+                    self.gp(0, 34, 8, 7), unit="s", fill=0),
+            self.share_ts("Werkzeugaufrufe nach Ergebnis", "Anteil der Werkzeugaufrufe der Agenten je Werkzeug und "
+                          "Ergebnis pro Stunde, ohne ihre Zahl. Ein wachsender Anteil error oder timeout zeigt, welches "
+                          "Werkzeug scheitert.",
+                          f"opaa_agent_tool_calls_total{{{SEL}}}", "tool, result", "{{tool}} {{result}}", self.gp(8, 34, 8, 7)),
+            self.ts("Nicht belegbare Quellenangaben je Lauf",
+                    "Quellenangaben in Agentenantworten, die zu keiner gefundenen Stelle passen, im Mittel je Lauf "
+                    "pro Stunde. Steigt der Wert, erfindet das Modell Quellen.",
+                    [(f"sum(increase(opaa_agent_citations_unverifiable_total{{{SEL}}}[$__interval]))"
+                      f" / sum(increase(opaa_agent_runs_total{{{SEL}}}[$__interval]))", "je Lauf")],
+                    self.gp(16, 34, 8, 7), bars=True, interval="1h", decimals=2),
+            self.share_ts("Ende der Live-Diktate", "Anteil der Live-Diktate je Ende pro Stunde, ohne ihre Zahl: "
+                          "done mit fertigem Text, installation_busy und person_busy abgewiesen, upstream Dienst gestört, limit, idle und protocol "
+                          "an einer Grenze beendet, client_closed vom Browser beendet. Nach jedem Ende außer done "
+                          "schickt der Browser die Aufnahme als Ganzes.",
+                          f"opaa_transcription_live_sessions_total{{{SEL}}}", "end", "{{end}}", self.gp(0, 41, 24, 7)),
         ]
         return self.dashboard("models", "OPAA · KI-Modelle & Kosten", panels, self.variables("model"),
                               "Bereich Modelle: Erreichbarkeit, Antwortzeit, Drosselung, Tokens und Kosten. Kosten nur hier.")

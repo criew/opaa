@@ -392,6 +392,49 @@ spec:
             runbook_url: "{{ $rb }}#OpaaTokenBudgetForecast"
         {{- end }}
     {{- end }}
+    {{- if $groups.agent }}
+    - name: opaa-agent
+      rules:
+        # The workspace caps agent runs at the same time, installation-wide; every pod reports the
+        # same reservations. Full throughout 30 minutes of data, or refused for want of a place: raise the cap.
+        # A person's own share (reason person_limit) says nothing about the capacity.
+        - alert: OpaaAgentWorkspaceSaturated
+          expr: >-
+            (
+              min_over_time((max(opaa_agent_workspace_occupied{ {{- $scrape }}}) - max(opaa_agent_workspace_capacity{ {{- $scrape }}}))[30m:1m]) >= 0
+              and on() max(opaa_agent_workspace_capacity{ {{- $scrape }}}) > 0
+              and on() count_over_time(max(opaa_agent_workspace_capacity{ {{- $scrape }}})[30m:1m]) >= 30
+            )
+            or sum(increase(opaa_agent_workspace_rejected_total{ {{- $scrape }}, reason="full"}[30m])) >= {{ $rule.agentWorkspaceRejectedMin }}
+          for: 5m
+          labels:
+            namespace: {{ $ns }}
+            severity: warning
+            component: agent
+          annotations:
+            summary: Plätze für Agentenläufe ausgeschöpft
+            description: Die gleichzeitigen Agentenläufe von {{ $deployment }} stoßen seit 30 Minuten an das Platzlimit; weitere Anfragen werden abgewiesen.
+            runbook_url: "{{ $rb }}#OpaaAgentWorkspaceSaturated"
+        # Errors of the run itself, not limits, plans or questions back; no wake-up, since a broken
+        # agent path leaves the ordinary chat untouched.
+        - alert: OpaaAgentRunErrorRate
+          expr: >-
+            (
+              sum(increase(opaa_agent_runs_total{ {{- $scrape }}, result="error"}[30m]))
+              / sum(increase(opaa_agent_runs_total{ {{- $scrape }}}[30m]))
+              > {{ $rule.agentRunErrorShare }}
+            )
+            and sum(increase(opaa_agent_runs_total{ {{- $scrape }}}[30m])) >= {{ $rule.agentRunErrorMinRuns }}
+          for: 5m
+          labels:
+            namespace: {{ $ns }}
+            severity: warning
+            component: agent
+          annotations:
+            summary: Viele Agentenläufe scheitern
+            description: Mehr als {{ printf "%g" (round (mulf $rule.agentRunErrorShare 100) 4) | replace "." "," }} % der Agentenläufe von {{ $deployment }} enden seit 30 Minuten mit einem Fehler.
+            runbook_url: "{{ $rb }}#OpaaAgentRunErrorRate"
+    {{- end }}
     {{- if $groups.indexing }}
     - name: opaa-indexing
       rules:

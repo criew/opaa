@@ -143,9 +143,12 @@ class ToolCheckServiceIntegrationTest {
   }
 
   @Test
-  void aStaleCheckIsGivenUpAsAborted() {
+  void aStaleCheckIsGivenUpAsAborted() throws InterruptedException {
     hold = new CountDownLatch(1);
     UUID checkId = service.start(modelId, 1).check().getId();
+    // The worker renews the heartbeat before each model call; age it only once the worker is held
+    // in the first case, or a beat after the update makes the check look alive again.
+    assertThat(firstCase.await(30, TimeUnit.SECONDS)).isTrue();
     jdbc.update(
         "UPDATE llm_tool_checks SET heartbeat_at = clock_timestamp() - interval '1 day'"
             + " WHERE id = ?",

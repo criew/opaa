@@ -72,7 +72,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_query_finish_reason_total` | Antworten nach dem Ende, das das Modell meldet (`reason`: `stop`, `length` an der Ausgabegrenze abgeschnitten, `content_filter`, `tool`, `other`) |
 | `opaa_query_aborted_total` | Chat-Fragen ohne Antwort nach Ursache (`cause`: `client_cancel` Leser gegangen, `timeout` ein Aufruf hat nicht rechtzeitig geantwortet, `error` jeder andere Fehler) |
 | `opaa_model_tokens_total` | Tokens jedes Aufrufs des Chat-Modells nach Zweck (`purpose`: `answer`, `decompose`, `note`, `auxiliary` Titel und Metadaten, `agent`), Art (`token_type`: `input`, `output`) und `model`, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft OPAA mit einer Warnung im Log |
-| `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
+| `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell außer der Werkzeugprüfung nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
 | `gen_ai_client_token_usage_total` | Tokens nach Operation, Modell und Art (`input`, `output`, `total`), ohne Person und Inhalt |
 | `opaa_installation_pending` | `1`, solange die Installation nicht abgeschlossen ist ([Installation](installation.md)) |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Konnektortyp (`connector`, der Schlüssel des Quellentyps klein geschrieben, etwa `confluence`, `sharepoint`, `upload`) und Ergebnis (`processed`, `skipped`, `failed`) |
@@ -96,6 +96,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_outbound_throttled_total` | gedrosselte Antworten (429, 503 mit `Retry-After`) nach Ziel und Pfad; im Hintergrund bremst die Indexierung damit nur, interaktiv wartet eine Person |
 | `opaa_model_role_available` | `1` oder `0` je eingerichteter Modellrolle (`role`: `chat`, `embedding`, `rerank`, `transcription`, `ocr`, `vision`), alle 30 Sekunden aus dem Zustand gelesen, den die Health Groups zeigen, ohne eigenen Modellaufruf. Chat und Embedding gelten als verfügbar, solange der letzte echte Aufruf des Modells der Rolle auf dieser Instanz es erreicht hat, beim Embedding auch die Probe der Health Group; Aufrufe anderer Modelle (etwa eines eigenen Titelmodells) zählen nicht, und erst ein Wechsel des Modells der Rolle setzt den Wert auf `1` zurück; ein Verbindungsabbruch des Abgleichs zwischen den Instanzen ändert ihn nicht. Abgeschaltete oder nicht eingerichtete Rollen haben keine Reihe. **Ein Alarm darauf braucht `for:` und Verkehr:** Ohne Aufruf bleibt der letzte Stand stehen, ein einzelner Fehlschlag kippt den Wert bis zum nächsten erfolgreichen Aufruf |
 | `opaa_transcription_requests_total`, `opaa_transcription_audio_seconds_total` | Aufnahmen der Spracheingabe nach Ergebnis (`success`; `refused` für jede Antwort des Dienstes ohne verwertbaren Text, auch einen Fehlerstatus; `failed`, wenn keine Antwort kam) und Sekunden verarbeiteten Audios; die Sekunden zählen nur, wenn der Transkriptionsdienst die Dauer in seiner Antwort nennt |
+| `opaa_transcription_live_sessions_total` | Live-Diktate nach ihrem Ende (`end`: `done` mit fertigem Text; `installation_busy` abgewiesen, weil alle Plätze belegt sind; `person_busy` abgewiesen, weil die Person schon diktiert; `unavailable` Live-Transkription aus; `upstream` Dienst gestört; `limit`, `idle` und `protocol` an einer Grenze beendet; `client_closed` vom Browser beendet; `transport_error` Verbindung zum Browser gestört). Nach jedem Ende außer `done` schickt der Browser die Aufnahme als Ganzes |
+| `opaa_chat_attachments_rejected_total` | Chat-Anhänge, die ein Speicherkontingent abgewiesen hat, nach Kontingent (`quota`: `account` alle Anhänge eines Kontos, `unbound` noch nicht gesendete Anhänge eines Kontos, `organization` die ganze Organisation); ohne Konto oder Organisation |
 | `opaa_malware_scans_seconds_*` | Dauer und Anzahl der Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)). **Umbenannt:** Bis zu dieser Version hieß die Anzahl `opaa_malware_scans_total`; sie steht jetzt in `opaa_malware_scans_seconds_count`, Abfragen und Alarme auf den alten Namen sind umzustellen |
 | `opaa_malware_signatures_age_seconds` | Alter der Signaturen des Virenscanners, alle fünf Minuten von jeder Instanz beim Dienst erfragt und als UTC gelesen; ohne eingeschaltete Prüfung oder ohne Datum in der Antwort des Dienstes gibt es keine Reihe. Steigt der Wert über einen Tag, aktualisiert der Scanner seine Signaturen nicht |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
@@ -117,7 +119,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_self_disclosure_duration_seconds_*`, `opaa_self_disclosure_size_bytes_*`, `opaa_self_disclosure_running` | Dauer, Größe und laufende Selbstauskünfte dieser Instanz, ohne Bezug auf eine Person |
 | `opaa_query_decomposition_fallback_total`, `opaa_query_decomposition_no_search_total` | Rückfälle der Teilfragen-Zerlegung nach Ursache; Nachrichten, in denen nichts zu suchen war |
 | `opaa_agent_runs_total`, `opaa_agent_run_duration_seconds_*` | Agentenläufe nach Art (`kind`: `builtin` für den mitgelieferten, `custom` für angelegte Agenten) und Ergebnis (`completed`, `limit_calls`, `limit_duration`, `limit_volume`, `ask_user` (Rückfrage an die Person), `plan` (Plan zur Bestätigung vorgelegt; die Bestätigung zählt als eigener Lauf), `model_not_capable`, `aborted`, `error`), Dauer mit Buckets; ohne Agentennamen |
-| `opaa_agent_tool_calls_total` | Werkzeugaufrufe nach Werkzeug und Ergebnis (`success`, `empty`, `argument_ignored`, `invalid_arguments`, `unknown_tool`, `denied`, `timeout`, `error`) |
+| `opaa_agent_tool_calls_total` | Werkzeugaufrufe nach Werkzeug (`tool`: `search_knowledge`, `read_document`, `list_sources`, `run_code`, `ask_user`, `fill_template`; `unknown` für ein Werkzeug, das das Modell erfunden hat) und Ergebnis (`success`, `empty`, `argument_ignored`, `invalid_arguments`, `unknown_tool`, `denied`, `timeout`, `error`) |
 | `opaa_agent_workspace_occupied`, `opaa_agent_workspace_capacity`, `opaa_agent_workspace_rejected_total` | belegte und verfügbare Plätze für gleichzeitige Agentenläufe, abgewiesene Läufe nach Grund (`reason`: `full` alle Plätze belegt, `person_limit` Anteil der Person belegt); steigt `full` stetig, `OPAA_AGENT_WORKSPACE_CAPACITY` anheben, steigt `person_limit` stetig, `OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON` prüfen |
 | `opaa_agent_citations_unverifiable_total` | Quellenangaben in Agentenantworten, die zu keiner gefundenen Stelle passen; sie erscheinen nicht als Quelle |
 | `opaa_query_evidence_total` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
@@ -162,8 +164,8 @@ diese Werte an:
   Live-Transkription), `ocr`, `vision`, `sandbox` (Code-Sandbox),
   `connector` (Quellen und ihre Hilfsaufrufe), `oidc` (Discovery und Schlüssel des
   Identitätsanbieters), `directory` (Verzeichnisdienst), `clamav` (Virenscanner),
-  `original_store` (S3-Ablage der hochgeladenen Originale) und `model_check` (Verbindungstest
-  und Modellsuche der Verwaltung für Chat- und Embedding-Modelle).
+  `original_store` (S3-Ablage der hochgeladenen Originale) und `model_check` (Verbindungstest,
+  Modellsuche und Werkzeugprüfung der Verwaltung für Chat- und Embedding-Modelle).
 - **`kind`:** bei `connector` der Konnektortyp: `confluence`, `dropbox`, `google_drive`,
   `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`. Hilfsaufrufe,
   die keinem Konnektor allein gehören, tragen eine feste Zusatzart: `oauth` (Token-Endpunkt einer
@@ -184,9 +186,11 @@ So liest man die Werte:
   `client_error`. Die Probe der Texterkennung fragt bei docling-serve einen Pfad an, den nicht
   jede Version kennt (404). Solche Werte im Pfad `background` sind kein Alarmgrund.
 - **`model_check` läuft im Pfad `background`,** auch wenn eine Person in der Verwaltung wartet:
-  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen.
-- **Die Live-Transkription zählt nur den Verbindungsaufbau,** einmal je Aufnahme oder Probe;
-  die laufende Sitzung danach zählt nicht. Lehnt der Dienst den Aufbau ab, zählt sein Status.
+  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen. Die
+  Aufrufe der Werkzeugprüfung zählen nur hier, nicht unter `gen_ai_*` und nicht für die
+  Erreichbarkeit der Modellrolle.
+- **Die Live-Transkription zählt hier nur den Verbindungsaufbau,** einmal je Aufnahme oder Probe;
+  wie ein Live-Diktat endet, zählt `opaa_transcription_live_sessions_total`. Lehnt der Dienst den Aufbau ab, zählt sein Status.
 - **S3 und SMB** zählen jeden Versuch wie die HTTP-Clients, eine Wiederholung eingeschlossen. Bei
   S3 erkennt OPAA einen TLS-Fehler nicht gesondert, er erscheint als `io_error`. Bei SMB zählen
   Anmeldung, Öffnen eines Ordners und jeder Downloadversuch je einmal; ein wiederholter Download

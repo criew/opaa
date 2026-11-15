@@ -896,6 +896,114 @@ tests:
               summary: "Token-Verbrauch übersteigt das Monatsbudget"
               description: "Auf 30 Tage hochgerechnet verbraucht r-opaa-backend beim Tempo der letzten sieben Tage mehr als 100000 Tokens des Chat-Modells."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaTokenBudgetForecast"
+  # Every place taken on both pods for longer than 30 minutes: a ticket; full for 20 minutes only:
+  # none.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_agent_workspace_occupied{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a"}'
+        values: '4x60'
+      - series: 'opaa_agent_workspace_occupied{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-b"}'
+        values: '4x60'
+      - series: 'opaa_agent_workspace_capacity{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a"}'
+        values: '4x60'
+      - series: 'opaa_agent_workspace_capacity{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-b"}'
+        values: '4x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OpaaAgentWorkspaceSaturated
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: OpaaAgentWorkspaceSaturated
+        exp_alerts:
+          - exp_labels:
+              namespace: "opaa"
+              severity: "warning"
+              component: "agent"
+            exp_annotations:
+              summary: "Plätze für Agentenläufe ausgeschöpft"
+              description: "Die gleichzeitigen Agentenläufe von r-opaa-backend stoßen seit 30 Minuten an das Platzlimit; weitere Anfragen werden abgewiesen."
+              runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaAgentWorkspaceSaturated"
+  # Requests refused for want of a place: a ticket; refusals for a person's own share stay
+  # silent, as does a workspace that is busy but never full.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_agent_workspace_occupied{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a"}'
+        values: '2x40'
+      - series: 'opaa_agent_workspace_capacity{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a"}'
+        values: '4x40'
+      - series: 'opaa_agent_workspace_rejected_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",reason="full"}'
+        values: '0x10 0+1x30'
+      - series: 'opaa_agent_workspace_rejected_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-b",reason="person_limit"}'
+        values: '0+5x40'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: OpaaAgentWorkspaceSaturated
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: OpaaAgentWorkspaceSaturated
+        exp_alerts:
+          - exp_labels:
+              namespace: "opaa"
+              severity: "warning"
+              component: "agent"
+            exp_annotations:
+              summary: "Plätze für Agentenläufe ausgeschöpft"
+              description: "Die gleichzeitigen Agentenläufe von r-opaa-backend stoßen seit 30 Minuten an das Platzlimit; weitere Anfragen werden abgewiesen."
+              runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaAgentWorkspaceSaturated"
+  # Only person_limit refusals and a workspace without capacity: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_agent_workspace_occupied{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a"}'
+        values: '0x40'
+      - series: 'opaa_agent_workspace_capacity{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a"}'
+        values: '0x40'
+      - series: 'opaa_agent_workspace_rejected_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",reason="person_limit"}'
+        values: '0+5x40'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: OpaaAgentWorkspaceSaturated
+        exp_alerts: []
+  # Half of the agent runs end in an error: a ticket; plans and limits do not count as errors.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_agent_runs_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",kind="builtin",result="error"}'
+        values: '0+1x40'
+      - series: 'opaa_agent_runs_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",kind="builtin",result="completed"}'
+        values: '0+0.5x40'
+      - series: 'opaa_agent_runs_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-b",kind="custom",result="plan"}'
+        values: '0+0.5x40'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: OpaaAgentRunErrorRate
+        exp_alerts:
+          - exp_labels:
+              namespace: "opaa"
+              severity: "warning"
+              component: "agent"
+            exp_annotations:
+              summary: "Viele Agentenläufe scheitern"
+              description: "Mehr als 20 % der Agentenläufe von r-opaa-backend enden seit 30 Minuten mit einem Fehler."
+              runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaAgentRunErrorRate"
+  # Every run fails, but fewer than ten runs in 30 minutes: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_agent_runs_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",kind="custom",result="error"}'
+        values: '0+0.2x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: OpaaAgentRunErrorRate
+        exp_alerts: []
+  # Limits, plans and questions back without errors: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_agent_runs_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",kind="builtin",result="limit_calls"}'
+        values: '0+1x40'
+      - series: 'opaa_agent_runs_total{namespace="opaa",service="r-opaa-backend",job="r-opaa-backend",instance="10.0.0.1:8081",pod="r-opaa-backend-a",kind="builtin",result="ask_user"}'
+        values: '0+1x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: OpaaAgentRunErrorRate
+        exp_alerts: []
   # Two pods report the same overdue SharePoint library: one alert per type after an hour.
   - interval: 1m
     input_series:
