@@ -74,7 +74,8 @@ describe('LocalUserChatCleanupSection', () => {
     mockChatCleanupRequests.set('local-user-vogt', {
       purpose: 'DATA_SUBJECT_REQUEST',
       reason: REASON,
-      requestedAt: '2026-10-30T08:00:00Z',
+      // a request older than 14 days has lapsed, so it is dated relative to the test run
+      requestedAt: new Date(Date.now() - 3_600_000).toISOString(),
       byMe: false,
     })
     const user = userEvent.setup()
