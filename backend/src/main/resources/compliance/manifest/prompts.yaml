@@ -81,13 +81,14 @@ prompts:
       Werkzeugergebnisse, Hinweise bei erreichter Grenze oder falschem Aufruf, die Beschreibung
       des Suchwerkzeugs der Agenten und eine Bereitschaftsprobe vor dem ersten Fall
     classes:
+      - io.opaa.query.toolcheck.ToolCallingTool
       - io.opaa.query.toolcheck.ToolCheckWorker
       - io.opaa.query.toolloop.SearchKnowledgeDefinition
     resources:
       - io/opaa/query/toolcheck/casebase/system-prompt.txt
       - io/opaa/query/toolcheck/casebase/cases.json
       - io/opaa/query/toolcheck/casebase/mock-tool.json
-    sha256: "f16f2dd4488ba697c834b8ed3f70356e8f1b1812f4034b0330b1016ddf0561f4"
+    sha256: "36f9b39bb747ff45020d4fc142c6a4a0af98491858b0c124600e87f7634f15de"
     notes:
       - >-
         Keine KI-Funktion: Die Prüfung misst nur, ob ein Modell Werkzeuge verlässlich aufruft; sie

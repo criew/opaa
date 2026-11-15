@@ -338,13 +338,13 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
    mitgeliefertem und angelegten Agenten ({{faktenblatt:datenkatalog#operational-metrics}}).
    Nur solange ein Lauf läuft, hält OPAA fest, wer ihn gestartet hat, damit gleichzeitige Läufe
    je Person begrenzt sind und nur diese Person den Lauf stoppen kann; der Eintrag verschwindet
-   mit dem Ende des Laufs und ist in der Oberfläche nicht sichtbar
-   ({{faktenblatt:datenkatalog#agent-run-reservations}}). Er wird nicht ausgewertet. Es gilt
+   mit dem Ende des Laufs, bricht eine Instanz ab, spätestens mit Ablauf der Reservierung, und
+   ist in der Oberfläche nicht sichtbar ({{faktenblatt:datenkatalog#agent-run-reservations}}). Er wird nicht ausgewertet. Es gilt
    Nummer 10 Nr. 13.
 5. Mit dem ersten Einschalten der Agenten legt OPAA den mitgelieferten Agenten „Recherche“ an
-   ({{faktenblatt:voreinstellungen#prompt-agent-research}}). Er ist für alle Konten nutzbar und
-   kann alle eingeschalteten Werkzeuge verwenden, gehört der Person aus der Systemverwaltung, die die Agenten
-   eingeschaltet hat, und lässt sich wie jeder Agent ändern, einschränken oder löschen.
+   ({{faktenblatt:voreinstellungen#prompt-agent-research}}). Er ist für alle Konten nutzbar,
+   kann alle eingeschalteten Werkzeuge verwenden, gehört der Person aus der Systemverwaltung, die
+   die Agenten eingeschaltet hat, und lässt sich wie jeder Agent ändern, einschränken oder löschen.
    [Die Dienststelle belässt ihn wie geliefert / schränkt ihn wie folgt ein: … / löscht ihn.]
 
 #### 15. Änderungen und Updates
