@@ -128,7 +128,7 @@ deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesa
                                         # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
                                         # drei unterstützten Kubernetes-Versionen, Prüfung der
                                         # Abbruchregeln und Trockenlauf der Release-Skripte;
-                                        # braucht helm, kubeconform, openssl, curl und jq. Neue
+                                        # braucht helm, kubeconform, openssl, curl, jq und yq. Neue
                                         # Wertesätze dort ablegen, sie werden automatisch geprüft
 deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
                                         # Chart packen wie der Release-Lauf (publish-images.yml):
