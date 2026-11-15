@@ -31,7 +31,8 @@ env:
   # promtool for the unit test of the chart's alerts; it ships with Prometheus.
   # renovate: datasource=github-releases depName=prometheus/prometheus
   PROMETHEUS_VERSION: v3.15.0
-  # yq pinned instead of the runner image's: render.sh compares its YAML output byte for byte.
+  # yq pinned instead of the runner image's: render.sh compares its YAML output byte for byte, so a
+  # bump needs deploy/monitoring/render.sh rerun and the rule file committed.
   # renovate: datasource=github-releases depName=mikefarah/yq
   YQ_VERSION: v4.54.3
   # renovate: datasource=github-releases depName=kubernetes-sigs/kind

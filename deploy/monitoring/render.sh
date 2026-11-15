@@ -31,7 +31,7 @@ python3 deploy/monitoring/build_dashboards.py --values "$work_dir/metrics.json" 
 
 if [ -n "$check" ]; then
   if ! diff -u "$RULES" "$work_dir/opaa-rules.yaml"; then
-    echo "::error::$RULES is out of date. Run deploy/monitoring/render.sh." >&2
+    echo "::error::$RULES is out of date. Run deploy/monitoring/render.sh with yq at YQ_VERSION of helm-chart.yml (found: $(yq --version 2>/dev/null | grep -o 'v[0-9.]*' || echo unknown))." >&2
     exit 1
   fi
 else
