@@ -80,6 +80,16 @@ public class RateLimitService implements RequestLimiter {
   }
 
   /**
+   * {@link #acquire(String, String, String)} with the default message of {@link
+   * TooManyRequestsException} and no code.
+   *
+   * @throws TooManyRequestsException when the window has no room
+   */
+  public Decision acquire(String key) {
+    return acquire(key, TooManyRequestsException.MESSAGE, null);
+  }
+
+  /**
    * Counts one request for {@code key} like {@link #tryAcquire} and returns the granted decision; a
    * refusal throws with {@code message}, {@code code} and the seconds to wait.
    *
