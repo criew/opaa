@@ -3151,6 +3151,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#grenzen-unter-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grenzen unter Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#plattenplatz-und-härtung-unter-compose" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4281,6 +4292,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#grenzen-unter-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grenzen unter Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#plattenplatz-und-härtung-unter-compose" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4401,10 +4423,22 @@ Sandbox nicht.</p>
 docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>-f<span class="w"> </span>docker-compose.sandbox.yml<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--build
 </code></pre></div>
 <p>Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
-Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token.
-Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
-Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor (<code>runsc</code>) als
-Laufzeit der Sandboxen.</p>
+Netz. Erreichbar sind dort nur der Dienst, der seinen Schlüssel verlangt, und andere Sandboxen:
+Deren Ausführungsagent verlangt das Token des Laufs; was Code in einer Sandbox selbst an Diensten
+startet, ist für andere Sandboxen ohne Schutz erreichbar (siehe
+<a href="#grenzen-unter-docker-compose">Grenzen unter Docker Compose</a>). Der Dienst startet Container über
+den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den Stapel mit Sandbox auf einer
+eigenen VM betreiben, unter Linux möglichst mit gVisor (<code>runsc</code>) als Laufzeit der Sandboxen.</p>
+<h2 id="grenzen-unter-docker-compose">Grenzen unter Docker Compose<a class="headerlink" href="#grenzen-unter-docker-compose" title="Permanent link">&para;</a></h2>
+<p>Unter Compose teilen sich alle Sandboxen und der Sandbox-Dienst ein Netz. Code, den ein Agent für
+eine Person ausführt, kann darüber die Sandboxen anderer Läufe erreichen, die gerade gleichzeitig
+laufen, auch die anderer Personen, und ebenso den Sandbox-Dienst. Der Dienst verlangt den
+API-Schlüssel, der Ausführungsagent einer Sandbox das geheime Token des Laufs; was Code in einer
+Sandbox selbst an Diensten startet, ist für andere Sandboxen ohne Schutz erreichbar. Ins Internet
+kommt der Code nicht. Eine echte Trennung der Sandboxen voneinander gibt es nur unter
+<a href="#kubernetes">Kubernetes</a>.</p>
+<p>Compose mit Sandbox eignet sich deshalb für den Einzelbetrieb, für Demos und für Nutzerkreise, die
+einander vertrauen. Für viele Personen mit sensiblen Daten die Sandbox unter Kubernetes betreiben.</p>
 <h2 id="plattenplatz-und-härtung-unter-compose">Plattenplatz und Härtung unter Compose<a class="headerlink" href="#plattenplatz-und-härtung-unter-compose" title="Permanent link">&para;</a></h2>
 <p><strong>Plattenplatz:</strong> Eine Sandbox hat eine Grenze für Laufzeit, Speicher und Prozesse, aber keine für
 den Plattenplatz. Was ein Skript schreibt, landet im Datenverzeichnis von Docker auf dem Host, bis
@@ -4473,7 +4507,8 @@ und <code>fill_template</code> einmal von einem Agenten ausführen lassen.</p>
 <p>Das Chart legt im Namespace der Sandboxen eine NetworkPolicy an, die <strong>jeden Ausgang</strong> sperrt und
 Eingang nur vom Dienst zulässt, unabhängig von <code>networkPolicy.*</code>. Das Release braucht dafür das
 Recht, NetworkPolicies in diesem Namespace anzulegen. Das Backend bekommt mit
-<code>networkPolicy.egress.enabled</code> eine Regel zum Dienst.</p>
+<code>networkPolicy.egress.enabled</code> eine Regel zum Dienst. Voraussetzung ist ein Netz-Plugin (CNI), das
+NetworkPolicies durchsetzt; ohne es gilt keine der Sperren.</p>
 <p><strong>Isolationsstufe:</strong> Wie stark eine Sandbox vom Knoten getrennt ist, legt der Sandbox-Dienst über
 seine Laufzeitklasse fest, nicht OPAA:</p>
 <table>
