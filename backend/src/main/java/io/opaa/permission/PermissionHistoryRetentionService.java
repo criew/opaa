@@ -1,13 +1,9 @@
 package io.opaa.permission;
 
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.AuditOutcome;
-import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.ValidationException;
-import java.nio.charset.StandardCharsets;
+import io.opaa.settings.RetentionSetting;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -28,26 +24,33 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PermissionHistoryRetentionService {
 
-  private static final String ADMIN_ONLY =
-      "Nur die Administration darf die Aufbewahrungshöchstdauer der Rechtehistorie einsehen und"
-          + " ändern";
-
   /**
    * Fixed, well-known object id of the settings singleton in the audit trail - it is a system
    * setting, not an entity with an id of its own.
    */
   static final UUID SETTINGS_OBJECT_ID =
-      UUID.nameUUIDFromBytes(
-          "permission_history_retention_settings".getBytes(StandardCharsets.UTF_8));
+      RetentionSetting.objectId("permission_history_retention_settings");
 
   private final PermissionHistoryRetentionSettingsRepository repository;
-  private final AuditEventRecorder auditEventRecorder;
+  private final RetentionSetting setting;
 
   PermissionHistoryRetentionService(
       PermissionHistoryRetentionSettingsRepository repository,
       AuditEventRecorder auditEventRecorder) {
     this.repository = repository;
-    this.auditEventRecorder = auditEventRecorder;
+    this.setting =
+        new RetentionSetting(
+            auditEventRecorder,
+            "permission_history_retention_settings",
+            "Nur die Administration darf die Aufbewahrungshöchstdauer der Rechtehistorie einsehen"
+                + " und ändern",
+            AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED,
+            "Aufbewahrungshöchstdauer der Rechtehistorie",
+            new RetentionSetting.Bounds(
+                PermissionHistoryRetentionSettings.MIN_RETENTION_MONTHS,
+                PermissionHistoryRetentionSettings.MAX_RETENTION_MONTHS,
+                "Monaten",
+                " (1 bis 10 Jahre)"));
   }
 
   /**
@@ -74,7 +77,7 @@ public class PermissionHistoryRetentionService {
 
   @Transactional(readOnly = true)
   public PermissionHistoryRetentionSettings read(CurrentUser actor) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
+    setting.requireAdmin(actor);
     return settingsRow();
   }
 
@@ -90,41 +93,14 @@ public class PermissionHistoryRetentionService {
    */
   @Transactional
   public PermissionHistoryRetentionSettings updateRetentionMonths(CurrentUser actor, int months) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
-    if (months < PermissionHistoryRetentionSettings.MIN_RETENTION_MONTHS
-        || months > PermissionHistoryRetentionSettings.MAX_RETENTION_MONTHS) {
-      throw new ValidationException(
-          "Die Aufbewahrungshöchstdauer der Rechtehistorie muss zwischen "
-              + PermissionHistoryRetentionSettings.MIN_RETENTION_MONTHS
-              + " und "
-              + PermissionHistoryRetentionSettings.MAX_RETENTION_MONTHS
-              + " Monaten liegen (1 bis 10 Jahre)");
-    }
-
+    setting.requireAdmin(actor);
+    setting.requireWithin("Die Aufbewahrungshöchstdauer der Rechtehistorie", months);
     int previous = settingsRow().getRetentionMonths();
-    int updatedRows = repository.updateRetentionMonths(months);
-    if (updatedRows != 1) {
-      throw new IllegalStateException(
-          "permission_history_retention_settings update affected "
-              + updatedRows
-              + " rows, expected exactly 1 - the singleton row (id="
-              + PermissionHistoryRetentionSettings.SINGLETON_ID
-              + ") is missing");
-    }
-
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(actor.organizationId())
-            .actor(actor.id())
-            .type(AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                SETTINGS_OBJECT_ID,
-                "Aufbewahrungshöchstdauer der Rechtehistorie")
-            .before(Map.of("retentionMonths", previous))
-            .after(Map.of("retentionMonths", months))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    setting.change(
+        actor,
+        Map.of("retentionMonths", previous),
+        Map.of("retentionMonths", months),
+        () -> repository.updateRetentionMonths(months));
     return settingsRow();
   }
 

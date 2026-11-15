@@ -1,15 +1,11 @@
 package io.opaa.diagnosticaccess;
 
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.AuditOutcome;
-import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
-import io.opaa.common.ValidationException;
+import io.opaa.settings.RetentionSetting;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,58 +18,47 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DiagnosticContextRetentionService {
 
-  private static final String ADMIN_ONLY =
-      "Nur die Administration darf die Aufbewahrungsdauer einsehen und ändern";
-
-  /**
-   * Fixed, well-known object id of the settings singleton in the audit trail - it is a system
-   * setting, not an entity with an id of its own.
-   */
-  private static final UUID SETTINGS_OBJECT_ID =
-      UUID.nameUUIDFromBytes("diagnostic_context_retention_settings".getBytes());
-
   private final DiagnosticContextRetentionSettingsRepository repository;
-  private final AuditEventRecorder auditEventRecorder;
+  private final RetentionSetting setting;
 
   public DiagnosticContextRetentionService(
       DiagnosticContextRetentionSettingsRepository repository,
       AuditEventRecorder auditEventRecorder) {
     this.repository = repository;
-    this.auditEventRecorder = auditEventRecorder;
+    this.setting =
+        new RetentionSetting(
+            auditEventRecorder,
+            "diagnostic_context_retention_settings",
+            "Nur die Administration darf die Aufbewahrungsdauer einsehen und ändern",
+            AuditEventType.DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
+            null,
+            new RetentionSetting.Bounds(
+                DiagnosticContextRetentionSettings.MIN_RETENTION_MONTHS,
+                DiagnosticContextRetentionSettings.MAX_RETENTION_MONTHS,
+                "Monaten",
+                ""));
   }
 
   @Transactional(readOnly = true)
   public DiagnosticContextRetentionSettings read(CurrentUser actor) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
-    return repository
-        .findSingleton()
-        .orElseThrow(() -> new NotFoundException("Aufbewahrungseinstellung nicht gefunden"));
+    setting.requireAdmin(actor);
+    return settingsRow();
   }
 
   @Transactional
   public DiagnosticContextRetentionSettings updateRetentionMonths(CurrentUser actor, int months) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
-    if (months < DiagnosticContextRetentionSettings.MIN_RETENTION_MONTHS
-        || months > DiagnosticContextRetentionSettings.MAX_RETENTION_MONTHS) {
-      throw new ValidationException(
-          "Die Aufbewahrungsdauer muss zwischen "
-              + DiagnosticContextRetentionSettings.MIN_RETENTION_MONTHS
-              + " und "
-              + DiagnosticContextRetentionSettings.MAX_RETENTION_MONTHS
-              + " Monaten liegen");
-    }
-    int previous = read(actor).getRetentionMonths();
-    repository.updateRetentionMonths(months);
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(actor.organizationId())
-            .actor(actor.id())
-            .type(AuditEventType.DIAGNOSTIC_CONTEXT_RETENTION_CHANGED)
-            .object(AuditObjectType.SYSTEM_SETTING, SETTINGS_OBJECT_ID, null)
-            .before(Map.of("retentionMonths", previous))
-            .after(Map.of("retentionMonths", months))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    setting.requireAdmin(actor);
+    setting.requireWithin("Die Aufbewahrungsdauer", months);
+    int previous = settingsRow().getRetentionMonths();
+    setting.change(
+        actor,
+        Map.of("retentionMonths", previous),
+        Map.of("retentionMonths", months),
+        () -> repository.updateRetentionMonths(months));
+    return settingsRow();
+  }
+
+  private DiagnosticContextRetentionSettings settingsRow() {
     return repository
         .findSingleton()
         .orElseThrow(() -> new NotFoundException("Aufbewahrungseinstellung nicht gefunden"));

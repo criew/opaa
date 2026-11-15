@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-11
+Akzeptiert · zuletzt geändert 2026-11-15
 
 ## Kontext
 
@@ -49,6 +49,7 @@ funktioniert.
 | Datenbankschema | Flyway-Migrationen je Modul, SQL ohne Schemaqualifizierung (ADR-0034, ADR-0056) | `MigrationLayoutTest`, `MigrationModuleBoundaryTest`, `MigrationOrderTest` |
 | Spring-Testkontexte | die Signaturen in `io.opaa.test` | `SpringContextSignatureTest` |
 | Arbeit am Ende einer Transaktion | `common.TransactionCallbacks`: `afterCommitOrNow` (nur nach Commit) oder `afterCompletionOrNow` (nach Commit und Rollback, für Cache-Invalidierungen), beide ohne aktive Synchronisation sofort; `afterCommit` ohne Sofort-Zweig unter `MANDATORY` | `ModularArchitectureTest` (`transactionCallbacksGoThroughTheHelper`) |
+| Aufbewahrungsfrist in einer Einstellungszeile | `settings.RetentionSetting`: Admin-Prüfung, Grenzen, Schreiben genau der Singleton-Zeile und Audit-Eintrag mit Vorher und Nachher | Konvention |
 
 „Konvention“ heißt: Die Regel gilt, aber nur das Review hält sie.
 
