@@ -43,7 +43,7 @@ deploy/helm/opaa/values.yaml
 deploy/helm/opaa/values.schema.json
 docker-compose.yml
 docker-compose.sandbox.yml
-sandbox/config.toml
+sandbox/**
 .env*.example
 
 # Outgoing data flows: connectors, directories, model providers, mail, proxies, network policy
@@ -78,10 +78,12 @@ backend/src/main/java/io/opaa/indexing/document/AttachmentIndexer.java
 backend/src/main/java/io/opaa/indexing/IndexingConfiguration.java
 backend/src/main/java/io/opaa/knowledge/S3UploadedOriginalStore.java
 backend/src/main/java/io/opaa/knowledge/ClamdClient.java
+backend/src/main/java/io/opaa/knowledge/MalwareScan*.java
 backend/src/main/java/io/opaa/health/ChatHealthIndicator.java
 backend/src/main/java/io/opaa/health/EmbeddingsHealthIndicator.java
 backend/src/main/java/io/opaa/health/VectorStoreHealthIndicator.java
 deploy/helm/opaa/templates/networkpolicies.yaml
+deploy/helm/opaa/templates/sandbox-networkpolicy.yaml
 backend/src/main/java/io/opaa/security/TargetAddressValidator.java
 backend/src/main/java/io/opaa/security/PinnedAddressResolverProvider.java
 backend/src/main/java/io/opaa/security/ResolutionPins.java
@@ -132,8 +134,15 @@ backend/src/main/java/io/opaa/library/PrivateLibraryDeletion*.java
 # Service accounts and access tokens: lifecycle, consents, reminders
 backend/src/main/java/io/opaa/externalaccess/token/**/*.java
 
-# Exports of personal data
+# Agents and document templates: who may use an agent, its tools, the staff council directory, uploaded templates
+backend/src/main/java/io/opaa/agent/**/*.java
+backend/src/main/java/io/opaa/template/**/*.java
+
+# Exports of personal data, including the run stamp of agent answers
 backend/src/main/java/io/opaa/chat/ChatExportService.java
+backend/src/main/java/io/opaa/chat/ChatPdfRenderer.java
+backend/src/main/java/io/opaa/chat/AgentRun*.java
+backend/src/main/java/io/opaa/chat/AgentRevisions.java
 
 # Erasure of personal reference
 backend/src/main/java/**/*Erasure*.java
@@ -144,3 +153,12 @@ backend/src/main/java/io/opaa/api/RequestLoggingFilter.java
 backend/src/main/java/io/opaa/observability/UnobservedRoutes.java
 backend/src/main/java/io/opaa/observability/RequestId*.java
 backend/src/main/java/io/opaa/auth/QuickTourHint.java
+
+# Operational metrics as evaluation (ADR-0071): series, tags, dashboards and retention
+backend/src/main/java/io/opaa/observability/**/*.java
+backend/src/main/java/**/*Metrics*.java
+deploy/helm/opaa/templates/grafana-dashboards.yaml
+deploy/helm/opaa/templates/prometheusrule.yaml
+deploy/helm/opaa/templates/servicemonitor.yaml
+deploy/monitoring/**
+docker-compose.monitoring.yml
