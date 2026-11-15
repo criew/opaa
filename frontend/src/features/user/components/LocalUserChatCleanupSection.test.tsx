@@ -20,6 +20,11 @@ function fixture(id: string): LocalUserResponse {
 
 const REASON = 'Anordnung der Staatsanwaltschaft, Az. 12 Js 345/26'
 
+/** A request filed `hoursAgo` hours before now, well inside the 14-day approval window. */
+function requestedHoursAgo(hoursAgo: number): string {
+  return new Date(Date.now() - hoursAgo * 3_600_000).toISOString()
+}
+
 /**
  * The deletion of a locked account's chats in the single view of the account: the date for a lock
  * by the administration, nothing that depends on chats or a Klärung, and a hold only by request
@@ -74,8 +79,7 @@ describe('LocalUserChatCleanupSection', () => {
     mockChatCleanupRequests.set('local-user-vogt', {
       purpose: 'DATA_SUBJECT_REQUEST',
       reason: REASON,
-      // a request older than 14 days has lapsed, so it is dated relative to the test run
-      requestedAt: new Date(Date.now() - 3_600_000).toISOString(),
+      requestedAt: requestedHoursAgo(2),
       byMe: false,
     })
     const user = userEvent.setup()
@@ -98,7 +102,7 @@ describe('LocalUserChatCleanupSection', () => {
     mockChatCleanupRequests.set('local-user-vogt', {
       purpose: 'DATA_SUBJECT_REQUEST',
       reason: REASON,
-      requestedAt: '2026-10-30T08:00:00Z',
+      requestedAt: requestedHoursAgo(2),
       byMe: false,
     })
     const user = userEvent.setup()
@@ -108,7 +112,7 @@ describe('LocalUserChatCleanupSection', () => {
     mockChatCleanupRequests.set('local-user-vogt', {
       purpose: 'SECURITY_INCIDENT_EVIDENCE',
       reason: `${REASON}, erweitert`,
-      requestedAt: '2026-10-30T09:00:00Z',
+      requestedAt: requestedHoursAgo(1),
       byMe: false,
     })
 
@@ -128,7 +132,7 @@ describe('LocalUserChatCleanupSection', () => {
     mockChatCleanupRequests.set('local-user-vogt', {
       purpose: 'SECURITY_INCIDENT_EVIDENCE',
       reason: REASON,
-      requestedAt: '2026-10-30T08:00:00Z',
+      requestedAt: requestedHoursAgo(2),
       byMe: false,
     })
     const user = userEvent.setup()
