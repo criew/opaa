@@ -57,20 +57,16 @@ Datei, die sich nicht abholen oder anhängen lässt, fehlt, ohne die Antwort zu 
 
 ### 4. Kein Netz, Anmeldung je Aufruf
 
-Die Sandbox hat keinen Ausgang: Unter Docker Compose hängen alle Sandboxen und der Dienst am
-internen Netz `opaa-sandboxes` ohne Ausgang und mit eingeschalteter Kommunikation zwischen
-Containern (ICC), das Backend ist nicht darin. Code in einer Sandbox erreicht dort gleichzeitig
-laufende Sandboxen (deren Ausführungsagent, geschützt durch das Token des Laufs) und den Dienst
-(geschützt durch dessen Schlüssel), aber nicht das Internet. ICC bleibt an, weil der Dienst seine
-Ausführungsagenten über dieses Netz anspricht; ohne ICC erreicht er sie nicht. Getrennt
-voneinander sind Sandboxen verschiedener Personen nur unter Kubernetes: Dort legt das Helm-Chart im Namespace der Sandboxen eine
-NetworkPolicy an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den
-übrigen Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen
-Schlüssel, jede Sandbox ein eigenes Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne
-Root-Rechte und startet ohne dieses Token in seiner Umgebung: Mit dem Token könnte es den
-Ausführungsagenten in der eigenen Sandbox ansprechen und Kommandos als Root ausführen. Der Container
-behält nur die Capabilities, die der Ausführungsagent braucht. Ein Ausgangstor mit Zulassungsliste
-kommt erst mit einem Werkzeug, das Netz braucht.
+Keine Sandbox hat Ausgang. Unter Docker Compose teilen alle Sandboxen und der Dienst das interne
+Netz `opaa-sandboxes` mit ICC, das der Dienst für die Ausführungsagenten braucht; das Backend ist
+nicht darin. Code einer Sandbox erreicht dort den Dienst (Schlüssel) und gleichzeitige Sandboxen:
+deren Ausführungsagent verlangt das Token des Laufs, was Code dort selbst startet, ist ohne Schutz.
+Getrennt sind Sandboxen nur unter Kubernetes: Das Helm-Chart legt im Namespace der Sandboxen (nie
+dem von Opaa) eine NetworkPolicy an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt,
+unabhängig von den übrigen Regeln; wirksam nur mit einem CNI, das NetworkPolicies durchsetzt. Das
+Skript läuft ohne Root und ohne das Token, mit dem es den eigenen Ausführungsagenten als Root nutzen
+könnte; der Container behält nur dessen Capabilities. Ein Ausgangstor mit Zulassungsliste kommt
+erst mit einem Werkzeug, das Netz braucht.
 
 ### 5. Isolationsstärke ist Einstellung des Dienstes
 
@@ -145,10 +141,11 @@ Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler
   dessen Debian-Pakete folgen dem Stand des Basis-Images beim Bau statt einer festen Version.
 - **Restrisiko:** Ein Ausbruch aus der Laufzeit trifft den Knoten; die Stufe hängt an der
   Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts.
-- **Restrisiko unter Docker Compose:** Sandboxen gleichzeitiger Läufe, auch verschiedener
-  Personen, erreichen sich und den Dienst über das gemeinsame Netz; zwischen ihnen stehen nur Token
-  und Schlüssel (Entscheidung 4). Compose eignet sich deshalb für Einzelbetrieb, Demo und
-  vertrauenswürdige Nutzerkreise; Mehrbenutzerbetrieb mit sensiblen Daten gehört auf Kubernetes.
+- **Restrisiko unter Docker Compose:** Sandboxen gleichzeitiger Läufe, auch verschiedener Personen,
+  erreichen sich und den Dienst über das gemeinsame Netz; den Ausführungsagenten schützt nur das
+  Token des Laufs, selbst gestartete Dienste einer Sandbox gar nichts (Entscheidung 4). Compose
+  eignet sich deshalb für Einzelbetrieb, Demo und vertrauenswürdige Nutzerkreise;
+  Mehrbenutzerbetrieb mit sensiblen Daten gehört auf Kubernetes.
 - **Restrisiko der geteilten Sandbox:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann
   ein zurückgelassener Prozess die Ergebnisdatei von `fill_template` zwischen Schreiben und Lesen
   ändern. Ein eigenes Verzeichnis mit Zufallsnamen je Aufruf, das sofortige Lesen und die Prüfung
