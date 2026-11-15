@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-11
+Akzeptiert · zuletzt geändert 2026-11-15
 
 ## Kontext
 
@@ -23,8 +23,8 @@ der Bedingung, unter der sie wieder vorgelegt werden.
 
 Module, erlaubte Kanten, Schichtung und Web-Schicht stehen genau einmal: in `backend/AGENTS.md`
 („Logische Module und Schichtung“) und in `ModularArchitecture` (`MODULES`, `LAYERS`,
-`ALLOWED_MODULE_EDGES`, `INDEXING_CORE`, `CONNECTION_PACKAGES`). Modul-AGENTS.md wiederholen keine
-Kanten. Eine neue Kante ist eine Entscheidung und wird im PR begründet; zuvor wird geprüft, ob eine
+`ALLOWED_MODULE_EDGES`, `INDEXING_CORE`, `CONNECTION_PACKAGES`, `LLM_ROLES`, `LLM_ACROSS_ROLES`).
+Modul-AGENTS.md wiederholen keine Kanten. Eine neue Kante ist eine Entscheidung und wird im PR begründet; zuvor wird geprüft, ob eine
 Schnittstelle im unteren Modul genügt. Eine Kante, die kein Code mehr nutzt, wird entfernt.
 Geprüft durch `ModularArchitectureTest`, `SourceReferenceTest` (Importe und Javadoc im Quelltext)
 und `ModuleAgentsFileTest`.
@@ -43,11 +43,16 @@ funktioniert.
 | Konfiguration | `@ConfigurationProperties`, je Modul registriert; `@Value` nur ohne Properties-Typ | Ratsche (Entscheidung 6) |
 | Fehler | `common`-Exceptions, Abbildung nur in `GlobalExceptionHandler`; kein `ResponseStatusException` in Web-Klassen | `TransportStatusCodeSpecificationTest` (Statuscodes); Rest Konvention |
 | Rate-Limit | `RateLimitConfiguration`, endpunktweise | `TransportStatusCodeSpecificationTest` (429) |
-| Feature-Flags | `FeatureFlags` (ADR-0044) | Konvention |
+| Feature-Flags des Betriebs | `FeatureFlags` bzw. `@ConditionalOnFeature`, aus der Konfiguration, wirkt nach Neustart (ADR-0044) | Konvention |
+| Schalter der Verwaltung | in der Datenbank, ohne Neustart (ADR-0060, Entscheidung 1; `ExternalAccessSettings`); bietet er eine Capability an, über `permission.RuntimeCapabilitySwitch` (Agenten, Vorlagen, ADR-0070), bei jeder Auswertung gelesen | Konvention |
 | Geheimnisse | `CredentialsEncryptor`/`SettingsEncryptor` auf einem AES-GCM-Kern; Quellgeheimnisse nur über `SourceConnectionResolver` im Kern | `ModularArchitectureTest` (Konnektor-Paketregel, `LIBRARY_SECRET`, `SECRET_PORT`), `RunSecretContractCoverageTest` |
 | Ausgehende Verbindungen | `sourceaccess`; S3 über `io.opaa.s3`, Microsoft Graph über `io.opaa.msgraph`; jeder ausgehende Client ist über `@DataFlow` angemeldet, Hüllklassen ohne eigenes Ziel tragen `@DataFlowCarrier` (ADR-0052, Entscheidung 8) | `SourceAccessDependencyStructureTest`, `ModularArchitectureTest` (`OUTBOUND_CLIENTS`, `OUTBOUND_BEANS`) |
 | Datenbankschema | Flyway-Migrationen je Modul, SQL ohne Schemaqualifizierung (ADR-0034, ADR-0056) | `MigrationLayoutTest`, `MigrationModuleBoundaryTest`, `MigrationOrderTest` |
 | Spring-Testkontexte | die Signaturen in `io.opaa.test` | `SpringContextSignatureTest` |
+| Messung ausgehender Aufrufe | `MeteredHttpClient` um den JDK-`HttpClient`, sonst `OutboundMetrics` (ADR-0071, Entscheidung 8) | Konvention |
+| Request-ID | `RequestIdFilter` und `RequestIds`, in Executoren über `MdcTaskDecorator` (ADR-0071, Entscheidung 7) | Konvention |
+| Installationsweite Messwerte aus Datenbank oder Health | `PolledGauges`, außerhalb des Scrapes gelesen (ADR-0071, Entscheidung 10) | Konvention |
+| Fremdtext im Prompt | `common.PromptText` (unsichtbare Zeichen und Marker entfernen), Zäune über `ContentFence` | `SecurityInvariantsTest` (`foreignTextEntersAPromptOnlyThroughPromptText`) |
 | Arbeit am Ende einer Transaktion | `common.TransactionCallbacks`: `afterCommitOrNow` (nur nach Commit) oder `afterCompletionOrNow` (nach Commit und Rollback, für Cache-Invalidierungen), beide ohne aktive Synchronisation sofort; `afterCommit` ohne Sofort-Zweig unter `MANDATORY` | `ModularArchitectureTest` (`transactionCallbacksGoThroughTheHelper`) |
 
 „Konvention“ heißt: Die Regel gilt, aber nur das Review hält sie.
@@ -91,7 +96,7 @@ unter der sie wieder vorgelegt wird; tritt sie ein, wird die Zeile zum Issue und
 | Der Verzeichnis-Konnektor ist ein Keycloak-Sonderfall (`requireKeycloak`, geschlossenes Enum, Keycloak-Spalten) | Ein SPI ohne zweite Implementierung ist Konzept ohne Nutzen (ADR-0036, Entscheidung 3) | ein zweiter Verzeichnistyp beauftragt wird |
 | Zwei Tool-Kataloge (`McpToolCatalog` für externe KI-Werkzeuge und `ToolRegistry` der Werkzeugschleife) beschreiben dieselbe Suche | Getrennte Aufrufer mit eigenem Zugang und eigenen Grenzen (ADR-0035, ADR-0070); ein gemeinsames Tool-SPI hätte zwei Nutzer mit verschiedenen Verträgen | ein dritter Katalog entsteht oder ein Werkzeug über Suche und Dokumentabruf hinaus in beiden angeboten werden soll; dann Tool-SPI |
 | Entities stempeln `createdAt`/`updatedAt` mit `Instant.now()` statt über die `Clock` | Entities haben keine Injektion; die Stempel sind keine fachlichen Fristen (`backend/AGENTS.md`, „Zeit“) | ein Test einen deterministischen Entity-Stempel braucht |
-| Flache Wurzelpakete mit vielen Klassen (account, metadata, permission, auth, library, chat, llm) | Kein Sicherheitsproblem; dort gibt es kein zweites Anliegen, das eine Paketgrenze bräuchte | ein großer Umbau in einem dieser Pakete ansteht oder ein zweites Anliegen eine Paketregel braucht (Muster: `indexing.spi`/`run`) |
+| Flache Wurzelpakete mit vielen Klassen (account, metadata, permission, auth, library, chat) | Kein Sicherheitsproblem; dort gibt es kein zweites Anliegen, das eine Paketgrenze bräuchte | ein großer Umbau in einem dieser Pakete ansteht oder ein zweites Anliegen eine Paketregel braucht (Muster: `indexing.spi`/`run`) |
 | `interval(Object)`-Parser in drei Dateiablage-Konnektoren | der nächste Dateiablage-Konnektor nimmt ihn in den Kern | der nächste Dateiablage-Konnektor entsteht |
 
 ### 6. Ratschen für Zählbares
