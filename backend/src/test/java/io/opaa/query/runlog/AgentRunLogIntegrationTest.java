@@ -133,7 +133,8 @@ class AgentRunLogIntegrationTest {
     Map<String, Object> event =
         jdbc.queryForMap(
             "SELECT before, after FROM audit_log WHERE organization_id = ? AND"
-                + " event_type = 'AGENT_RUN_LOG_RETENTION_CHANGED'",
+                + " event_type = 'AGENT_RUN_LOG_RETENTION_CHANGED'"
+                + " AND object_id = '751e9ee8-6012-38c4-adfa-a0a38b0cb15b'",
             organizationId);
     assertThat(event.get("after").toString()).contains("\"stepLogRetentionDays\":14");
   }
