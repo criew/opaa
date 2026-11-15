@@ -16,10 +16,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * What a load balancer and a container health check see: {@code readiness} answers from the process
- * and its database alone, and the three contributors that call a model endpoint or the vector store
- * are reachable through groups of their own instead of deciding the overall status - so an
- * unreachable Ollama leaves both {@code readiness} and {@code /actuator/health} {@code UP}, and a
- * health probe costs no model call.
+ * and its database alone, and the contributors of every model role and the vector store are
+ * reachable through groups of their own instead of deciding the overall status - so an unreachable
+ * Ollama leaves both {@code readiness} and {@code /actuator/health} {@code UP}, and a health probe
+ * costs no model call.
  */
 @OpaaIntegrationTest
 class HealthGroupsIntegrationTest {
@@ -35,14 +35,20 @@ class HealthGroupsIntegrationTest {
         .doesNotContainKeys(
             ModelHealthGroupsConfiguration.CHAT_CONTRIBUTOR,
             ModelHealthGroupsConfiguration.EMBEDDINGS_CONTRIBUTOR,
-            ModelHealthGroupsConfiguration.VECTOR_STORE_CONTRIBUTOR);
+            ModelHealthGroupsConfiguration.VECTOR_STORE_CONTRIBUTOR,
+            ModelHealthGroupsConfiguration.TRANSCRIPTION_CONTRIBUTOR,
+            ModelHealthGroupsConfiguration.RERANK_CONTRIBUTOR,
+            ModelHealthGroupsConfiguration.TEXT_RECOGNITION_CONTRIBUTOR);
     assertThat(overall.getComponents()).containsKey("db");
     assertThat(overall.getGroups())
         .contains(
             ModelHealthGroupsConfiguration.CHAT_GROUP,
             ModelHealthGroupsConfiguration.EMBEDDINGS_GROUP,
             ModelHealthGroupsConfiguration.VECTOR_STORE_GROUP,
-            // the group the three new post-processors must not swallow while they wrap each other
+            ModelHealthGroupsConfiguration.TRANSCRIPTION_GROUP,
+            ModelHealthGroupsConfiguration.RERANK_GROUP,
+            ModelHealthGroupsConfiguration.TEXT_RECOGNITION_GROUP,
+            // the group the post-processors must not swallow while they wrap each other
             "mail",
             "readiness",
             "liveness");
@@ -55,6 +61,15 @@ class HealthGroupsIntegrationTest {
     assertGroupHoldsOnly(
         ModelHealthGroupsConfiguration.VECTOR_STORE_GROUP,
         ModelHealthGroupsConfiguration.VECTOR_STORE_CONTRIBUTOR);
+    assertGroupHoldsOnly(
+        ModelHealthGroupsConfiguration.TRANSCRIPTION_GROUP,
+        ModelHealthGroupsConfiguration.TRANSCRIPTION_CONTRIBUTOR);
+    assertGroupHoldsOnly(
+        ModelHealthGroupsConfiguration.RERANK_GROUP,
+        ModelHealthGroupsConfiguration.RERANK_CONTRIBUTOR);
+    assertGroupHoldsOnly(
+        ModelHealthGroupsConfiguration.TEXT_RECOGNITION_GROUP,
+        ModelHealthGroupsConfiguration.TEXT_RECOGNITION_CONTRIBUTOR);
   }
 
   @Test

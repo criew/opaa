@@ -40,6 +40,7 @@ datenkatalog#local-credentials
 datenkatalog#local-sessions-and-links
 datenkatalog#mail-outbox
 datenkatalog#notifications
+datenkatalog#operational-metrics
 datenkatalog#original-storage
 datenkatalog#permission-history
 datenkatalog#permission-transfers
@@ -409,6 +410,7 @@ voreinstellungen#prompt-chat-title
 voreinstellungen#prompt-mcp-server-instructions
 voreinstellungen#prompt-mcp-tool-descriptions
 voreinstellungen#prompt-metadata-extraction
+voreinstellungen#prompt-model-tool-check
 voreinstellungen#prompt-query-decomposition
 voreinstellungen#prompt-text-recognition-vision
 voreinstellungen#rerank-model-base-url

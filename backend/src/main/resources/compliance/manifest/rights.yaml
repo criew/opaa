@@ -375,8 +375,10 @@ settings:
       - >-
         Werkseinstellung, solange die Systemverwaltung unter Administration → Ohne Zuständigkeit
         keinen eigenen Wert setzt. Die verantwortliche Stelle ist eine Gruppe oder eine
-        Funktionsbezeichnung, keine Einzelperson; Stelle, Sperrgrund und Sperrzeitpunkt sehen alle,
-        die den Agenten oder die Vorlage sehen. Die Nutzung eines Agenten wird dafür nicht erfasst.
+        Funktionsbezeichnung, keine Einzelperson; Stelle, Art der Sperre und Sperrzeitpunkt sehen
+        alle, die den Agenten oder die Vorlage sehen, den Sperrgrund nur die Systemverwaltung und
+        wer den Agenten oder die Vorlage verwaltet (Verwalten-Recht oder Eigentum). Die Nutzung
+        eines Agenten wird dafür nicht erfasst.
   - key: succession_settings.aging_threshold_months
     source: DATABASE
     defaultValue: "12"

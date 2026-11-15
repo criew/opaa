@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-11
+Akzeptiert · zuletzt geändert 2026-11-15
 
 ## Kontext
 
@@ -55,9 +55,15 @@ Werkzeuge denselben Namen tragen oder eines keine Rechteklasse hat.
 | isoliert | läuft in einer Ausführungsumgebung ohne Zugriff auf den Bestand und ohne Netz; die Eingaben gibt die Anwendung hinein, erzeugte Dateien werden nur Anhang der Antwort und damit Teil von (a) | `run_code` |
 | schreibend | wirkt außerhalb des Laufs: schreibt, sendet oder greift über das Ausgangstor nach außen | keines |
 
-Jedes Werkzeug prüft bei jedem Aufruf selbst die Rechte und verlässt sich nicht auf die Schleife.
-Den Bestand erreicht es nur über dieselben Domain-Dienste wie `POST /api/v1/query`; einen zweiten
-Zugriffsweg gibt es nicht. Begründung: Gibt es die Klasse von Anfang an, ist ein späteres
+Der Suchbereich (Entscheidung 3) wird beim Start des Laufs einmal aus denselben lesbaren
+Bibliotheken bestimmt wie für `POST /api/v1/query` und bleibt für den Lauf eingefroren
+(`AgentRun#searchScope`); eine Rechteänderung wirkt ab dem nächsten Lauf. Jedes Werkzeug begrenzt
+bei jedem Aufruf selbst jedes Lesen auf diesen Bereich und verlässt sich nicht auf die Schleife.
+`search_knowledge` sucht wie `POST /api/v1/query` über `KnowledgeRetrieval` mit derselben
+Filterprüfung (`MetadataFilterValidator`), `read_document` liest nur, was ein Schritt des Laufs
+gefunden hat, und schränkt das Nachladen erneut auf den Bereich ein. `list_sources` liest Namen und
+Dokumentzahlen direkt aus den Repositories, aber nur für Bibliotheken des Bereichs und ohne Inhalt.
+Einen Weg am Suchbereich vorbei gibt es nicht. Begründung: Gibt es die Klasse von Anfang an, ist ein späteres
 schreibendes Werkzeug eine neue Zeile. Kommt sie erst später, muss jedes bestehende Werkzeug neu
 bewertet werden.
 
@@ -217,8 +223,12 @@ Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
   als die Deckel aus ADR-0053, Entscheidung 12, schließt das Platzlimit bei nicht erreichbarer
   Datenbank: Ohne Datenbank gibt es weder Suche noch Schrittprotokoll, ein
   Lauf könnte also ohnehin nicht korrekt laufen.
-- **Schalter:** stehen in der Datenbank; jede Instanz hält sie am Invalidierungsbus (ADR-0053,
-  Entscheidung 5).
+- **Schalter:** stehen in der Datenbank und werden bei jeder Anfrage, die sie betrifft, ohne
+  Zwischenspeicher gelesen (`AgentSwitch`, `AgentSettingsService#enabledTools`,
+  `DocumentTemplateSettingsService#isEnabled`). Eine Änderung gilt damit auf jeder Instanz ab der
+  nächsten Anfrage, ohne Invalidierungsbus; ein laufender Lauf behält die Werkzeuge, die ihm beim
+  Start angeboten wurden. Abgeschaltet nimmt die nächste Anfrage keinen Agenten und kein Werkzeug
+  mehr an; ein Lauf, der schon läuft, endet regulär.
 - **Nutzergesteuerte Ausführung** für spätere schreibende Werkzeuge: Die Anwendung nimmt die
   Aufrufwünsche des Modells entgegen und führt sie über `ToolCallingManager` aus, statt sie dem
   `ToolCallingAdvisor` zu überlassen. Nur so kann sie vor einem Aufruf anhalten. Die wartende

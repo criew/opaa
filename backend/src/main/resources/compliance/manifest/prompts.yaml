@@ -74,6 +74,26 @@ prompts:
       Fassung und steht im Revisionsprotokoll
     classes: [io.opaa.agent.AgentResearchProvisioner]
     sha256: "b5c3e36834c79b998259fb974da388338afeba75620331ee6435dcc1c498bd96"
+  - id: model-tool-check
+    purpose: >-
+      Feste Fallbasis der Werkzeugprüfung eines Chat-Modells in der Modellverwaltung: System-Prompt
+      einer fiktiven Stadtverwaltung mit der Grenze der Suchaufrufe, erfundene Fragen und
+      Werkzeugergebnisse, Hinweise bei erreichter Grenze oder falschem Aufruf, die Beschreibung
+      des Suchwerkzeugs der Agenten und eine Bereitschaftsprobe vor dem ersten Fall
+    classes:
+      - io.opaa.query.toolcheck.ToolCallingTool
+      - io.opaa.query.toolcheck.ToolCheckWorker
+      - io.opaa.query.toolloop.SearchKnowledgeDefinition
+    resources:
+      - io/opaa/query/toolcheck/casebase/system-prompt.txt
+      - io/opaa/query/toolcheck/casebase/cases.json
+      - io/opaa/query/toolcheck/casebase/mock-tool.json
+    sha256: "36f9b39bb747ff45020d4fc142c6a4a0af98491858b0c124600e87f7634f15de"
+    notes:
+      - >-
+        Keine KI-Funktion: Die Prüfung misst nur, ob ein Modell Werkzeuge verlässlich aufruft; sie
+        enthält keine Daten aus Bibliotheken, Chats oder über Personen, und ihr Ergebnis setzt
+        keine Einstellung
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]

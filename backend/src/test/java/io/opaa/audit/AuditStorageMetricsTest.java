@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -13,7 +14,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import javax.sql.DataSource;
+import io.opaa.observability.PolledGauges;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,10 +23,12 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * A scrape reads only what {@link AuditStorageMetrics#refresh} read last, and a value that cannot
- * be read is {@code NaN} with one warning per failure, not one per read.
+ * A scrape reads only what the last {@link PolledGauges#refresh} of the audit gauges read, and a
+ * value that cannot be read is {@code NaN} with one warning per failure, not one per read.
  */
 class AuditStorageMetricsTest {
+
+  private static final Object[] NO_ARGUMENTS = new Object[0];
 
   private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
   private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
@@ -35,7 +38,7 @@ class AuditStorageMetricsTest {
   @BeforeEach
   void captureLog() {
     appender.start();
-    logger = (Logger) LoggerFactory.getLogger(AuditStorageMetrics.class);
+    logger = (Logger) LoggerFactory.getLogger(PolledGauges.class);
     logger.addAppender(appender);
   }
 
@@ -46,11 +49,11 @@ class AuditStorageMetricsTest {
 
   @Test
   void aScrapeBeforeTheFirstReadAndAScrapeAfterItNeverQueryTheDatabase() {
-    when(jdbc.queryForObject(anyString(), eq(Double.class))).thenReturn(36.0);
-    AuditStorageMetrics metrics = new AuditStorageMetrics(jdbc, registry);
+    when(jdbc.queryForObject(anyString(), eq(Double.class), any(Object[].class))).thenReturn(36.0);
+    PolledGauges metrics = AuditStorageMetrics.gauges(jdbc, registry);
 
     assertThat(gauge("opaa.audit.retention.period")).isNaN();
-    verify(jdbc, never()).queryForObject(anyString(), eq(Double.class));
+    verify(jdbc, never()).queryForObject(anyString(), eq(Double.class), any(Object[].class));
 
     metrics.refresh();
 
@@ -59,10 +62,10 @@ class AuditStorageMetricsTest {
 
   @Test
   void aScrapeAfterAReadShowsThatReadUntilTheNextOne() {
-    when(jdbc.queryForObject(AuditStorageMetrics.RETENTION_MONTHS_SQL, Double.class))
+    when(jdbc.queryForObject(AuditStorageMetrics.RETENTION_MONTHS_SQL, Double.class, NO_ARGUMENTS))
         .thenReturn(36.0)
         .thenReturn(37.0);
-    AuditStorageMetrics metrics = new AuditStorageMetrics(jdbc, registry);
+    PolledGauges metrics = AuditStorageMetrics.gauges(jdbc, registry);
 
     metrics.refresh();
 
@@ -73,20 +76,13 @@ class AuditStorageMetricsTest {
   }
 
   @Test
-  void theReadsAreBoundedByAQueryTimeoutOfTheirOwn() {
-    JdbcTemplate reads = AuditStorageMetrics.reads(mock(DataSource.class));
-
-    assertThat(reads.getQueryTimeout()).isEqualTo(AuditStorageMetrics.QUERY_TIMEOUT_SECONDS);
-  }
-
-  @Test
   void aFailedReadIsNanAndWarnsOnceUntilItSucceedsAgain() {
-    when(jdbc.queryForObject(AuditStorageMetrics.LAST_RUN_AGE_SQL, Double.class))
+    when(jdbc.queryForObject(AuditStorageMetrics.LAST_RUN_AGE_SQL, Double.class, NO_ARGUMENTS))
         .thenThrow(new DataAccessResourceFailureException("pool exhausted"))
         .thenThrow(new DataAccessResourceFailureException("pool exhausted"))
         .thenReturn(3600.0)
         .thenThrow(new DataAccessResourceFailureException("pool exhausted"));
-    AuditStorageMetrics metrics = new AuditStorageMetrics(jdbc, registry);
+    PolledGauges metrics = AuditStorageMetrics.gauges(jdbc, registry);
 
     metrics.refresh();
     metrics.refresh();

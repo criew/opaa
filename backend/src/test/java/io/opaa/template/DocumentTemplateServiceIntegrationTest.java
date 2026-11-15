@@ -252,6 +252,24 @@ class DocumentTemplateServiceIntegrationTest {
     assertThat(runTemplates.forFilling(template.getId(), organization, author, assigned)).isEmpty();
   }
 
+  @Test
+  void aNonAdminIsRefusedLockAndUnlockAlikeForAnUnknownAndAnInvisibleTemplate() {
+    settingsService.update(true, admin());
+    grantCreateTemplate(author);
+    UUID invisible = templateService.create(creation("Bericht"), caller(author)).template().getId();
+    UUID unknown = UUID.randomUUID();
+
+    for (UUID id : List.of(unknown, invisible)) {
+      assertThatThrownBy(() -> templateService.lock(id, "Grund", caller(colleague)))
+          .isInstanceOf(AccessDeniedException.class)
+          .hasMessage("Nur die Systemverwaltung darf Vorlagen sperren.");
+      assertThatThrownBy(() -> templateService.unlock(id, caller(colleague)))
+          .isInstanceOf(AccessDeniedException.class)
+          .hasMessage("Nur die Systemverwaltung darf Vorlagen entsperren.");
+    }
+    assertThat(auditCount("ASSET_LOCKED", invisible)).isZero();
+  }
+
   private DocumentTemplateCreation creation(String name) {
     return new DocumentTemplateCreation(
         name,

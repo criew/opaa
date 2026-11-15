@@ -481,6 +481,7 @@ class DiagnosticAccessIntegrationTest {
         jdbcTemplate.queryForMap(
             "SELECT before, after FROM audit_log WHERE organization_id = ?"
                 + " AND event_type = 'DIAGNOSTIC_CONTEXT_RETENTION_CHANGED'"
+                + " AND object_id = 'ca313e34-f113-34ff-9206-62339c78c7e7'"
                 + " ORDER BY recorded_at DESC LIMIT 1",
             organizationId);
     assertThat(retentionMonthsIn(protocolled.get("before"))).isEqualTo(before);

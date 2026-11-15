@@ -23,8 +23,9 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
  * The checksum of a system prompt: SHA-256 over its texts, sorted and each followed by a zero byte.
  * For a prompt in code the texts are every string constant and every string annotation value
  * ({@code @Tool(description = ...)}) of the named class files, so any change of wording changes the
- * checksum; so does a changed log or error text in the same class. For a prompt held as a database
- * default the text is the last {@code DEFAULT} the migrations give the column.
+ * checksum; so does a changed log or error text in the same class. A shipped resource file counts
+ * with its whole text. For a prompt held as a database default the text is the last {@code DEFAULT}
+ * the migrations give the column.
  */
 public final class PromptChecksum {
 
@@ -42,9 +43,17 @@ public final class PromptChecksum {
 
   /** The checksum of {@code prompt}, wherever its text is held. */
   public static String of(ComplianceManifest.PromptEntry prompt) {
-    return prompt.databaseDefault() != null
-        ? digest(List.of(databaseDefault(prompt.databaseDefault())))
-        : of(prompt.classes());
+    if (prompt.databaseDefault() != null) {
+      return digest(List.of(databaseDefault(prompt.databaseDefault())));
+    }
+    SortedSet<String> texts = new TreeSet<>();
+    for (String className : listOrEmpty(prompt.classes())) {
+      texts.addAll(stringConstants(className));
+    }
+    for (String resource : listOrEmpty(prompt.resources())) {
+      texts.add(resourceText(resource));
+    }
+    return digest(texts);
   }
 
   /**
@@ -100,6 +109,22 @@ public final class PromptChecksum {
       throw new IllegalArgumentException("no DEFAULT for " + tableColumn + " in the migrations");
     }
     return found;
+  }
+
+  /** The whole text of a shipped file, {@code resource} being its classpath path. */
+  static String resourceText(String resource) {
+    try (InputStream in = PromptChecksum.class.getClassLoader().getResourceAsStream(resource)) {
+      if (in == null) {
+        throw new IllegalArgumentException("resource not on the classpath: " + resource);
+      }
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new IllegalStateException("cannot read " + resource, e);
+    }
+  }
+
+  private static List<String> listOrEmpty(List<String> values) {
+    return values == null ? List.of() : values;
   }
 
   /** The string constants and string annotation values of the class file. */

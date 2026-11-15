@@ -169,7 +169,9 @@ public class AgentService {
         new AgentConfiguration(
             "", Set.of(), AgentTools.DEFAULT, AgentPlanStep.OFF, DEFAULT_LIMITS, Set.of()));
     Agent saved = agentRepository.save(agent);
-    shellService.registerCreated(saved, caller.id(), auditPayload(saved));
+    Map<String, Object> created = auditPayload(saved);
+    created.putAll(AssetResponsibilityService.unitPayload(responsible));
+    shellService.registerCreated(saved, caller.id(), created);
     responsibilityService.establish(saved, responsible);
     return view(saved, AssetRole.OWNER, caller);
   }

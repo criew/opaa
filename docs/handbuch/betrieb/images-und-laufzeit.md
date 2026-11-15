@@ -275,6 +275,8 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 | `chat-model` | welches Chat-Modell aktiv ist, ohne Aufruf |
 | `embedding-model` | einen echten Embedding-Aufruf, Ergebnis kurz zwischengespeichert |
 | `transcription-model` | letzten bekannten Zustand der Spracherkennung |
+| `rerank-model` | letzten bekannten Zustand des Rerankings |
+| `text-recognition-model` | letzten bekannten Zustand der Texterkennung |
 | `vector-store` | eine echte Ähnlichkeitssuche, Ergebnis kurz zwischengespeichert |
 | `upload-store` | den S3-Objektspeicher der Originalablage |
 | `mail` | den letzten SMTP-Versand |

@@ -316,11 +316,12 @@ public record ComplianceManifest(
   public record HelmValue(@NotBlank String values, @NotNull String defaultValue) {}
 
   /**
-   * A system prompt sent to a model, held either in code or as a database default ("Fundstelle":
-   * exactly one of the two). {@code sha256} is {@link PromptChecksum#of(PromptEntry)}, so any
-   * change of its wording changes the checksum.
+   * A system prompt sent to a model, held either in code (classes, shipped resource files or both)
+   * or as a database default ("Fundstelle": exactly one of the two). {@code sha256} is {@link
+   * PromptChecksum#of(PromptEntry)}, so any change of its wording changes the checksum.
    *
    * @param classes the binary names of the classes holding the prompt text
+   * @param resources classpath paths of shipped files holding the prompt text
    * @param databaseDefault {@code table.column} whose migration default is the prompt text
    */
   public record PromptEntry(
@@ -328,6 +329,7 @@ public record ComplianceManifest(
       @NotBlank String id,
       @NotBlank String purpose,
       List<@NotBlank String> classes,
+      List<@NotBlank String> resources,
       String databaseDefault,
       @NotBlank @Pattern(regexp = "[0-9a-f]{64}") String sha256,
       List<@NotBlank String> notes) {
@@ -335,7 +337,8 @@ public record ComplianceManifest(
     /** Validated as property {@code locatedOnce}. */
     @AssertTrue
     public boolean isLocatedOnce() {
-      boolean inCode = classes != null && !classes.isEmpty();
+      boolean inCode =
+          (classes != null && !classes.isEmpty()) || (resources != null && !resources.isEmpty());
       boolean inDatabase = databaseDefault != null && !databaseDefault.isBlank();
       return inCode != inDatabase;
     }

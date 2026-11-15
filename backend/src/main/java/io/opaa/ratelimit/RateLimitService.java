@@ -2,6 +2,7 @@ package io.opaa.ratelimit;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.common.TooManyRequestsException;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -76,6 +77,30 @@ public class RateLimitService implements RequestLimiter {
       timestamps.addLast(now);
       return Decision.allowAt(now);
     }
+  }
+
+  /**
+   * {@link #acquire(String, String, String)} with the default message of {@link
+   * TooManyRequestsException} and no code.
+   *
+   * @throws TooManyRequestsException when the window has no room
+   */
+  public Decision acquire(String key) {
+    return acquire(key, TooManyRequestsException.MESSAGE, null);
+  }
+
+  /**
+   * Counts one request for {@code key} like {@link #tryAcquire} and returns the granted decision; a
+   * refusal throws with {@code message}, {@code code} and the seconds to wait.
+   *
+   * @throws TooManyRequestsException when the window has no room
+   */
+  public Decision acquire(String key, String message, String code) {
+    Decision decision = tryAcquire(key);
+    if (!decision.allowed()) {
+      throw new TooManyRequestsException(message, decision.retryAfterSeconds(), code);
+    }
+    return decision;
   }
 
   /**
