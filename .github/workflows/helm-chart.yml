@@ -31,6 +31,9 @@ env:
   # promtool for the unit test of the chart's alerts; it ships with Prometheus.
   # renovate: datasource=github-releases depName=prometheus/prometheus
   PROMETHEUS_VERSION: v3.15.0
+  # yq pinned instead of the runner image's: render.sh compares its YAML output byte for byte.
+  # renovate: datasource=github-releases depName=mikefarah/yq
+  YQ_VERSION: v4.54.3
   # renovate: datasource=github-releases depName=kubernetes-sigs/kind
   KIND_VERSION: v0.33.0
   # Newest supported Kubernetes version (ADR-0042, Entscheidung 8), image from the release notes of
@@ -102,6 +105,19 @@ jobs:
         with:
           version: ${{ matrix.helm }}
 
+      - name: yq installieren
+        working-directory: ${{ runner.temp }}
+        run: |
+          base="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}"
+          curl -sSfLO "$base/yq_linux_amd64"
+          curl -sSfLO "$base/checksums"
+          curl -sSfLO "$base/checksums_hashes_order"
+          column=$(($(grep -n -x 'SHA-256' checksums_hashes_order | cut -d: -f1) + 1))
+          echo "$(awk -v c="$column" '$1 == "yq_linux_amd64" { print $c }' checksums)  yq_linux_amd64" \
+            | sha256sum --check --strict -
+          sudo install yq_linux_amd64 /usr/local/bin/yq
+          yq --version
+
       - name: kubeconform installieren
         working-directory: ${{ runner.temp }}
         run: |
@@ -126,7 +142,6 @@ jobs:
           tar -xzf "$dir.tar.gz" --strip-components=1 "$dir/promtool"
           sudo install promtool /usr/local/bin/promtool
 
-      # yq comes with the runner image.
       - name: Alarmregeln testen
         run: deploy/helm/ci/rule-test.sh
 

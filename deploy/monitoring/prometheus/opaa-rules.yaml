@@ -154,7 +154,6 @@ groups:
       - alert: OpaaIdentityProviderRejected
         expr: >-
           (
-
             sum(increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="oidc", outcome!~"success|client_error"}[10m]))
             / sum(increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="oidc"}[10m]))
             > 0.5
@@ -175,7 +174,6 @@ groups:
       - alert: OpaaHighErrorRate
         expr: >-
           (
-
             sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*", status=~"5.."}[10m]))
             / sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*"}[10m]))
             > 0.05
@@ -192,7 +190,6 @@ groups:
       - alert: OpaaHighErrorRate
         expr: >-
           (
-
             sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*", status=~"5.."}[10m]))
             / sum(rate(http_server_requests_seconds_count{namespace="opaa", service="opaa-backend", uri!~"/actuator.*"}[10m]))
             > 0.25
@@ -212,12 +209,10 @@ groups:
       - alert: OpaaChatSloBurn
         expr: >-
           (
-
             sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status="error"}[1h]))
             / sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[1h]))
             > 0.072
           ) and on() (
-
             sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status="error"}[5m]))
             / sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[5m]))
             > 0.072
@@ -234,12 +229,10 @@ groups:
       - alert: OpaaChatSloBurn
         expr: >-
           (
-
             sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status="error"}[6h]))
             / sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[6h]))
             > 0.03
           ) and on() (
-
             sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status="error"}[30m]))
             / sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[30m]))
             > 0.03
@@ -256,12 +249,10 @@ groups:
       - alert: OpaaChatSloBurn
         expr: >-
           (
-
             sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status="error"}[3d]))
             / sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[3d]))
             > 0.005
           ) and on() (
-
             sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status="error"}[6h]))
             / sum(increase(opaa_query_count_total{namespace="opaa", service="opaa-backend", status=~"success|error"}[6h]))
             > 0.005
@@ -292,7 +283,6 @@ groups:
       - alert: OpaaRetrievalMostlyEmpty
         expr: >-
           (
-
             sum(increase(opaa_retrieval_empty_total{namespace="opaa", service="opaa-backend"}[30m]))
             / sum(increase(opaa_retrieval_hits_count{namespace="opaa", service="opaa-backend"}[30m]))
             >= 0.8
@@ -325,7 +315,6 @@ groups:
       - alert: OpaaModelRoleDown
         expr: >-
           max by (role) (opaa_model_role_available{namespace="opaa", service="opaa-backend", role=~"rerank|transcription|ocr|vision"}) == 0 and on(role) (
-
             label_replace(sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"rerank|transcription|ocr|vision"}[30m])), "role", "$1", "target", "(.+)")
             > 0
           )
@@ -343,7 +332,6 @@ groups:
       - alert: OpaaOutboundAuthFailing
         expr: >-
           (
-
             sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"rerank|transcription|ocr|vision|sandbox|model_check", outcome=~"auth_error|tls_error"}[10m]))
             / sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"rerank|transcription|ocr|vision|sandbox|model_check"}[10m]))
             > 0.5
@@ -360,7 +348,6 @@ groups:
       - alert: OpaaOutboundAuthFailing
         expr: >-
           (
-
             sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"connector|original_store", outcome=~"auth_error|tls_error"}[10m]))
             / sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"connector|original_store"}[10m]))
             > 0.5
@@ -377,7 +364,6 @@ groups:
       - alert: OpaaOutboundAuthFailing
         expr: >-
           (
-
             sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"clamav", outcome=~"auth_error|tls_error"}[10m]))
             / sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target=~"clamav"}[10m]))
             > 0.5
@@ -396,7 +382,6 @@ groups:
       - alert: OpaaOutboundThrottled
         expr: >-
           (
-
             sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", path_class="interactive", outcome="throttled"}[30m]))
             / sum by (target) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", path_class="interactive"}[30m]))
             > 0.2
@@ -444,7 +429,6 @@ groups:
       - alert: OpaaIndexingRunsFailing
         expr: >-
           (
-
             sum by (connector) (increase(opaa_indexing_runs_total{namespace="opaa", service="opaa-backend", result="failed"}[6h]))
             / sum by (connector) (increase(opaa_indexing_runs_total{namespace="opaa", service="opaa-backend"}[6h]))
             > 0.25
@@ -479,7 +463,6 @@ groups:
       - alert: OpaaOutboundAuthFailing
         expr: >-
           (
-
             sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="directory", outcome=~"auth_error|tls_error"}[10m]))
             / sum by (target, kind) (increase(opaa_outbound_requests_seconds_count{namespace="opaa", service="opaa-backend", target="directory"}[10m]))
             > 0.5
@@ -580,7 +563,6 @@ groups:
       - alert: OpaaMailDeliveryFailing
         expr: >-
           (
-
             sum(increase(opaa_mail_sent_total{namespace="opaa", service="opaa-backend", result="failed"}[30m]))
             / sum(increase(opaa_mail_sent_total{namespace="opaa", service="opaa-backend"}[30m]))
             > 0.5
@@ -687,7 +669,6 @@ groups:
       - alert: OpaaMalwareScanFailing
         expr: >-
           (
-
             sum(increase(opaa_malware_scans_seconds_count{namespace="opaa", service="opaa-backend", result="failed"}[15m]))
             / sum(increase(opaa_malware_scans_seconds_count{namespace="opaa", service="opaa-backend"}[15m]))
             > 0.5
@@ -741,7 +722,6 @@ groups:
       - alert: OpaaLoginFailureSpike
         expr: >-
           sum(increase(opaa_auth_logins_total{namespace="opaa", service="opaa-backend", method="local", result=~"bad_credentials|locked"}[15m])) > 50 and on() sum(increase(opaa_auth_logins_total{namespace="opaa", service="opaa-backend", method="local", result=~"bad_credentials|locked"}[15m])) > on() (
-
             5 * quantile(0.5,
               label_replace(sum(increase(opaa_auth_logins_total{namespace="opaa", service="opaa-backend", method="local", result=~"bad_credentials|locked"}[15m] offset 1d)), "day", "1", "", "")
               or label_replace(sum(increase(opaa_auth_logins_total{namespace="opaa", service="opaa-backend", method="local", result=~"bad_credentials|locked"}[15m] offset 2d)), "day", "2", "", "")
