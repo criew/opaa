@@ -57,7 +57,6 @@ public class AssetResponsibility {
     assign(unit);
   }
 
-  /** Names the unit; a named unit ends the period without one. */
   /** Replaces the unit; the period stays, only the caller knows whether the unit now acts. */
   void assign(ResponsibleUnit unit) {
     this.responsibleGroupId = unit == null ? null : unit.groupId();
