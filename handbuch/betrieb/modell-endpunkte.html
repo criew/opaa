@@ -5414,7 +5414,8 @@ der Suche tut, steht unter <a href="../referenz/wie-die-suche-arbeitet.html#die-
 </ul>
 <p>Zum Einschalten gehören drei Angaben zusammen: das Auswahlkästchen „Reranking einschalten", die
 Basis-Adresse ohne den Pfad <code>/rerank</code> und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
-fortlaufend auf der Seite „Suche &amp; Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
+fortlaufend auf der Seite „Suche &amp; Indexierung" sowie in der Health Group
+<code>GET /actuator/health/rerank-model</code>; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.</p>
 <blockquote>
 <p><strong><code>OPAA_QUERY_FETCH_K</code> mit anheben.</strong> Der Reranker bewertet nur, was die Suchstufen zuvor geliefert
@@ -5736,7 +5737,8 @@ frei; der Aufruf folgt keinem Redirect und geht über den <a href="netz-und-sich
 Tabelle) genau so, wie es der Betrieb täte, und unterscheidet: bereit, Schlüssel abgelehnt, Engine
 oder Modelle fehlen (der Dienst antwortet, kann die Seite aber nicht lesen oder kennt das Modell
 nicht), kein Text erkannt und nicht erreichbar. Der Zustand steht fortlaufend auf der Seite
-„Suche &amp; Indexierung" (Rolle „Texterkennung"); geprüft werden fortlaufend Erreichbarkeit und
+„Suche &amp; Indexierung" (Rolle „Texterkennung") und in der Health Group
+<code>GET /actuator/health/text-recognition-model</code>; geprüft werden fortlaufend Erreichbarkeit und
 Schlüssel, nie eine Seite. Ein abgelehnter Schlüssel zeigt die Rolle als nicht nutzbar.</p>
 <p><strong>Grenzen.</strong> Seiten je Dokument (<code>OPAA_OCR_MAX_PAGES_PER_DOCUMENT</code>), Zeit je Dokument
 (<code>OPAA_OCR_DOCUMENT_TIMEOUT</code>), gleichzeitige Dokumente je Instanz (<code>OPAA_OCR_MAX_CONCURRENT</code>), Seiten
@@ -6044,7 +6046,8 @@ Fragen und an der Fehlerquote.</p>
 <h2 id="fehlerbilder">Fehlerbilder<a class="headerlink" href="#fehlerbilder" title="Permanent link">&para;</a></h2>
 <p>Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche &amp; Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-<code>GET /actuator/health/chat-model</code>, <code>…/embedding-model</code> und <code>…/transcription-model</code> (<a href="images-und-laufzeit.html#readiness-und-liveness">Readiness</a>;
+<code>GET /actuator/health/chat-model</code>, <code>…/embedding-model</code>, <code>…/transcription-model</code>, <code>…/rerank-model</code> und
+<code>…/text-recognition-model</code> (<a href="images-und-laufzeit.html#readiness-und-liveness">Readiness</a>;
 Details nur für die Systemverwaltung) und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden <code>chat-model</code>,
 <code>embedding-model</code> und <code>vector-store</code> <code>UNKNOWN</code> mit dem Detail <code>NOT_CONFIGURED</code>; das ist kein
 Ausfall, die Readiness bleibt <code>UP</code>. Eine Überwachung, die nur auf <code>DOWN</code> achtet, bemerkt ein nie
