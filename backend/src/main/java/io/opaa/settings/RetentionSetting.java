@@ -17,13 +17,7 @@ import java.util.function.IntSupplier;
  * only, bounds checked before writing, the update must hit exactly that row, and every change is
  * one governance event on the row's fixed object id with the previous and the new values.
  */
-public record RetentionSetting(
-    AuditEventRecorder auditEventRecorder,
-    String table,
-    String adminOnly,
-    AuditEventType eventType,
-    String objectName,
-    Bounds bounds) {
+public final class RetentionSetting {
 
   /**
    * The allowed period {@code min..max} in {@code unit} (dative plural); {@code note} ends a
@@ -31,9 +25,38 @@ public record RetentionSetting(
    */
   public record Bounds(int min, int max, String unit, String note) {}
 
+  private final AuditEventRecorder auditEventRecorder;
+  private final String adminOnly;
+  private final AuditEventType eventType;
+  private final UUID objectId;
+  private final String objectName;
+  private final Bounds bounds;
+  private final String table;
+
+  public RetentionSetting(
+      AuditEventRecorder auditEventRecorder,
+      String table,
+      String adminOnly,
+      AuditEventType eventType,
+      String objectName,
+      Bounds bounds) {
+    this.auditEventRecorder = auditEventRecorder;
+    this.table = table;
+    this.adminOnly = adminOnly;
+    this.eventType = eventType;
+    this.objectId = objectId(table);
+    this.objectName = objectName;
+    this.bounds = bounds;
+  }
+
   /** The well-known audit object id of a settings table's singleton row. */
   public static UUID objectId(String table) {
     return UUID.nameUUIDFromBytes(table.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /** The audit object id of this setting's row. */
+  public UUID objectId() {
+    return objectId;
   }
 
   public void requireAdmin(CurrentUser actor) {
@@ -68,7 +91,7 @@ public record RetentionSetting(
             .organizationId(actor.organizationId())
             .actor(actor.id())
             .type(eventType)
-            .object(AuditObjectType.SYSTEM_SETTING, objectId(table), objectName)
+            .object(AuditObjectType.SYSTEM_SETTING, objectId, objectName)
             .before(before)
             .after(after)
             .outcome(AuditOutcome.SUCCESS)

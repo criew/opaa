@@ -7,7 +7,6 @@ import io.opaa.settings.RetentionSetting;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,13 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class PermissionHistoryRetentionService {
-
-  /**
-   * Fixed, well-known object id of the settings singleton in the audit trail - it is a system
-   * setting, not an entity with an id of its own.
-   */
-  static final UUID SETTINGS_OBJECT_ID =
-      RetentionSetting.objectId("permission_history_retention_settings");
 
   private final PermissionHistoryRetentionSettingsRepository repository;
   private final RetentionSetting setting;

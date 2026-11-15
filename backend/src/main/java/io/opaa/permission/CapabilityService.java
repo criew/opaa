@@ -579,8 +579,8 @@ public class CapabilityService {
 
   /**
    * The fixed, well-known audit object id of one capability - it is an installation-wide setting,
-   * not an entity with an id of its own, exactly like {@code
-   * PermissionHistoryRetentionService#SETTINGS_OBJECT_ID}.
+   * not an entity with an id of its own, exactly like {@link
+   * io.opaa.settings.RetentionSetting#objectId(String)}.
    */
   static UUID capabilityObjectId(Capability capability) {
     return UUID.nameUUIDFromBytes(

@@ -79,7 +79,7 @@ class PermissionHistoryRetentionIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE event_type = ? AND object_id = ?",
         AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name(),
-        PermissionHistoryRetentionService.SETTINGS_OBJECT_ID.toString());
+        "5935e512-5b28-363b-a6c5-1b7ef395e12c");
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }

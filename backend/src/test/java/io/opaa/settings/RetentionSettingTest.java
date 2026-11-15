@@ -17,10 +17,15 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 class RetentionSettingTest {
@@ -45,6 +50,31 @@ class RetentionSettingTest {
   void objectIdIsTheNameBasedUuidOfTheTable() {
     assertThat(RetentionSetting.objectId(TABLE))
         .isEqualTo(UUID.nameUUIDFromBytes(TABLE.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  /**
+   * The audit object id of every retention setting stays what earlier entries carry; the services
+   * are named as strings because they live in modules above {@code settings}.
+   */
+  @ParameterizedTest
+  @CsvSource({
+    "io.opaa.query.runlog.AgentRunLogRetentionService, 751e9ee8-6012-38c4-adfa-a0a38b0cb15b",
+    "io.opaa.connection.log.ConnectionLogRetentionService, 38de752d-7282-35a0-923e-d8751817acb8",
+    "io.opaa.diagnosticaccess.DiagnosticContextRetentionService,"
+        + " ca313e34-f113-34ff-9206-62339c78c7e7",
+    "io.opaa.permission.PermissionHistoryRetentionService, 5935e512-5b28-363b-a6c5-1b7ef395e12c"
+  })
+  void everyRetentionServiceKeepsItsAuditObjectId(String service, UUID expected)
+      throws ReflectiveOperationException {
+    Constructor<?> constructor = Class.forName(service).getDeclaredConstructors()[0];
+    constructor.setAccessible(true);
+    Object instance =
+        constructor.newInstance(
+            Arrays.stream(constructor.getParameterTypes()).map(type -> mock(type)).toArray());
+    Field field = instance.getClass().getDeclaredField("setting");
+    field.setAccessible(true);
+
+    assertThat(((RetentionSetting) field.get(instance)).objectId()).isEqualTo(expected);
   }
 
   @Test
