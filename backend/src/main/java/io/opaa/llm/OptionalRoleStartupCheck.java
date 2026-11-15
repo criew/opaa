@@ -87,12 +87,14 @@ public class OptionalRoleStartupCheck implements ApplicationListener<Application
 
   /**
    * The address as far as it may be written to a log file: an address refused for carrying
-   * credentials is named as refused, never reproduced.
+   * credentials is named as refused, never reproduced, and query and fragment are left out.
    */
   private static String endpointForLog(OptionalRoleStatus status) {
     if (status.baseUrlRejected()) {
       return "(rejected: the configured address carries credentials)";
     }
-    return status.baseUrl() == null ? "(none configured)" : status.baseUrl();
+    return status.baseUrl() == null
+        ? "(none configured)"
+        : ModelEndpointUri.withoutSecrets(status.baseUrl());
   }
 }

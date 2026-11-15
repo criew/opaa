@@ -196,7 +196,7 @@ class LlmInstanceState implements InstanceStateSource {
         "embedding-model", embedding.getEmbeddingInfo().installed(),
         "rerank-model", rerank.currentStatus().state().sends(),
         "transcription-model", transcription.currentStatus().state().sends(),
-        "transcription-realtime", realtime.status().state().sends(),
+        "transcription-realtime", realtime.currentStatus().state().sends(),
         "text-recognition-model", textRecognition.currentStatus().state().sends());
   }
 
