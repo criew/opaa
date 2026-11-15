@@ -21,7 +21,7 @@ vulnerabilities:
       Hochladen sperrt DTDs nur in den Word-Parts. Skripte von run_code nutzen das libxml2 der
       Python-Wheels und erreichen das Debian-Paket nur über soffice oder ctypes; dort läuft ohnehin
       beliebiger Code. Folge ist ein Denial of Service beim Parsen einer präparierten internen DTD,
-      begrenzt auf den einen Sandbox-Lauf (kurzlebig, isoliert, uid 1000, ohne Netz, mit Laufzeit-
+      begrenzt auf den einen Sandbox-Lauf (kurzlebig, isoliert, uid 1000, ohne Ausgang, mit Laufzeit-
       und Lebensdauergrenze). Debian trixie hat keinen Fix (Stand 11.11.2026). Neu zu bewerten,
       sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), sobald Vorlagen von
       Personen ohne Vorlagenrecht eingebracht werden können, sobald libxml2 in einem Image außerhalb
@@ -37,16 +37,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112315
     purls:
@@ -55,16 +58,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112316
     purls:
@@ -73,16 +79,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112317
     purls:
@@ -91,16 +100,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112318
     purls:
@@ -109,16 +121,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112319
     purls:
@@ -127,16 +142,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112320
     purls:
@@ -145,16 +163,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112321
     purls:
@@ -163,16 +184,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112322
     purls:
@@ -181,16 +205,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112323
     purls:
@@ -199,16 +226,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-118380
     purls:
@@ -217,16 +247,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-119079
     purls:
@@ -235,16 +268,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-71199
     purls:
@@ -253,16 +289,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-71200
     purls:
@@ -271,16 +310,19 @@ vulnerabilities:
       - pkg:deb/debian/libkrb5-3
       - pkg:deb/debian/libkrb5support0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die
-      MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von libcurl und LibreOffice mit. Die Lücken
-      liegen in KDC, kadmind und den RPC-Diensten; das Image enthält keinen davon und keine
-      Kerberos-Konfiguration, ohne Netz erreicht auch kein Client einen KDC. Debian trixie hat keinen
-      Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
-      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox
-      Netz, Geheimnisse oder Rechte erhält, oder sobald dort ein Kerberos-Dienst oder eine
-      Kerberos-Anmeldung hinzukommt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
+      libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
+      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
+      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
+      hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-76642
     purls:
@@ -294,16 +336,18 @@ vulnerabilities:
       - pkg:deb/debian/mount
       - pkg:deb/debian/util-linux
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. util-linux gehört zum
-      Debian-Grundsystem. Die Lücken setzen ein privilegiertes mount(8) mit X-mount-Optionen oder
-      nsenter --join-cgroup voraus; kein Prozess des Images ruft beides auf, und ein Skript erreicht
-      als uid 1000 unter no_new_privileges kein SUID-mount und ohne SYS_ADMIN keinen Mount. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox SYS_ADMIN oder
-      SUID-Programme nutzen darf.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). util-linux gehört zum Debian-Grundsystem. Die Lücken setzen
+      ein privilegiertes mount(8) mit X-mount-Optionen oder nsenter --join-cgroup voraus; kein Prozess
+      des Images ruft beides auf, und ein Skript erreicht als uid 1000 unter no_new_privileges kein
+      SUID-mount und ohne SYS_ADMIN keinen Mount. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu
+      zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in
+      einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das
+      außer der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox
+      Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-78408
     purls:
@@ -317,16 +361,18 @@ vulnerabilities:
       - pkg:deb/debian/mount
       - pkg:deb/debian/util-linux
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. util-linux gehört zum
-      Debian-Grundsystem. Die Lücken setzen ein privilegiertes mount(8) mit X-mount-Optionen oder
-      nsenter --join-cgroup voraus; kein Prozess des Images ruft beides auf, und ein Skript erreicht
-      als uid 1000 unter no_new_privileges kein SUID-mount und ohne SYS_ADMIN keinen Mount. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox SYS_ADMIN oder
-      SUID-Programme nutzen darf.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). util-linux gehört zum Debian-Grundsystem. Die Lücken setzen
+      ein privilegiertes mount(8) mit X-mount-Optionen oder nsenter --join-cgroup voraus; kein Prozess
+      des Images ruft beides auf, und ein Skript erreicht als uid 1000 unter no_new_privileges kein
+      SUID-mount und ohne SYS_ADMIN keinen Mount. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu
+      zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in
+      einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das
+      außer der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox
+      Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-78409
     purls:
@@ -340,16 +386,18 @@ vulnerabilities:
       - pkg:deb/debian/mount
       - pkg:deb/debian/util-linux
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. util-linux gehört zum
-      Debian-Grundsystem. Die Lücken setzen ein privilegiertes mount(8) mit X-mount-Optionen oder
-      nsenter --join-cgroup voraus; kein Prozess des Images ruft beides auf, und ein Skript erreicht
-      als uid 1000 unter no_new_privileges kein SUID-mount und ohne SYS_ADMIN keinen Mount. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox SYS_ADMIN oder
-      SUID-Programme nutzen darf.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). util-linux gehört zum Debian-Grundsystem. Die Lücken setzen
+      ein privilegiertes mount(8) mit X-mount-Optionen oder nsenter --join-cgroup voraus; kein Prozess
+      des Images ruft beides auf, und ein Skript erreicht als uid 1000 unter no_new_privileges kein
+      SUID-mount und ohne SYS_ADMIN keinen Mount. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu
+      zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in
+      einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das
+      außer der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox
+      Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-78410
     purls:
@@ -363,16 +411,18 @@ vulnerabilities:
       - pkg:deb/debian/mount
       - pkg:deb/debian/util-linux
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. util-linux gehört zum
-      Debian-Grundsystem. Die Lücken setzen ein privilegiertes mount(8) mit X-mount-Optionen oder
-      nsenter --join-cgroup voraus; kein Prozess des Images ruft beides auf, und ein Skript erreicht
-      als uid 1000 unter no_new_privileges kein SUID-mount und ohne SYS_ADMIN keinen Mount. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox SYS_ADMIN oder
-      SUID-Programme nutzen darf.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). util-linux gehört zum Debian-Grundsystem. Die Lücken setzen
+      ein privilegiertes mount(8) mit X-mount-Optionen oder nsenter --join-cgroup voraus; kein Prozess
+      des Images ruft beides auf, und ein Skript erreicht als uid 1000 unter no_new_privileges kein
+      SUID-mount und ohne SYS_ADMIN keinen Mount. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu
+      zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in
+      einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das
+      außer der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox
+      Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2025-69720
     purls:
@@ -381,392 +431,501 @@ vulnerabilities:
       - pkg:deb/debian/ncurses-base
       - pkg:deb/debian/ncurses-bin
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die Lücke liegt im
-      Kommandozeilenwerkzeug infocmp, das kein Prozess des Images aufruft; bash nutzt nur libtinfo.
-      Ein Skript, das infocmp mit präparierten Daten startet, führt damit nur Code aus, den es als uid
-      1000 ohnehin ausführen darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
-      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
-      außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die Lücke liegt im Kommandozeilenwerkzeug infocmp, das kein
+      Prozess des Images aufruft; bash nutzt nur libtinfo. Ein Skript, das infocmp mit präparierten
+      Daten startet, führt damit nur Code aus, den es als uid 1000 ohnehin ausführen darf. Debian
+      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt.
     expired_at: 2027-02-15
   - id: CVE-2025-71436
     purls:
       - pkg:deb/debian/libraptor2-0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. raptor2 kommt als
-      Abhängigkeit von LibreOffice (RDF-Metadaten) mit. Die Lücke liegt in den Parsern für Turtle,
-      TriG, N-Triples und N-Quads; fill_template gibt soffice nur eine Word-Vorlage, die keine dieser
-      Syntaxen trägt. Ein Skript, das sie selbst füttert, gewinnt nichts über run_code hinaus. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox RDF-Dokumente von außen
-      verarbeitet.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). raptor2 kommt als Abhängigkeit von LibreOffice
+      (RDF-Metadaten) mit. Die Lücke liegt in den Parsern für Turtle, TriG, N-Triples und N-Quads;
+      fill_template gibt soffice nur eine Word-Vorlage, die keine dieser Syntaxen trägt. Ein Skript,
+      das sie selbst füttert, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix (Stand
+      15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald die Sandbox RDF-Dokumente von außen verarbeitet.
     expired_at: 2027-02-15
   - id: CVE-2026-113351
     purls:
       - pkg:deb/debian/libexpat1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libexpat nutzen Python
-      (pyexpat, etwa über openpyxl) und LibreOffice. Fremde Eingabe ist nur die Vorlage von
-      fill_template, die hochlädt, wer das Recht „Vorlagen anlegen“ hat. Folge ist ein Denial of
-      Service des einen Sandbox-Laufs; der Überlauf in storeAtts braucht ein Dokument von mehreren
-      Gigabyte, weit über der Grenze für Vorlagen. Debian trixie hat keinen Fix (Stand 15.11.2026).
-      Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket
-      in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte
-      erhält, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libexpat nutzen Python (pyexpat, etwa über openpyxl) und
+      LibreOffice. Fremde Eingabe ist nur die Vorlage von fill_template, die hochlädt, wer das Recht
+      „Vorlagen anlegen“ hat. Folge ist ein Denial of Service des einen Sandbox-Laufs; der Überlauf in
+      storeAtts braucht ein Dokument von mehreren Gigabyte, weit über der Grenze für Vorlagen. Debian
+      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-115506
     purls:
       - pkg:deb/debian/libexpat1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libexpat nutzen Python
-      (pyexpat, etwa über openpyxl) und LibreOffice. Fremde Eingabe ist nur die Vorlage von
-      fill_template, die hochlädt, wer das Recht „Vorlagen anlegen“ hat. Folge ist ein Denial of
-      Service des einen Sandbox-Laufs; der Überlauf in storeAtts braucht ein Dokument von mehreren
-      Gigabyte, weit über der Grenze für Vorlagen. Debian trixie hat keinen Fix (Stand 15.11.2026).
-      Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket
-      in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte
-      erhält, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libexpat nutzen Python (pyexpat, etwa über openpyxl) und
+      LibreOffice. Fremde Eingabe ist nur die Vorlage von fill_template, die hochlädt, wer das Recht
+      „Vorlagen anlegen“ hat. Folge ist ein Denial of Service des einen Sandbox-Laufs; der Überlauf in
+      storeAtts braucht ein Dokument von mehreren Gigabyte, weit über der Grenze für Vorlagen. Debian
+      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-117610
     purls:
       - pkg:deb/debian/libexpat1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libexpat nutzen Python
-      (pyexpat, etwa über openpyxl) und LibreOffice. Fremde Eingabe ist nur die Vorlage von
-      fill_template, die hochlädt, wer das Recht „Vorlagen anlegen“ hat. Folge ist ein Denial of
-      Service des einen Sandbox-Laufs; der Überlauf in storeAtts braucht ein Dokument von mehreren
-      Gigabyte, weit über der Grenze für Vorlagen. Debian trixie hat keinen Fix (Stand 15.11.2026).
-      Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket
-      in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte
-      erhält, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libexpat nutzen Python (pyexpat, etwa über openpyxl) und
+      LibreOffice. Fremde Eingabe ist nur die Vorlage von fill_template, die hochlädt, wer das Recht
+      „Vorlagen anlegen“ hat. Folge ist ein Denial of Service des einen Sandbox-Laufs; der Überlauf in
+      storeAtts braucht ein Dokument von mehreren Gigabyte, weit über der Grenze für Vorlagen. Debian
+      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-118370
     purls:
       - pkg:deb/debian/libexpat1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libexpat nutzen Python
-      (pyexpat, etwa über openpyxl) und LibreOffice. Fremde Eingabe ist nur die Vorlage von
-      fill_template, die hochlädt, wer das Recht „Vorlagen anlegen“ hat. Folge ist ein Denial of
-      Service des einen Sandbox-Laufs; der Überlauf in storeAtts braucht ein Dokument von mehreren
-      Gigabyte, weit über der Grenze für Vorlagen. Debian trixie hat keinen Fix (Stand 15.11.2026).
-      Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket
-      in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte
-      erhält, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libexpat nutzen Python (pyexpat, etwa über openpyxl) und
+      LibreOffice. Fremde Eingabe ist nur die Vorlage von fill_template, die hochlädt, wer das Recht
+      „Vorlagen anlegen“ hat. Folge ist ein Denial of Service des einen Sandbox-Laufs; der Überlauf in
+      storeAtts braucht ein Dokument von mehreren Gigabyte, weit über der Grenze für Vorlagen. Debian
+      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-119373
     purls:
       - pkg:deb/debian/libsqlite3-0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. SQLite nutzen Pythons
-      sqlite3-Modul, gpg und liblastlog2. Die Lücken verlangen eine präparierte Datenbank mit
-      FTS5-Index oder ein präpariertes Changeset der Session-Erweiterung; in die Sandbox gelangt keine
-      Datenbank von außen, nur das Skript des Modells und die Vorlage. Debian trixie hat keinen Fix
-      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
-      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz,
-      Geheimnisse oder Rechte erhält, oder sobald die Sandbox Datenbankdateien von außen annimmt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). SQLite nutzen Pythons sqlite3-Modul, gpg und liblastlog2. Die
+      Lücken verlangen eine präparierte Datenbank mit FTS5-Index oder ein präpariertes Changeset der
+      Session-Erweiterung; in die Sandbox gelangt keine Datenbank von außen, nur das Skript des
+      Modells und die Vorlage. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald die Sandbox Datenbankdateien von
+      außen annimmt.
     expired_at: 2027-02-15
   - id: CVE-2026-119374
     purls:
       - pkg:deb/debian/libsqlite3-0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. SQLite nutzen Pythons
-      sqlite3-Modul, gpg und liblastlog2. Die Lücken verlangen eine präparierte Datenbank mit
-      FTS5-Index oder ein präpariertes Changeset der Session-Erweiterung; in die Sandbox gelangt keine
-      Datenbank von außen, nur das Skript des Modells und die Vorlage. Debian trixie hat keinen Fix
-      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
-      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz,
-      Geheimnisse oder Rechte erhält, oder sobald die Sandbox Datenbankdateien von außen annimmt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). SQLite nutzen Pythons sqlite3-Modul, gpg und liblastlog2. Die
+      Lücken verlangen eine präparierte Datenbank mit FTS5-Index oder ein präpariertes Changeset der
+      Session-Erweiterung; in die Sandbox gelangt keine Datenbank von außen, nur das Skript des
+      Modells und die Vorlage. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald die Sandbox Datenbankdateien von
+      außen annimmt.
     expired_at: 2027-02-15
   - id: CVE-2026-119379
     purls:
       - pkg:deb/debian/libsqlite3-0
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. SQLite nutzen Pythons
-      sqlite3-Modul, gpg und liblastlog2. Die Lücken verlangen eine präparierte Datenbank mit
-      FTS5-Index oder ein präpariertes Changeset der Session-Erweiterung; in die Sandbox gelangt keine
-      Datenbank von außen, nur das Skript des Modells und die Vorlage. Debian trixie hat keinen Fix
-      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
-      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz,
-      Geheimnisse oder Rechte erhält, oder sobald die Sandbox Datenbankdateien von außen annimmt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). SQLite nutzen Pythons sqlite3-Modul, gpg und liblastlog2. Die
+      Lücken verlangen eine präparierte Datenbank mit FTS5-Index oder ein präpariertes Changeset der
+      Session-Erweiterung; in die Sandbox gelangt keine Datenbank von außen, nur das Skript des
+      Modells und die Vorlage. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald die Sandbox Datenbankdateien von
+      außen annimmt.
     expired_at: 2027-02-15
   - id: CVE-2026-12064
     purls:
       - pkg:deb/debian/libcurl3t64-gnutls
       - pkg:deb/debian/libcurl4t64
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libcurl kommt nur als
-      Bibliothek von LibreOffice mit, das Werkzeug curl ist nicht installiert. Die Lücken betreffen
-      SFTP/SCP mit schemalosen URLs im Werkzeug und die Wiederverwendung Negotiate-authentifizierter
-      Verbindungen; ohne Netz und ohne Zugangsdaten baut die Sandbox keine Verbindung auf. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox Netzzugang erhält.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libcurl kommt nur als Bibliothek von LibreOffice mit, das
+      Werkzeug curl ist nicht installiert. Die Lücken betreffen SFTP/SCP mit schemalosen URLs im
+      Werkzeug und die Wiederverwendung Negotiate-authentifizierter Verbindungen; ohne Ausgang und
+      ohne Zugangsdaten erreicht die Sandbox kein Ziel, an das LibreOffice eine solche Verbindung
+      aufbauen würde. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian
+      einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der
+      Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das
+      Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse
+      erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-8458
     purls:
       - pkg:deb/debian/libcurl3t64-gnutls
       - pkg:deb/debian/libcurl4t64
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libcurl kommt nur als
-      Bibliothek von LibreOffice mit, das Werkzeug curl ist nicht installiert. Die Lücken betreffen
-      SFTP/SCP mit schemalosen URLs im Werkzeug und die Wiederverwendung Negotiate-authentifizierter
-      Verbindungen; ohne Netz und ohne Zugangsdaten baut die Sandbox keine Verbindung auf. Debian
-      trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
-      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die
-      Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald die Sandbox Netzzugang erhält.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libcurl kommt nur als Bibliothek von LibreOffice mit, das
+      Werkzeug curl ist nicht installiert. Die Lücken betreffen SFTP/SCP mit schemalosen URLs im
+      Werkzeug und die Wiederverwendung Negotiate-authentifizierter Verbindungen; ohne Ausgang und
+      ohne Zugangsdaten erreicht die Sandbox kein Ziel, an das LibreOffice eine solche Verbindung
+      aufbauen würde. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian
+      einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der
+      Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das
+      Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse
+      erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-16742
     purls:
       - pkg:deb/debian/libsystemd0
       - pkg:deb/debian/libudev1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die Lücke liegt in
-      systemd-homed. Das Image enthält nur die Bibliotheken libsystemd0 und libudev1 als Abhängigkeit
-      von util-linux und apt; systemd, systemd-homed und Anmeldungen gibt es im Container nicht.
-      Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix
-      liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die Lücke liegt in systemd-homed. Das Image enthält nur die
+      Bibliotheken libsystemd0 und libudev1 als Abhängigkeit von util-linux und apt; systemd,
+      systemd-homed und Anmeldungen gibt es im Container nicht. Debian trixie hat keinen Fix (Stand
+      15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-24882
     purls:
       - pkg:deb/debian/gpg
       - pkg:deb/debian/gpgconf
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die Lücke liegt in
-      tpm2daemon, das nicht installiert ist. gpg kommt nur über gpgme als Abhängigkeit von LibreOffice
-      mit und läuft nur beim Signieren oder Verschlüsseln eines Dokuments, das fill_template nie
-      verlangt; Schlüssel gibt es im Image nicht. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu
-      zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in
-      einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte
-      erhält, oder sobald tpm2daemon ins Image gelangt.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die Lücke liegt in tpm2daemon, das nicht installiert ist. gpg
+      kommt nur über gpgme als Abhängigkeit von LibreOffice mit und läuft nur beim Signieren oder
+      Verschlüsseln eines Dokuments, das fill_template nie verlangt; Schlüssel gibt es im Image nicht.
+      Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix
+      liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald tpm2daemon ins Image gelangt.
     expired_at: 2027-02-15
   - id: CVE-2026-36849
     purls:
       - pkg:deb/debian/libtiff6
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libtiff kommt als
-      Abhängigkeit von LibreOffice und poppler mit; CVE-2026-52490 liegt im Werkzeug tiffcrop, das
-      nicht installiert ist. CVE-2026-36849 erreicht soffice nur über ein TIFF-Bild in der Vorlage,
-      die hochlädt, wer das Recht „Vorlagen anlegen“ hat; Folge ist ein Denial of Service des einen
-      Sandbox-Laufs. Pillow und matplotlib bringen eigenes libtiff mit. Debian trixie hat keinen Fix
-      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
-      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz,
-      Geheimnisse oder Rechte erhält, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht
-      werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libtiff kommt als Abhängigkeit von LibreOffice und poppler
+      mit; CVE-2026-52490 liegt im Werkzeug tiffcrop, das nicht installiert ist. CVE-2026-36849
+      erreicht soffice nur über ein TIFF-Bild in der Vorlage, die hochlädt, wer das Recht „Vorlagen
+      anlegen“ hat; Folge ist ein Denial of Service des einen Sandbox-Laufs. Pillow und matplotlib
+      bringen eigenes libtiff mit. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-52490
     purls:
       - pkg:deb/debian/libtiff6
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libtiff kommt als
-      Abhängigkeit von LibreOffice und poppler mit; CVE-2026-52490 liegt im Werkzeug tiffcrop, das
-      nicht installiert ist. CVE-2026-36849 erreicht soffice nur über ein TIFF-Bild in der Vorlage,
-      die hochlädt, wer das Recht „Vorlagen anlegen“ hat; Folge ist ein Denial of Service des einen
-      Sandbox-Laufs. Pillow und matplotlib bringen eigenes libtiff mit. Debian trixie hat keinen Fix
-      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
-      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht oder die Sandbox Netz,
-      Geheimnisse oder Rechte erhält, oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht
-      werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libtiff kommt als Abhängigkeit von LibreOffice und poppler
+      mit; CVE-2026-52490 liegt im Werkzeug tiffcrop, das nicht installiert ist. CVE-2026-36849
+      erreicht soffice nur über ein TIFF-Bild in der Vorlage, die hochlädt, wer das Recht „Vorlagen
+      anlegen“ hat; Folge ist ein Denial of Service des einen Sandbox-Laufs. Pillow und matplotlib
+      bringen eigenes libtiff mit. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-54369
     purls:
       - pkg:deb/debian/libacl1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Die Lücke setzt einen
-      privilegierten Prozess voraus, der acl_get_file() oder acl_set_file() auf einem Pfad aufruft,
-      den ein Angreifer verändern kann. Als root läuft nur der von außen eingespielte execd; Skripte
-      laufen als uid 1000, und kein Programm des Images ruft libacl mit Root-Rechten auf deren Pfaden
-      auf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix
-      liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald ein Prozess mit
-      Root-Rechten Dateien unter /workspace mit ACLs kopiert.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die Lücke setzt einen privilegierten Prozess voraus, der
+      acl_get_file() oder acl_set_file() auf einem Pfad aufruft, den ein Angreifer verändern kann. Als
+      root läuft nur der von außen eingespielte execd; Skripte laufen als uid 1000, und kein Programm
+      des Images ruft libacl mit Root-Rechten auf deren Pfaden auf. Debian trixie hat keinen Fix
+      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald ein Prozess mit Root-Rechten Dateien unter /workspace mit ACLs kopiert.
     expired_at: 2027-02-15
   - id: CVE-2026-74860
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-86138
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-86139
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-86140
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-86142
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-86143
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-86144
     purls:
       - pkg:deb/debian/libxml2
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. Debian-Paket libxml2
-      als Abhängigkeit von LibreOffice; CVE-2026-74860 betrifft die Python-Bindings, die nicht
-      installiert sind. Erreicht wird es, wenn fill_template eine Vorlage per soffice in PDF wandelt;
-      die Vorlage lädt nur hoch, wer das Recht „Vorlagen anlegen“ hat. Skripte von run_code nutzen das
-      libxml2 der Python-Wheels. Schlimmste Folge ist Codeausführung als uid 1000 im einen Lauf, also
-      nicht mehr, als run_code ohnehin darf. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
-      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
-      Image außerhalb der Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält,
-      oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Debian-Paket libxml2 als Abhängigkeit von LibreOffice;
+      CVE-2026-74860 betrifft die Python-Bindings, die nicht installiert sind. Erreicht wird es, wenn
+      fill_template eine Vorlage per soffice in PDF wandelt; die Vorlage lädt nur hoch, wer das Recht
+      „Vorlagen anlegen“ hat. Skripte von run_code nutzen das libxml2 der Python-Wheels. Schlimmste
+      Folge ist Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft:
+      fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die
+      Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang
+      und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist
+      das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten,
+      sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image
+      außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der
+      Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald Vorlagen von Personen ohne
+      Vorlagenrecht eingebracht werden können.
     expired_at: 2027-02-15
   - id: CVE-2026-88806
     purls:
       - pkg:deb/debian/libx11-6
       - pkg:deb/debian/libx11-data
-      - pkg:deb/debian/libxrender1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libX11 und libXrender
-      kommen über cairo als Abhängigkeit von LibreOffice mit. Beide Lücken verlangen einen bösartigen
-      X-Server; soffice läuft ohne Oberfläche und ohne DISPLAY, und ohne Netz ist kein X-Server
-      erreichbar. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian
-      einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der
-      Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald in der
-      Sandbox eine Oberfläche oder ein X-Server läuft.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libX11 kommt über cairo als Abhängigkeit von LibreOffice mit.
+      Die Lücke verlangt einen bösartigen X-Server; soffice läuft ohne Oberfläche und ohne DISPLAY,
+      und ohne Ausgang ist kein X-Server erreichbar. Debian trixie hat keinen Fix (Stand 15.11.2026).
+      Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket
+      in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist
+      das außer der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die
+      Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder sobald in der Sandbox
+      eine Oberfläche oder ein X-Server läuft.
     expired_at: 2027-02-15
   - id: CVE-2026-88807
     purls:
-      - pkg:deb/debian/libx11-6
-      - pkg:deb/debian/libx11-data
       - pkg:deb/debian/libxrender1
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. libX11 und libXrender
-      kommen über cairo als Abhängigkeit von LibreOffice mit. Beide Lücken verlangen einen bösartigen
-      X-Server; soffice läuft ohne Oberfläche und ohne DISPLAY, und ohne Netz ist kein X-Server
-      erreichbar. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian
-      einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der
-      Sandbox auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält, oder sobald in der
-      Sandbox eine Oberfläche oder ein X-Server läuft.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libXrender kommt über cairo als Abhängigkeit von LibreOffice
+      mit. Die Lücke verlangt einen bösartigen X-Server; soffice läuft ohne Oberfläche und ohne
+      DISPLAY, und ohne Ausgang ist kein X-Server erreichbar. Debian trixie hat keinen Fix (Stand
+      15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox eine Oberfläche oder ein X-Server läuft.
     expired_at: 2027-02-15
   - id: CVE-2026-9538
     purls:
       - pkg:deb/debian/perl-base
     statement: >-
-      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Netz und
-      ohne Geheimnisse, Skripte als uid 1000 mit no_new_privileges und ohne SYS_ADMIN, mit Laufzeit-
-      und Lebensdauergrenze; run_code führt dort ohnehin ungeprüften Code aus. perl-base gehört zum
-      Debian-Grundsystem und läuft nur in den Paket-Skripten beim Bau des Images. Zur Laufzeit startet
-      kein Prozess Perl oder Archive::Tar; ein Skript, das es selbst tut, gewinnt nichts über run_code
-      hinaus. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht oder die Sandbox Netz, Geheimnisse oder Rechte erhält.
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). perl-base gehört zum Debian-Grundsystem und läuft nur in den
+      Paket-Skripten beim Bau des Images. Zur Laufzeit startet kein Prozess Perl oder Archive::Tar;
+      ein Skript, das es selbst tut, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
