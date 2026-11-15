@@ -68,10 +68,25 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build
 ```
 
 Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
-Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token.
-Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
-Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor (`runsc`) als
-Laufzeit der Sandboxen.
+Netz. Erreichbar sind dort nur der Dienst, der seinen Schlüssel verlangt, und andere Sandboxen:
+Deren Ausführungsagent verlangt das Token des Laufs; was Code in einer Sandbox selbst an Diensten
+startet, ist für andere Sandboxen ohne Schutz erreichbar (siehe
+[Grenzen unter Docker Compose](#grenzen-unter-docker-compose)). Der Dienst startet Container über
+den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den Stapel mit Sandbox auf einer
+eigenen VM betreiben, unter Linux möglichst mit gVisor (`runsc`) als Laufzeit der Sandboxen.
+
+## Grenzen unter Docker Compose
+
+Unter Compose teilen sich alle Sandboxen und der Sandbox-Dienst ein Netz. Code, den ein Agent für
+eine Person ausführt, kann darüber die Sandboxen anderer Läufe erreichen, die gerade gleichzeitig
+laufen, auch die anderer Personen, und ebenso den Sandbox-Dienst. Der Dienst verlangt den
+API-Schlüssel, der Ausführungsagent einer Sandbox das geheime Token des Laufs; was Code in einer
+Sandbox selbst an Diensten startet, ist für andere Sandboxen ohne Schutz erreichbar. Ins Internet
+kommt der Code nicht. Eine echte Trennung der Sandboxen voneinander gibt es nur unter
+[Kubernetes](#kubernetes).
+
+Compose mit Sandbox eignet sich deshalb für den Einzelbetrieb, für Demos und für Nutzerkreise, die
+einander vertrauen. Für viele Personen mit sensiblen Daten die Sandbox unter Kubernetes betreiben.
 
 ## Plattenplatz und Härtung unter Compose
 
@@ -125,7 +140,8 @@ OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa
 Das Chart legt im Namespace der Sandboxen eine NetworkPolicy an, die **jeden Ausgang** sperrt und
 Eingang nur vom Dienst zulässt, unabhängig von `networkPolicy.*`. Das Release braucht dafür das
 Recht, NetworkPolicies in diesem Namespace anzulegen. Das Backend bekommt mit
-`networkPolicy.egress.enabled` eine Regel zum Dienst.
+`networkPolicy.egress.enabled` eine Regel zum Dienst. Voraussetzung ist ein Netz-Plugin (CNI), das
+NetworkPolicies durchsetzt; ohne es gilt keine der Sperren.
 
 **Isolationsstufe:** Wie stark eine Sandbox vom Knoten getrennt ist, legt der Sandbox-Dienst über
 seine Laufzeitklasse fest, nicht OPAA:
