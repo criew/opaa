@@ -8,10 +8,13 @@ FROM python:3.13.16-slim-trixie@sha256:cf50a4f6ac4f026458b08d5222023d700ac806410
 # with Arial, Times New Roman, Courier New and Calibri, so the PDF keeps the template's line breaks.
 # The packages come from the trixie release the base image digest fixes, with its security updates
 # at build time, also for the packages of the base image; Trivy scans the result in cve-scan.yml.
+# gpg alone satisfies LibreOffice's "gnupg | gpg" dependency (via gpgme); without it apt takes the
+# gnupg suite with dirmngr, gpg-agent and gpgsm, which nothing here runs.
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         libreoffice-writer-nogui \
+        gpg \
         fonts-liberation2 \
         fonts-crosextra-carlito \
         fonts-dejavu-core \
