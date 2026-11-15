@@ -18,8 +18,10 @@ jackson2 = "2.22.4"
 # block in build.gradle.kts). Spring Boot 4.1.1 pins opentelemetry-bom 1.62.0, whose
 # opentelemetry-api is affected by CVE-2026-118259 (GHSA-ccrj-gw8r-854m, quadratic tracestate
 # parsing). Remove this entry, its [libraries] entry and the override once Spring Boot pins
-# opentelemetry-bom >= 1.67.0.
+# opentelemetry-bom >= 1.67.0. The alpha BOM moves with it, so an alpha artifact added later
+# resolves from the same release.
 opentelemetry = "1.67.0"
+opentelemetry-alpha = "1.67.0-alpha"
 # Jackson 2 line of the Gradle build plugins: they resolve 2.22.x on the buildscript classpath,
 # which the dependencyManagement override above does not reach (see buildscript in build.gradle.kts).
 # 2.22.0-2.22.2 are affected by CVE-2026-89407 and CVE-2026-89425; remove this entry, its
@@ -245,6 +247,7 @@ tomcat-embed-websocket = { module = "org.apache.tomcat.embed:tomcat-embed-websoc
 jackson3-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson3" }
 jackson2-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version.ref = "opentelemetry" }
+opentelemetry-alpha-bom = { module = "io.opentelemetry:opentelemetry-bom-alpha", version.ref = "opentelemetry-alpha" }
 jackson2-buildscript-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2-buildscript" }
 guava-buildscript = { module = "com.google.guava:guava", version.ref = "guava-buildscript" }
 commons-lang3-buildscript = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3-buildscript" }

@@ -811,6 +811,7 @@ dependencyManagement {
         mavenBom(libs.jackson3.bom.get().toString())
         mavenBom(libs.jackson2.bom.get().toString())
         mavenBom(libs.opentelemetry.bom.get().toString())
+        mavenBom(libs.opentelemetry.alpha.bom.get().toString())
     }
     // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
     // by spring-boot-dependencies and the Bouncy Castle versions Tika's parser modules resolve
