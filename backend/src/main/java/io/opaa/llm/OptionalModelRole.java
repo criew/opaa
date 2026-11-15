@@ -8,10 +8,10 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
- * What every optional model role - rerank, transcription, text recognition - shares: the state of
- * the role for a stored endpoint, the probe and the record of every outcome. A role adds only what
- * is its own: the operation's limit ({@link #operationAllows()}), the probe of its protocol and the
- * calls it offers.
+ * What every optional model role - rerank, transcription, live transcription, text recognition -
+ * shares: the state of the role for a stored endpoint, the probe and the record of every outcome. A
+ * role adds only what is its own: the operation's limit ({@link #operationAllows()}), the probe of
+ * its protocol and the calls it offers.
  *
  * <p>Switch, address, model and key are the administration's ({@link OptionalRoleEndpoints},
  * ADR-0060, Entscheidung 10), read on every call, so a change takes effect without a restart.
