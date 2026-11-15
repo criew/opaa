@@ -87,7 +87,8 @@ Importe und Javadoc-Verweise (ein Verweis nach oben steht als `{@code …}`); Zy
 Bytecode und Importe, ein vollqualifizierter Javadoc-Link zählt dort nicht. **Eine neue Kante ist eine Entscheidung**
 und wird im PR begründet; vorher prüfen, ob eine Schnittstelle im unteren Modul reicht. Ein neues Top-Level-Paket
 gehört in `LAYERS` (über alles, was es nutzt) und `MODULES`, ein Unterpaket von `indexing` in `INDEXING_CORE`, von
-`connection` in `CONNECTION_PACKAGES`; Entfallenes wird ausgetragen. Feinere Regeln: `PermissionPackageBoundaryTest`,
+`connection` in `CONNECTION_PACKAGES`, von `llm` in `LLM_ROLES` (eine Modellrolle) oder `LLM_ACROSS_ROLES`
+(rollenübergreifend); Entfallenes wird ausgetragen. Feinere Regeln: `PermissionPackageBoundaryTest`,
 `KnowledgeLibraryReachWriterTest` und die `*DependencyStructureTest`-Klassen einzelner Pakete.
 Der Vertrag für Kanten, Querschnittsaspekte und akzeptierte Abweichungen steht in
 [ADR-0051](../docs/decisions/0051-architekturvertrag-des-backends.md).
