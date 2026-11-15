@@ -74,6 +74,8 @@ services:
 networks:
   # Internal: no gateway, so sandboxes have no route to the internet or the host. Fixed name,
   # because sandbox/config.toml (docker.network_mode) refers to it by name.
+  # Inter-container traffic stays on: the server reaches each sandbox's execd over this network,
+  # so concurrent sandboxes can reach each other too (guarded only by per-run tokens).
   sandboxes:
     name: opaa-sandboxes
     internal: true

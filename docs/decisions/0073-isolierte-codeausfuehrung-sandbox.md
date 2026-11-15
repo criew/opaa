@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-11
+Akzeptiert · zuletzt geändert 2026-11-15
 
 ## Kontext
 
@@ -57,9 +57,13 @@ Datei, die sich nicht abholen oder anhängen lässt, fehlt, ohne die Antwort zu 
 
 ### 4. Kein Netz, Anmeldung je Aufruf
 
-Die Sandbox hat keinen Ausgang: Unter Docker hängt sie an einem internen Netz ohne Ausgang, das
-Backend ist nicht darin, erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit
-Schlüssel oder Token; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine
+Die Sandbox hat keinen Ausgang: Unter Docker Compose hängen alle Sandboxen und der Dienst am
+internen Netz `opaa-sandboxes` ohne Ausgang und mit eingeschalteter Kommunikation zwischen
+Containern (ICC), das Backend ist nicht darin. Code in einer Sandbox erreicht dort gleichzeitig
+laufende Sandboxen (deren Ausführungsagent, geschützt durch das Token des Laufs) und den Dienst
+(geschützt durch dessen Schlüssel), aber nicht das Internet. ICC bleibt an, weil der Dienst seine
+Ausführungsagenten über dieses Netz anspricht; ohne ICC erreicht er sie nicht. Getrennt
+voneinander sind Sandboxen verschiedener Personen nur unter Kubernetes: Dort legt das Helm-Chart im Namespace der Sandboxen eine
 NetworkPolicy an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den
 übrigen Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen
 Schlüssel, jede Sandbox ein eigenes Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne
@@ -141,6 +145,10 @@ Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler
   dessen Debian-Pakete folgen dem Stand des Basis-Images beim Bau statt einer festen Version.
 - **Restrisiko:** Ein Ausbruch aus der Laufzeit trifft den Knoten; die Stufe hängt an der
   Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts.
+- **Restrisiko unter Docker Compose:** Sandboxen gleichzeitiger Läufe, auch verschiedener
+  Personen, erreichen sich und den Dienst über das gemeinsame Netz; zwischen ihnen stehen nur Token
+  und Schlüssel (Entscheidung 4). Compose eignet sich deshalb für Einzelbetrieb, Demo und
+  vertrauenswürdige Nutzerkreise; Mehrbenutzerbetrieb mit sensiblen Daten gehört auf Kubernetes.
 - **Restrisiko der geteilten Sandbox:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann
   ein zurückgelassener Prozess die Ergebnisdatei von `fill_template` zwischen Schreiben und Lesen
   ändern. Ein eigenes Verzeichnis mit Zufallsnamen je Aufruf, das sofortige Lesen und die Prüfung
@@ -160,6 +168,10 @@ Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler
   (3).
 - Netzregel nur, wenn `networkPolicy.*` eingeschaltet ist: Eine Sandbox hätte bis dahin das offene
   Clusternetz (4).
+- ICC unter Compose abschalten: Der Dienst erreicht die Ausführungsagenten nicht mehr (4).
+- Dienst unter Compose im Host-Netz, eigenes geroutetes Netz für den Dienst oder Ports der
+  Sandboxen auf Loopback: brauchen zusätzliche Firewall-Regeln auf dem Host, das Host-Netz zudem
+  eine Ausnahme von „kein `network_mode: host`“ (4).
 - Vorlage im Backend füllen (Jinja-Engine im Prozess): Template-Injection mit Zugriff auf alle
   Daten (8).
 - Vorlage über `run_code` füllen lassen: Das Ergebnis hinge an ungeprüftem Modellcode (8).

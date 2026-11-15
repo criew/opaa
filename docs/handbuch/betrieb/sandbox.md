@@ -68,10 +68,22 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build
 ```
 
 Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
-Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token.
-Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
+Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token
+(siehe [Grenzen unter Docker Compose](#grenzen-unter-docker-compose)). Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
 Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor (`runsc`) als
 Laufzeit der Sandboxen.
+
+## Grenzen unter Docker Compose
+
+Unter Compose teilen sich alle Sandboxen und der Sandbox-Dienst ein Netz. Code, den ein Agent für
+eine Person ausführt, kann darüber die Sandboxen anderer Läufe erreichen, die gerade gleichzeitig
+laufen, auch die anderer Personen, und ebenso den Sandbox-Dienst. Beide verlangen ein geheimes
+Token oder den API-Schlüssel; ohne diese kommt der Code nicht weiter. Ins Internet kommt er nicht.
+Eine echte Trennung der Sandboxen voneinander gibt es nur unter
+[Kubernetes](#kubernetes).
+
+Compose mit Sandbox eignet sich deshalb für den Einzelbetrieb, für Demos und für Nutzerkreise, die
+einander vertrauen. Für viele Personen mit sensiblen Daten die Sandbox unter Kubernetes betreiben.
 
 ## Plattenplatz und Härtung unter Compose
 
