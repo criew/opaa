@@ -86,21 +86,22 @@ dort ansprechbar. Auf der VM des Stapels deshalb nur das Nötige so binden.
 **Firewall des Hosts:**
 
 - **ufw** mit der Vorgabe „deny incoming“ sperrt auch das Backend aus; es läuft dann beim Aufruf
-  des Dienstes in eine Zeitüberschreitung. Freigabe:
+  des Dienstes in eine Zeitüberschreitung. Diese Freigabe genügt und begrenzt den Dienst zugleich
+  auf das Backend und den Host selbst (Loopback lässt ufw zu):
 
   ```bash
   ufw allow in on opaa-sbx-api to 172.31.255.249 port 8090 proto tcp
   ```
-- **Empfohlene Härtung:** Den Dienst nur vom Backend und vom Host selbst annehmen (Loopback braucht
-  der Healthcheck des Dienstes):
+- **Hosts ohne ufw, empfohlene Härtung:** Den Dienst nur vom Backend und vom Host selbst annehmen
+  (Loopback braucht der Healthcheck des Dienstes):
 
   ```bash
   iptables -I INPUT -d 172.31.255.249 ! -i opaa-sbx-api -j DROP
   iptables -I INPUT -d 172.31.255.249 -i lo -j ACCEPT
   ```
 
-  Die Regeln dauerhaft speichern (etwa mit `iptables-persistent`). Aufrufe von Hand gehen dann nur
-  noch vom Host aus.
+  Die Regeln mit dem Mittel der Distribution dauerhaft speichern; unter Ubuntu entfernt das Paket
+  `iptables-persistent` ufw. Aufrufe von Hand gehen dann nur noch vom Host aus.
 - **firewalld:** Docker hängt seine Bridges in die Zone `docker`; die ist meist unkritisch, das
   Backend erreicht den Dienst ohne eigene Regel.
 

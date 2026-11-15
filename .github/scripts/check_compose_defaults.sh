@@ -428,8 +428,9 @@ for entry in "${HOST_NETWORK_SERVICES[@]}"; do
   fi
   gateway_of=""
   for key in "${!network_gateways[@]}"; do
-    if [[ "$key" == "$n_file|"* && -n "$bind" && "${network_gateways[$key]}" == "$bind" &&
-      -v network_settings["$key|internal"] ]]; then
+    # The isolated network's own gateway does not count: the sandboxes would reach the server there.
+    if [[ "$key" == "$n_file|"* && "${key#*|}" != "$n_network" && -n "$bind" &&
+      "${network_gateways[$key]}" == "$bind" && -v network_settings["$key|internal"] ]]; then
       gateway_of="${key#*|}"
     fi
   done

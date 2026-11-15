@@ -456,3 +456,17 @@ def test_a_base_url_on_another_address_fails(repo: Path, url: str) -> None:
 def test_sandboxes_outside_the_isolated_network_fail(repo: Path, mode: str) -> None:
     replace(repo, SERVER_CONFIG, 'network_mode = "opaa-sandboxes"', f"network_mode = {mode}")
     fails_with(run(repo), "[docker] network_mode in sandbox/config.toml is")
+
+
+def test_the_gateway_of_the_isolated_network_is_no_bind_address(repo: Path) -> None:
+    # Sandboxes reach their own network's gateway; the server must never listen there.
+    replace(repo, "docker-compose.sandbox.yml",
+            '      com.docker.network.bridge.enable_icc: "false"\n',
+            '      com.docker.network.bridge.enable_icc: "false"\n    ipam:\n      config:\n'
+            "        - subnet: 172.30.0.0/24\n          gateway: 172.30.0.1\n")
+    replace(repo, "docker-compose.sandbox.yml", "urlopen('http://172.31.255.249:8090/health'",
+            "urlopen('http://172.30.0.1:8090/health'")
+    replace(repo, "docker-compose.sandbox.yml", "OPAA_SANDBOX_BASE_URL: http://172.31.255.249:8090",
+            "OPAA_SANDBOX_BASE_URL: http://172.30.0.1:8090")
+    replace(repo, SERVER_CONFIG, 'host = "172.31.255.249"', 'host = "172.30.0.1"')
+    fails_with(run(repo), "not the gateway of an internal: true network")
