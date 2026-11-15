@@ -142,6 +142,7 @@ backend/src/main/java/io/opaa/template/**/*.java
 backend/src/main/java/io/opaa/chat/ChatExportService.java
 backend/src/main/java/io/opaa/chat/ChatPdfRenderer.java
 backend/src/main/java/io/opaa/chat/AgentRun*.java
+backend/src/main/java/io/opaa/chat/AgentRevisions.java
 
 # Erasure of personal reference
 backend/src/main/java/**/*Erasure*.java
@@ -152,9 +153,12 @@ backend/src/main/java/io/opaa/api/RequestLoggingFilter.java
 backend/src/main/java/io/opaa/observability/UnobservedRoutes.java
 backend/src/main/java/io/opaa/observability/RequestId*.java
 backend/src/main/java/io/opaa/auth/QuickTourHint.java
+
 # Operational metrics as evaluation (ADR-0071): series, tags, dashboards and retention
 backend/src/main/java/io/opaa/observability/**/*.java
 backend/src/main/java/**/*Metrics*.java
 deploy/helm/opaa/templates/grafana-dashboards.yaml
+deploy/helm/opaa/templates/prometheusrule.yaml
+deploy/helm/opaa/templates/servicemonitor.yaml
 deploy/monitoring/**
 docker-compose.monitoring.yml
