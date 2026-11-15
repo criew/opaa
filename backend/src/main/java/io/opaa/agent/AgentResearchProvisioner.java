@@ -113,9 +113,11 @@ class AgentResearchProvisioner {
     agent.configure(researchConfiguration());
     Agent saved = agentRepository.saveAndFlush(agent);
     Map<String, Object> payload = new LinkedHashMap<>();
+    ResponsibleUnit responsible = ResponsibleUnit.ofFunction(RESEARCH_RESPONSIBLE);
     payload.put("name", saved.getName());
+    payload.putAll(AssetResponsibilityService.unitPayload(responsible));
     shellService.registerCreated(saved, administrator.id(), payload);
-    responsibilityService.establish(saved, ResponsibleUnit.ofFunction(RESEARCH_RESPONSIBLE));
+    responsibilityService.establish(saved, responsible);
     grantService.upsertGrant(
         Agent.ASSET_TYPE,
         saved.getId(),
