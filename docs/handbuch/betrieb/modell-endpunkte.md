@@ -458,7 +458,8 @@ Zur Wahl des Endpunkts:
 
 Zum Einschalten gehören drei Angaben zusammen: das Auswahlkästchen „Reranking einschalten", die
 Basis-Adresse ohne den Pfad `/rerank` und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
-fortlaufend auf der Seite „Suche & Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
+fortlaufend auf der Seite „Suche & Indexierung" sowie in der Health Group
+`GET /actuator/health/rerank-model`; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.
 
 > **`OPAA_QUERY_FETCH_K` mit anheben.** Der Reranker bewertet nur, was die Suchstufen zuvor geliefert
@@ -748,7 +749,8 @@ frei; der Aufruf folgt keinem Redirect und geht über den [Ausgangsproxy](netz-u
 Tabelle) genau so, wie es der Betrieb täte, und unterscheidet: bereit, Schlüssel abgelehnt, Engine
 oder Modelle fehlen (der Dienst antwortet, kann die Seite aber nicht lesen oder kennt das Modell
 nicht), kein Text erkannt und nicht erreichbar. Der Zustand steht fortlaufend auf der Seite
-„Suche & Indexierung" (Rolle „Texterkennung"); geprüft werden fortlaufend Erreichbarkeit und
+„Suche & Indexierung" (Rolle „Texterkennung") und in der Health Group
+`GET /actuator/health/text-recognition-model`; geprüft werden fortlaufend Erreichbarkeit und
 Schlüssel, nie eine Seite. Ein abgelehnter Schlüssel zeigt die Rolle als nicht nutzbar.
 
 **Grenzen.** Seiten je Dokument (`OPAA_OCR_MAX_PAGES_PER_DOCUMENT`), Zeit je Dokument

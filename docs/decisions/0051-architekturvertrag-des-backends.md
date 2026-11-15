@@ -24,8 +24,8 @@ der Bedingung, unter der sie wieder vorgelegt werden.
 Module, erlaubte Kanten, Schichtung und Web-Schicht stehen genau einmal: in `backend/AGENTS.md`
 („Logische Module und Schichtung“) und in `ModularArchitecture` (`MODULES`, `LAYERS`,
 `ALLOWED_MODULE_EDGES`, `INDEXING_CORE`, `CONNECTION_PACKAGES`, `LLM_ROLES`, `LLM_ACROSS_ROLES`).
-Modul-AGENTS.md wiederholen keine Kanten. Eine neue Kante ist eine Entscheidung und wird im PR begründet; zuvor wird geprüft, ob eine
-Schnittstelle im unteren Modul genügt. Eine Kante, die kein Code mehr nutzt, wird entfernt.
+Modul-AGENTS.md wiederholen keine Kanten. Eine neue Kante ist eine Entscheidung und wird im PR
+begründet; zuvor wird geprüft, ob eine Schnittstelle im unteren Modul genügt. Eine Kante, die kein Code mehr nutzt, wird entfernt.
 Geprüft durch `ModularArchitectureTest`, `SourceReferenceTest` (Importe und Javadoc im Quelltext)
 und `ModuleAgentsFileTest`.
 

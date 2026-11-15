@@ -227,7 +227,8 @@ Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
   Zwischenspeicher gelesen (`AgentSwitch`, `AgentSettingsService#enabledTools`,
   `DocumentTemplateSettingsService#isEnabled`). Eine Änderung gilt damit auf jeder Instanz ab der
   nächsten Anfrage, ohne Invalidierungsbus; ein laufender Lauf behält die Werkzeuge, die ihm beim
-  Start angeboten wurden. Abschalten ist so zugleich ein Notaus, den keine offene Sitzung überdauert.
+  Start angeboten wurden. Abgeschaltet nimmt die nächste Anfrage keinen Agenten und kein Werkzeug
+  mehr an; ein Lauf, der schon läuft, endet regulär.
 - **Nutzergesteuerte Ausführung** für spätere schreibende Werkzeuge: Die Anwendung nimmt die
   Aufrufwünsche des Modells entgegen und führt sie über `ToolCallingManager` aus, statt sie dem
   `ToolCallingAdvisor` zu überlassen. Nur so kann sie vor einem Aufruf anhalten. Die wartende
