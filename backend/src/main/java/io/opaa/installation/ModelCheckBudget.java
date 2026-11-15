@@ -61,12 +61,12 @@ final class ModelCheckBudget {
       if (!CHECKED_STEPS.contains(step)) {
         continue;
       }
-      RateLimitService.Decision decision = budget.tryAcquire(BUDGET_KEY);
-      if (!decision.allowed()) {
+      try {
+        granted.add(budget.acquire(BUDGET_KEY, LIMIT_MESSAGE, LIMIT_CODE));
+      } catch (TooManyRequestsException refused) {
         new Grant(granted).release();
-        throw new TooManyRequestsException(LIMIT_MESSAGE, decision.retryAfterSeconds(), LIMIT_CODE);
+        throw refused;
       }
-      granted.add(decision);
     }
     return new Grant(granted);
   }

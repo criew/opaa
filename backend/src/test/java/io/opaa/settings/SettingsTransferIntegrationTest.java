@@ -612,6 +612,30 @@ class SettingsTransferIntegrationTest {
     }
   }
 
+  /** The import is the only guard of the template switch's write path outside its endpoint. */
+  @Test
+  void aNonAdminCannotSwitchTemplatesByImport() throws Exception {
+    ObjectNode document = (ObjectNode) JSON.readTree(export());
+    boolean enabled = sections(document).get("documentTemplates").get("enabled").booleanValue();
+    sections(document).withObject("documentTemplates").put("enabled", !enabled);
+    String changed = JSON.writeValueAsString(document);
+
+    for (String path : List.of(PREVIEW, IMPORT)) {
+      mockMvc
+          .perform(
+              post(path)
+                  .with(dev("dev-user"))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(changed))
+          .andExpect(status().isForbidden());
+    }
+
+    ObjectNode after = (ObjectNode) JSON.readTree(export());
+    assertThat(sections(after).get("documentTemplates").get("enabled").booleanValue())
+        .isEqualTo(enabled);
+    assertThat(auditEventTypes()).isEmpty();
+  }
+
   @Test
   void aDocumentLargerThanTheBoundIsRefused() throws Exception {
     String padding = "x".repeat(300 * 1024);

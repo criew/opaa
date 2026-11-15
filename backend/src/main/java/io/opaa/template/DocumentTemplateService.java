@@ -303,6 +303,7 @@ public class DocumentTemplateService {
    */
   @Transactional
   public AssetResponsibilityView lock(UUID templateId, String reason, CurrentUser caller) {
+    // checked before the lookup so a non-admin cannot tell a template from no template
     caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen sperren.");
     return responsibilityService.lock(load(templateId, caller), reason, caller);
   }
@@ -310,6 +311,7 @@ public class DocumentTemplateService {
   /** Lifts the lock of the template (system administration only), whatever its cause. */
   @Transactional
   public AssetResponsibilityView unlock(UUID templateId, CurrentUser caller) {
+    // checked before the lookup so a non-admin cannot tell a template from no template
     caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen entsperren.");
     return responsibilityService.unlock(load(templateId, caller), caller);
   }

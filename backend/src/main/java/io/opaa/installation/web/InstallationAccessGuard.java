@@ -67,14 +67,8 @@ class InstallationAccessGuard {
       throw new AccessDeniedException(NETWORK_MESSAGE);
     }
     String key = address == null ? UNKNOWN_CLIENT : address;
-    RateLimitService.Decision budget = requests.tryAcquire(key);
-    if (!budget.allowed()) {
-      throw new TooManyRequestsException(budget.retryAfterSeconds());
-    }
-    RateLimitService.Decision refusal = refusals.tryAcquire(key);
-    if (!refusal.allowed()) {
-      throw new TooManyRequestsException(refusal.retryAfterSeconds());
-    }
+    requests.acquire(key);
+    RateLimitService.Decision refusal = refusals.acquire(key);
     if (installation.tokenMatches(bearerToken(request))) {
       refusals.release(key, refusal);
       return;

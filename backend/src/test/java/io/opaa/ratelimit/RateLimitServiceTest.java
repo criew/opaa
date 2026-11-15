@@ -1,11 +1,30 @@
 package io.opaa.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.ratelimit.RateLimitService.Decision;
 import org.junit.jupiter.api.Test;
 
 class RateLimitServiceTest {
+
+  @Test
+  void acquireReturnsTheGrantAndThrowsWithMessageCodeAndWaitPastTheLimit() {
+    var service = new RateLimitService(1, 60);
+
+    Decision granted = service.acquire("k", "Zu viele Prüfungen.", "TOO_MANY_CHECKS");
+
+    assertThat(granted.allowed()).isTrue();
+    assertThatThrownBy(() -> service.acquire("k", "Zu viele Prüfungen.", "TOO_MANY_CHECKS"))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> {
+              assertThat(e.getMessage()).isEqualTo("Zu viele Prüfungen.");
+              assertThat(e.getCode()).isEqualTo("TOO_MANY_CHECKS");
+              assertThat(e.retryAfterSeconds()).isBetween(1L, 60L);
+            });
+  }
 
   @Test
   void allowsRequestsWithinLimit() {
