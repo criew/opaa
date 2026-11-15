@@ -15,7 +15,7 @@ Schnipsel lässt sich übernehmen, nur Platzhalter in `<…>` sind auszufüllen.
 |---|---|
 | neuer Wert von `AuditEventType` | `auditEvents` in `audit-log.yaml`: `id` und `trigger`, der Rest kommt aus `defaults` |
 | neuer Wert von `SystemRole` oder `Capability` | `roles` bzw. `capabilities`: `id` und `seesAboutOthers` |
-| geänderter Prompt-Text (auch Log- oder Fehlertext derselben Klasse) | neue `sha256` beim Prompt in `prompts.yaml` |
+| geänderter Prompt-Text (auch Log- oder Fehlertext derselben Klasse, auch eine unter `resources` genannte Datei) | neue `sha256` beim Prompt in `prompts.yaml` |
 | neue Tabelle | unter `tables` eines Datums oder, ganz ohne Personenbezug, unter `nonPersonalTables` |
 | neue Spalte | in `personalColumns` oder `nonPersonalColumns` ihrer Tabelle bzw. in die Spaltenliste unter `nonPersonalTables` |
 | neue Tabelle unter `tables` eines Datums, neues Datum ohne Tabelle | Weg zur Person unter `person` der Tabelle bzw. `personExcluded` am Datum (siehe [Weg zur Person](#weg-zur-person)) |

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-10
+Akzeptiert · zuletzt geändert 2026-11-15
 
 ## Kontext
 
@@ -65,11 +65,13 @@ Verweis ohne Eintrag scheitert. Ein Datum mit festem Ende verweist auf nichts un
 
 ### 6. Prüfsumme eines Prompts
 
-Ein Prompt liegt entweder in Klassen (`classes`) oder als Default einer Spalte (`databaseDefault`,
-`tabelle.spalte`), nie beides. Im Code ist die Prüfsumme SHA-256 über alle Zeichenkettenkonstanten
-und alle Zeichenkettenwerte von Annotationen an Klasse, Feldern, Methoden und Parametern
-(`@Tool(description = …)`) der genannten Klassen, gelesen aus ihren Klassendateien, sortiert
-(`PromptChecksum`). Sie erfasst Textblöcke, zusammengesetzte Konstanten und Vorlagen der
+Ein Prompt liegt entweder im Code, in Klassen (`classes`), in mitgelieferten Dateien des
+Klassenpfads (`resources`) oder in beidem, oder als Default einer Spalte (`databaseDefault`,
+`tabelle.spalte`), nie in Code und Datenbank zugleich. Im Code ist die Prüfsumme SHA-256 über alle
+Zeichenkettenkonstanten und alle Zeichenkettenwerte von Annotationen an Klasse, Feldern, Methoden und
+Parametern (`@Tool(description = …)`) der genannten Klassen, gelesen aus ihren Klassendateien, und
+über den ganzen Text jeder genannten Datei, sortiert (`PromptChecksum`); eine Datei zählt, weil eine
+feste Fallbasis wie die der Werkzeugprüfung als Datei mit eigener Prüfliste ausgeliefert wird. Sie erfasst Textblöcke, zusammengesetzte Konstanten und Vorlagen der
 Laufzeitverkettung, auch wenn ein Prompt im Code verteilt aufgebaut wird; eine geänderte Log- oder
 Fehlermeldung derselben Klasse ändert sie ebenfalls. In der Datenbank ist sie SHA-256 über den letzten
 `DEFAULT`, den die Migrationen der Spalte geben. Maßgeblich ist die mit javac übersetzte Klassendatei der

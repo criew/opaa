@@ -6,14 +6,24 @@ dataFlows:
     viaOutboundProxy: true
     target: >-
       Das systemweit aktive Chat-Modell, ein OpenAI-kompatibler Endpunkt, den die Installation
-      festlegt und die Systemverwaltung später wechseln kann
+      festlegt und die Systemverwaltung später wechseln kann; für die Werkzeugprüfung jeder Eintrag
+      der Modellverwaltung, den die Systemverwaltung prüfen lässt, auch ein nicht aktiver
     data: >-
       Frage und Gesprächsverlauf, die gefundenen Textstellen aus den Bibliotheken samt Titeln und
       System-Prompt; Chatinhalte für Titel und Notizen; Dokumenttext für die modellgestützte
-      Metadatenextraktion
+      Metadatenextraktion. In einem Agentenlauf zusätzlich die Anweisung des Agenten, die
+      Beschreibungen der eingeschalteten Werkzeuge, die Ergebnisse jedes Werkzeugaufrufs (Fundstellen
+      der Suche, Dokumenttext aus read_document bis zur Lesemenge des Laufs, Ausgaben von run_code,
+      Liste der Quellen, ausgefüllte Vorlagen), Plan und Planänderungen sowie Rückfragen und die
+      Antworten der Person darauf. Bei der Werkzeugprüfung nur die mitgelieferte Fallbasis
+      (System-Prompt, erfundene Fragen und Werkzeugergebnisse einer fiktiven Stadtverwaltung, die
+      Werkzeugbeschreibung der Suche) und eine Bereitschaftsprobe; keine Daten aus Bibliotheken,
+      Chats oder über Personen
     trigger: >-
-      Jede Chat-Anfrage, Zerlegung einer Suchanfrage, Chattitel und -notiz, Metadatenextraktion beim
-      Indizieren, Statusprüfung des Modells; endet eine gestreamte Antwort ohne ersten Teil oder
+      Jede Chat-Anfrage, jeder Schritt eines Agentenlaufs, Zerlegung einer Suchanfrage, Chattitel und
+      -notiz, Metadatenextraktion beim Indizieren, Statusprüfung des Modells; die Werkzeugprüfung
+      eines Eintrags, die die Systemverwaltung bei eingeschalteten Agenten startet (jeder Fall der
+      Fallbasis bis zu dreimal); endet eine gestreamte Antwort ohne ersten Teil oder
       lehnt das Modell die gestreamte Anfrage ab (nicht bei Netz-, Anmelde-, Last- oder
       Serverfehlern), geht dieselbe Anfrage einmal ohne Streaming erneut an das Modell
     switchOff: >-
@@ -384,9 +394,12 @@ dataFlows:
       Installationsassistent einträgt, meist im eigenen Netz
     data: >-
       Der vollständige Inhalt jeder Datei, die eine Bibliothek oder ein Chat aufnehmen soll
-      (Upload, Datei einer Quelle, Anhang), ohne Dateiname, Bibliothek oder Person; bei der Prüfung
-      der Verbindung nur die Frage nach der Version
-    trigger: Jede Aufnahme einer Datei bei eingeschalteter Virenprüfung
+      (Upload, Datei einer Quelle, Anhang), und jeder hochgeladenen Dokumentvorlage, ohne
+      Dateiname, Bibliothek, Vorlage oder Person; bei der Prüfung der Verbindung nur die Frage nach
+      der Version
+    trigger: >-
+      Jede Aufnahme einer Datei und jeder Upload einer Dokumentvorlage bei eingeschalteter
+      Virenprüfung
     switchOff: Abschaltbar, Voreinstellung aus
     settings: [malware_scan_settings.enabled, malware_scan_settings.host]
   - id: siem-export

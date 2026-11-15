@@ -699,7 +699,14 @@ public final class FactSheetRenderer {
     if (entry.databaseDefault() != null && !entry.databaseDefault().isBlank()) {
       return "Standardwert der Spalte " + code(entry.databaseDefault());
     }
-    return codes(entry.classes());
+    List<String> located = new ArrayList<>();
+    if (entry.classes() != null) {
+      located.addAll(entry.classes());
+    }
+    if (entry.resources() != null) {
+      located.addAll(entry.resources());
+    }
+    return codes(located);
   }
 
   /**

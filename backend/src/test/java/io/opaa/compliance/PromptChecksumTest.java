@@ -109,6 +109,28 @@ class PromptChecksumTest {
   }
 
   @Test
+  void aShippedFileCountsWithItsWholeText() {
+    String wording = "compliance-fixtures/prompt-resources/wording.txt";
+    String reworded = "compliance-fixtures/prompt-resources/reworded.txt";
+    assertThat(PromptChecksum.resourceText(wording)).isEqualTo("Antworte in ganzen Sätzen.\n");
+    assertThat(PromptChecksum.of(prompt(List.of(WORDING), List.of(wording))))
+        .isNotEqualTo(PromptChecksum.of(List.of(WORDING)))
+        .isNotEqualTo(PromptChecksum.of(prompt(List.of(WORDING), List.of(reworded))));
+  }
+
+  @Test
+  void aFileNotOnTheClasspathFails() {
+    assertThatThrownBy(() -> PromptChecksum.of(prompt(null, List.of("compliance/missing.txt"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("compliance/missing.txt");
+  }
+
+  private static ComplianceManifest.PromptEntry prompt(List<String> classes, List<String> files) {
+    return new ComplianceManifest.PromptEntry(
+        "prompts", "example", "Zweck", classes, files, null, "0".repeat(64), null);
+  }
+
+  @Test
   void aClassNotOnTheClasspathFails() {
     assertThatThrownBy(() -> PromptChecksum.of(List.of("io.opaa.compliance.Missing")))
         .isInstanceOf(IllegalArgumentException.class)
