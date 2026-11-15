@@ -26,8 +26,7 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
   (erweitert `Asset`) und `AssetTypeDefinition` mit, keine eigene Grant-Logik, Historie, Fundquelle.
 - **Inaktiver Typ** (Flag aus): Lesewege fragen `AssetTypes#active`/`isActive`/`requireActive`;
   Eigentum, Historie, Protokoll und Nachfolgewächter bleiben bei `registered`/`require`.
-- **Historientabellen tragen keinen Fremdschlüssel auf das Asset:** Die Historie überlebt es. Die
-  Schale schließt offene Intervalle vor dem Löschen (`AssetShellService#registerDeleted`).
+- **Historie ohne Fremdschlüssel aufs Asset:** `AssetShellService#registerDeleted` schließt offene Intervalle.
 - **Der Nachfolgezustand wird nie gespeichert,** nur Beginn und Ende (`succession_cases`).
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
 - **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das Verzeichnis
@@ -45,6 +44,7 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
 - [ADR-0037](../../../../../../../docs/decisions/0037-reichweite-als-freigabe-an-alle.md): Freigabe an „Alle Konten“
 - [ADR-0039](../../../../../../../docs/decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidungen 1–3): Katalog und Sichtbarkeit
 - [ADR-0044](../../../../../../../docs/decisions/0044-installationsweite-feature-flags.md) (Entscheidung 3): inaktive Asset-Typen
+- [ADR-0074](../../../../../../../docs/decisions/0074-verantwortliche-stelle-und-sperre.md): verantwortliche Stelle und Sperre von Agenten und Vorlagen
 
 ## Verweise
 
