@@ -13,8 +13,10 @@
 #   HARDENED_SERVICES names, or undoes them there with privileged: true, any cap_add, an unconfined
 #   seccomp or AppArmor profile, or pid, ipc or network_mode: host (lists in block or flow style;
 #   network_mode: host only outside HOST_NETWORK_SERVICES),
-# - runs a service of HOST_NETWORK_SERVICES whose [server] host in the named TOML file is missing
-#   or a wildcard (0.0.0.0, ::), so that it would listen on every interface of the host,
+# - runs a service of HOST_NETWORK_SERVICES whose [server] host in the named TOML file is not the
+#   gateway of an internal: true network of the same Compose file (a wildcard would listen on every
+#   interface of the host), whose healthcheck or URL variable names another address, or whose
+#   [docker] network_mode is not the name of the named isolated network,
 # - leaves out internal: true or driver_opts com.docker.network.bridge.enable_icc: "false" on a
 #   network that ISOLATED_NETWORKS names (block style; flow style is not read and fails),
 # - carries a fixed secret: a key ending in SECRET, PASSWORD, PASSWD, TOKEN, API_KEY, SECRET_KEY,
@@ -58,13 +60,15 @@ HARDENED_SERVICES=(
   "docker-compose.yml|frontend|The same restrictions the Helm chart applies to the frontend image"
   "docker-compose.ocr.yml|opaa-ocr|Converts foreign documents; writes only to its tmpfs"
   "docker-compose.monitoring.yml|prometheus|Writes only to its data volume"
-  "docker-compose.sandbox.yml|opensandbox-server|Holds the host's Docker socket and is reachable from sandbox code"
+  "docker-compose.sandbox.yml|opensandbox-server|Holds the host's Docker socket and is reachable from containers on the host"
 )
 
-# file|service|config file|reason - services in the host's network namespace. Each must bind the
-# address in [server] host of its config file to one address of the host, never to every interface.
+# file|service|config file|URL variable|isolated network|reason - services in the host's network
+# namespace. [server] host in the config file is the gateway of an internal network of the same
+# file, never every interface; the service's healthcheck and the URL variable name that address,
+# and [docker] network_mode in the config file is the name of the isolated network.
 HOST_NETWORK_SERVICES=(
-  "docker-compose.sandbox.yml|opensandbox-server|sandbox/config.toml|Reaches execd in each sandbox from the host side of the network sandboxes, whose containers cannot reach each other"
+  "docker-compose.sandbox.yml|opensandbox-server|sandbox/config.toml|OPAA_SANDBOX_BASE_URL|sandboxes|Reaches execd in each sandbox from the host side of the network sandboxes, whose containers cannot reach each other"
 )
 
 # file|network|reason - top-level networks without a gateway whose containers cannot reach each
@@ -97,6 +101,12 @@ declare -A host_network=()
 # "file|network" of every top-level network, "file|network|setting" for internal and icc_off.
 declare -A seen_networks=()
 declare -A network_settings=()
+# "file|network" -> its name: and the gateway: of its ipam config.
+declare -A network_names=()
+declare -A network_gateways=()
+# "file|service" -> the test: line of its healthcheck; "file|KEY" -> every value of KEY in the file.
+declare -A healthcheck_tests=()
+declare -A key_values=()
 # "file|service|setting" for every hardening setting found: read_only, cap_drop, no_new_privileges.
 declare -A hardening=()
 # "file|service" -> the settings that undo the hardening (privileges, capabilities, host namespaces).
@@ -267,8 +277,12 @@ check_compose_file() {
     if [[ "$top" == networks ]] && ((indent >= 4)); then
       if ((indent == 4)) && [[ "$line" =~ ^[[:space:]]+([a-z_]+):[[:space:]]*(.*)$ ]]; then
         network_key="${BASH_REMATCH[1]}"
-        [[ "$network_key" == internal && "$(scalar "${BASH_REMATCH[2]}")" == true ]] &&
+        setting="$(scalar "${BASH_REMATCH[2]}")"
+        [[ "$network_key" == internal && "$setting" == true ]] &&
           network_settings["$file|$network|internal"]=1
+        [[ "$network_key" == name ]] && network_names["$file|$network"]="$setting"
+      elif [[ "$network_key" == ipam && "$line" =~ ^[[:space:]]+(-[[:space:]]+)?gateway:[[:space:]]*(.*)$ ]]; then
+        network_gateways["$file|$network"]="$(scalar "${BASH_REMATCH[2]}")"
       elif ((indent == 6)) && [[ "$network_key" == driver_opts &&
         "$line" =~ ^[[:space:]]+com\.docker\.network\.bridge\.enable_icc:[[:space:]]*(.*)$ ]]; then
         [[ "$(scalar "${BASH_REMATCH[1]}")" == false ]] && network_settings["$file|$network|icc_off"]=1
@@ -299,6 +313,8 @@ check_compose_file() {
         fi
       elif [[ "$line" =~ ^[[:space:]]*-[[:space:]]+(.*)$ ]]; then
         hardening_item "$file" "$scope" "$number" "$service_key" "$(scalar "${BASH_REMATCH[1]}")"
+      elif ((indent == 6)) && [[ "$service_key" == healthcheck && "$line" =~ ^[[:space:]]+test:[[:space:]]*(.*)$ ]]; then
+        healthcheck_tests["$file|$scope"]="${BASH_REMATCH[1]}"
       fi
     fi
     if [[ "$line" =~ ^[[:space:]]*ports:[[:space:]]*(.*)$ ]]; then
@@ -335,6 +351,7 @@ check_compose_file() {
       if [[ -n "${BASH_REMATCH[2]}" && "$value" != [\"\']* ]]; then
         value="${value%"${BASH_REMATCH[2]}"}"
       fi
+      key_values["$file|${BASH_REMATCH[3]}"]+="$(scalar "$value")"$'\n'
       check_key "$file" "$number" "$scope" "${BASH_REMATCH[3]}" "$value"
     fi
   done <"$file"
@@ -382,29 +399,51 @@ for entry in "${HARDENED_SERVICES[@]}"; do
   fi
 done
 
-# The address in [server] host of a TOML file, empty when the key or the section is missing.
-server_host() {
+# The value of a key in a section of a TOML file ($1 file, $2 section, $3 key), empty when the key
+# or the section is missing.
+toml_value() {
   local line section=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ "$line" =~ ^[[:space:]]*\[([A-Za-z0-9_.-]+)\][[:space:]]*(#.*)?$ ]]; then
       section="${BASH_REMATCH[1]}"
-    elif [[ "$section" == server && "$line" =~ ^[[:space:]]*host[[:space:]]*=[[:space:]]*(.*)$ ]]; then
-      scalar "${BASH_REMATCH[1]}"
+    elif [[ "$section" == "$2" && "$line" =~ ^[[:space:]]*([A-Za-z0-9_]+)[[:space:]]*=[[:space:]]*(.*)$ &&
+      "${BASH_REMATCH[1]}" == "$3" ]]; then
+      scalar "${BASH_REMATCH[2]}"
       return 0
     fi
   done <"$1"
 }
 
 for entry in "${HOST_NETWORK_SERVICES[@]}"; do
-  IFS='|' read -r n_file n_service n_config _ <<<"$entry"
+  IFS='|' read -r n_file n_service n_config n_url n_network _ <<<"$entry"
   if [[ ! -v host_network["$n_file|$n_service"] ]]; then
     error "$n_file" 1 "HOST_NETWORK_SERVICES names the service $n_service of $n_file, which does not run with network_mode: host there any more; remove the entry."
     continue
   fi
   bind=""
-  [[ -f "$n_config" ]] && bind="$(server_host "$n_config")"
-  if [[ -z "$bind" || "$bind" =~ ^(0\.0\.0\.0|::|\[::\]|\*)$ ]]; then
-    error "$n_config" 1 "$n_service runs in the host's network namespace, but [server] host in $n_config is '${bind}': it would listen on every interface of the host. Bind one address of the host."
+  sandbox_network=""
+  if [[ -f "$n_config" ]]; then
+    bind="$(toml_value "$n_config" server host)"
+    sandbox_network="$(toml_value "$n_config" docker network_mode)"
+  fi
+  gateway_of=""
+  for key in "${!network_gateways[@]}"; do
+    if [[ "$key" == "$n_file|"* && -n "$bind" && "${network_gateways[$key]}" == "$bind" &&
+      -v network_settings["$key|internal"] ]]; then
+      gateway_of="${key#*|}"
+    fi
+  done
+  if [[ -z "$gateway_of" ]]; then
+    error "$n_config" 1 "$n_service runs in the host's network namespace, but [server] host in $n_config is '${bind}', not the gateway of an internal: true network of $n_file: a wildcard would listen on every interface of the host, any other address on one the backend does not reach."
+    continue
+  fi
+  bind_pattern="${bind//./\\.}"
+  [[ "${healthcheck_tests["$n_file|$n_service"]:-}" =~ //${bind_pattern}: ]] ||
+    error "$n_file" 1 "The healthcheck of $n_service does not call $bind, the address in [server] host of $n_config."
+  [[ "${key_values["$n_file|$n_url"]:-}" =~ (^|$'\n')https?://${bind_pattern}(:|/|$'\n') ]] ||
+    error "$n_file" 1 "$n_url in $n_file does not name $bind, the address $n_service listens on ([server] host in $n_config)."
+  if [[ "$sandbox_network" != "${network_names["$n_file|$n_network"]:-}" || -z "$sandbox_network" ]]; then
+    error "$n_config" 1 "[docker] network_mode in $n_config is '$sandbox_network', not the name of the network $n_network of $n_file ('${network_names["$n_file|$n_network"]:-}'): the sandboxes would start outside the isolated network."
   fi
 done
 

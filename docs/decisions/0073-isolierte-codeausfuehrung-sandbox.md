@@ -62,15 +62,19 @@ internen Netz ohne Ausgang, in dem Verkehr zwischen Containern gesperrt ist (ICC
 ein Skript Daten an einen Listener in der Sandbox einer anderen Person geben. Weil die Sperre auch
 einen Container des Dienstes in diesem Netz träfe, läuft der Dienst im Netz-Namensraum des Hosts
 und erreicht den Ausführungsagenten von der Host-Seite des Netzes. Er lauscht nur auf der
-Host-Adresse eines eigenen internen Netzes, in dem nur das Backend hängt; Backend und Dienst sind
-von einer Sandbox aus nicht erreichbar. Die Compose-Prüfung hält ICC aus, das interne Netz und die
-Bindung des Dienstes an eine einzelne Adresse fest. Unter Kubernetes legt das Helm-Chart im
-Namespace der Sandboxen eine NetworkPolicy an, die jeden Ausgang sperrt und Eingang nur vom Dienst
-zulässt, unabhängig von den übrigen Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen
-Schlüssel, jede Sandbox ein eigenes Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne
-Root-Rechte und startet ohne dieses Token in seiner Umgebung: Mit dem Token könnte es den
-Ausführungsagenten in der eigenen Sandbox ansprechen und Kommandos als Root ausführen. Der Container
-behält nur die Capabilities, die der Ausführungsagent braucht. Ein Ausgangstor mit Zulassungsliste
+Gateway-Adresse eines eigenen internen Netzes des Backends, nicht auf allen Schnittstellen. Diese
+Adresse gehört dem Host: Erreichbar ist der Dienst von jedem Container des Hosts und von Rechnern,
+die zum Host routen, geschützt nur durch seinen Schlüssel, solange keine Eingangsregel des Hosts
+das auf die Bridge des Backends begrenzt. Von einer Sandbox aus sind Backend und Dienst nicht
+erreichbar, wohl aber der Host über die Gateway-Adresse ihres Netzes. Die Compose-Prüfung hält ICC
+aus, das interne Netz und die Bindung des Dienstes an diese Gateway-Adresse fest. Unter Kubernetes
+legt das Helm-Chart im Namespace der Sandboxen eine NetworkPolicy an, die jeden Ausgang sperrt und
+Eingang nur vom Dienst zulässt, unabhängig von den übrigen Netzwerkregeln; dieser Namespace darf
+nicht der von Opaa sein. Der Dienst verlangt seinen Schlüssel, jede Sandbox ein eigenes
+Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne Root-Rechte und startet ohne
+dieses Token in seiner Umgebung: Mit dem Token könnte es den Ausführungsagenten in der eigenen
+Sandbox ansprechen und Kommandos als Root ausführen. Der Container behält nur die Capabilities, die
+der Ausführungsagent braucht. Ein Ausgangstor mit Zulassungsliste
 kommt erst mit einem Werkzeug, das Netz braucht.
 
 ### 5. Isolationsstärke ist Einstellung des Dienstes
@@ -146,8 +150,10 @@ Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler
   dessen Debian-Pakete folgen dem Stand des Basis-Images beim Bau statt einer festen Version.
 - **Restrisiko:** Ein Ausbruch aus der Laufzeit trifft den Knoten; die Stufe hängt an der
   Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts und
-  läuft im Netz-Namensraum des Hosts. Eine Sandbox erreicht dort den Host über die Gateway-Adresse
-  ihres Netzes; ein Dienst des Hosts, der auf allen Schnittstellen lauscht, ist von dort ansprechbar.
+  läuft im Netz-Namensraum des Hosts. Seine API erreicht jeder Container des Hosts und jeder
+  Rechner, der zum Host routet; sie schützt nur der Schlüssel, solange der Betrieb keine
+  Eingangsregel setzt. Eine Sandbox erreicht den Host über die Gateway-Adresse ihres Netzes; ein
+  Dienst des Hosts, der auf allen Schnittstellen lauscht, ist von dort ansprechbar.
 - **Restrisiko der geteilten Sandbox:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann
   ein zurückgelassener Prozess die Ergebnisdatei von `fill_template` zwischen Schreiben und Lesen
   ändern. Ein eigenes Verzeichnis mit Zufallsnamen je Aufruf, das sofortige Lesen und die Prüfung

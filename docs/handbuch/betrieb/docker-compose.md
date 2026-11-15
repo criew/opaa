@@ -631,11 +631,13 @@ gehören nicht dazu.
   `keycloak` und `grafana` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS`,
   `OPAA_KEYCLOAK_BIND_ADDRESS` bzw. `OPAA_GRAFANA_BIND_ADDRESS` öffnen, alle mit Loopback als
   Vorgabe, die keine Umgebungsvorlage ändert. `network_mode: host` hat nur der Sandbox-Dienst; die
-  Prüfung verlangt, dass er auf einer einzelnen Adresse des Hosts lauscht, nie auf allen
-  Schnittstellen. Der Texterkennungsdienst und der Prometheus des Monitorings veröffentlichen gar
-  keinen Port, auch nicht an Loopback.
+  Prüfung verlangt, dass er nur auf der Gateway-Adresse eines internen Netzes lauscht, nie auf
+  allen Schnittstellen, und dass Backend-Adresse und Healthcheck dieselbe Adresse nennen. Der
+  Texterkennungsdienst und der Prometheus des Monitorings veröffentlichen gar keinen Port, auch
+  nicht an Loopback.
 - **Sandboxen bleiben getrennt.** Das Netz `opaa-sandboxes` bleibt intern und sperrt Verkehr
-  zwischen seinen Containern (`com.docker.network.bridge.enable_icc: "false"`).
+  zwischen seinen Containern (`com.docker.network.bridge.enable_icc: "false"`); der Sandbox-Dienst
+  startet die Sandboxen in genau diesem Netz (`[docker] network_mode` in `sandbox/config.toml`).
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.

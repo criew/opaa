@@ -41,8 +41,10 @@ services:
     # The host's network namespace: "sandboxes" blocks traffic between its containers (ICC off), so
     # the server reaches execd in each sandbox from the host side of that bridge, never as a
     # container on it. It listens only on 172.31.255.249, the host's address on "sandbox-api"
-    # ([server] host in sandbox/config.toml), and publishes no port. That address lies outside
-    # "sandboxes", so sandbox code has no route to it; the API needs the key all the same.
+    # ([server] host in sandbox/config.toml), and publishes no port. Being a host address, it is
+    # reachable from every container of the host and from machines routing to the host, guarded
+    # only by the API key unless a host firewall rule limits it (handbook "Sandbox für Agenten").
+    # Sandbox code has no route to it, but reaches the host at the gateway of "sandboxes".
     network_mode: host
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://172.31.255.249:8090/health', timeout=3)"]
@@ -89,6 +91,9 @@ networks:
   sandbox-api:
     name: opaa-sandbox-api
     internal: true
+    # A fixed bridge name, so that host firewall rules (ufw, iptables) can name the interface.
+    driver_opts:
+      com.docker.network.bridge.name: opaa-sbx-api
     ipam:
       config:
         - subnet: 172.31.255.248/29

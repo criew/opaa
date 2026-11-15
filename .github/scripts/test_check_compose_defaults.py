@@ -8,7 +8,9 @@ does not name, an exception that no longer matches, a port, even on loopback, of
 that must stay unpublished or an entry for such a service that is gone, a hardened service
 without read-only root file system, cap_drop ALL or no-new-privileges, or whose entry is gone, an
 isolated network without internal: true or with traffic between its containers allowed, and a
-service in the host's network namespace that listens on every interface or whose entry is gone."""
+service in the host's network namespace that listens on anything but the gateway of an internal
+network of its file, whose healthcheck, URL variable or sandbox network disagrees with its config,
+or whose entry is gone."""
 
 import shutil
 import subprocess
@@ -411,8 +413,10 @@ def test_an_isolated_network_that_is_gone_fails(repo: Path) -> None:
     fails_with(run(repo), "ISOLATED_NETWORKS names the network sandboxes")
 
 
-@pytest.mark.parametrize("bind", ['"0.0.0.0"', '"::"', '""', '"[::]"'])
-def test_a_host_network_service_listening_on_every_interface_fails(repo: Path, bind: str) -> None:
+@pytest.mark.parametrize(
+    "bind", ['"0.0.0.0"', '"::"', '""', '"[::]"', '"0"', '"192.168.1.10"', '"172.31.255.250"']
+)
+def test_a_host_network_service_off_its_gateway_fails(repo: Path, bind: str) -> None:
     replace(repo, SERVER_CONFIG, 'host = "172.31.255.249"', f"host = {bind}")
     fails_with(run(repo), "opensandbox-server runs in the host's network namespace")
 
@@ -425,3 +429,30 @@ def test_a_host_network_service_without_bind_address_fails(repo: Path) -> None:
 def test_a_host_network_service_that_left_the_host_network_fails(repo: Path) -> None:
     replace(repo, "docker-compose.sandbox.yml", "    network_mode: host\n", "")
     fails_with(run(repo), "HOST_NETWORK_SERVICES names the service opensandbox-server")
+
+
+def test_a_host_network_service_on_the_gateway_of_a_network_with_egress_fails(repo: Path) -> None:
+    replace(repo, "docker-compose.sandbox.yml", "    name: opaa-sandbox-api\n    internal: true\n",
+            "    name: opaa-sandbox-api\n")
+    fails_with(run(repo), "not the gateway of an internal: true network")
+
+
+def test_a_healthcheck_on_another_address_fails(repo: Path) -> None:
+    replace(repo, "docker-compose.sandbox.yml", "urlopen('http://172.31.255.249:8090/health'",
+            "urlopen('http://127.0.0.1:8090/health'")
+    fails_with(run(repo), "The healthcheck of opensandbox-server does not call 172.31.255.249")
+
+
+@pytest.mark.parametrize(
+    "url", ["http://opensandbox-server:8090", "http://172.31.255.2490:8090", "http://172x31.255.249:8090"]
+)
+def test_a_base_url_on_another_address_fails(repo: Path, url: str) -> None:
+    replace(repo, "docker-compose.sandbox.yml", "OPAA_SANDBOX_BASE_URL: http://172.31.255.249:8090",
+            f"OPAA_SANDBOX_BASE_URL: {url}")
+    fails_with(run(repo), "OPAA_SANDBOX_BASE_URL in docker-compose.sandbox.yml does not name 172.31.255.249")
+
+
+@pytest.mark.parametrize("mode", ['"bridge"', '"opaa-sandbox-api"', '""'])
+def test_sandboxes_outside_the_isolated_network_fail(repo: Path, mode: str) -> None:
+    replace(repo, SERVER_CONFIG, 'network_mode = "opaa-sandboxes"', f"network_mode = {mode}")
+    fails_with(run(repo), "[docker] network_mode in sandbox/config.toml is")
