@@ -67,58 +67,8 @@ export OPAA_SANDBOX_API_KEY=$(openssl rand -hex 32)
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build
 ```
 
-Geprüft ist das Overlay mit Docker Engine unter Linux. Mit Podman wird es voraussichtlich nicht
-funktionieren.
-
-Die Sandboxen hängen am internen Netz `opaa-sandboxes` ohne Ausgang, in dem Verkehr zwischen
-Containern gesperrt ist: Eine Sandbox erreicht weder das Internet noch eine andere Sandbox, das
-Backend oder den Sandbox-Dienst. Den Ausführungsagenten jeder Sandbox erreicht der Dienst von der
-Host-Seite dieses Netzes; er läuft deshalb im Netz-Namensraum des Hosts (`network_mode: host`) und
-veröffentlicht keinen Port. Er lauscht nur auf `172.31.255.249:8090`, der Gateway-Adresse des
-internen Netzes `opaa-sandbox-api` (Bridge `opaa-sbx-api`), über das das Backend ihn anspricht.
-
-**Wer den Dienst erreicht:** Die Adresse gehört dem Host. Ohne eigene Regel erreicht den Dienst
-jeder Container des Hosts, auch in fremden Netzen, und jeder Rechner, der zum Host routet; geschützt
-ist er dann nur durch den API-Schlüssel. Eine Sandbox erreicht ihn nicht, wohl aber den Host über
-die Gateway-Adresse ihres Netzes: Dienste des Hosts, die auf allen Schnittstellen lauschen, sind von
-dort ansprechbar. Auf der VM des Stapels deshalb nur das Nötige so binden.
-
-**Firewall des Hosts:**
-
-- **ufw** mit der Vorgabe „deny incoming“ sperrt auch das Backend aus; es läuft dann beim Aufruf
-  des Dienstes in eine Zeitüberschreitung. Diese Freigabe genügt und begrenzt den Dienst zugleich
-  auf das Backend und den Host selbst (Loopback lässt ufw zu):
-
-  ```bash
-  ufw allow in on opaa-sbx-api to 172.31.255.249 port 8090 proto tcp
-  ```
-- **Hosts ohne ufw, empfohlene Härtung:** Den Dienst nur vom Backend und vom Host selbst annehmen
-  (Loopback braucht der Healthcheck des Dienstes):
-
-  ```bash
-  iptables -I INPUT -d 172.31.255.249 ! -i opaa-sbx-api -j DROP
-  iptables -I INPUT -d 172.31.255.249 -i lo -j ACCEPT
-  ```
-
-  Die Regeln mit dem Mittel der Distribution dauerhaft speichern; unter Ubuntu entfernt das Paket
-  `iptables-persistent` ufw. Aufrufe von Hand gehen dann nur noch vom Host aus.
-- **firewalld:** Docker hängt seine Bridges in die Zone `docker`; die ist meist unkritisch, das
-  Backend erreicht den Dienst ohne eigene Regel.
-
-**Subnetz-Kollision:** `172.31.255.248/29` liegt im Standardpool von Docker (`172.17.0.0/16` bis
-`172.31.0.0/16`) und in `172.16.0.0/12`, das auch Firmen- oder VPN-Netze nutzen. Belegt ein
-solches Netz den Bereich schon, startet der Stapel nicht oder der Host erreicht das andere Netz
-nicht mehr. Für ein anderes Subnetz diese vier Stellen gemeinsam ändern:
-
-| Datei | Stelle |
-|---|---|
-| `docker-compose.sandbox.yml` | Netz `sandbox-api`: `subnet` und `gateway` |
-| `docker-compose.sandbox.yml` | `OPAA_SANDBOX_BASE_URL` des Backends |
-| `docker-compose.sandbox.yml` | Healthcheck von `opensandbox-server` |
-| `sandbox/config.toml` | `[server] host` |
-
-Die Compose-Prüfung im Repository verlangt, dass alle vier dieselbe Gateway-Adresse nennen.
-
+Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
+Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token.
 Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
 Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor (`runsc`) als
 Laufzeit der Sandboxen.

@@ -253,7 +253,7 @@ die die Variable nennt, ebenso bei `OPAA_SUCCESSION_DETECTION_CRON`. Deshalb lä
 | `OPAA_UPLOAD_ORPHAN_GRACE_MINUTES` | `60` | `60` | Schonfrist des Aufräumlaufs für verwaiste Originale: Minuten, die ein abgelegtes Original alt sein muss, bevor der Lauf es überhaupt melden oder entfernen darf — ein Upload, dessen Zeile gerade entsteht oder dessen Verarbeitung noch läuft, ist kein verwaistes Original. Ein Melde-Aufruf darf die Frist je Aufruf anheben, nie unterschreiten. Siehe [„Verwaiste Originale aufräumen"](../betrieb/originalablage.md#verwaiste-originale-aufräumen) |
 | **Sandbox für Agenten** | | | |
 | `OPAA_SANDBOX_ENABLED` | `false` | nicht gesetzt; das Overlay `docker-compose.sandbox.yml` setzt `true` | Bietet Agenten die Werkzeuge `run_code` und `fill_template` an; genutzt wird die Sandbox nur, solange Agenten unter „Administration → Agenten“ eingeschaltet sind. Eingeschaltet ohne `OPAA_SANDBOX_BASE_URL` oder `OPAA_SANDBOX_API_KEY` startet das Backend nicht (siehe [Sandbox für Agenten](../betrieb/sandbox.md)). Bei mehreren Instanzen auf allen gleich |
-| `OPAA_SANDBOX_BASE_URL` | `http://opensandbox-server:8090` | `http://172.31.255.249:8090` aus dem Overlay | Adresse des Sandbox-Dienstes (OpenSandbox) |
+| `OPAA_SANDBOX_BASE_URL` | `http://opensandbox-server:8090` | wie Vorgabe | Adresse des Sandbox-Dienstes (OpenSandbox) |
 | `OPAA_SANDBOX_API_KEY` | – | aus dem Overlay | API-Schlüssel des Sandbox-Dienstes |
 | `OPAA_SANDBOX_IMAGE` | `opaa/sandbox-python:1` | wie Vorgabe | Image einer Sandbox |
 | `OPAA_SANDBOX_RUN_TIMEOUT` | `60s` | nicht gesetzt | Zeitgrenze eines Skripts; die Restzeit des Agentenlaufs kann sie verkürzen |

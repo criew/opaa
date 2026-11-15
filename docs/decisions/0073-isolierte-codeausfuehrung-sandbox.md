@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-15
+Akzeptiert · zuletzt geändert 2026-11-11
 
 ## Kontext
 
@@ -57,24 +57,15 @@ Datei, die sich nicht abholen oder anhängen lässt, fehlt, ohne die Antwort zu 
 
 ### 4. Kein Netz, Anmeldung je Aufruf
 
-Die Sandbox hat keinen Ausgang und erreicht keine andere Sandbox. Unter Docker hängt sie an einem
-internen Netz ohne Ausgang, in dem Verkehr zwischen Containern gesperrt ist (ICC aus); sonst könnte
-ein Skript Daten an einen Listener in der Sandbox einer anderen Person geben. Weil die Sperre auch
-einen Container des Dienstes in diesem Netz träfe, läuft der Dienst im Netz-Namensraum des Hosts
-und erreicht den Ausführungsagenten von der Host-Seite des Netzes. Er lauscht nur auf der
-Gateway-Adresse eines eigenen internen Netzes des Backends, nicht auf allen Schnittstellen. Diese
-Adresse gehört dem Host: Erreichbar ist der Dienst von jedem Container des Hosts und von Rechnern,
-die zum Host routen, geschützt nur durch seinen Schlüssel, solange keine Eingangsregel des Hosts
-das auf die Bridge des Backends begrenzt. Von einer Sandbox aus sind Backend und Dienst nicht
-erreichbar, wohl aber der Host über die Gateway-Adresse ihres Netzes. Die Compose-Prüfung hält ICC
-aus, das interne Netz und die Bindung des Dienstes an diese Gateway-Adresse fest. Unter Kubernetes
-legt das Helm-Chart im Namespace der Sandboxen eine NetworkPolicy an, die jeden Ausgang sperrt und
-Eingang nur vom Dienst zulässt, unabhängig von den übrigen Netzwerkregeln; dieser Namespace darf
-nicht der von Opaa sein. Der Dienst verlangt seinen Schlüssel, jede Sandbox ein eigenes
-Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne Root-Rechte und startet ohne
-dieses Token in seiner Umgebung: Mit dem Token könnte es den Ausführungsagenten in der eigenen
-Sandbox ansprechen und Kommandos als Root ausführen. Der Container behält nur die Capabilities, die
-der Ausführungsagent braucht. Ein Ausgangstor mit Zulassungsliste
+Die Sandbox hat keinen Ausgang: Unter Docker hängt sie an einem internen Netz ohne Ausgang, das
+Backend ist nicht darin, erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit
+Schlüssel oder Token; unter Kubernetes legt das Helm-Chart im Namespace der Sandboxen eine
+NetworkPolicy an, die jeden Ausgang sperrt und Eingang nur vom Dienst zulässt, unabhängig von den
+übrigen Netzwerkregeln; dieser Namespace darf nicht der von Opaa sein. Der Dienst verlangt seinen
+Schlüssel, jede Sandbox ein eigenes Zufallstoken für ihren Ausführungsagenten. Das Skript läuft ohne
+Root-Rechte und startet ohne dieses Token in seiner Umgebung: Mit dem Token könnte es den
+Ausführungsagenten in der eigenen Sandbox ansprechen und Kommandos als Root ausführen. Der Container
+behält nur die Capabilities, die der Ausführungsagent braucht. Ein Ausgangstor mit Zulassungsliste
 kommt erst mit einem Werkzeug, das Netz braucht.
 
 ### 5. Isolationsstärke ist Einstellung des Dienstes
@@ -149,11 +140,7 @@ Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler
   Das Sandbox-Image ist ein weiteres Image mit Paketliste; LibreOffice macht es deutlich größer, und
   dessen Debian-Pakete folgen dem Stand des Basis-Images beim Bau statt einer festen Version.
 - **Restrisiko:** Ein Ausbruch aus der Laufzeit trifft den Knoten; die Stufe hängt an der
-  Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts und
-  läuft im Netz-Namensraum des Hosts. Seine API erreicht jeder Container des Hosts und jeder
-  Rechner, der zum Host routet; sie schützt nur der Schlüssel, solange der Betrieb keine
-  Eingangsregel setzt. Eine Sandbox erreicht den Host über die Gateway-Adresse ihres Netzes; ein
-  Dienst des Hosts, der auf allen Schnittstellen lauscht, ist von dort ansprechbar.
+  Plattform (Entscheidung 5). Im Compose-Betrieb hält der Dienst den Docker-Socket des Hosts.
 - **Restrisiko der geteilten Sandbox:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann
   ein zurückgelassener Prozess die Ergebnisdatei von `fill_template` zwischen Schreiben und Lesen
   ändern. Ein eigenes Verzeichnis mit Zufallsnamen je Aufruf, das sofortige Lesen und die Prüfung
@@ -173,10 +160,6 @@ Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler
   (3).
 - Netzregel nur, wenn `networkPolicy.*` eingeschaltet ist: Eine Sandbox hätte bis dahin das offene
   Clusternetz (4).
-- Dienst als Container im Sandbox-Netz mit ICC an: Sandboxen verschiedener Personen erreichen sich
-  gegenseitig (4).
-- Dienst über veröffentlichte Ports der Sandboxen: Docker veröffentlicht in internen Netzen keine
-  Ports, ein Netz mit Ausgang hieße Netzzugang (4).
 - Vorlage im Backend füllen (Jinja-Engine im Prozess): Template-Injection mit Zugriff auf alle
   Daten (8).
 - Vorlage über `run_code` füllen lassen: Das Ergebnis hinge an ungeprüftem Modellcode (8).

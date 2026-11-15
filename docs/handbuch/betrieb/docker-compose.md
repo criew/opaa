@@ -630,14 +630,9 @@ gehören nicht dazu.
 - **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend`,
   `keycloak` und `grafana` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS`,
   `OPAA_KEYCLOAK_BIND_ADDRESS` bzw. `OPAA_GRAFANA_BIND_ADDRESS` öffnen, alle mit Loopback als
-  Vorgabe, die keine Umgebungsvorlage ändert. `network_mode: host` hat nur der Sandbox-Dienst; die
-  Prüfung verlangt, dass er nur auf der Gateway-Adresse eines internen Netzes lauscht, nie auf
-  allen Schnittstellen, und dass Backend-Adresse und Healthcheck dieselbe Adresse nennen. Der
+  Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt nicht vor. Der
   Texterkennungsdienst und der Prometheus des Monitorings veröffentlichen gar keinen Port, auch
   nicht an Loopback.
-- **Sandboxen bleiben getrennt.** Das Netz `opaa-sandboxes` bleibt intern und sperrt Verkehr
-  zwischen seinen Containern (`com.docker.network.bridge.enable_icc: "false"`); der Sandbox-Dienst
-  startet die Sandboxen in genau diesem Netz (`[docker] network_mode` in `sandbox/config.toml`).
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.
@@ -649,8 +644,7 @@ gehören nicht dazu.
   Monitorings und der Sandbox-Dienst laufen mit Read-only Filesystem, ohne Capabilities
   (`cap_drop: [ALL]`) und mit `no-new-privileges`. Die Prüfung schlägt fehl, wenn eine der drei
   Angaben fehlt oder der Dienst sie wieder aufweicht: `privileged: true`, `cap_add`, ein Profil
-  `seccomp:unconfined` oder `apparmor:unconfined`, `pid`, `ipc` oder `network_mode` auf `host`
-  (letzteres außer beim Sandbox-Dienst).
+  `seccomp:unconfined` oder `apparmor:unconfined`, `pid`, `ipc` oder `network_mode` auf `host`.
 
 Eigene Dateien wie `.env.docker` oder eine `docker-compose.override.yml` prüft sie nicht.
 
