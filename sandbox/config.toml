@@ -5,14 +5,16 @@
 # on the host) as the OpenSandbox server documentation describes.
 
 [server]
-host = "0.0.0.0"
+# The server runs in the host's network namespace (docker-compose.sandbox.yml): this address, the
+# host's gateway on the network "opaa-sandbox-api", keeps its API off every other interface.
+host = "172.31.255.249"
 port = 8090
 # Upper bound for the "timeout" (TTL, seconds) of a create request.
 max_sandbox_timeout_seconds = 900
 
 [proxy]
 # The server proxies /sandboxes/{id}/proxy/{port}/... to the sandbox's IP on the internal
-# network below; it is the only route from the backend to execd.
+# network below, from the host side of its bridge; it is the only route from the backend to execd.
 resolve_internal = true
 
 [log]
@@ -24,8 +26,9 @@ type = "docker"
 execd_image = "opensandbox/execd:release-1.1.1@sha256:cda2bc35409bbf57561599b316cafb899598f7dce671332e7ceda14eb1cfeded"
 
 [docker]
-# Sandboxes join only this internal network (no gateway, so no internet egress). The name must
-# match the network "opaa-sandboxes" in docker-compose.sandbox.yml and be lowercase.
+# Sandboxes join only this internal network: no internet egress, and with ICC off no connection
+# from one sandbox to another. The name must match the network "opaa-sandboxes" in
+# docker-compose.sandbox.yml and be lowercase.
 network_mode = "opaa-sandboxes"
 # Docker skips port publishing on internal networks; the address keeps any published port on loopback.
 publish_host = "127.0.0.1"

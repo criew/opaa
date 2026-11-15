@@ -67,8 +67,20 @@ export OPAA_SANDBOX_API_KEY=$(openssl rand -hex 32)
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d --build
 ```
 
-Die Sandboxen hängen an einem internen Netz ohne Ausgang; das Backend selbst ist nicht in diesem
-Netz. Erreichbar sind dort nur der Dienst und andere Sandboxen, beide nur mit Schlüssel oder Token.
+Die Sandboxen hängen am internen Netz `opaa-sandboxes` ohne Ausgang, in dem Verkehr zwischen
+Containern gesperrt ist: Eine Sandbox erreicht weder das Internet noch eine andere Sandbox, das
+Backend oder den Sandbox-Dienst. Den Ausführungsagenten jeder Sandbox erreicht der Dienst von der
+Host-Seite dieses Netzes; er läuft deshalb im Netz-Namensraum des Hosts (`network_mode: host`) und
+veröffentlicht keinen Port. Er lauscht nur auf `172.31.255.249:8090`, der Adresse des Hosts im
+internen Netz `opaa-sandbox-api`, in dem nur das Backend hängt; dort ist er auch vom Host aus für
+Aufrufe von Hand erreichbar. Belegt das Subnetz `172.31.255.248/29` schon ein anderes Netz, Subnetz
+und Adresse in `docker-compose.sandbox.yml` (Netz, `OPAA_SANDBOX_BASE_URL`, Healthcheck) und
+`[server] host` in `sandbox/config.toml` gemeinsam ändern.
+
+Eine Sandbox erreicht den Host über die Gateway-Adresse ihres Netzes. Dienste des Hosts, die auf
+allen Schnittstellen lauschen, sind von dort ansprechbar; auf der VM des Stapels nur das Nötige so
+binden.
+
 Der Dienst startet Container über den Docker-Socket des Hosts. Wer den Socket hat, hat den Host: Den
 Stapel mit Sandbox auf einer eigenen VM betreiben, unter Linux möglichst mit gVisor (`runsc`) als
 Laufzeit der Sandboxen.

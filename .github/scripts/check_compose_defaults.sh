@@ -3,18 +3,25 @@
 # two environment templates .env.docker.example and .env.example. Fails when one of them
 # - publishes a port beyond loopback: a ports: entry must bind 127.0.0.1 (or [::1]), or default a
 #   bind variable of BIND_VARIABLES to 127.0.0.1; the long syntax needs host_ip 127.0.0.1, and
-#   network_mode: host is refused; an environment template sets no *_BIND_ADDRESS beyond loopback,
+#   network_mode: host is refused outside HOST_NETWORK_SERVICES; an environment template sets no
+#   *_BIND_ADDRESS beyond loopback,
 # - switches on anonymous system administration: OPAA_AUTH_DEV_ALLOW_REMOTE=true, or a frontend
 #   published through OPAA_FRONTEND_BIND_ADDRESS without handing the same address to the backend
 #   as OPAA_AUTH_DEV_PUBLISHED_ADDRESS (the input of the dev profile's start refusal),
 # - publishes any port of a service that UNPUBLISHED_SERVICES names, even on loopback,
 # - leaves out read_only: true, cap_drop: [ALL] or security_opt no-new-privileges on a service that
 #   HARDENED_SERVICES names, or undoes them there with privileged: true, any cap_add, an unconfined
-#   seccomp or AppArmor profile, or pid, ipc or network_mode: host (lists in block or flow style),
+#   seccomp or AppArmor profile, or pid, ipc or network_mode: host (lists in block or flow style;
+#   network_mode: host only outside HOST_NETWORK_SERVICES),
+# - runs a service of HOST_NETWORK_SERVICES whose [server] host in the named TOML file is missing
+#   or a wildcard (0.0.0.0, ::), so that it would listen on every interface of the host,
+# - leaves out internal: true or driver_opts com.docker.network.bridge.enable_icc: "false" on a
+#   network that ISOLATED_NETWORKS names (block style; flow style is not read and fails),
 # - carries a fixed secret: a key ending in SECRET, PASSWORD, PASSWD, TOKEN, API_KEY, SECRET_KEY,
 #   SECRET_ACCESS_KEY, ENCRYPTION_KEY or PRIVATE_KEY with a literal value or a ${VAR:-default}
 #   default, unless SECRET_EXCEPTIONS names file, service and key with a reason.
-# An exception, unpublished or hardened service that matches nothing any more fails as well. The rules are
+# An exception, unpublished, hardened or host-network service or an isolated network that matches
+# nothing any more fails as well. The rules are
 # listed for operators in docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels".
 # Line-based: ports: and environment: in flow style are refused rather than read.
 set -euo pipefail
@@ -54,6 +61,18 @@ HARDENED_SERVICES=(
   "docker-compose.sandbox.yml|opensandbox-server|Holds the host's Docker socket and is reachable from sandbox code"
 )
 
+# file|service|config file|reason - services in the host's network namespace. Each must bind the
+# address in [server] host of its config file to one address of the host, never to every interface.
+HOST_NETWORK_SERVICES=(
+  "docker-compose.sandbox.yml|opensandbox-server|sandbox/config.toml|Reaches execd in each sandbox from the host side of the network sandboxes, whose containers cannot reach each other"
+)
+
+# file|network|reason - top-level networks without a gateway whose containers cannot reach each
+# other (internal: true, enable_icc "false").
+ISOLATED_NETWORKS=(
+  "docker-compose.sandbox.yml|sandboxes|Holds the sandboxes of different persons' agent runs; one must not hand data to a listener in another"
+)
+
 SECRET_KEY='(SECRET|PASSWORD|PASSWD|TOKEN|API_KEY|SECRET_KEY|SECRET_ACCESS_KEY|ENCRYPTION_KEY|PRIVATE_KEY)'
 LOOPBACK='^(127\.0\.0\.1|::1|\[::1\]|localhost)$'
 
@@ -73,6 +92,11 @@ error() {
 
 declare -A used_exceptions=()
 declare -A seen_services=()
+# "file|service" of every listed service with network_mode: host.
+declare -A host_network=()
+# "file|network" of every top-level network, "file|network|setting" for internal and icc_off.
+declare -A seen_networks=()
+declare -A network_settings=()
 # "file|service|setting" for every hardening setting found: read_only, cap_drop, no_new_privileges.
 declare -A hardening=()
 # "file|service" -> the settings that undo the hardening (privileges, capabilities, host namespaces).
@@ -94,6 +118,14 @@ hardening_item() {
     ;;
   esac
   return 0
+}
+host_network_service() {
+  local entry
+  for entry in "${HOST_NETWORK_SERVICES[@]}"; do
+    IFS='|' read -r n_file n_service _ <<<"$entry"
+    [[ "$n_file" == "$1" && "$n_service" == "$2" ]] && return 0
+  done
+  return 1
 }
 unpublished() {
   local entry
@@ -178,6 +210,7 @@ check_env_file() {
 check_compose_file() {
   local file="$1" number=0 line indent ports_indent=-1 item="" item_line=0 item_indent=-1
   local frontend_bind=0 published_address=0 top="" scope="" host_ip service_key="" setting flow_item
+  local network="" network_key=""
   local -a flow_items
   # Ends a long-syntax ports item: it must name host_ip 127.0.0.1.
   finish_item() {
@@ -224,6 +257,22 @@ check_compose_file() {
       scope="${BASH_REMATCH[1]}"
       seen_services["$file|$scope"]=1
       service_key=""
+    elif ((indent == 2)) && [[ "$top" == networks && "$line" =~ ^[[:space:]]+([A-Za-z0-9_.-]+): ]]; then
+      network="${BASH_REMATCH[1]}"
+      seen_networks["$file|$network"]=1
+      network_key=""
+    fi
+    # The isolation settings of a top-level network: internal at its first level, enable_icc as an
+    # entry of its driver_opts.
+    if [[ "$top" == networks ]] && ((indent >= 4)); then
+      if ((indent == 4)) && [[ "$line" =~ ^[[:space:]]+([a-z_]+):[[:space:]]*(.*)$ ]]; then
+        network_key="${BASH_REMATCH[1]}"
+        [[ "$network_key" == internal && "$(scalar "${BASH_REMATCH[2]}")" == true ]] &&
+          network_settings["$file|$network|internal"]=1
+      elif ((indent == 6)) && [[ "$network_key" == driver_opts &&
+        "$line" =~ ^[[:space:]]+com\.docker\.network\.bridge\.enable_icc:[[:space:]]*(.*)$ ]]; then
+        [[ "$(scalar "${BASH_REMATCH[1]}")" == false ]] && network_settings["$file|$network|icc_off"]=1
+      fi
     fi
     # The hardening settings of a service: keys at its first level, their list items in block or
     # flow style.
@@ -234,8 +283,11 @@ check_compose_file() {
         case "$service_key" in
         read_only) [[ "$setting" == true ]] && hardening["$file|$scope|read_only"]=1 ;;
         privileged) [[ "${setting,,}" == true ]] && loosen "$file" "$scope" "$number" "privileged: true" ;;
-        pid | ipc | network_mode)
+        pid | ipc)
           [[ "$setting" == host ]] && loosen "$file" "$scope" "$number" "$service_key: host" ;;
+        network_mode)
+          [[ "$setting" == host ]] && ! host_network_service "$file" "$scope" &&
+            loosen "$file" "$scope" "$number" "$service_key: host" ;;
         esac
         if [[ "$setting" =~ ^\[(.*)\]$ ]]; then
           IFS=',' read -ra flow_items <<<"${BASH_REMATCH[1]}"
@@ -269,7 +321,11 @@ check_compose_file() {
       fi
     fi
     if [[ "$line" =~ ^[[:space:]]*network_mode:[[:space:]]*[\"\']?host[\"\']?[[:space:]]*$ ]]; then
-      error "$file" "$number" "network_mode: host publishes every port of the service on every interface."
+      if [[ "$top" == services ]] && host_network_service "$file" "$scope"; then
+        host_network["$file|$scope"]=1
+      else
+        error "$file" "$number" "network_mode: host publishes every port of the service on every interface."
+      fi
     fi
     [[ "$line" == *'OPAA_AUTH_DEV_PUBLISHED_ADDRESS: ${OPAA_FRONTEND_BIND_ADDRESS:-127.0.0.1}'* ]] &&
       published_address=1
@@ -326,6 +382,44 @@ for entry in "${HARDENED_SERVICES[@]}"; do
   fi
 done
 
+# The address in [server] host of a TOML file, empty when the key or the section is missing.
+server_host() {
+  local line section=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" =~ ^[[:space:]]*\[([A-Za-z0-9_.-]+)\][[:space:]]*(#.*)?$ ]]; then
+      section="${BASH_REMATCH[1]}"
+    elif [[ "$section" == server && "$line" =~ ^[[:space:]]*host[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+      scalar "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  done <"$1"
+}
+
+for entry in "${HOST_NETWORK_SERVICES[@]}"; do
+  IFS='|' read -r n_file n_service n_config _ <<<"$entry"
+  if [[ ! -v host_network["$n_file|$n_service"] ]]; then
+    error "$n_file" 1 "HOST_NETWORK_SERVICES names the service $n_service of $n_file, which does not run with network_mode: host there any more; remove the entry."
+    continue
+  fi
+  bind=""
+  [[ -f "$n_config" ]] && bind="$(server_host "$n_config")"
+  if [[ -z "$bind" || "$bind" =~ ^(0\.0\.0\.0|::|\[::\]|\*)$ ]]; then
+    error "$n_config" 1 "$n_service runs in the host's network namespace, but [server] host in $n_config is '${bind}': it would listen on every interface of the host. Bind one address of the host."
+  fi
+done
+
+for entry in "${ISOLATED_NETWORKS[@]}"; do
+  IFS='|' read -r i_file i_network _ <<<"$entry"
+  if [[ ! -v seen_networks["$i_file|$i_network"] ]]; then
+    error "$i_file" 1 "ISOLATED_NETWORKS names the network $i_network of $i_file, which is not there any more; remove the entry."
+    continue
+  fi
+  [[ -v network_settings["$i_file|$i_network|internal"] ]] ||
+    error "$i_file" 1 "$i_network lacks internal: true; ISOLATED_NETWORKS in .github/scripts/check_compose_defaults.sh keeps it without a gateway."
+  [[ -v network_settings["$i_file|$i_network|icc_off"] ]] ||
+    error "$i_file" 1 "$i_network lacks driver_opts com.docker.network.bridge.enable_icc: \"false\"; ISOLATED_NETWORKS in .github/scripts/check_compose_defaults.sh keeps its containers from reaching each other."
+done
+
 if ((${#files[@]} == 0)); then
   echo "::error::No Compose template found - the check would pass without checking anything."
   exit 1
@@ -334,4 +428,4 @@ if ((errors > 0)); then
   echo "::error::$errors finding(s) in the Compose templates (${#files[@]} files checked)."
   exit 1
 fi
-echo "Compose templates: ${#files[@]} files, ports on loopback, unpublished services without ports, hardened services hardened, no anonymous administration, no unlisted fixed secret."
+echo "Compose templates: ${#files[@]} files, ports on loopback, unpublished services without ports, hardened services hardened, isolated networks isolated, host-network services on one address, no anonymous administration, no unlisted fixed secret."
