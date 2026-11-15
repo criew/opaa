@@ -134,7 +134,8 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
   `.github/data-impact-paths.txt` ändert (Datenbankmigrationen, Protokollereignisse und Rollen,
   OpenAPI-Spezifikation, Konfigurationsklassen und Vorgabewerte, Konnektoren und Modellanbieter,
   Installationsassistent, Texterkennung und Chat-Anhänge, Prompts, Fristen, Löschung des
-  Personenbezugs, Dienstkonten, Exporte, Auswertungen und Anfrageprotokoll) und weder das Label
+  Personenbezugs, Dienstkonten, Agenten und Dokumentvorlagen, Exporte, Auswertungen,
+  Anfrageprotokoll und Betriebsmetriken) und weder das Label
   trägt noch „Keine Wirkung“ ankreuzt. Bei angekreuztem „Keine Wirkung“ listet er die Dateien als
   Warnung; **das Review sieht sich diese Warnung an** und prüft, ob die Aussage stimmt.
 - **Pflege der Pfadliste:** Neue Pfade kommen in `.github/data-impact-paths.txt`. Derselbe
