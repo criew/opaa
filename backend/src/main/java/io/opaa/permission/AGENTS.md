@@ -26,7 +26,7 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
   (erweitert `Asset`) und `AssetTypeDefinition` mit, keine eigene Grant-Logik, Historie, Fundquelle.
 - **Inaktiver Typ** (Flag aus): Lesewege fragen `AssetTypes#active`/`isActive`/`requireActive`;
   Eigentum, Historie, Protokoll und Nachfolgewächter bleiben bei `registered`/`require`.
-- **Historie ohne Fremdschlüssel aufs Asset:** `AssetShellService#registerDeleted` schließt offene Intervalle.
+- **Historie ohne Fremdschlüssel aufs Asset:** **vor** dem Löschen `AssetShellService#registerDeleted` aufrufen.
 - **Der Nachfolgezustand wird nie gespeichert,** nur Beginn und Ende (`succession_cases`).
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
 - **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das Verzeichnis

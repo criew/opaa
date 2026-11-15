@@ -39,9 +39,10 @@ Agentenverzeichnis (ADR-0036, Entscheidung 5) kann sie nennen, ohne Personen zu 
 Die Stelle fehlt, solange keine genannt ist, die genannte Gruppe unbekannt, aufgelöst,
 ausgeschaltet oder deaktiviert ist oder der Eigentümer auf „Nachfolge offen“ steht. Eine Funktion
 fehlt nur im letzten Fall. Der Zustand wird bei jedem Lesen hergeleitet wie „Nachfolge offen“;
-gespeichert wird nur, seit wann er besteht (`missing_since`). Das Benennen einer neuen Stelle
-beendet die Frist. Begründung: Gruppen- und Kontozustand haben ihre eigene Quelle; eine
-gespeicherte Kopie liefe ihr hinterher.
+gespeichert wird nur, seit wann er besteht (`missing_since`). Eine geänderte Stelle beendet die
+Frist nur, wenn das Objekt danach keine Stelle mehr vermisst (`AssetResponsibilityService#change`);
+wer bei „Nachfolge offen“ die Funktion umbenennt, schiebt die Sperre nicht hinaus. Begründung:
+Gruppen- und Kontozustand haben ihre eigene Quelle; eine gespeicherte Kopie liefe ihr hinterher.
 
 ### 3. Nach der Frist wird gesperrt, nie gelöscht
 
@@ -58,14 +59,14 @@ Gruppenumbau eine Stelle zu benennen.
 
 Nur die Systemverwaltung sperrt von Hand (Ursache `MANUAL`), mit Pflichtgrund von höchstens 500
 Zeichen; erneutes Sperren ersetzt den Grund. „Entsperren“ hebt jede Sperre auf, gleich welcher
-Ursache. Den Grund sehen nur die Systemverwaltung und Verwalter des Objekts, Lesende nur, seit wann
-gesperrt ist; das Agentenverzeichnis zeigt den Sperrzustand ohne Grund. Begründung: Ein Notaus für
+Ursache. Den Grund sehen nur die Systemverwaltung und Verwalter des Objekts, Lesende nur Ursache
+und Zeitpunkt der Sperre; das Agentenverzeichnis zeigt den Sperrzustand ohne Grund. Begründung: Ein Notaus für
 ein Objekt darf nicht davon abhängen, ob seine Stelle fehlt.
 
 ### 5. Ein gesperrtes Objekt wird nicht genutzt, auf jeder Instanz ab dem nächsten Aufruf
 
 Ein gesperrter Agent fehlt in der Auswahl des Chats, jeder Lauf wird mit `409` abgewiesen
-(`AgentService#requireUsableForRun`); eine gesperrte Vorlage bietet kein Lauf mehr an
+(`AgentService#requireUsableForRun`); eine gesperrte Vorlage wird keinem Lauf mehr angeboten
 (`ReadableRunTemplates`). Das Objekt selbst bleibt verwaltbar. Die Sperre wird bei
 jedem Aufruf aus der Tabelle gelesen und nie zwischengespeichert (`AssetResponsibilityService#isLocked`,
 `#lockedAmong`). Begründung: Ein Primärschlüsselzugriff je Aufruf kostet weniger als ein
@@ -86,7 +87,8 @@ das bedingte Update hält die Zusage auch, wenn sie einmal nicht greift.
 
 Eine geänderte Stelle (`ASSET_RESPONSIBILITY_CHANGED`), jede Sperre (`ASSET_LOCKED` mit Ursache und
 Grund; die automatische mit dem Prozess `responsibility-lock` als Akteur) und jedes Entsperren
-(`ASSET_UNLOCKED`) schreiben je einen Eintrag; die erste Stelle steht im Anlegeeintrag. Das Nutzen
+(`ASSET_UNLOCKED`) schreiben je einen Eintrag; die erste Stelle steht im Anlegeeintrag
+(`AGENT_CREATED`, `DOCUMENT_TEMPLATE_CREATED`, Schlüssel wie bei der Änderung). Das Nutzen
 eines Objekts schreibt keinen. Begründung: Nachweispflichtig ist, wer wann eine Zuständigkeit
 geändert oder ein Objekt aus dem Betrieb genommen hat; ein Eintrag je Nutzung wäre eine
 Verhaltensauswertung ([ADR-0068](0068-mitbestimmungsfaehigkeit.md), Entscheidung 2).
@@ -94,7 +96,8 @@ Verhaltensauswertung ([ADR-0068](0068-mitbestimmungsfaehigkeit.md), Entscheidung
 ### 8. Ein Mechanismus in der Asset-Schale
 
 Stelle, Frist und Sperre leben einmal in `io.opaa.asset` und gelten für Agenten und Vorlagen gleich;
-die Typen rufen nur `establish`, `change`, `isLocked` und `lockedAmong`. Bibliotheken und
+die Typen prüfen, speichern, zeigen und sperren über `AssetResponsibilityService` und tragen
+selbst nur ein, wo die Sperre ihre Nutzung verhindert. Bibliotheken und
 Prompt-Bibliotheken tragen keine Stelle. Begründung: Jede Mechanik der Schale gibt es genau einmal
 (ADR-0036, Entscheidung 12); ein weiterer Typ mit eigener Wirkung bekommt sie, ohne sie zu kopieren.
 
@@ -108,7 +111,8 @@ Schwieriger: Anlegen verlangt eine Stelle. Jede Nutzung liest die Sperre aus der
 Systemverwaltung muss gesperrte Objekte nach dem Benennen einer neuen Stelle selbst entsperren.
 
 Restrisiken: Eine Funktion als Freitext wird nie als fehlend erkannt, solange der Eigentümer
-handlungsfähig ist, auch wenn es die Einheit nicht mehr gibt. Weil der Lauf stündlich läuft, beginnt
+handlungsfähig ist, auch wenn es die Einheit nicht mehr gibt, und kann einen Personennamen
+enthalten, den Anzeige und Protokoll dann wiedergeben. Weil der Lauf stündlich läuft, beginnt
 die Frist bis zu einer Stunde später, und die Sperre folgt bis zu einer Stunde nach ihrem Ende.
 
 ## Verworfene Alternativen
