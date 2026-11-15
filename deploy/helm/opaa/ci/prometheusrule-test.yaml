@@ -921,7 +921,7 @@ tests:
               component: "agent"
             exp_annotations:
               summary: "Plätze für Agentenläufe ausgeschöpft"
-              description: "Die gleichzeitigen Agentenläufe von r-opaa-backend stoßen seit 30 Minuten an das Platzlimit; Anfragen werden abgewiesen oder warten."
+              description: "Die gleichzeitigen Agentenläufe von r-opaa-backend stoßen seit 30 Minuten an das Platzlimit; weitere Anfragen werden abgewiesen."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaAgentWorkspaceSaturated"
   # Requests refused for want of a place: a ticket; refusals for a person's own share stay
   # silent, as does a workspace that is busy but never full.
@@ -948,7 +948,7 @@ tests:
               component: "agent"
             exp_annotations:
               summary: "Plätze für Agentenläufe ausgeschöpft"
-              description: "Die gleichzeitigen Agentenläufe von r-opaa-backend stoßen seit 30 Minuten an das Platzlimit; Anfragen werden abgewiesen oder warten."
+              description: "Die gleichzeitigen Agentenläufe von r-opaa-backend stoßen seit 30 Minuten an das Platzlimit; weitere Anfragen werden abgewiesen."
               runbook_url: "https://opaa.io/handbuch/betrieb/alarme.html#OpaaAgentWorkspaceSaturated"
   # Only person_limit refusals and a workspace without capacity: no alert.
   - interval: 1m

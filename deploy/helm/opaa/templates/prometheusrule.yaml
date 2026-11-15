@@ -413,7 +413,7 @@ spec:
             component: agent
           annotations:
             summary: Plätze für Agentenläufe ausgeschöpft
-            description: Die gleichzeitigen Agentenläufe von {{ $deployment }} stoßen seit 30 Minuten an das Platzlimit; Anfragen werden abgewiesen oder warten.
+            description: Die gleichzeitigen Agentenläufe von {{ $deployment }} stoßen seit 30 Minuten an das Platzlimit; weitere Anfragen werden abgewiesen.
             runbook_url: "{{ $rb }}#OpaaAgentWorkspaceSaturated"
         # Errors of the run itself, not limits, plans or questions back; no wake-up, since a broken
         # agent path leaves the ordinary chat untouched.

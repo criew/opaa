@@ -1,7 +1,6 @@
 package io.opaa.llm.web;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
@@ -9,6 +8,7 @@ import io.opaa.llm.transcription.RealtimeTranscriptionClient;
 import io.opaa.llm.transcription.RealtimeTranscriptionRole;
 import io.opaa.llm.transcription.RealtimeTranscriptionRole.LiveSession;
 import io.opaa.llm.transcription.RealtimeTranscriptionRole.RealtimeUnusableException;
+import io.opaa.llm.transcription.RealtimeTranscriptionSlots;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
@@ -51,8 +51,7 @@ import tools.jackson.databind.node.ObjectNode;
  * with its sessions (ADR-0053).
  *
  * <p>{@code opaa.transcription.live.sessions} counts every session once at its end by {@link End},
- * {@code opaa.transcription.live.active} the open sessions of this instance (ADR-0071); neither
- * names a person.
+ * without naming a person (ADR-0071).
  */
 class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
@@ -78,7 +77,6 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
   static final int MAX_TEXT_BYTES = 1024;
 
   static final String SESSIONS_METRIC = "opaa.transcription.live.sessions";
-  static final String ACTIVE_METRIC = "opaa.transcription.live.active";
 
   static final String CALLER_ATTRIBUTE = TranscriptionStreamHandler.class.getName() + ".caller";
 
@@ -116,20 +114,19 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
               .description("Live dictation sessions by how they ended")
               .register(meterRegistry));
     }
-    Gauge.builder(ACTIVE_METRIC, sessions, Map::size)
-        .description("Live dictation sessions open on this instance")
-        .register(meterRegistry);
   }
 
   /**
    * How a session ended, the {@code end} tag: {@code done} with the final text, a {@link Reason}
-   * sent to the browser, {@code client_closed} when the browser went first and {@code
-   * transport_error} when the socket failed.
+   * sent to the browser - {@code busy} split into {@code installation_busy} (every slot taken) and
+   * {@code person_busy} (the person dictates already) -, {@code client_closed} when the browser
+   * went first and {@code transport_error} when the socket failed.
    */
   enum End {
     DONE,
     UNAVAILABLE,
-    BUSY,
+    INSTALLATION_BUSY,
+    PERSON_BUSY,
     UPSTREAM,
     LIMIT,
     IDLE,
@@ -138,7 +135,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     TRANSPORT_ERROR;
 
     static End of(Reason reason) {
-      return valueOf(reason.name());
+      return reason == Reason.BUSY ? INSTALLATION_BUSY : valueOf(reason.name());
     }
 
     String tagValue() {
@@ -199,8 +196,12 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     }
 
     void error(Reason reason) {
+      error(reason, End.of(reason));
+    }
+
+    void error(Reason reason, End end) {
       send(message("error").put("reason", reason.wire()));
-      end(CloseStatus.NORMAL, End.of(reason));
+      end(CloseStatus.NORMAL, end);
     }
 
     void check() {
@@ -290,7 +291,11 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
       live.lastAudio = clock.instant();
       live.send(message("ready").put("sampleRate", session.sampleRate()));
     } catch (RealtimeUnusableException e) {
-      live.error(e.busy() ? Reason.BUSY : Reason.UNAVAILABLE);
+      if (e.refusal() == RealtimeTranscriptionSlots.Refusal.PERSON_BUSY) {
+        live.error(Reason.BUSY, End.PERSON_BUSY);
+      } else {
+        live.error(e.busy() ? Reason.BUSY : Reason.UNAVAILABLE);
+      }
     } catch (RealtimeTranscriptionClient.RealtimeUnavailableException e) {
       live.error(Reason.UPSTREAM);
     } catch (RuntimeException e) {

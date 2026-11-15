@@ -1639,7 +1639,7 @@
       "id": 213,
       "type": "timeseries",
       "title": "Abweisungen an Kapazitätsgrenzen",
-      "description": "Pro Stunde abgewiesen: Agentenläufe mangels Platz (full) oder am Anteil der Person (person_limit), Chat-Anhänge an einem Speicherkontingent, Live-Diktate bei belegten Plätzen. Steigt full stetig, das Platzlimit anheben.",
+      "description": "Pro Stunde abgewiesen: Agentenläufe mangels Platz (full) oder am Anteil der Person (person_limit), Chat-Anhänge an einem Speicherkontingent, Live-Diktate, weil alle Plätze belegt sind. Steigt full stetig, das Platzlimit anheben.",
       "gridPos": {
         "x": 12,
         "y": 28,
@@ -1683,7 +1683,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(increase(opaa_transcription_live_sessions_total{namespace=~\"$namespace\", host=~\"$host\", end=\"busy\"}[$__interval]))",
+          "expr": "sum(increase(opaa_transcription_live_sessions_total{namespace=~\"$namespace\", host=~\"$host\", end=\"installation_busy\"}[$__interval]))",
           "legendFormat": "Live-Diktat belegt",
           "range": true,
           "instant": false,

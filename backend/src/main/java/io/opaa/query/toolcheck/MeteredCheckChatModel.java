@@ -13,8 +13,9 @@ import reactor.core.publisher.Flux;
 /**
  * Counts every call of a tool check's model as one outbound call to {@code model_check} on the
  * background path, with the outcome from the status of the endpoint's answer or the class of the
- * failure (ADR-0071, Entscheidung 8). The model itself is built without observations, so the check
- * adds nothing to {@code gen_ai.*} or to the availability of a model role.
+ * failure (ADR-0071, Entscheidung 8); a stream given up before its end counts as a timeout, as the
+ * measurement gives up only at its deadline. The model itself is built without observations, so the
+ * check adds nothing to {@code gen_ai.*} or to the availability of a model role.
  */
 record MeteredCheckChatModel(ChatModel delegate, OutboundMetrics metrics) implements ChatModel {
 
@@ -38,7 +39,8 @@ record MeteredCheckChatModel(ChatModel delegate, OutboundMetrics metrics) implem
           long start = System.nanoTime();
           return delegate.stream(prompt)
               .doOnComplete(() -> record(OutboundOutcome.SUCCESS, start))
-              .doOnError(e -> record(outcome(e), start));
+              .doOnError(e -> record(outcome(e), start))
+              .doOnCancel(() -> record(OutboundOutcome.TIMEOUT, start));
         });
   }
 

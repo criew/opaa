@@ -1427,7 +1427,7 @@
       "id": 414,
       "type": "timeseries",
       "title": "Ende der Live-Diktate",
-      "description": "Anteil der Live-Diktate je Ende pro Stunde, ohne ihre Zahl: done mit fertigem Text, busy abgewiesen, upstream Dienst gestört, limit, idle und protocol an einer Grenze beendet, client_closed vom Browser beendet. Nach jedem Ende außer done schickt der Browser die Aufnahme als Ganzes.",
+      "description": "Anteil der Live-Diktate je Ende pro Stunde, ohne ihre Zahl: done mit fertigem Text, installation_busy und person_busy abgewiesen, upstream Dienst gestört, limit, idle und protocol an einer Grenze beendet, client_closed vom Browser beendet. Nach jedem Ende außer done schickt der Browser die Aufnahme als Ganzes.",
       "gridPos": {
         "x": 0,
         "y": 41,

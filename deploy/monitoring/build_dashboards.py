@@ -687,11 +687,11 @@ class Builder:
                     thresholds=self.thr("transparent", ("orange", 1)), thr_style="dashed"),
             self.ts("Abweisungen an Kapazitätsgrenzen",
                     "Pro Stunde abgewiesen: Agentenläufe mangels Platz (full) oder am Anteil der Person "
-                    "(person_limit), Chat-Anhänge an einem Speicherkontingent, Live-Diktate bei belegten Plätzen. "
+                    "(person_limit), Chat-Anhänge an einem Speicherkontingent, Live-Diktate, weil alle Plätze belegt sind. "
                     "Steigt full stetig, das Platzlimit anheben.",
                     [(f"sum by (reason) (increase(opaa_agent_workspace_rejected_total{{{SEL}}}[$__interval]))", "Agent {{reason}}"),
                      (f"sum by (quota) (increase(opaa_chat_attachments_rejected_total{{{SEL}}}[$__interval]))", "Anhang {{quota}}"),
-                     (f'sum(increase(opaa_transcription_live_sessions_total{{{SEL}, end="busy"}}[$__interval]))', "Live-Diktat belegt")],
+                     (f'sum(increase(opaa_transcription_live_sessions_total{{{SEL}, end="installation_busy"}}[$__interval]))', "Live-Diktat belegt")],
                     self.gp(12, 28, 12, 7), bars=True, stack=True, interval="1h", decimals=0),
         ]
         return self.dashboard("operations", "OPAA · Betrieb & Bereitschaft", panels, self.variables("connector-hidden"),
@@ -817,7 +817,7 @@ class Builder:
                       f" / sum(increase(opaa_agent_runs_total{{{SEL}}}[$__interval]))", "je Lauf")],
                     self.gp(16, 34, 8, 7), bars=True, interval="1h", decimals=2),
             self.share_ts("Ende der Live-Diktate", "Anteil der Live-Diktate je Ende pro Stunde, ohne ihre Zahl: "
-                          "done mit fertigem Text, busy abgewiesen, upstream Dienst gestört, limit, idle und protocol "
+                          "done mit fertigem Text, installation_busy und person_busy abgewiesen, upstream Dienst gestört, limit, idle und protocol "
                           "an einer Grenze beendet, client_closed vom Browser beendet. Nach jedem Ende außer done "
                           "schickt der Browser die Aufnahme als Ganzes.",
                           f"opaa_transcription_live_sessions_total{{{SEL}}}", "end", "{{end}}", self.gp(0, 41, 24, 7)),

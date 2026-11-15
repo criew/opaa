@@ -26,10 +26,10 @@ Jede Kachel öffnet ihren Bereich:
 
 | Dashboard | Für |
 |---|---|
-| OPAA · Betrieb & Bereitschaft | Bausteine, Antwortzeiten, Fehlerantworten, Heap, Datenbankverbindungen, geplante Läufe, Warteschlangen, Instanzen |
+| OPAA · Betrieb & Bereitschaft | Bausteine, Antwortzeiten, Fehlerantworten, Heap, Datenbankverbindungen, geplante Läufe, Warteschlangen, Instanzen, Belegung der Agentenplätze, Abweisungen an Kapazitätsgrenzen |
 | OPAA · Indexierung & Konnektoren | Läufe, Rückstände und Verarbeitungsschritte je Konnektortyp, Texterkennung, Neueinbettung |
 | OPAA · Wissensbestand & Bibliotheken | Bestand, Aktualität, Suchen ohne Fundstelle, Belegstand, Speicher, Verzeichnisabgleich |
-| OPAA · KI-Modelle & Kosten | Erreichbarkeit der Modellrollen, Antwortzeit, Drosselung, Tokens und Kosten |
+| OPAA · KI-Modelle & Kosten | Erreichbarkeit der Modellrollen, Antwortzeit, Drosselung, Tokens und Kosten, Agentenläufe und Werkzeugaufrufe, Ende der Live-Diktate; die Kachel „KI-Modelle“ zeigt auch die Alarme der Agenten |
 | OPAA · Sicherheit & Nachweis | Prüfsummenkette, Siegel, Ausleitung, Löschlauf, abgewiesene Anmeldungen, Virenprüfung |
 
 - **Auswahl oben:** Datenquelle, `namespace` und `host` (eine Instanz oder alle), in einigen
