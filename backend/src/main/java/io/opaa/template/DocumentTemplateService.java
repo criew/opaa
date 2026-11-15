@@ -298,19 +298,21 @@ public class DocumentTemplateService {
   }
 
   /**
-   * Locks the template (system administration only) with a required reason: from the next run on,
-   * on every instance, no agent is offered it. It stays manageable and is never deleted.
+   * Locks the template (system administration only, checked by {@link AssetResponsibilityService})
+   * with a required reason: from the next run on, on every instance, no agent is offered it. It
+   * stays manageable and is never deleted.
    */
   @Transactional
   public AssetResponsibilityView lock(UUID templateId, String reason, CurrentUser caller) {
-    caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen sperren.");
     return responsibilityService.lock(load(templateId, caller), reason, caller);
   }
 
-  /** Lifts the lock of the template (system administration only), whatever its cause. */
+  /**
+   * Lifts the lock of the template, whatever its cause (system administration only, checked by
+   * {@link AssetResponsibilityService}).
+   */
   @Transactional
   public AssetResponsibilityView unlock(UUID templateId, CurrentUser caller) {
-    caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen entsperren.");
     return responsibilityService.unlock(load(templateId, caller), caller);
   }
 
