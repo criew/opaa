@@ -43,6 +43,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 @OpaaIntegrationTest
 class PermissionHistoryRetentionIntegrationTest {
 
+  /** The settings row's audit object id, pinned so that earlier entries keep matching. */
+  private static final String SETTINGS_OBJECT_ID = "5935e512-5b28-363b-a6c5-1b7ef395e12c";
+
   @Autowired private PermissionHistoryRetentionService retentionService;
   @Autowired private PermissionHistoryRetentionSettingsRepository repository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -79,7 +82,7 @@ class PermissionHistoryRetentionIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE event_type = ? AND object_id = ?",
         AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name(),
-        "5935e512-5b28-363b-a6c5-1b7ef395e12c");
+        SETTINGS_OBJECT_ID);
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
@@ -242,9 +245,10 @@ class PermissionHistoryRetentionIntegrationTest {
   private List<Map<String, Object>> governanceEvents() {
     return jdbcTemplate.queryForList(
         "SELECT object_type, \"before\", \"after\" FROM audit_log"
-            + " WHERE organization_id = ? AND event_type = ?",
+            + " WHERE organization_id = ? AND event_type = ? AND object_id = ?",
         organizationId,
-        AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name());
+        AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name(),
+        SETTINGS_OBJECT_ID);
   }
 
   private UUID persistUser(String name) {

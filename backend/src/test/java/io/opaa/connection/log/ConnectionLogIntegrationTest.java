@@ -353,7 +353,8 @@ class ConnectionLogIntegrationTest {
     Map<String, Object> event =
         jdbc.queryForMap(
             "SELECT before, after, object_type FROM audit_log WHERE organization_id = ? AND"
-                + " event_type = 'CONNECTION_LOG_RETENTION_CHANGED'",
+                + " event_type = 'CONNECTION_LOG_RETENTION_CHANGED'"
+                + " AND object_id = '38de752d-7282-35a0-923e-d8751817acb8'",
             organizationId);
     assertThat(event.get("before")).isEqualTo("{\"retentionMonths\":12}");
     assertThat(event.get("after")).isEqualTo("{\"retentionMonths\":18}");
