@@ -12,3 +12,12 @@ prompts:
     purpose: Fundstelle in der Datenbank
     databaseDefault: external_access_settings.server_instructions
     sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  - id: resource
+    purpose: Fundstelle in einer mitgelieferten Datei
+    resources: [compliance-fixtures/prompt-resources/wording.txt]
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  - id: resource-and-database
+    purpose: Fundstelle in Datei und Datenbank
+    resources: [compliance-fixtures/prompt-resources/wording.txt]
+    databaseDefault: external_access_settings.server_instructions
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"

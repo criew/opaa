@@ -492,6 +492,46 @@ data:
       Verknüpfung. Bei einer Stichprobe von 1.0 ein lückenloses Ablaufprotokoll aller Anfragen
     notes:
       - Kurze Frist beim Collector festlegen; Stichprobe niedrig halten
+  - id: operational-metrics
+    title: Betriebsmetriken beim Prometheus des Betriebs
+    purpose: >-
+      Betrieb, Störungserkennung und Kapazitätsplanung: Zähler, Dauern und Zustände der
+      Installation (Anfragen, Modellaufrufe und Tokens, Indizierung, Warteschlangen,
+      Hintergrundläufe, ausgehende Aufrufe, abgewiesene Anmeldungen), abgefragt am
+      Prometheus-Endpunkt des Management-Ports
+    personalReference: NONE
+    tables: []
+    personExcluded: >-
+      Liegt beim Betrieb, nicht in OPAA; die Reihen tragen keine Kennung einer Person, eines Chats
+      oder eines Dokuments, die sich einer Person zuordnen ließe
+    storage: >-
+      Der Prometheus des Betriebs, der den Endpunkt abfragt; im mitgelieferten Monitoring-Overlay
+      für Docker Compose ein eigener Prometheus-Container
+    retention:
+      rule: >-
+        Legt der Betrieb fest; OPAA speichert keine Metriken über den laufenden Prozess hinaus. Das
+        mitgelieferte Monitoring-Overlay für Docker Compose hält die Reihen 30 Tage, änderbar über
+        OPAA_PROMETHEUS_RETENTION
+      settings: []
+    visibility: [Betrieb der Installation]
+    accessPaths: [STORAGE]
+    deletion: Durch den Betrieb, im Overlay mit Ablauf der Aufbewahrung
+    evaluations: >-
+      Verläufe über die Zeit für die ganze Installation, etwa Fragen, Fehlerquote, Antwortzeit und
+      Tokenverbrauch je Zweck und Modell. Jede Reihe zählt für die ganze Installation, getrennt
+      höchstens nach Instanz (host) und Build, nie für eine Person oder ein einzelnes Objekt; Tags
+      nehmen nur Werte aus
+      festen, kleinen Wertemengen an (Modell, Anbieter, Rolle, Operation, Konnektortyp,
+      Ergebnisklasse, Job- oder Queue-Name), nie Kennungen von Personen, Spaces, Bibliotheken,
+      Dokumenten oder Chats, Adressen, Suchbegriffe oder Inhalte. Erfolgreiche Anmeldungen und
+      aktive Personen werden nicht gezählt, abgewiesene Anmeldungen nur nach Art und Grund; private
+      Bibliotheken zählen unter einer Sammelangabe statt unter ihrem Quellentyp
+    notes:
+      - >-
+        Metriken sind eine Auswertungsmöglichkeit im Sinn der Mitbestimmung; in sehr kleinen
+        Installationen kann auch eine installationsweite Zahl auf wenige Personen deuten, feine
+        Zeitauflösung und Aufteilung nach Kanal bleiben deshalb aus den mitgelieferten Dashboards
+      - Aufbewahrung und Zugriff auf Prometheus und Grafana regelt der Betrieb
 nonPersonalTables:
   organizations: [id, name, created_at]
   admin_review_reminders: [organization_id, reminded_on]
@@ -691,7 +731,7 @@ capabilities:
     seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage
   - id: VIEW_AGENT_DIRECTORY
     seesAboutOthers: >-
-      Nichts über andere Personen; öffnet das Agentenverzeichnis mit Zweck, Anweisung,
-      Bibliotheksnamen, Werkzeugen, Grenzen, Vorlagen, verantwortlicher Stelle, Fassung und
+      Nichts über andere Personen; öffnet das Agentenverzeichnis mit Zweck, Anweisung, den Namen
+      nicht privater Bibliotheken, Werkzeugen, Grenzen, Vorlagen, verantwortlicher Stelle, Fassung und
       Sperrzustand jedes Agenten und jeder Vorlage der Organisation, ohne Bibliotheksinhalte,
       Eigentümer und Nutzungsangaben. Ab Werk niemand außer der Systemverwaltung

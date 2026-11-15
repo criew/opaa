@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-11
+stand: 2026-11-15
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -326,16 +326,26 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
    in Anlage 4.
 2. Der Personalrat erhält das Recht „Agentenverzeichnis einsehen“ für [die Mitglieder des
    Personalrats / die Gruppe des Personalrats]. Das Verzeichnis in OPAA nennt jeden Agenten und
-   jede Vorlage der Dienststelle mit Zweck, Anweisung, Bibliotheksnamen, Werkzeugen, Grenzen,
-   verantwortlicher Stelle, Fassung und Sperrzustand, ohne Inhalte der Bibliotheken und ohne
-   Angaben zur Nutzung. Jedes Ansehen und jeder Export steht im Protokoll. Den Export des
+   jede Vorlage der Dienststelle mit Zweck, Anweisung, den Namen nicht privater Bibliotheken,
+   Werkzeugen, Grenzen, verantwortlicher Stelle, Fassung und Sperrzustand, ohne Inhalte der
+   Bibliotheken und ohne Angaben zur Nutzung. Jedes Ansehen und jeder Export steht im Protokoll. Den Export des
    Verzeichnisses fügt die Dienststelle dieser Vereinbarung [vierteljährlich / bei jeder Änderung]
    als Stand bei.
 3. Jede Antwort eines Agenten und jede Datei daraus ist ein Entwurf. Wer sie verwendet, prüft sie
    vorher; eine Entscheidung stützt sich nie allein auf sie.
 4. Die Nutzung je Person, je Space und je angelegtem Agenten wird nicht erhoben; die
    Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis, getrennt nach
-   mitgeliefertem und angelegten Agenten. Es gilt Nummer 10 Nr. 13.
+   mitgeliefertem und angelegten Agenten ({{faktenblatt:datenkatalog#operational-metrics}}).
+   Nur solange ein Lauf läuft, hält OPAA fest, wer ihn gestartet hat, damit gleichzeitige Läufe
+   je Person begrenzt sind und nur diese Person den Lauf stoppen kann; der Eintrag verschwindet
+   mit dem Ende des Laufs und ist in der Oberfläche nicht sichtbar
+   ({{faktenblatt:datenkatalog#agent-run-reservations}}). Er wird nicht ausgewertet. Es gilt
+   Nummer 10 Nr. 13.
+5. Mit dem ersten Einschalten der Agenten legt OPAA den mitgelieferten Agenten „Recherche“ an
+   ({{faktenblatt:voreinstellungen#prompt-agent-research}}). Er ist für alle Konten nutzbar und
+   kann alle eingeschalteten Werkzeuge verwenden, gehört der Person aus der Systemverwaltung, die die Agenten
+   eingeschaltet hat, und lässt sich wie jeder Agent ändern, einschränken oder löschen.
+   [Die Dienststelle belässt ihn wie geliefert / schränkt ihn wie folgt ein: … / löscht ihn.]
 
 #### 15. Änderungen und Updates
 

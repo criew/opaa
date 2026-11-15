@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-11
+stand: 2026-11-15
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -200,6 +200,11 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   außer ihr ({{faktenblatt:rollensicht#create-agent}}, {{faktenblatt:rollensicht#create-template}}).
   Anlegen, Ändern und Löschen eines Agenten stehen im Protokoll, ohne seinen Auftrag
   ({{faktenblatt:protokollereignisse#agent-changed}}).
+- **Mitgelieferter Agent „Recherche“:** Beim ersten Einschalten legt OPAA ihn einmal je
+  Organisation an ({{faktenblatt:voreinstellungen#prompt-agent-research}}). Ab dann ist er für
+  alle Konten nutzbar und kann alle eingeschalteten Werkzeuge verwenden. Er gehört der Person aus der
+  Systemverwaltung, die die Agenten eingeschaltet hat, und lässt sich wie jeder Agent ändern,
+  einschränken oder löschen; ein gelöschter kommt nicht zurück.
 - **Was ein Agent liest:** nie mehr als die Person, die ihn aufruft.
 - **Entwurfscharakter:** Jede Antwort eines Agenten und jede Datei daraus trägt „Entwurf, nicht
   geprüft“ mit dem Fassungsstempel: Agent und Fassung, durchsuchbare Bibliotheken, Vorlagen und
@@ -207,8 +212,12 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   nimmt ihn beim Weitergeben mit ([Agentenergebnis prüfen](../../handbuch/benutzer/agentenergebnis-pruefen.md)).
 - **Keine Nutzungserhebung je Person:** Die Nutzung je Person, je Space und je angelegtem Agenten
   wird nicht erhoben; die Betriebsmetriken zählen Agentenläufe nur installationsweit nach Ergebnis,
-  getrennt nach mitgeliefertem und angelegten Agenten. Wer wann welchen Agenten aufgerufen hat,
-  steht nur an der Antwort im Chat der Person, nicht im Protokoll.
+  getrennt nach mitgeliefertem und angelegten Agenten ({{faktenblatt:datenkatalog#operational-metrics}}).
+  Wer wann welchen Agenten aufgerufen hat, steht nur an der Antwort im Chat der Person, nicht im
+  Protokoll. Einzige Ausnahme ist die Dauer eines Laufs: Solange er läuft, steht in der Datenbank,
+  wer ihn gestartet hat, damit gleichzeitige Läufe je Person begrenzt sind und nur diese Person ihn
+  stoppen kann. Mit dem Ende des Laufs verschwindet der Eintrag; die Oberfläche zeigt ihn nie
+  ({{faktenblatt:datenkatalog#agent-run-reservations}}).
 - **Schritt- und Sandboxprotokoll:** für die Fehlersuche, ohne Konto, ohne Teilfrage, ohne
   Skript und ohne Inhalte, mit kurzer Frist; die Systemverwaltung liest es nur für einen Lauf mit
   Laufkennung und Begründung, jeder Abruf steht im Protokoll ({{faktenblatt:datenkatalog#agent-run-logs}}).
