@@ -4463,7 +4463,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>gen_ai_client_operation_seconds_*</code></td>
-<td>Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (<code>chat</code>, <code>embedding</code>), Anbieter und Modell, mit Buckets; <code>error</code> nennt die Fehlerklasse</td>
+<td>Dauer jedes Aufrufs von Chat- und Embedding-Modell außer der Werkzeugprüfung nach Operation (<code>chat</code>, <code>embedding</code>), Anbieter und Modell, mit Buckets; <code>error</code> nennt die Fehlerklasse</td>
 </tr>
 <tr>
 <td><code>gen_ai_client_token_usage_total</code></td>
@@ -4558,6 +4558,14 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 <td>Aufnahmen der Spracheingabe nach Ergebnis (<code>success</code>; <code>refused</code> für jede Antwort des Dienstes ohne verwertbaren Text, auch einen Fehlerstatus; <code>failed</code>, wenn keine Antwort kam) und Sekunden verarbeiteten Audios; die Sekunden zählen nur, wenn der Transkriptionsdienst die Dauer in seiner Antwort nennt</td>
 </tr>
 <tr>
+<td><code>opaa_transcription_live_sessions_total</code></td>
+<td>Live-Diktate nach ihrem Ende (<code>end</code>: <code>done</code> mit fertigem Text; <code>installation_busy</code> abgewiesen, weil alle Plätze belegt sind; <code>person_busy</code> abgewiesen, weil die Person schon diktiert; <code>unavailable</code> Live-Transkription aus; <code>upstream</code> Dienst gestört; <code>limit</code>, <code>idle</code> und <code>protocol</code> an einer Grenze beendet; <code>client_closed</code> vom Browser beendet; <code>transport_error</code> Verbindung zum Browser gestört). Nach jedem Ende außer <code>done</code> schickt der Browser die Aufnahme als Ganzes</td>
+</tr>
+<tr>
+<td><code>opaa_chat_attachments_rejected_total</code></td>
+<td>Chat-Anhänge, die ein Speicherkontingent abgewiesen hat, nach Kontingent (<code>quota</code>: <code>account</code> alle Anhänge eines Kontos, <code>unbound</code> noch nicht gesendete Anhänge eines Kontos, <code>organization</code> die ganze Organisation); ohne Konto oder Organisation</td>
+</tr>
+<tr>
 <td><code>opaa_malware_scans_seconds_*</code></td>
 <td>Dauer und Anzahl der Virenprüfungen nach Ergebnis (<code>clean</code>, <code>infected</code>, <code>failed</code>; <a href="netz-und-sicherheit.html#virenprüfung-der-aufgenommenen-dateien">Netz und Sicherheit</a>). <strong>Umbenannt:</strong> Bis zu dieser Version hieß die Anzahl <code>opaa_malware_scans_total</code>; sie steht jetzt in <code>opaa_malware_scans_seconds_count</code>, Abfragen und Alarme auf den alten Namen sind umzustellen</td>
 </tr>
@@ -4643,7 +4651,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_agent_tool_calls_total</code></td>
-<td>Werkzeugaufrufe nach Werkzeug und Ergebnis (<code>success</code>, <code>empty</code>, <code>argument_ignored</code>, <code>invalid_arguments</code>, <code>unknown_tool</code>, <code>denied</code>, <code>timeout</code>, <code>error</code>)</td>
+<td>Werkzeugaufrufe nach Werkzeug (<code>tool</code>: <code>search_knowledge</code>, <code>read_document</code>, <code>list_sources</code>, <code>run_code</code>, <code>ask_user</code>, <code>fill_template</code>; <code>unknown</code> für ein Werkzeug, das das Modell erfunden hat) und Ergebnis (<code>success</code>, <code>empty</code>, <code>argument_ignored</code>, <code>invalid_arguments</code>, <code>unknown_tool</code>, <code>denied</code>, <code>timeout</code>, <code>error</code>)</td>
 </tr>
 <tr>
 <td><code>opaa_agent_workspace_occupied</code>, <code>opaa_agent_workspace_capacity</code>, <code>opaa_agent_workspace_rejected_total</code></td>
@@ -4757,8 +4765,8 @@ diese Werte an:</p>
   Live-Transkription), <code>ocr</code>, <code>vision</code>, <code>sandbox</code> (Code-Sandbox),
   <code>connector</code> (Quellen und ihre Hilfsaufrufe), <code>oidc</code> (Discovery und Schlüssel des
   Identitätsanbieters), <code>directory</code> (Verzeichnisdienst), <code>clamav</code> (Virenscanner),
-  <code>original_store</code> (S3-Ablage der hochgeladenen Originale) und <code>model_check</code> (Verbindungstest
-  und Modellsuche der Verwaltung für Chat- und Embedding-Modelle).</li>
+  <code>original_store</code> (S3-Ablage der hochgeladenen Originale) und <code>model_check</code> (Verbindungstest,
+  Modellsuche und Werkzeugprüfung der Verwaltung für Chat- und Embedding-Modelle).</li>
 <li><strong><code>kind</code>:</strong> bei <code>connector</code> der Konnektortyp: <code>confluence</code>, <code>dropbox</code>, <code>google_drive</code>,
   <code>http_directory</code>, <code>nextcloud</code>, <code>onedrive</code>, <code>rss_feed</code>, <code>s3</code>, <code>sharepoint</code>, <code>smb</code>. Hilfsaufrufe,
   die keinem Konnektor allein gehören, tragen eine feste Zusatzart: <code>oauth</code> (Token-Endpunkt einer
@@ -4779,9 +4787,11 @@ diese Werte an:</p>
   <code>client_error</code>. Die Probe der Texterkennung fragt bei docling-serve einen Pfad an, den nicht
   jede Version kennt (404). Solche Werte im Pfad <code>background</code> sind kein Alarmgrund.</li>
 <li><strong><code>model_check</code> läuft im Pfad <code>background</code>,</strong> auch wenn eine Person in der Verwaltung wartet:
-  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen.</li>
-<li><strong>Die Live-Transkription zählt nur den Verbindungsaufbau,</strong> einmal je Aufnahme oder Probe;
-  die laufende Sitzung danach zählt nicht. Lehnt der Dienst den Aufbau ab, zählt sein Status.</li>
+  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen. Die
+  Aufrufe der Werkzeugprüfung zählen nur hier, nicht unter <code>gen_ai_*</code> und nicht für die
+  Erreichbarkeit der Modellrolle.</li>
+<li><strong>Die Live-Transkription zählt hier nur den Verbindungsaufbau,</strong> einmal je Aufnahme oder Probe;
+  wie ein Live-Diktat endet, zählt <code>opaa_transcription_live_sessions_total</code>. Lehnt der Dienst den Aufbau ab, zählt sein Status.</li>
 <li><strong>S3 und SMB</strong> zählen jeden Versuch wie die HTTP-Clients, eine Wiederholung eingeschlossen. Bei
   S3 erkennt OPAA einen TLS-Fehler nicht gesondert, er erscheint als <code>io_error</code>. Bei SMB zählen
   Anmeldung, Öffnen eines Ordners und jeder Downloadversuch je einmal; ein wiederholter Download

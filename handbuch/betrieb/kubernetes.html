@@ -8418,7 +8418,7 @@ und was zu tun ist: <a href="alarme.html">Alarme</a>; Dashboards und Zustellung:
 <tr>
 <td><code>metrics.prometheusRule.groups.&lt;Gruppe&gt;</code></td>
 <td>alle <code>true</code></td>
-<td>schaltet eine Gruppe ab: <code>platform</code>, <code>chat</code>, <code>model</code>, <code>indexing</code>, <code>directory</code>, <code>background</code>, <code>audit</code>, <code>security</code>; etwa <code>chat: false</code> für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“</td>
+<td>schaltet eine Gruppe ab: <code>platform</code>, <code>chat</code>, <code>model</code>, <code>agent</code>, <code>indexing</code>, <code>directory</code>, <code>background</code>, <code>audit</code>, <code>security</code>; etwa <code>chat: false</code> für eine Installation ohne Chat-Modell. Eine Kachel, deren Gruppen alle abgeschaltet sind, zeigt „nicht gemessen“</td>
 </tr>
 <tr>
 <td><code>metrics.runbookBaseUrl</code></td>
@@ -8546,6 +8546,16 @@ und was zu tun ist: <a href="alarme.html">Alarme</a>; Dashboards und Zustellung:
 <td><code>malwareSignatureMaxAgeDays</code></td>
 <td><code>3</code></td>
 <td><code>OpaaMalwareSignaturesOutdated</code></td>
+</tr>
+<tr>
+<td><code>agentWorkspaceRejectedMin</code></td>
+<td><code>5</code></td>
+<td><code>OpaaAgentWorkspaceSaturated</code>: mangels Platz abgewiesene Agentenläufe in 30 Minuten</td>
+</tr>
+<tr>
+<td><code>agentRunErrorShare</code>, <code>agentRunErrorMinRuns</code></td>
+<td><code>0.2</code>, <code>10</code></td>
+<td><code>OpaaAgentRunErrorRate</code>: in 30 Minuten</td>
 </tr>
 <tr>
 <td><code>loginFailureFactor</code>, <code>loginFailureMin</code></td>

@@ -3719,6 +3719,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#agenten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agenten
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agenten">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaaagentworkspacesaturated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAgentWorkspaceSaturated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaagentrunerrorrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAgentRunErrorRate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#indexierung" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5073,6 +5112,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#agenten" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agenten
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agenten">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opaaagentworkspacesaturated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAgentWorkspaceSaturated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opaaagentrunerrorrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpaaAgentRunErrorRate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#indexierung" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5438,9 +5516,9 @@ jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafan
 </tbody>
 </table>
 <p>Das Label <code>component</code> sagt, welcher Bereich betroffen ist, und taugt als Schlüssel für die Verteilung:
-<code>platform</code> (Pods, Datenbank, Anmeldung), <code>chat</code>, <code>search</code>, <code>model</code>, <code>indexing</code>, <code>directory</code>
-(Verzeichnisabgleich), <code>background</code> (geplante Läufe, Mails), <code>audit</code> (Revisionsprotokoll) und
-<code>security</code>. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
+<code>platform</code> (Pods, Datenbank, Anmeldung), <code>chat</code>, <code>search</code>, <code>model</code>, <code>agent</code> (Agentenläufe),
+<code>indexing</code>, <code>directory</code> (Verzeichnisabgleich), <code>background</code> (geplante Läufe, Mails), <code>audit</code>
+(Revisionsprotokoll) und <code>security</code>. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
 Werte eines Anbieters.</p>
 <p>Jeder Alarm trägt außerdem <code>namespace</code>, den Namespace der Installation (unter Compose <code>opaa</code>).
 Jede Gruppe lässt sich abschalten; die Schwellen sind Werte des Charts
@@ -5467,7 +5545,7 @@ Folgen und lässt die Ursache stehen:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">inhibit_rules</span><span class="p">:</span>
 <span class="w">  </span><span class="c1"># Ohne Backend zählt nur noch der Ausfall selbst.</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaBackendNotReady"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">severity="critical"</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">component=~"chat|search|model|indexing|directory|background|audit|security"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">component=~"chat|search|model|agent|indexing|directory|background|audit|security"</span><span class="p p-Indicator">]</span>
 <span class="w">    </span><span class="nt">equal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">namespace</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaBackendNotReady"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">severity="critical"</span><span class="p p-Indicator">]</span>
 <span class="w">    </span><span class="nt">target_matchers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">alertname="OpaaBackendMetricsMissing"</span><span class="p p-Indicator">]</span>
@@ -5704,6 +5782,33 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code
 <li>Neue Nutzung, etwa externe KI-Werkzeuge? 3. Ist das Budget noch richtig?</li>
 <li><strong>Nachts:</strong> nichts.</li>
 <li><strong>Stummschalten:</strong> nach einer bewussten Entscheidung für mehr Verbrauch; besser das Budget anheben.</li>
+</ul>
+<h2 id="agenten">Agenten<a class="headerlink" href="#agenten" title="Permanent link">&para;</a></h2>
+<p>Kein Agentenalarm weckt: Fällt der Agentenpfad aus, beantwortet der gewöhnliche Chat weiter Fragen.</p>
+<p><a id="OpaaAgentWorkspaceSaturated"></a></p>
+<h3 id="opaaagentworkspacesaturated">OpaaAgentWorkspaceSaturated<a class="headerlink" href="#opaaagentworkspacesaturated" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Alle Plätze für gleichzeitige Agentenläufe sind seit 30 Minuten belegt, oder
+  Agentenanfragen wurden mangels Platz abgewiesen. Personen sehen statt einer Antwort „Gerade arbeiten
+  zu viele Agenten gleichzeitig“. Abweisungen, weil eine Person ihren eigenen Anteil ausschöpft, zählen nicht.</li>
+<li><strong>Zuständig:</strong> Betrieb.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Belegung der Agentenplätze“: dauerhaft voll oder nur Spitzen? 2. Laufen
+  Agentenläufe ungewöhnlich lange (Kurve „Dauer der Agentenläufe“)? 3. Reichen Sandbox und Modell für
+  mehr gleichzeitige Läufe, dann <code>OPAA_AGENT_WORKSPACE_CAPACITY</code> anheben.</li>
+<li><strong>Nachts:</strong> nichts.</li>
+<li><strong>Stummschalten:</strong> nach einer bewussten Entscheidung für das Platzlimit.</li>
+</ul>
+<p><a id="OpaaAgentRunErrorRate"></a></p>
+<h3 id="opaaagentrunerrorrate">OpaaAgentRunErrorRate<a class="headerlink" href="#opaaagentrunerrorrate" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Auswirkung:</strong> Ein großer Teil der Agentenläufe endet mit einem Fehler statt mit einer Antwort.
+  Grenzen, Pläne und Rückfragen zählen nicht als Fehler.</li>
+<li><strong>Zuständig:</strong> Modellbetreuung.</li>
+<li><strong>Prüfen:</strong> 1. Kurve „Werkzeugaufrufe nach Ergebnis“: scheitert ein Werkzeug, etwa die Sandbox?</li>
+<li>Alarme zum Chat-Modell und zu ausgehenden Aufrufen an <code>sandbox</code>. 3. Log nach der Ursache der
+  gescheiterten Läufe.</li>
+<li><strong>Nachts:</strong> reicht am Morgen.</li>
+<li><strong>Stummschalten:</strong> solange die Agenten bewusst abgeschaltet sind, mit der Gruppe <code>agent</code>.</li>
 </ul>
 <h2 id="indexierung">Indexierung<a class="headerlink" href="#indexierung" title="Permanent link">&para;</a></h2>
 <p><a id="OpaaIndexingStalled"></a></p>
