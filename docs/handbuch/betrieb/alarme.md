@@ -14,9 +14,9 @@ jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafan
 | `info` | ein schleichender Trend oder ein Einzelereignis zum Nachsehen | Dashboard, keine Benachrichtigung |
 
 Das Label `component` sagt, welcher Bereich betroffen ist, und taugt als Schlüssel für die Verteilung:
-`platform` (Pods, Datenbank, Anmeldung), `chat`, `search`, `model`, `indexing`, `directory`
-(Verzeichnisabgleich), `background` (geplante Läufe, Mails), `audit` (Revisionsprotokoll) und
-`security`. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
+`platform` (Pods, Datenbank, Anmeldung), `chat`, `search`, `model`, `agent` (Agentenläufe),
+`indexing`, `directory` (Verzeichnisabgleich), `background` (geplante Läufe, Mails), `audit`
+(Revisionsprotokoll) und `security`. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
 Werte eines Anbieters.
 
 Jeder Alarm trägt außerdem `namespace`, den Namespace der Installation (unter Compose `opaa`).
@@ -48,7 +48,7 @@ Folgen und lässt die Ursache stehen:
 inhibit_rules:
   # Ohne Backend zählt nur noch der Ausfall selbst.
   - source_matchers: [alertname="OpaaBackendNotReady", severity="critical"]
-    target_matchers: [component=~"chat|search|model|indexing|directory|background|audit|security"]
+    target_matchers: [component=~"chat|search|model|agent|indexing|directory|background|audit|security"]
     equal: [namespace]
   - source_matchers: [alertname="OpaaBackendNotReady", severity="critical"]
     target_matchers: [alertname="OpaaBackendMetricsMissing"]
@@ -308,6 +308,37 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
   2. Neue Nutzung, etwa externe KI-Werkzeuge? 3. Ist das Budget noch richtig?
 - **Nachts:** nichts.
 - **Stummschalten:** nach einer bewussten Entscheidung für mehr Verbrauch; besser das Budget anheben.
+
+## Agenten
+
+Kein Agentenalarm weckt: Fällt der Agentenpfad aus, beantwortet der gewöhnliche Chat weiter Fragen.
+
+<a id="OpaaAgentWorkspaceSaturated"></a>
+
+### OpaaAgentWorkspaceSaturated
+
+- **Auswirkung:** Alle Plätze für gleichzeitige Agentenläufe sind seit 30 Minuten belegt, oder
+  Agentenanfragen wurden mangels Platz abgewiesen. Personen sehen statt einer Antwort „Gerade arbeiten
+  zu viele Agenten gleichzeitig“. Abweisungen, weil eine Person ihren eigenen Anteil ausschöpft, zählen nicht.
+- **Zuständig:** Betrieb.
+- **Prüfen:** 1. Kurve „Belegung der Agentenplätze“: dauerhaft voll oder nur Spitzen? 2. Laufen
+  Agentenläufe ungewöhnlich lange (Kurve „Dauer der Agentenläufe“)? 3. Reichen Sandbox und Modell für
+  mehr gleichzeitige Läufe, dann `OPAA_AGENT_WORKSPACE_CAPACITY` anheben.
+- **Nachts:** nichts.
+- **Stummschalten:** nach einer bewussten Entscheidung für das Platzlimit.
+
+<a id="OpaaAgentRunErrorRate"></a>
+
+### OpaaAgentRunErrorRate
+
+- **Auswirkung:** Ein großer Teil der Agentenläufe endet mit einem Fehler statt mit einer Antwort.
+  Grenzen, Pläne und Rückfragen zählen nicht als Fehler.
+- **Zuständig:** Modellbetreuung.
+- **Prüfen:** 1. Kurve „Werkzeugaufrufe nach Ergebnis“: scheitert ein Werkzeug, etwa die Sandbox?
+  2. Alarme zum Chat-Modell und zu ausgehenden Aufrufen an `sandbox`. 3. Log nach der Ursache der
+  gescheiterten Läufe.
+- **Nachts:** reicht am Morgen.
+- **Stummschalten:** solange die Agenten bewusst abgeschaltet sind, mit der Gruppe `agent`.
 
 ## Indexierung
 

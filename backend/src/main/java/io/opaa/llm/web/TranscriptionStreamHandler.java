@@ -1,5 +1,8 @@
 package io.opaa.llm.web;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
 import io.opaa.llm.transcription.RealtimeTranscriptionClient;
@@ -10,6 +13,8 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.EnumMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -44,6 +49,10 @@ import tools.jackson.databind.node.ObjectNode;
  * #DONE_LIMIT} applies. A session therefore lasts at most {@code HARD_LIMIT + DONE_LIMIT}, below
  * the slot's {@code RealtimeTranscriptionSlots.STALE_AFTER}. The timers are this process's and end
  * with its sessions (ADR-0053).
+ *
+ * <p>{@code opaa.transcription.live.sessions} counts every session once at its end by {@link End},
+ * {@code opaa.transcription.live.active} the open sessions of this instance (ADR-0071); neither
+ * names a person.
  */
 class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
@@ -68,6 +77,9 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
   /** The largest text message accepted; the browser sends only {@code commit}. */
   static final int MAX_TEXT_BYTES = 1024;
 
+  static final String SESSIONS_METRIC = "opaa.transcription.live.sessions";
+  static final String ACTIVE_METRIC = "opaa.transcription.live.active";
+
   static final String CALLER_ATTRIBUTE = TranscriptionStreamHandler.class.getName() + ".caller";
 
   private static final Logger log = LoggerFactory.getLogger(TranscriptionStreamHandler.class);
@@ -80,6 +92,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
   private final ScheduledExecutorService timers;
   private final ExecutorService connector;
   private final Map<String, Live> sessions = new ConcurrentHashMap<>();
+  private final Map<End, Counter> ends = new EnumMap<>(End.class);
 
   TranscriptionStreamHandler(
       RealtimeTranscriptionRole realtime,
@@ -87,13 +100,50 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
       ObjectMapper json,
       Clock clock,
       ScheduledExecutorService timers,
-      ExecutorService connector) {
+      ExecutorService connector,
+      MeterRegistry meterRegistry) {
     this.realtime = realtime;
     this.vocabularies = vocabularies;
     this.json = json;
     this.clock = clock;
     this.timers = timers;
     this.connector = connector;
+    for (End end : End.values()) {
+      ends.put(
+          end,
+          Counter.builder(SESSIONS_METRIC)
+              .tag("end", end.tagValue())
+              .description("Live dictation sessions by how they ended")
+              .register(meterRegistry));
+    }
+    Gauge.builder(ACTIVE_METRIC, sessions, Map::size)
+        .description("Live dictation sessions open on this instance")
+        .register(meterRegistry);
+  }
+
+  /**
+   * How a session ended, the {@code end} tag: {@code done} with the final text, a {@link Reason}
+   * sent to the browser, {@code client_closed} when the browser went first and {@code
+   * transport_error} when the socket failed.
+   */
+  enum End {
+    DONE,
+    UNAVAILABLE,
+    BUSY,
+    UPSTREAM,
+    LIMIT,
+    IDLE,
+    PROTOCOL,
+    CLIENT_CLOSED,
+    TRANSPORT_ERROR;
+
+    static End of(Reason reason) {
+      return valueOf(reason.name());
+    }
+
+    String tagValue() {
+      return name().toLowerCase(Locale.ROOT);
+    }
   }
 
   /** Why a session ended with {@code error}; the browser shows no reason, it falls back. */
@@ -139,7 +189,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     @Override
     public void done(String text) {
       send(message("done").put("text", text));
-      end(CloseStatus.NORMAL);
+      end(CloseStatus.NORMAL, End.DONE);
     }
 
     @Override
@@ -150,7 +200,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
 
     void error(Reason reason) {
       send(message("error").put("reason", reason.wire()));
-      end(CloseStatus.NORMAL);
+      end(CloseStatus.NORMAL, End.of(reason));
     }
 
     void check() {
@@ -178,15 +228,16 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
       try {
         socket.sendMessage(new TextMessage(json.writeValueAsString(message)));
       } catch (IOException | IllegalStateException | SessionLimitExceededException e) {
-        end(CloseStatus.SERVER_ERROR);
+        end(CloseStatus.SERVER_ERROR, End.TRANSPORT_ERROR);
       }
     }
 
-    synchronized void end(CloseStatus status) {
+    synchronized void end(CloseStatus status, End end) {
       if (ended) {
         return;
       }
       ended = true;
+      ends.get(end).increment();
       release();
       try {
         socket.close(status);
@@ -305,7 +356,7 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
   public void handleTransportError(WebSocketSession socket, Throwable exception) {
     Live live = sessions.get(socket.getId());
     if (live != null) {
-      live.end(CloseStatus.SERVER_ERROR);
+      live.end(CloseStatus.SERVER_ERROR, End.TRANSPORT_ERROR);
     }
   }
 
@@ -314,7 +365,10 @@ class TranscriptionStreamHandler extends BinaryWebSocketHandler {
     Live live = sessions.remove(socket.getId());
     if (live != null) {
       synchronized (live) {
-        live.ended = true;
+        if (!live.ended) {
+          live.ended = true;
+          ends.get(End.CLIENT_CLOSED).increment();
+        }
         live.release();
       }
     }

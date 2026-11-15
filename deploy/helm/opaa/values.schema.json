@@ -1086,6 +1086,9 @@
                 },
                 "security": {
                   "type": "boolean"
+                },
+                "agent": {
+                  "type": "boolean"
                 }
               }
             },
@@ -1175,6 +1178,19 @@
               "minimum": 0
             },
             "malwareScanMinScans": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "agentWorkspaceRejectedMin": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "agentRunErrorShare": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "agentRunErrorMinRuns": {
               "type": "integer",
               "minimum": 0
             },

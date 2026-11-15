@@ -1,5 +1,6 @@
 package io.opaa.llm.web;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.auth.CorsProperties;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.CurrentUserArgumentResolver;
@@ -53,13 +54,15 @@ class TranscriptionStreamConfiguration implements WebSocketConfigurer {
       PersonalTranscriptionVocabularyService vocabularies,
       ObjectMapper json,
       Clock clock,
-      CorsProperties cors) {
+      CorsProperties cors,
+      MeterRegistry meterRegistry) {
     this.timers =
         Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().daemon().name("transcription-stream-timer").factory());
     this.connector = Executors.newVirtualThreadPerTaskExecutor();
     this.handler =
-        new TranscriptionStreamHandler(realtime, vocabularies, json, clock, timers, connector);
+        new TranscriptionStreamHandler(
+            realtime, vocabularies, json, clock, timers, connector, meterRegistry);
     this.allowedOrigins = cors.allowedOrigins().toArray(String[]::new);
   }
 

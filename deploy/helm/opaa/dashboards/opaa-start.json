@@ -446,7 +446,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=\"model\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: model",
+          "expr": "max(label_replace((max(2 * (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"model|agent\", severity=\"critical\"} == bool 1) or (ALERTS{alertstate=\"firing\", namespace=~\"$namespace\", component=~\"model|agent\", severity=\"warning\"} == bool 1))) > 0, \"k\", \"s0\", \"\", \"\") or label_replace((vector(0)), \"k\", \"base\", \"\", \"\")) # opaa-alert-groups: model,agent",
           "legendFormat": "KI-Modelle",
           "range": false,
           "instant": true,

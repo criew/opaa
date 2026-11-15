@@ -761,6 +761,7 @@ metrics:
       background: true
       audit: true
       security: true
+      agent: true
     # Share of answers with status 5xx over 10 minutes: warning ...
     errorRateThreshold: 0.05
     # ... counted only from this many requests in those 10 minutes on ...
@@ -821,6 +822,12 @@ metrics:
     malwareScanFailureShare: 0.5
     malwareScanMinScans: 3
     malwareSignatureMaxAgeDays: 3
+    # Agent runs refused because every workspace place was taken, in 30 minutes; refusals for a
+    # person's own share do not count.
+    agentWorkspaceRejectedMin: 5
+    # Share of agent runs ending in an error over 30 minutes, from this many runs on.
+    agentRunErrorShare: 0.2
+    agentRunErrorMinRuns: 10
     # Refused local sign-ins in 15 minutes: above the minimum and this factor times the median of
     # the same 15 minutes on the seven days before.
     loginFailureFactor: 5

@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.common.PayloadTooLargeException;
 import java.time.Duration;
 import java.util.UUID;
@@ -21,6 +23,7 @@ class ChatAttachmentQuotaTest {
 
   private final ChatAttachmentRepository repository = mock(ChatAttachmentRepository.class);
   private final PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
 
   @Test
   void theOrganizationsQuotaRefusesWhatTheAccountWouldStillTake() {
@@ -31,6 +34,26 @@ class ChatAttachmentQuotaTest {
         .isInstanceOf(PayloadTooLargeException.class)
         .hasMessageContaining("Organisation");
     assertThatCode(() -> quota.requireRoom(ORGANIZATION, AUTHOR, 10)).doesNotThrowAnyException();
+    assertThat(rejected("organization")).isEqualTo(1);
+    assertThat(rejected("account")).isZero();
+  }
+
+  @Test
+  void eachRejectionCountsUnderTheQuotaItHit() {
+    when(repository.sumSizeByAuthorId(AUTHOR)).thenReturn(950L);
+    when(repository.sumUnboundSizeByAuthorId(AUTHOR)).thenReturn(90L);
+
+    assertThatThrownBy(() -> quota(1000, 100, 0).requireRoom(ORGANIZATION, AUTHOR, 60))
+        .isInstanceOf(PayloadTooLargeException.class);
+    assertThatThrownBy(() -> quota(2000, 100, 0).requireRoom(ORGANIZATION, AUTHOR, 20))
+        .isInstanceOf(PayloadTooLargeException.class);
+
+    assertThat(rejected("account")).isEqualTo(1);
+    assertThat(rejected("unbound")).isEqualTo(1);
+  }
+
+  private double rejected(String quota) {
+    return meters.get(ChatAttachmentQuota.REJECTED_METRIC).tag("quota", quota).counter().count();
   }
 
   @Test
@@ -65,7 +88,7 @@ class ChatAttachmentQuotaTest {
 
   private ChatAttachmentQuota quota(long account, long unbound, long organization) {
     return new ChatAttachmentQuota(
-        repository, properties(account, unbound, organization), transactions);
+        repository, properties(account, unbound, organization), transactions, meters);
   }
 
   private static ChatAttachmentProperties properties(

@@ -64,6 +64,8 @@ SUMMARY = {
     "OpaaOutboundAuthFailing": "Ausgehende Aufrufe scheitern an Anmeldung oder Zertifikat",
     "OpaaTokenBudgetForecast": "Token-Verbrauch übersteigt das Monatsbudget",
     "OpaaOutboundThrottled":"Anbieter drosselt Aufrufe, auf die jemand wartet",
+    "OpaaAgentWorkspaceSaturated": "Plätze für Agentenläufe ausgeschöpft",
+    "OpaaAgentRunErrorRate": "Viele Agentenläufe scheitern",
     "OpaaIndexingStalled": "Indexierung ohne Fortschritt",
     "OpaaLibrariesOverdue": "Bibliotheken verpassen ihren Zeitplan",
     "OpaaIndexingRunsFailing": "Viele Indexierungsläufe scheitern",
@@ -343,6 +345,43 @@ case("Tokens at a pace that exceeds the monthly budget of 100000: a ticket after
      [ser("opaa_model_tokens_total", 'pod="r-opaa-backend-a",purpose="answer",token_type="input",model="m"', "0+1000x120")],
      [("30m", "OpaaTokenBudgetForecast", []),
       ("110m", "OpaaTokenBudgetForecast", [alert("OpaaTokenBudgetForecast", "warning")])])
+
+# ---------------------------------------------------------------- agent
+AGW = "opaa_agent_workspace"
+case("Every place taken on both pods for longer than 30 minutes: a ticket; full for 20 minutes only:\n"
+     "none.",
+     [ser(f"{AGW}_occupied", 'pod="r-opaa-backend-a"', "4x60"),
+      ser(f"{AGW}_occupied", 'pod="r-opaa-backend-b"', "4x60"),
+      ser(f"{AGW}_capacity", 'pod="r-opaa-backend-a"', "4x60"),
+      ser(f"{AGW}_capacity", 'pod="r-opaa-backend-b"', "4x60")],
+     [("20m", "OpaaAgentWorkspaceSaturated", []),
+      ("40m", "OpaaAgentWorkspaceSaturated", [alert("OpaaAgentWorkspaceSaturated", "warning")])])
+case("Requests refused for want of a place: a ticket; refusals for a person's own share stay\n"
+     "silent, as does a workspace that is busy but never full.",
+     [ser(f"{AGW}_occupied", 'pod="r-opaa-backend-a"', "2x40"),
+      ser(f"{AGW}_capacity", 'pod="r-opaa-backend-a"', "4x40"),
+      ser(f"{AGW}_rejected_total", 'pod="r-opaa-backend-a",reason="full"', "0x10 0+1x30"),
+      ser(f"{AGW}_rejected_total", 'pod="r-opaa-backend-b",reason="person_limit"', "0+5x40")],
+     [("12m", "OpaaAgentWorkspaceSaturated", []),
+      ("25m", "OpaaAgentWorkspaceSaturated", [alert("OpaaAgentWorkspaceSaturated", "warning")])])
+case("Only person_limit refusals and a workspace without capacity: no alert.",
+     [ser(f"{AGW}_occupied", 'pod="r-opaa-backend-a"', "0x40"),
+      ser(f"{AGW}_capacity", 'pod="r-opaa-backend-a"', "0x40"),
+      ser(f"{AGW}_rejected_total", 'pod="r-opaa-backend-a",reason="person_limit"', "0+5x40")],
+     [("40m", "OpaaAgentWorkspaceSaturated", [])])
+AGR = "opaa_agent_runs_total"
+case("Half of the agent runs end in an error: a ticket; plans and limits do not count as errors.",
+     [ser(AGR, 'pod="r-opaa-backend-a",kind="builtin",result="error"', "0+1x40"),
+      ser(AGR, 'pod="r-opaa-backend-a",kind="builtin",result="completed"', "0+0.5x40"),
+      ser(AGR, 'pod="r-opaa-backend-b",kind="custom",result="plan"', "0+0.5x40")],
+     [("15m", "OpaaAgentRunErrorRate", [alert("OpaaAgentRunErrorRate", "warning")])])
+case("Every run fails, but fewer than ten runs in 30 minutes: no alert.",
+     [ser(AGR, 'pod="r-opaa-backend-a",kind="custom",result="error"', "0+0.2x40")],
+     [("35m", "OpaaAgentRunErrorRate", [])])
+case("Limits, plans and questions back without errors: no alert.",
+     [ser(AGR, 'pod="r-opaa-backend-a",kind="builtin",result="limit_calls"', "0+1x40"),
+      ser(AGR, 'pod="r-opaa-backend-a",kind="builtin",result="ask_user"', "0+1x40")],
+     [("35m", "OpaaAgentRunErrorRate", [])])
 
 # ---------------------------------------------------------------- indexing
 case("Two pods report the same overdue SharePoint library: one alert per type after an hour.",

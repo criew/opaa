@@ -12,6 +12,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
@@ -67,6 +68,7 @@ class TranscriptionStreamHandlerTest {
       new AtomicReference<>();
   private final List<String> sent = new ArrayList<>();
   private final AtomicReference<CloseStatus> closed = new AtomicReference<>();
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private Runnable tick;
   private TranscriptionStreamHandler handler;
   private WebSocketSession socket;
@@ -82,7 +84,7 @@ class TranscriptionStreamHandlerTest {
             });
     handler =
         new TranscriptionStreamHandler(
-            role, vocabularies, json, clock, timers, new DirectExecutorService());
+            role, vocabularies, json, clock, timers, new DirectExecutorService(), meters);
     socket = mock(WebSocketSession.class);
     Map<String, Object> attributes = new HashMap<>();
     attributes.put(TranscriptionStreamHandler.CALLER_ATTRIBUTE, CALLER);
@@ -327,6 +329,39 @@ class TranscriptionStreamHandlerTest {
     assertThat(slotFreed).isTrue();
     listener.get().text("late");
     assertThat(sent).hasSize(1);
+  }
+
+  @Test
+  void everySessionCountsOnceAtItsEndAndOpenSessionsShowAsActive() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    assertThat(meters.get(TranscriptionStreamHandler.ACTIVE_METRIC).gauge().value()).isEqualTo(1);
+
+    listener.get().done("Guten Tag.");
+    handler.afterConnectionClosed(socket, CloseStatus.NORMAL);
+
+    assertThat(ended("done")).isEqualTo(1);
+    assertThat(ended("client_closed")).isZero();
+    assertThat(meters.get(TranscriptionStreamHandler.ACTIVE_METRIC).gauge().value()).isZero();
+  }
+
+  @Test
+  void aBusyRefusalAndABrowserGoingAwayCountUnderTheirEnd() throws Exception {
+    when(role.open(any(), anyString(), any()))
+        .thenThrow(new RealtimeUnusableException("no live session free", true));
+    handler.afterConnectionEstablished(socket);
+    handler.afterConnectionClosed(socket, CloseStatus.NORMAL);
+    assertThat(ended("busy")).isEqualTo(1);
+
+    closed.set(null);
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    handler.afterConnectionClosed(socket, CloseStatus.GOING_AWAY);
+    assertThat(ended("client_closed")).isEqualTo(1);
+  }
+
+  private double ended(String end) {
+    return meters.get(TranscriptionStreamHandler.SESSIONS_METRIC).tag("end", end).counter().count();
   }
 
   /** Runs every task on the calling thread. */
