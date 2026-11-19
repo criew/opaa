@@ -179,10 +179,14 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ### J · Betrieb & Deployment
 
-- **Getrennte Dienste für große Installationen** — Betriebsarchitektur mit getrennten Speicher-Backends.
-  _(Epic #1439)_
-- **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation, Blau-Grün-Umschaltung,
-  getrennte Netzbereiche für Oberfläche, Anwendung, Daten und Modelle.
+- **Getrennte Dienste für große Installationen** — Architektur „groß“ aus
+  [ADR-0074](./decisions/0074-betriebsarchitekturen-klein-mittel-gross.md): Instanzen nach Rollen für
+  Anfragen und Indexierung, getrennte Speicher-Backends; Hindernisse mit Belegen dort.
+  _(Epic #1439; #3808; ⚑ #3806 (Speicher-Backends))_
+- **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation und Umschaltung,
+  getrennte Netzbereiche für Oberfläche, Anwendung, Indexierung, Daten und Modelle; kein Blau-Grün mit
+  zweiter Datenbank ([ADR-0074](./decisions/0074-betriebsarchitekturen-klein-mittel-gross.md),
+  Entscheidung 5). _(#3807)_
 - **Offene Betriebsfragen** — Voreinstellungen für RTO/RPO, Bündelung von Abbildern, Modellgewichten und
   Stückliste für abgeschottete Netze, Zuordnung der Netzsicherheit zwischen zwei Spezifikationen. ⚑
 - **Ablage auf openCode** _(#3041)_
