@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-06 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-11-12 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md), [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) und [ADR-0074](0074-ein-datenspeicher-fuer-metadaten-und-abschnitte.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439
 
 ## Kontext
@@ -12,8 +12,8 @@ Häuser mit Kubernetes mussten sich Manifeste selbst erarbeiten und fanden erst 
 das Backend voraussetzt: genau eine Instanz ([ADR-0021](0021-single-instance-betrieb.md)), eine
 Schemamigration beim Start, beschreibbare Pfade, eine Proxy-Kette, die das Rate-Limit nicht verfälscht.
 Jeder Eigenbau veraltete mit dem nächsten Release. Die Images in GHCR trugen nur `main` und `sha-…`;
-ein Chart hätte keine stabile Version gehabt, auf die er zeigen kann. Mehrere Instanzen,
-Hochverfügbarkeit und getrennte Speicher-Backends bleiben bei #1439 und #1292.
+ein Chart hätte keine stabile Version gehabt, auf die er zeigen kann. Mehrere Instanzen und
+Hochverfügbarkeit entscheidet ADR-0053, getrennte Speicher-Backends ADR-0074.
 
 ## Entscheidung
 
@@ -44,7 +44,8 @@ Neuinstallation.
 
 PostgreSQL mit pgvector, LLM-, Embedding-, Rerank-, Transkriptions- und Texterkennungsendpunkte,
 Objektspeicher, Mailserver und gegebenenfalls ein Identitätsanbieter liefert der Betreiber; ohne
-Anbieter läuft die lokale Benutzerverwaltung (ADR-0033). Drei Arten von Konfiguration:
+Anbieter läuft die lokale Benutzerverwaltung (ADR-0033). Der Chart bindet genau eine Datenbank für
+alle Daten an (ADR-0074, Entscheidung 1). Drei Arten von Konfiguration:
 
 | Art | Beispiele | Im Chart |
 |---|---|---|
