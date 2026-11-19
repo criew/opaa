@@ -738,7 +738,8 @@ lassen.
   - **5. Ausgeschaltet:** Bei ausgeschalteter Rolle wird ein Scan als „kein extrahierbarer Text“
     abgewiesen.
   - **1. Einrichten:** unter „Modelle → Texterkennung“ Verbindungstest, Einschalten, Speichern.
-    Danach zeigt die Bibliothek „1 Scan wartet auf die Texterkennung“.
+    Danach zeigt die Bibliothek „1 Scan wartet auf die Texterkennung“. Bis dahin hält `ocr-stub`
+    den Scan zurück, sodass kein Nachholdurchgang ihn vorher liest.
   - **2. Hochladen:** Upload in eine neue Bibliothek, das Dokument wird indiziert.
   - **3./4. Frage und Fundstelle (1–3):** je ein Begriff in „…“, sodass ai-stub nur den Abschnitt
     mit der Stelle zitiert. Der Beleg ist als maschinell erkannt gekennzeichnet. „Dokument öffnen“
@@ -1169,8 +1170,10 @@ unter `demo/seed/e2e-data/text-recognition/`; Herkunft und Neuerzeugung stehen d
   `opaa-ocr`-Lauf daraus gemacht hat. Für jede andere PDF-Datei, etwa die Testseite des
   Verbindungstests, gibt er eine Zeile Text zurück. Ohne den Schlüssel dieses Laufs antwortet er mit
   401, mit anderen Optionen als denen des Backends mit 422. `/control/conversions` auf Port 18094
-  zählt die Umwandlungen. `docker-compose.e2e.yml` erlaubt die Texterkennung im Betrieb
-  (`OPAA_OCR_ENABLED`); die Rolle selbst schaltet nur das Szenario ein und wieder aus.
+  zählt die Umwandlungen. Nach `PUT /control/scan-hold` mit `{"held": true}` beantwortet er jede
+  Umwandlung des Testdokuments mit 429 (überlastet), bis `{"held": false}` folgt; das Backend lässt
+  den Scan dann wartend, ohne ihn zu sperren. `docker-compose.e2e.yml` erlaubt die Texterkennung
+  im Betrieb (`OPAA_OCR_ENABLED`); die Rolle selbst schaltet nur das Szenario ein und wieder aus.
 - **Abnahme mit echtem `opaa-ocr`**: ein eigenes Ziel. Es ist nie Teil von `pnpm test`.
 
 ```bash

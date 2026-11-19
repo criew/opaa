@@ -24,7 +24,7 @@ async function resetNotice(page: Page): Promise<void> {
     headers: { [DEV_USER_HEADER]: 'dev-admin' },
     data: {},
   })
-  expect(response.ok()).toBe(true)
+  expect(response.status(), await response.text()).toBe(200)
 }
 
 async function readClipboard(page: Page): Promise<string> {
