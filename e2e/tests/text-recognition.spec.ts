@@ -47,9 +47,9 @@ async function documentsOf(api: APIRequestContext, libraryId: string): Promise<D
   return ((await response.json()) as { items: DocumentRow[] }).items
 }
 
-async function stubConversions(): Promise<{ scan: number; other: number; refused: number }> {
+async function stubConversions(): Promise<{ scan: number; other: number; refused: number; held: number }> {
   const response = await fetch(`${STUB_BASE_URL}/control/conversions`)
-  return (await response.json()) as { scan: number; other: number; refused: number }
+  return (await response.json()) as { scan: number; other: number; refused: number; held: number }
 }
 
 /** While held, ocr-stub answers every conversion of the scan with 429 and OPAA leaves it waiting. */
@@ -84,8 +84,11 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
   })
 
   test.afterAll(async () => {
-    await holdScanConversions(false)
-    await setTextRecognition(false)
+    try {
+      await setTextRecognition(false)
+    } finally {
+      await holdScanConversions(false)
+    }
   })
 
   test('5. Ausgeschaltet: ein Scan wird als „kein extrahierbarer Text“ abgewiesen', async () => {

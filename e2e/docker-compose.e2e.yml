@@ -239,7 +239,7 @@ services:
   # Stands in for docling-serve, the OCR service opaa-ocr (e2e/ocr-stub/server.mjs): replays the
   # DoclingDocument a real opaa-ocr run made of the scenarios' scan and checks key and options.
   # The key is random per run (run-e2e.mjs, handed to the scenarios as E2E_OCR_API_KEY). The
-  # host port only serves the scenarios' look at /control/conversions.
+  # host port serves the scenarios' control endpoints (/control/conversions, /control/scan-hold).
   ocr-stub:
     image: node:24-alpine
     working_dir: /app

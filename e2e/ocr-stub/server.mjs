@@ -138,7 +138,12 @@ const server = createServer(async (req, res) => {
       return
     }
     if (req.method === 'PUT' && path === '/control/scan-hold') {
-      const held = JSON.parse((await readBody(req)).toString('utf8') || '{}').held
+      let held
+      try {
+        held = JSON.parse((await readBody(req)).toString('utf8') || '{}').held
+      } catch {
+        held = undefined
+      }
       if (typeof held !== 'boolean') {
         sendJson(res, 400, { detail: 'expected {"held": true|false}' })
         return
