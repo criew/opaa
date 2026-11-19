@@ -74,6 +74,13 @@ services:
       # a wall.
       OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "40"
       OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS_PER_ACCOUNT: "40"
+      # Every other POST/PUT/PATCH/DELETE under /api/v1 shares one write budget per account
+      # (default 120/60s) and per client address (default 600/60s). The suite sets up and tears
+      # down its fixtures through the API, almost always as dev-admin and from one address, so a
+      # setup-heavy stretch of specs passes the account default within a minute. Raised, not
+      # disabled: the write limiter stays in the request path of every change the suite makes.
+      OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS_PER_ACCOUNT: "600"
+      OPAA_RATE_LIMIT_WRITE_MAX_REQUESTS: "1200"
       # The SSRF target-address check defaults to active (opaa.indexing.target-validation),
       # which would otherwise reject every HTTP_DIRECTORY/RSS_FEED fetch this suite makes - both
       # "rss-feed" and "ai-stub" resolve to a container-internal address on the Compose network's

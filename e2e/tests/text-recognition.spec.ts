@@ -28,7 +28,8 @@ import {
  * The role is installation-wide state: off before the first scenario, off again after the last.
  * The scan uploaded while it is off is rejected and later picked up by the background catch-up,
  * which runs every 20 seconds in this stack (OPAA_OCR_CATCH_UP_INTERVAL) - the last scenario waits
- * for it.
+ * for it. ocr-stub holds conversions of the scan back (429) until scenario 1 has seen it waiting,
+ * so no catch-up pass can read it before.
  */
 
 const STUB_BASE_URL = process.env.E2E_OCR_STUB_BASE_URL ?? 'http://localhost:18094'
@@ -51,6 +52,16 @@ async function stubConversions(): Promise<{ scan: number; other: number; refused
   return (await response.json()) as { scan: number; other: number; refused: number }
 }
 
+/** While held, ocr-stub answers every conversion of the scan with 429 and OPAA leaves it waiting. */
+async function holdScanConversions(held: boolean): Promise<void> {
+  const response = await fetch(`${STUB_BASE_URL}/control/scan-hold`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ held }),
+  })
+  expect(response.status, await response.text()).toBe(200)
+}
+
 async function uploadScanInUi(page: Page, libraryId: string): Promise<void> {
   await page.goto(`/libraries/${libraryId}`)
   await page.getByLabel('Dateien auswählen').setInputFiles(SCAN_PATH)
@@ -69,9 +80,11 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
 
   test.beforeAll(async () => {
     await setTextRecognition(false)
+    await holdScanConversions(true)
   })
 
   test.afterAll(async () => {
+    await holdScanConversions(false)
     await setTextRecognition(false)
   })
 
@@ -108,6 +121,7 @@ test.describe.serial('Texterkennung gescannter PDF-Dokumente', () => {
     await expect(page.getByTestId('text-recognition-notice')).toContainText(
       '1 Scan wartet auf die Texterkennung',
     )
+    await holdScanConversions(false)
   })
 
   test('2. Hochladen: der Scan wird per Texterkennung indiziert', async ({
