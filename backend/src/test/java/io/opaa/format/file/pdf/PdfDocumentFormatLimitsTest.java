@@ -214,6 +214,49 @@ class PdfDocumentFormatLimitsTest {
   }
 
   /**
+   * Regression guard for #3845: a few kilobytes of deflated content inflate to eight million
+   * {@code Tf} without operands. Each one costs PDFBox an exception (and, in production, an error
+   * logged with its stack trace), far below the operator limit; each reading pass took tens of
+   * seconds.
+   */
+  @Test
+  void aPageOfBrokenOperatorsFailsQuickly() throws IOException {
+    Path file = tempDir.resolve("broken-operators.pdf");
+    writeContentPage(file, "BT /F1 12 Tf 72 720 Td (a) Tj ET\n", "Tf\n", 8_000_000);
+
+    assertThat(runWithin(Duration.ofSeconds(10), pipeline, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void brokenOperatorsPastTheLimitFailTheDocument() throws IOException {
+    Path file = tempDir.resolve("broken-operators-limit.pdf");
+    writeContentPage(file, "", "Tf\n", (int) PdfReadBudget.MAX_BROKEN_OPERATORS + 1);
+
+    assertThatThrownBy(
+            () -> pipeline.run(DocumentFormatSource.ofFile(file, "broken-operators-limit.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining(PdfReadBudget.MAX_BROKEN_OPERATORS + " broken operators");
+  }
+
+  /** Broken operators below the limit are skipped as before; the text around them is read. */
+  @Test
+  void brokenOperatorsBelowTheLimitLeaveTheTextReadable() throws IOException {
+    Path file = tempDir.resolve("broken-operators-few.pdf");
+    writeContentPage(
+        file,
+        "BT /F1 12 Tf 72 720 Td (Lesbarer Text) Tj ET\n",
+        "Tf\n",
+        (int) PdfReadBudget.MAX_BROKEN_OPERATORS / 4);
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "broken-operators-few.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks().getFirst().getText()).contains("Lesbarer Text");
+  }
+
+  /**
    * 2 KB of forms nested five levels deep, each calling the next ten times, end in 100 000 forms of
    * 200 operators that draw nothing: without an operator limit PDFBox works through 20 million
    * operators per reading pass.
@@ -496,6 +539,31 @@ class PdfDocumentFormatLimitsTest {
           out.write(chunk, 0, Math.min(left, chunk.length));
         }
         out.write(") pop\n".getBytes(StandardCharsets.US_ASCII));
+      }
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
+  }
+
+  /**
+   * One page with Helvetica as {@code /F1} whose deflated content is {@code head}, then {@code
+   * unit} {@code repeats} times.
+   */
+  private static void writeContentPage(Path file, String head, String unit, int repeats)
+      throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage();
+      PDResources resources = new PDResources();
+      resources.put(COSName.getPDFName("F1"), new PDType1Font(Standard14Fonts.FontName.HELVETICA));
+      page.setResources(resources);
+      COSStream content = doc.getDocument().createCOSStream();
+      byte[] unitBytes = unit.getBytes(StandardCharsets.US_ASCII);
+      try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+        out.write(head.getBytes(StandardCharsets.US_ASCII));
+        for (int i = 0; i < repeats; i++) {
+          out.write(unitBytes);
+        }
       }
       page.getCOSObject().setItem(COSName.CONTENTS, content);
       doc.addPage(page);

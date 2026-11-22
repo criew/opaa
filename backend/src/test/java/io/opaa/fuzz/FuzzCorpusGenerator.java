@@ -61,6 +61,7 @@ public final class FuzzCorpusGenerator {
     seeds.put("pdf-page-count-two-billion.pdf", pdfPageCount());
     seeds.put("pdf-page-tree-repeated-kids.pdf", pdfRepeatedKids());
     seeds.put("pdf-deflated-content-run.pdf", pdfDeflatedContentRun());
+    seeds.put("pdf-broken-operator-run.pdf", pdfBrokenOperatorRun());
     seeds.put("pdf-xref-stream-zero-widths.pdf", pdfXrefStreamZeroWidths());
     seeds.put("pdf-object-markers-without-xref.pdf", pdfObjectMarkersWithoutXref());
     seeds.put("pdf-inline-image.pdf", pdfInlineImage());
@@ -123,6 +124,19 @@ public final class FuzzCorpusGenerator {
         4,
         "/Filter /FlateDecode",
         deflate(latin1("BT /F1 12 Tf 72 720 Td (a) Tj ET\n".repeat(40_000))));
+    return pdf.finish();
+  }
+
+  /**
+   * Eleven million {@code Tf} without operands, just below the stream limit once inflated: PDFBox
+   * answers each with an exception, enough to keep the reading passes past the input timeout.
+   */
+  private static byte[] pdfBrokenOperatorRun() throws IOException {
+    Pdf pdf = Pdf.onePage();
+    pdf.stream(
+        4,
+        "/Filter /FlateDecode",
+        deflate(latin1("BT /F1 12 Tf 72 720 Td (a) Tj ET\n" + "Tf\n".repeat(11_000_000))));
     return pdf.finish();
   }
 

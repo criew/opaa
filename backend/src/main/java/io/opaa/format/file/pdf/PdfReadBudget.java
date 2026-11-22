@@ -83,6 +83,14 @@ final class PdfReadBudget {
    */
   static final long MAX_PAGE_GLYPHS = 200_000;
 
+  /**
+   * The most operators of one document PDFBox may fail on, over every pass. PDFBox skips such an
+   * operator but builds an exception for it and logs it as an error with its stack trace, each many
+   * times the cost of a working operator, so the operator limit alone lets a page of millions of
+   * them take minutes and flood the log.
+   */
+  static final long MAX_BROKEN_OPERATORS = 10_000;
+
   private final long maxCharacters;
   private final long maxOperators;
   private final long maxContentBytes;
@@ -97,6 +105,7 @@ final class PdfReadBudget {
       Collections.newSetFromMap(new IdentityHashMap<>());
   private long usedCharacters;
   private long operators;
+  private long brokenOperators;
   private long contentBytes;
   private long objects;
 
@@ -181,6 +190,17 @@ final class PdfReadBudget {
           "PDF content exceeds the configured limit of " + maxOperators + " operators");
     }
     requireTime();
+  }
+
+  /**
+   * Counts one operator PDFBox failed to process; throws once the document has failed on more than
+   * {@link #MAX_BROKEN_OPERATORS}.
+   */
+  void countBrokenOperator() {
+    if (++brokenOperators > MAX_BROKEN_OPERATORS) {
+      throw new ParserLimitExceededException(
+          "PDF content has more than " + MAX_BROKEN_OPERATORS + " broken operators");
+    }
   }
 
   /**
