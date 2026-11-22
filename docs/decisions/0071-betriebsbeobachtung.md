@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-10 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
+Akzeptiert · zuletzt geändert 2026-11-22 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
 
 ## Kontext
 
@@ -137,13 +137,17 @@ Chat- und Embedding-Modelle (`model_check`) geht durch `MeteredHttpClient`, den 
 Client-Fabriken um ihren Client legen. Was nicht über diesen Client geht, misst mit denselben
 `OutboundMetrics`: die Virenprüfung (`clamav`), den Verbindungsaufbau der Live-Transkription
 (`transcription`) und SMB je Austausch, das S3-SDK je Versuch über seine eigenen Metriken (Quellen
-als `connector`, die Originalablage als `original_store`). Ein Versuch, den OPAA vor dem Senden
+als `connector`, die Originalablage als `original_store`). Die Werkzeugprüfung misst jeden Aufruf
+ihres Chat-Modells selbst als `model_check` im Pfad `background`. Ihr Modell ist ohne Observation
+gebaut, damit eine Messung weder als Chat-Verkehr in `gen_ai.*` erscheint noch die Erreichbarkeit
+der Chat-Rolle bewegt; die Ergebnisklasse eines Modellfehlers liest `llm` aus dem Anbieter-Client.
+Ein Versuch, den OPAA vor dem Senden
 ablehnt (Zielprüfung, Anfragebudget), zählt nicht.
 `opaa.outbound.requests` trägt `target`, `kind`, `outcome` aus Status oder Ausnahmeklasse
 (`auth_error`, `tls_error`, `throttled` u. a.; ein Abbruch an der Frist, auch durch Unterbrechung,
 ist `timeout`) und `path_class` (`interactive`, wenn eine Person wartet, sonst `background`);
 `opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host und Adresse sind nie ein
-Label, Chat und Embedding misst Spring AI. `kind` nimmt nur feste Werte aus dem Code an: bei
+Label, Chat und Embedding misst Spring AI, ausgenommen die Werkzeugprüfung. `kind` nimmt nur feste Werte aus dem Code an: bei
 `connector` den Schlüssel des Konnektortyps klein geschrieben (`confluence`, `dropbox`,
 `google_drive`, `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`),
 für Hilfsaufrufe ohne eigenen Konnektor die Zusatzwerte `oauth`, `service_account` und `mcp`, bei

@@ -6,11 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.openai.core.http.Headers;
-import com.openai.errors.UnauthorizedException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.observability.OutboundMetrics;
-import io.opaa.observability.OutboundOutcome;
 import io.opaa.observability.OutboundTarget;
 import java.net.SocketTimeoutException;
 import org.junit.jupiter.api.Test;
@@ -44,15 +41,6 @@ class MeteredCheckChatModelTest {
     assertThatThrownBy(() -> model.call(new Prompt("bereit"))).isInstanceOf(RuntimeException.class);
 
     assertThat(calls("timeout")).isEqualTo(1);
-  }
-
-  @Test
-  void aRefusedKeyIsAnAuthError() {
-    UnauthorizedException refused =
-        UnauthorizedException.builder().headers(Headers.builder().build()).build();
-
-    assertThat(MeteredCheckChatModel.outcome(new RuntimeException(refused)))
-        .isEqualTo(OutboundOutcome.AUTH_ERROR);
   }
 
   private double calls(String outcome) {
