@@ -1,5 +1,5 @@
-// Plugins resolve their own dependencies from Maven Central first; the Plugin Portal only has to
-// serve the plugin markers, so an outage of its Central proxy does not break the build.
+// Central is asked first for every plugin marker and plugin dependency; the Plugin Portal only
+// serves what Central does not host, so an outage of the Portal's Central proxy cannot break the build.
 pluginManagement {
     repositories {
         mavenCentral()
