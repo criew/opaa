@@ -4562,12 +4562,12 @@ oder bei Belegen aus der Zeit vor den Rahmen, öffnet der Scan nur auf der Seite
 Stelle nicht umrahmt ist.</p>
 <h2 id="6-grenzwerte">6. Grenzwerte<a class="headerlink" href="#6-grenzwerte" title="Permanent link">&para;</a></h2>
 <p>Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
-Rechenschritte, gelesene Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite,
-für die Größe eines einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt
-werden, und für die Gliederung
-(<a href="index.html#grenzen-beim-lesen">Grenzen beim Lesen</a>), die Zeichenobergrenzen des gemeinsamen
-Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
-Dateigrößengrenze des Konnektors.</p>
+Rechenschritte, fehlerhafte Zeichenanweisungen (<code>max-pdf-broken-operators</code>), gelesene
+Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite, für die Größe eines
+einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt werden, und für die
+Gliederung (<a href="index.html#grenzen-beim-lesen">Grenzen beim Lesen</a>), die Zeichenobergrenzen des
+gemeinsamen Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift
+zusätzlich die Dateigrößengrenze des Konnektors.</p>
 <p><strong>Zeichnungslastige PDFs</strong> wie Bebauungs- oder Lagepläne bestehen aus Millionen von
 Zeichenanweisungen je Seite und können <code>max-pdf-operators</code>, <code>max-pdf-stream-bytes</code>,
 <code>max-pdf-content-bytes</code> oder <code>max-pdf-parse-seconds</code> reißen, obwohl sie nicht präpariert sind.

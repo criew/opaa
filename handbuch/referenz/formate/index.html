@@ -4382,6 +4382,13 @@ gemeinsame Obergrenzen:</p>
   einer Seite im Speicher, bis die Seite fertig ist; ohne diese Grenze könnte eine wenige Kilobyte
   große Datei, die eine Zeichnung tausendfach auf eine Seite setzt, den Speicher füllen, bevor
   <code>max-text-characters</code> greift. Eine Seite darüber macht das ganze Dokument „fehlgeschlagen".</li>
+<li><strong>Fehlerhafte Zeichenanweisungen eines PDF</strong> (<code>max-pdf-broken-operators</code>): Eine Anweisung, die
+  der Leser nicht ausführen kann, etwa weil ihr Werte oder eine benannte Ressource fehlen,
+  überspringt er und protokolliert sie als Fehler. Das kostet ein Vielfaches einer gültigen
+  Anweisung. Jede zählt in jedem Lesedurchgang, der sie trifft; zusammen über alle Seiten und
+  Durchgänge darf ein PDF höchstens so viele haben, sonst ist es „fehlgeschlagen". So kann eine
+  wenige Kilobyte große Datei mit Millionen fehlerhafter Anweisungen weder minutenlang lesen noch
+  das Protokoll füllen.</li>
 <li><strong>Gliederung eines PDF:</strong> Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
   Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
   über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.</li>
@@ -4466,6 +4473,11 @@ statt in einem ungewissen Zustand weiterzuarbeiten
 <td><code>max-pdf-objects</code></td>
 <td>1.000.000</td>
 <td>Objekte eines PDF: Einträge aller Querverweise, Objekte entpackter Objektströme und bei beschädigter Datei die gefundenen Objekte; Objekte in Objektströmen zählen doppelt</td>
+</tr>
+<tr>
+<td><code>max-pdf-broken-operators</code></td>
+<td>50.000</td>
+<td>Zeichenanweisungen, die der Leser nicht ausführen kann, über alle Seiten eines PDF; jede zählt in jedem Lesedurchgang, der sie trifft</td>
 </tr>
 </tbody>
 </table>
