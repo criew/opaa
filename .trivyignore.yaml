@@ -43,13 +43,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112315
     purls:
@@ -64,13 +65,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112316
     purls:
@@ -85,13 +87,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112317
     purls:
@@ -106,13 +109,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112318
     purls:
@@ -127,13 +131,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112319
     purls:
@@ -148,13 +153,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112320
     purls:
@@ -169,13 +175,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112321
     purls:
@@ -190,13 +197,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112322
     purls:
@@ -211,13 +219,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-112323
     purls:
@@ -232,13 +241,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-118380
     purls:
@@ -253,13 +263,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-119079
     purls:
@@ -274,13 +285,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-71199
     purls:
@@ -295,13 +307,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-71200
     purls:
@@ -316,13 +329,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). Die MIT-krb5-Bibliotheken kommen nur als Abhängigkeit von
       libcurl und LibreOffice mit. Die Lücken liegen in KDC, kadmind und den RPC-Diensten; das Image
-      enthält keinen davon und keine Kerberos-Konfiguration, ohne Ausgang erreicht auch kein Client
-      einen KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen
-      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
-      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
-      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
-      oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder eine Kerberos-Anmeldung
-      hinzukommt.
+      enthält keinen davon und keine Kerberos-Konfiguration. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      Kerberos-Verbindungen zu einem KDC. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald dort ein Kerberos-Dienst oder
+      eine Kerberos-Anmeldung hinzukommt.
     expired_at: 2027-02-15
   - id: CVE-2026-76642
     purls:
@@ -599,13 +613,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). libcurl kommt nur als Bibliothek von LibreOffice mit, das
       Werkzeug curl ist nicht installiert. Die Lücken betreffen SFTP/SCP mit schemalosen URLs im
-      Werkzeug und die Wiederverwendung Negotiate-authentifizierter Verbindungen; ohne Ausgang und
-      ohne Zugangsdaten erreicht die Sandbox kein Ziel, an das LibreOffice eine solche Verbindung
-      aufbauen würde. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian
-      einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der
-      Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das
-      Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse
-      erhält oder die Härtung entfällt.
+      Werkzeug und die Wiederverwendung Negotiate-authentifizierter Verbindungen; Zugangsdaten gibt es
+      in der Sandbox nicht. Ein Netz nach außen gibt es nicht; unter Compose erreichen sich
+      gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus SFTP-, SCP- oder
+      Negotiate-Verbindungen. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald
+      Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb
+      der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur
+      das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder
+      Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-8458
     purls:
@@ -618,13 +633,14 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). libcurl kommt nur als Bibliothek von LibreOffice mit, das
       Werkzeug curl ist nicht installiert. Die Lücken betreffen SFTP/SCP mit schemalosen URLs im
-      Werkzeug und die Wiederverwendung Negotiate-authentifizierter Verbindungen; ohne Ausgang und
-      ohne Zugangsdaten erreicht die Sandbox kein Ziel, an das LibreOffice eine solche Verbindung
-      aufbauen würde. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian
-      einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der
-      Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das
-      Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse
-      erhält oder die Härtung entfällt.
+      Werkzeug und die Wiederverwendung Negotiate-authentifizierter Verbindungen; Zugangsdaten gibt es
+      in der Sandbox nicht. Ein Netz nach außen gibt es nicht; unter Compose erreichen sich
+      gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus SFTP-, SCP- oder
+      Negotiate-Verbindungen. Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald
+      Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb
+      der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur
+      das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder
+      Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
   - id: CVE-2026-16742
     purls:
@@ -888,13 +904,14 @@ vulnerabilities:
       ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). libX11 kommt über cairo als Abhängigkeit von LibreOffice mit.
-      Die Lücke verlangt einen bösartigen X-Server; soffice läuft ohne Oberfläche und ohne DISPLAY,
-      und ohne Ausgang ist kein X-Server erreichbar. Debian trixie hat keinen Fix (Stand 15.11.2026).
-      Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket
-      in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist
-      das außer der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die
-      Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder sobald in der Sandbox
-      eine Oberfläche oder ein X-Server läuft.
+      Die Lücke verlangt einen bösartigen X-Server; soffice läuft ohne Oberfläche und ohne DISPLAY.
+      Ein Netz nach außen gibt es nicht; unter Compose erreichen sich gleichzeitige Sandboxen, aber
+      kein Prozess des Images öffnet von sich aus Verbindungen zu einem X-Server. Debian trixie hat
+      keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen,
+      Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in
+      jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines
+      dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt,
+      oder sobald in der Sandbox eine Oberfläche oder ein X-Server läuft.
     expired_at: 2027-02-15
   - id: CVE-2026-88807
     purls:
@@ -906,12 +923,13 @@ vulnerabilities:
       no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
       Kubernetes das OpenSandbox-Chart). libXrender kommt über cairo als Abhängigkeit von LibreOffice
       mit. Die Lücke verlangt einen bösartigen X-Server; soffice läuft ohne Oberfläche und ohne
-      DISPLAY, und ohne Ausgang ist kein X-Server erreichbar. Debian trixie hat keinen Fix (Stand
-      15.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
-      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
-      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
-      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
-      sobald in der Sandbox eine Oberfläche oder ein X-Server läuft.
+      DISPLAY. Ein Netz nach außen gibt es nicht; unter Compose erreichen sich gleichzeitige
+      Sandboxen, aber kein Prozess des Images öffnet von sich aus Verbindungen zu einem X-Server.
+      Debian trixie hat keinen Fix (Stand 15.11.2026). Neu zu bewerten, sobald Debian einen Fix
+      liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox eine Oberfläche oder ein X-Server läuft.
     expired_at: 2027-02-15
   - id: CVE-2026-9538
     purls:
@@ -928,4 +946,393 @@ vulnerabilities:
       entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
       Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
       Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
+    expired_at: 2027-02-15
+
+  # Sandbox image, Debian trixie without a fix (triage of 22.11.2026, one statement per package
+  # group). Every entry is bound to the Debian packages of the group by purl.
+  - id: CVE-2026-124709
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      TLS- oder DANE-Verbindungen. CVE-2026-107493 trifft nur Anwendungen, die
+      PEM_X509_INFO_read_bio_ex() einen bestehenden Stapel übergeben; OpenSSL selbst tut das nicht,
+      und fremde PEM-Daten gelangen nicht in die Sandbox. Folge wäre ein Absturz des einen Laufs; ein
+      Skript, das einen dieser Pfade selbst aufbaut, etwa über ctypes, gewinnt nichts über run_code
+      hinaus. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-35190
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      TLS- oder DANE-Verbindungen. CVE-2026-107493 trifft nur Anwendungen, die
+      PEM_X509_INFO_read_bio_ex() einen bestehenden Stapel übergeben; OpenSSL selbst tut das nicht,
+      und fremde PEM-Daten gelangen nicht in die Sandbox. Folge wäre ein Absturz des einen Laufs; ein
+      Skript, das einen dieser Pfade selbst aufbaut, etwa über ctypes, gewinnt nichts über run_code
+      hinaus. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-95690
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      TLS- oder DANE-Verbindungen. CVE-2026-107493 trifft nur Anwendungen, die
+      PEM_X509_INFO_read_bio_ex() einen bestehenden Stapel übergeben; OpenSSL selbst tut das nicht,
+      und fremde PEM-Daten gelangen nicht in die Sandbox. Folge wäre ein Absturz des einen Laufs; ein
+      Skript, das einen dieser Pfade selbst aufbaut, etwa über ctypes, gewinnt nichts über run_code
+      hinaus. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-84786
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      TLS- oder DANE-Verbindungen. CVE-2026-107493 trifft nur Anwendungen, die
+      PEM_X509_INFO_read_bio_ex() einen bestehenden Stapel übergeben; OpenSSL selbst tut das nicht,
+      und fremde PEM-Daten gelangen nicht in die Sandbox. Folge wäre ein Absturz des einen Laufs; ein
+      Skript, das einen dieser Pfade selbst aufbaut, etwa über ctypes, gewinnt nichts über run_code
+      hinaus. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-107493
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen. Ein Netz nach außen gibt es nicht; unter
+      Compose erreichen sich gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus
+      TLS- oder DANE-Verbindungen. CVE-2026-107493 trifft nur Anwendungen, die
+      PEM_X509_INFO_read_bio_ex() einen bestehenden Stapel übergeben; OpenSSL selbst tut das nicht,
+      und fremde PEM-Daten gelangen nicht in die Sandbox. Folge wäre ein Absturz des einen Laufs; ein
+      Skript, das einen dieser Pfade selbst aufbaut, etwa über ctypes, gewinnt nichts über run_code
+      hinaus. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen
+      Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-100101
+    purls:
+      - pkg:deb/debian/fonts-opensymbol
+      - pkg:deb/debian/libreoffice-base-core
+      - pkg:deb/debian/libreoffice-common
+      - pkg:deb/debian/libreoffice-core-nogui
+      - pkg:deb/debian/libreoffice-style-colibre
+      - pkg:deb/debian/libreoffice-uiconfig-common
+      - pkg:deb/debian/libreoffice-writer-nogui
+      - pkg:deb/debian/libuno-cppu3t64
+      - pkg:deb/debian/libuno-cppuhelpergcc3-3t64
+      - pkg:deb/debian/libuno-purpenvhelpergcc3-3t64
+      - pkg:deb/debian/libuno-sal3t64
+      - pkg:deb/debian/libuno-salhelpergcc3-3t64
+      - pkg:deb/debian/uno-libs-private
+      - pkg:deb/debian/ure
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Betroffen ist das Hilfsskript senddoc, das LibreOffice nur
+      für die Bedienfunktion „Datei > Senden > Dokument als E-Mail“ startet und das den Dateinamen des
+      Dokuments der Shell überlässt. soffice läuft im Image nur über fill_template.py mit --headless
+      --convert-to pdf, ohne Oberfläche und ohne Mailversand; der Name der umgewandelten Datei geht
+      vorher durch safe_name, das nur Buchstaben, Ziffern, Leerzeichen, Punkt, Binde- und Unterstrich
+      durchlässt. Ein Skript, das senddoc selbst mit präpariertem Namen startet, führt nur Befehle
+      aus, die es als uid 1000 ohnehin ausführen darf. Trivy meldet alle 14 Pakete des Quellpakets
+      libreoffice über die gemeinsame Version. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald soffice in der Sandbox anders als
+      zur PDF-Umwandlung aufgerufen wird.
+    expired_at: 2027-02-15
+  - id: CVE-2026-125709
+    purls:
+      - pkg:deb/debian/gcc-14-base
+      - pkg:deb/debian/libatomic1
+      - pkg:deb/debian/libgcc-s1
+      - pkg:deb/debian/libstdc++6
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libstdc++ nutzen LibreOffice und die C++-Teile der
+      Python-Wheels; gcc-14-base, libgcc-s1 und libatomic1 stammen aus demselben Quellpaket und meldet
+      Trivy über die gemeinsame Version. Die Lücke verlangt, dass Schreibvorgänge eines Dateistroms
+      wiederholt fehlschlagen, etwa bei voller Platte; dann kann der Puffer überlaufen, mit Absturz
+      oder Speicherbeschädigung im schreibenden Prozess. Schreibfehler herbeiführen kann in der
+      Sandbox nur das Skript des Laufs, das als uid 1000 ohnehin beliebigen Code ausführt, oder eine
+      Vorlage, deren Ausgabe den Speicherplatz des Laufs füllt; einen gezielten Überlauf steuert sie
+      damit nicht. Realistische Folge ist der Abbruch des einen Laufs. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+    expired_at: 2027-02-15
+  - id: CVE-2026-132138
+    purls:
+      - pkg:deb/debian/libsasl2-2
+      - pkg:deb/debian/libsasl2-modules-db
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libsasl2 kommt als Client-Bibliothek über libldap2 mit, eine
+      Abhängigkeit von libcurl. Beide Lücken liegen in Server-Mechanismen: CVE-2026-132138 im
+      SCRAM-Server, CVE-2026-129483 im SRP-Server. Kein Prozess des Images betreibt einen SASL-Server,
+      die Mechanismus-Plugins aus libsasl2-modules sind nicht installiert (libsasl2-modules-db enthält
+      nur das sasldb-Plugin). Ein Netz nach außen gibt es nicht; unter Compose erreichen sich
+      gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus LDAP-Verbindungen.
+      Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix
+      liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein SASL-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-129483
+    purls:
+      - pkg:deb/debian/libsasl2-2
+      - pkg:deb/debian/libsasl2-modules-db
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libsasl2 kommt als Client-Bibliothek über libldap2 mit, eine
+      Abhängigkeit von libcurl. Beide Lücken liegen in Server-Mechanismen: CVE-2026-132138 im
+      SCRAM-Server, CVE-2026-129483 im SRP-Server. Kein Prozess des Images betreibt einen SASL-Server,
+      die Mechanismus-Plugins aus libsasl2-modules sind nicht installiert (libsasl2-modules-db enthält
+      nur das sasldb-Plugin). Ein Netz nach außen gibt es nicht; unter Compose erreichen sich
+      gleichzeitige Sandboxen, aber kein Prozess des Images öffnet von sich aus LDAP-Verbindungen.
+      Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix
+      liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox
+      auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend
+      auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält
+      oder die Härtung entfällt, oder sobald in der Sandbox ein SASL-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-127039
+    purls:
+      - pkg:deb/debian/libgnutls30t64
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). GnuTLS kommt über libcurl3t64-gnutls und libldap2 als
+      Abhängigkeit von LibreOffice mit. CVE-2026-127040 liegt im Server-Teil
+      (RSA-PSK-ClientKeyExchange). CVE-2026-127039 und CVE-2026-127231 treffen das Verarbeiten der
+      Zertifikatskette einer Gegenstelle und greifen nur unter Speicherdruck, wenn eine
+      Speicheranforderung genau an dieser Stelle fehlschlägt. Kein Programm des Images betreibt einen
+      TLS-Server. Ein Netz nach außen gibt es nicht; unter Compose erreichen sich gleichzeitige
+      Sandboxen, aber kein Prozess des Images öffnet von sich aus TLS- oder LDAP-Verbindungen, über
+      die eine präparierte Kette ankäme. Folge wäre ein Absturz des einen Laufs; ein Skript, das
+      GnuTLS selbst präparierte Zertifikate gibt, gewinnt nichts über run_code hinaus. Debian trixie
+      hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu
+      bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald in der Sandbox ein TLS-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-127040
+    purls:
+      - pkg:deb/debian/libgnutls30t64
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). GnuTLS kommt über libcurl3t64-gnutls und libldap2 als
+      Abhängigkeit von LibreOffice mit. CVE-2026-127040 liegt im Server-Teil
+      (RSA-PSK-ClientKeyExchange). CVE-2026-127039 und CVE-2026-127231 treffen das Verarbeiten der
+      Zertifikatskette einer Gegenstelle und greifen nur unter Speicherdruck, wenn eine
+      Speicheranforderung genau an dieser Stelle fehlschlägt. Kein Programm des Images betreibt einen
+      TLS-Server. Ein Netz nach außen gibt es nicht; unter Compose erreichen sich gleichzeitige
+      Sandboxen, aber kein Prozess des Images öffnet von sich aus TLS- oder LDAP-Verbindungen, über
+      die eine präparierte Kette ankäme. Folge wäre ein Absturz des einen Laufs; ein Skript, das
+      GnuTLS selbst präparierte Zertifikate gibt, gewinnt nichts über run_code hinaus. Debian trixie
+      hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu
+      bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald in der Sandbox ein TLS-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-127231
+    purls:
+      - pkg:deb/debian/libgnutls30t64
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). GnuTLS kommt über libcurl3t64-gnutls und libldap2 als
+      Abhängigkeit von LibreOffice mit. CVE-2026-127040 liegt im Server-Teil
+      (RSA-PSK-ClientKeyExchange). CVE-2026-127039 und CVE-2026-127231 treffen das Verarbeiten der
+      Zertifikatskette einer Gegenstelle und greifen nur unter Speicherdruck, wenn eine
+      Speicheranforderung genau an dieser Stelle fehlschlägt. Kein Programm des Images betreibt einen
+      TLS-Server. Ein Netz nach außen gibt es nicht; unter Compose erreichen sich gleichzeitige
+      Sandboxen, aber kein Prozess des Images öffnet von sich aus TLS- oder LDAP-Verbindungen, über
+      die eine präparierte Kette ankäme. Folge wäre ein Absturz des einen Laufs; ein Skript, das
+      GnuTLS selbst präparierte Zertifikate gibt, gewinnt nichts über run_code hinaus. Debian trixie
+      hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu
+      bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald in der Sandbox ein TLS-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-128241
+    purls:
+      - pkg:deb/debian/libexpat1
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die Lücke liegt im Kommandozeilenwerkzeug xmlwf, dessen
+      Ausgabemodus -d symbolischen Links folgt. xmlwf gehört zum Paket expat, das nicht installiert
+      ist; im Image liegt nur die Bibliothek libexpat1, die Trivy über die gemeinsame Version des
+      Quellpakets meldet. Auch ein von einem Skript mitgebrachtes xmlwf überschriebe als uid 1000 nur
+      Dateien, die dieser Nutzer ohnehin schreiben darf. Debian trixie hat keinen Fix (Stand
+      22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald xmlwf ins Image gelangt.
+    expired_at: 2027-02-15
+  - id: CVE-2026-132998
+    purls:
+      - pkg:deb/debian/libeot0
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libeot kommt als Abhängigkeit von libreoffice-core-nogui mit;
+      LibreOffice liest damit eingebettete Schriften im Format Embedded OpenType, aber nur beim
+      ODF-Import (embedded-opentype). Der DOCX-Import, über den fill_template die Vorlage wandelt,
+      übergibt eingebettete Schriften ohne libeot. Ein ODF-Dokument erreicht soffice nur über ein
+      Skript von run_code, das damit nichts über run_code hinaus gewinnt. Als Rückfall bleibt die
+      Vorlage: In eine DOCX-Vorlage eingebettete ODF-Objekte prüft OPAA nicht, und die Vorlage lädt
+      nur hoch, wer das Recht „Vorlagen anlegen“ hat. Schlimmste Folge von Überlauf (CVE-2026-132998)
+      und Use-after-free (CVE-2026-132999) auf diesem Weg ist wie beim libxml2-Eintrag Code der
+      Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft: fill_template und
+      run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die Ausgaben in
+      /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang und findet
+      keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist das Recht
+      „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald
+      Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb
+      der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur
+      das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder
+      Geheimnisse erhält oder die Härtung entfällt, sobald soffice in der Sandbox ODF-Dokumente
+      fremder Herkunft umwandelt oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht
+      werden können.
+    expired_at: 2027-02-15
+  - id: CVE-2026-132999
+    purls:
+      - pkg:deb/debian/libeot0
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libeot kommt als Abhängigkeit von libreoffice-core-nogui mit;
+      LibreOffice liest damit eingebettete Schriften im Format Embedded OpenType, aber nur beim
+      ODF-Import (embedded-opentype). Der DOCX-Import, über den fill_template die Vorlage wandelt,
+      übergibt eingebettete Schriften ohne libeot. Ein ODF-Dokument erreicht soffice nur über ein
+      Skript von run_code, das damit nichts über run_code hinaus gewinnt. Als Rückfall bleibt die
+      Vorlage: In eine DOCX-Vorlage eingebettete ODF-Objekte prüft OPAA nicht, und die Vorlage lädt
+      nur hoch, wer das Recht „Vorlagen anlegen“ hat. Schlimmste Folge von Überlauf (CVE-2026-132998)
+      und Use-after-free (CVE-2026-132999) auf diesem Weg ist wie beim libxml2-Eintrag Code der
+      Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen Person läuft: fill_template und
+      run_code teilen sich die Sandbox eines Laufs, dieser Code kann also die Ausgaben in
+      /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen Ausgang und findet
+      keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert. Vertrauensgrenze ist das Recht
+      „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald
+      Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb
+      der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer der Sandbox nur
+      das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang oder
+      Geheimnisse erhält oder die Härtung entfällt, sobald soffice in der Sandbox ODF-Dokumente
+      fremder Herkunft umwandelt oder sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht
+      werden können.
     expired_at: 2027-02-15
