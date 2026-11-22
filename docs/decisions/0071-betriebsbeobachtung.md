@@ -141,19 +141,18 @@ als `connector`, die Originalablage als `original_store`). Die Werkzeugprüfung 
 ihres Chat-Modells selbst als `model_check` im Pfad `background`. Ihr Modell ist ohne Observation
 gebaut, damit eine Messung weder als Chat-Verkehr in `gen_ai.*` erscheint noch die Erreichbarkeit
 der Chat-Rolle bewegt; die Ergebnisklasse eines Modellfehlers liest `llm` aus dem Anbieter-Client.
-Ein Versuch, den OPAA vor dem Senden
-ablehnt (Zielprüfung, Anfragebudget), zählt nicht.
+Ein Versuch, den OPAA vor dem Senden ablehnt (Zielprüfung, Anfragebudget), zählt nicht.
 `opaa.outbound.requests` trägt `target`, `kind`, `outcome` aus Status oder Ausnahmeklasse
 (`auth_error`, `tls_error`, `throttled` u. a.; ein Abbruch an der Frist, auch durch Unterbrechung,
 ist `timeout`) und `path_class` (`interactive`, wenn eine Person wartet, sonst `background`);
-`opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host und Adresse sind nie ein
-Label, Chat und Embedding misst Spring AI, ausgenommen die Werkzeugprüfung. `kind` nimmt nur feste Werte aus dem Code an: bei
-`connector` den Schlüssel des Konnektortyps klein geschrieben (`confluence`, `dropbox`,
-`google_drive`, `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`),
-für Hilfsaufrufe ohne eigenen Konnektor die Zusatzwerte `oauth`, `service_account` und `mcp`, bei
-`directory` den Anbieter (`keycloak`), sonst `none`. Damit bleibt die Zahl der Reihen begrenzt:
-höchstens rund 370 Kombinationen aus Ziel, Art, Ergebnis und Pfad, je mit den SLO-Buckets aus
-Entscheidung 4; tatsächlich entstehen nur die Ergebnisse, die vorkommen.
+`opaa.outbound.throttled` zählt 429 und 503 mit `Retry-After`. Host und Adresse sind nie ein Label,
+Chat und Embedding misst Spring AI, ausgenommen die Werkzeugprüfung. `kind` nimmt nur feste Werte
+aus dem Code an: bei `connector` den Schlüssel des Konnektortyps klein geschrieben (`confluence`,
+`dropbox`, `google_drive`, `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`,
+`sharepoint`, `smb`), für Hilfsaufrufe ohne eigenen Konnektor die Zusatzwerte `oauth`,
+`service_account` und `mcp`, bei `directory` den Anbieter (`keycloak`), sonst `none`. Damit bleibt
+die Zahl der Reihen begrenzt: höchstens rund 370 Kombinationen aus Ziel, Art, Ergebnis und Pfad, je
+mit den SLO-Buckets aus Entscheidung 4; tatsächlich entstehen nur die Ergebnisse, die vorkommen.
 
 `opaa.model.role.available` liest den Zustand, den die Rollen für ihre Health-Gruppen halten, für
 Chat und Embedding den letzten echten Aufruf des Modells der Rolle je Instanz; die Probe der

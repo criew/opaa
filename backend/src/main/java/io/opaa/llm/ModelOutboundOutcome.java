@@ -6,8 +6,7 @@ import io.opaa.observability.OutboundOutcome;
 /**
  * The result class of a failed model call for a caller that measures the call itself in {@code
  * opaa.outbound.requests} (ADR-0071, Entscheidung 8): the status of the endpoint's answer when the
- * provider client carried one in the cause chain, else the class of the failure. Callers outside
- * {@code llm} use this instead of reading the provider client's exceptions themselves.
+ * provider client carried one in the cause chain, else the class of the failure.
  */
 public final class ModelOutboundOutcome {
 

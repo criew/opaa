@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.openai.core.http.Headers;
 import com.openai.errors.InternalServerException;
+import com.openai.errors.RateLimitException;
 import com.openai.errors.UnauthorizedException;
 import io.opaa.observability.OutboundOutcome;
 import java.net.SocketTimeoutException;
@@ -30,6 +31,14 @@ class ModelOutboundOutcomeTest {
             .build();
 
     assertThat(ModelOutboundOutcome.of(failed)).isEqualTo(OutboundOutcome.SERVER_ERROR);
+  }
+
+  @Test
+  void aRateLimitIsThrottled() {
+    RateLimitException limited =
+        RateLimitException.builder().headers(Headers.builder().build()).build();
+
+    assertThat(ModelOutboundOutcome.of(limited)).isEqualTo(OutboundOutcome.THROTTLED);
   }
 
   @Test
