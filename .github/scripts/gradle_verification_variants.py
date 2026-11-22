@@ -2,15 +2,15 @@
 """Adds the second genuine variant of artifacts that the Gradle Plugin Portal serves itself.
 
 The Plugin Portal redirects most requests to Maven Central, but serves plugin markers, plugin jars
-and at times POM and module files from its own storage; such a copy may differ from Central's. A
-build that resolves the plugin classpath from the Portal (CI, Docker) and one that resolves it
-through a Central mirror (a corporate proxy, a dev environment) then see different bytes for the
-same coordinates. For every artifact the Portal serves from its own storage, this script fetches
+and at times POM and module files from its own storage; such a copy may differ from Central's. The
+build asks Central first (settings.gradle.kts) and falls back to the Portal only for what Central
+does not host, so either copy can be the one a build sees. For every artifact the Portal serves
+from its own storage, this script fetches
 both origins' copies and records each checksum missing from the metadata as <also-trust>. Only
 the two origins are contacted, never a mirror; existing values are never changed or removed.
 
-It cannot add files a generation never resolved: gradlePluginPortal() reads POMs only, so the
-metadata must be generated through that repository (docs/renovate.md, Gradle-Prüfsummen).
+It cannot add files a generation never resolved: generate the metadata through the build's own
+pluginManagement repositories (docs/renovate.md, Gradle-Prüfsummen).
 
 Usage: gradle_verification_variants.py [path/to/verification-metadata.xml]
 """

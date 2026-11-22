@@ -176,20 +176,18 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
 
 - **Zwei echte Fassungen.** Das Plugin Portal leitet die meisten Anfragen an Maven Central weiter,
   liefert Plugin-Marker und einzelne POM- und Module-Dateien aber in eigener Fassung mit anderer
-  Prüfsumme. CI, Docker-Build und Renovate lösen den Plugin-Classpath über das Portal auf, eine
-  Umgebung mit Central-Spiegel (Firmen-Proxy, Agenten-Umgebung) bekommt die Central-Fassung. Für
-  jede Datei, die das Portal selbst ausliefert, stehen deshalb beide Prüfsummen in der Datei, die
-  zweite als `also-trust`. Das ergänzt `.github/scripts/gradle_verification_variants.py`; es fragt
+  Prüfsumme. `backend/settings.gradle.kts` fragt im `pluginManagement` zuerst `mavenCentral()`,
+  danach `gradlePluginPortal()`: CI, Docker-Build, Renovate und eine Umgebung mit Central-Spiegel
+  bekommen damit die Central-Fassung, das Portal nur, was Central nicht hat. Für jede Datei, die
+  das Portal selbst ausliefert, stehen trotzdem beide Prüfsummen in der Datei, die zweite als
+  `also-trust`. Das ergänzt `.github/scripts/gradle_verification_variants.py`; es fragt
   nur Portal und Central, nie einen Spiegel.
 - **Andere Dateien je Repository.** Gradle legt `gradlePluginPortal()` mit der Metadatenquelle
-  `mavenPom()` an, ein selbst deklariertes `maven { }` dagegen mit Gradle-Modul-Metadaten zuerst.
-  Über das Portal liest der Build für dieselbe Komponente also die POM samt Eltern-POM und folgt
-  erst dann dem Verweis auf die `.module`-Datei (`guava-parent`, `junit-bom-*.module`), über einen
-  Spiegel nur die `.module`-Datei. Einer Datei, die über einen Spiegel im `pluginManagement`
-  erzeugt ist, fehlen deshalb Dateien, die CI und Docker-Build brauchen; das Varianten-Skript
-  findet solche Lücken nicht. Erzeugt wird deshalb immer über `gradlePluginPortal()`, wie im
-  Workflow unten. Die Datei enthält für die Plugin-Komponenten POM- und Module-Datei, damit beide
-  Wege bauen.
+  `mavenPom()` an, `mavenCentral()` und ein selbst deklariertes `maven { }` dagegen mit
+  Gradle-Modul-Metadaten zuerst. Über das Portal liest der Build für dieselbe Komponente die POM
+  samt Eltern-POM, über Central nur die `.module`-Datei. Erzeugt wird über die Repositories des
+  Builds selbst, wie im Workflow unten; die Datei enthält für die Plugin-Komponenten POM- und
+  Module-Datei, damit auch ein Rückfall aufs Portal baut.
 - **Renovate pflegt die Datei mit.** Bei jedem Update des `gradle`-Managers führt Renovate selbst
   `./gradlew --write-verification-metadata sha256 dependencies` mit den neuen Versionen aus
   (dieselbe Erlaubnis `gradleWrapper` in `renovate.yml`) und committet die neuen Einträge im
@@ -198,10 +196,10 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   Code eines angehobenen Gradle-Plugins im Renovate-Container aus, der das Token hält. Dieses
   Risiko ist bewusst in Kauf genommen: Plugins kommen wie Bibliotheken nach drei Tagen Wartefrist
   und mergen wie diese automatisch (Majors ausgenommen).
-- **Nach einem Plugin-Update die Portal-Fassungen ergänzen.** Renovate löst Plugins über das
-  Portal auf und schreibt nur dessen Fassung. Fehlt die Central-Fassung eines neuen Markers,
-  scheitert jede Umgebung mit Central-Spiegel. Vor dem Merge deshalb
-  `gradle_verification_variants.py` laufen lassen oder den Workflow unten auf dem Branch starten.
+- **Nach einem Plugin-Update die Portal-Fassungen ergänzen.** Renovate löst Plugins wie der Build
+  zuerst über Central auf und schreibt nur diese Fassung. Für einen Rückfall aufs Portal vor dem
+  Merge `gradle_verification_variants.py` laufen lassen oder den Workflow unten auf dem Branch
+  starten.
 - **Was Renovate nicht erfasst.** Der Aufruf löst die Konfigurationen auf, führt aber keine Tasks
   aus. Dateien, die erst ein Task lädt, fehlen danach: der Formatierer von Spotless
   (`google-java-format`, seine Version hängt am Spotless-Plugin) und POM-Dateien, die das
