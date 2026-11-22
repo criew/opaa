@@ -143,7 +143,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
@@ -158,7 +158,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
@@ -230,12 +230,35 @@ class PdfDocumentFormatLimitsTest {
   @Test
   void brokenOperatorsPastTheLimitFailTheDocument() throws IOException {
     Path file = tempDir.resolve("broken-operators-limit.pdf");
-    writeContentPage(file, "", "Tf\n", (int) PdfReadBudget.MAX_BROKEN_OPERATORS + 1);
+    long limit = ParserLimitProperties.DEFAULTS.maxPdfBrokenOperators();
+    writeContentPage(file, "", "Tf\n", (int) limit + 1);
 
     assertThatThrownBy(
             () -> pipeline.run(DocumentFormatSource.ofFile(file, "broken-operators-limit.pdf")))
         .isInstanceOf(ParserLimitExceededException.class)
-        .hasMessageContaining(PdfReadBudget.MAX_BROKEN_OPERATORS + " broken operators");
+        .hasMessageContaining(limit + " broken operators");
+  }
+
+  /**
+   * A page without a table is read in two passes, rulings and flow text, and each counts the page's
+   * broken operators anew: a little over half the limit fails, a little under it is read.
+   */
+  @Test
+  void brokenOperatorsCountInEveryReadingPass() throws IOException {
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 0, 1_000));
+    Path over = tempDir.resolve("broken-operators-over-half.pdf");
+    writeContentPage(over, "BT /F1 12 Tf 72 720 Td (Text) Tj ET\n", "Tf\n", 501);
+    Path under = tempDir.resolve("broken-operators-under-half.pdf");
+    writeContentPage(under, "BT /F1 12 Tf 72 720 Td (Text) Tj ET\n", "Tf\n", 499);
+
+    assertThatThrownBy(() -> limited.run(DocumentFormatSource.ofFile(over, "over.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("1000 broken operators");
+    assertThat(limited.run(DocumentFormatSource.ofFile(under, "under.pdf")).outcome())
+        .isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
   }
 
   /** Broken operators below the limit are skipped as before; the text around them is read. */
@@ -246,7 +269,7 @@ class PdfDocumentFormatLimitsTest {
         file,
         "BT /F1 12 Tf 72 720 Td (Lesbarer Text) Tj ET\n",
         "Tf\n",
-        (int) PdfReadBudget.MAX_BROKEN_OPERATORS / 4);
+        (int) ParserLimitProperties.DEFAULTS.maxPdfBrokenOperators() / 4);
 
     DocumentFormatResult result =
         pipeline.run(DocumentFormatSource.ofFile(file, "broken-operators-few.pdf"));
@@ -267,7 +290,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         assertTimeoutPreemptively(
@@ -290,7 +313,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -307,7 +330,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -321,7 +344,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(6), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -339,7 +362,7 @@ class PdfDocumentFormatLimitsTest {
     var twoPages =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 2, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 2, 0, 0));
 
     assertThatThrownBy(() -> twoPages.run(DocumentFormatSource.ofFile(file, "pages.pdf")))
         .isInstanceOf(ParserLimitExceededException.class)
@@ -354,7 +377,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -429,7 +452,7 @@ class PdfDocumentFormatLimitsTest {
         out.write("712051>".getBytes(StandardCharsets.US_ASCII));
       }
       content.setItem(COSName.FILTER, COSName.ASCII_HEX_DECODE_ABBREVIATION);
-      PdfReadBudget budget = new PdfReadBudget(0, 0, 4, 4, 60, 0);
+      PdfReadBudget budget = new PdfReadBudget(0, 0, 4, 4, 60, 0, 0);
 
       budget.chargeContent(content);
       assertThatThrownBy(() -> budget.chargeContent(content))

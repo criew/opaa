@@ -179,11 +179,22 @@ class PdfPagesHostileInputTest {
   @Test
   void aPageUsingUpTheOperatorBudgetIsRefusedWhileItRenders() throws IOException {
     Path file = withContent("q Q\n".repeat(5_000).getBytes(StandardCharsets.US_ASCII));
-    PdfPages fewOperators = new PdfPages(new ParserLimitProperties(0, 0, 0, 1_000, 0, 0, 0, 0, 0));
+    PdfPages fewOperators =
+        new PdfPages(new ParserLimitProperties(0, 0, 0, 1_000, 0, 0, 0, 0, 0, 0));
 
     assertThatThrownBy(() -> fewOperators.render(file, (number, png) -> {}))
         .isInstanceOf(PdfPages.PageOverLimitException.class)
         .hasRootCauseMessage("PDF content exceeds the configured limit of 1000 operators");
+  }
+
+  @Test
+  void aPageOfBrokenOperatorsIsRefusedWhileItRenders() throws IOException {
+    Path file = withContent("Tf\n".repeat(1_001).getBytes(StandardCharsets.US_ASCII));
+    PdfPages fewBroken = new PdfPages(new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 0, 1_000));
+
+    assertThatThrownBy(() -> fewBroken.render(file, (number, png) -> {}))
+        .isInstanceOf(PdfPages.PageOverLimitException.class)
+        .hasRootCauseMessage("PDF content exceeds the configured limit of 1000 broken operators");
   }
 
   @Test
@@ -202,7 +213,7 @@ class PdfPagesHostileInputTest {
       }
       doc.save(file.toFile());
     }
-    PdfPages perPage = new PdfPages(new ParserLimitProperties(0, 0, 0, 1_000, 0, 0, 0, 0, 0));
+    PdfPages perPage = new PdfPages(new ParserLimitProperties(0, 0, 0, 1_000, 0, 0, 0, 0, 0, 0));
     List<Integer> rendered = new ArrayList<>();
 
     perPage.render(file, (number, png) -> rendered.add(number));
@@ -269,7 +280,7 @@ class PdfPagesHostileInputTest {
       }
       doc.save(file.toFile(), CompressParameters.DEFAULT_COMPRESSION);
     }
-    PdfPages oneSecond = new PdfPages(new ParserLimitProperties(0, 0, 0, 0, 0, 0, 1, 0, 0));
+    PdfPages oneSecond = new PdfPages(new ParserLimitProperties(0, 0, 0, 0, 0, 0, 1, 0, 0, 0));
     List<Integer> rendered = new ArrayList<>();
 
     oneSecond.render(
@@ -502,7 +513,8 @@ class PdfPagesHostileInputTest {
               square.setAppearance(appearances);
               page.getAnnotations().add(square);
             });
-    PdfPages fewOperators = new PdfPages(new ParserLimitProperties(0, 0, 0, 1_000, 0, 0, 0, 0, 0));
+    PdfPages fewOperators =
+        new PdfPages(new ParserLimitProperties(0, 0, 0, 1_000, 0, 0, 0, 0, 0, 0));
 
     assertThatThrownBy(() -> fewOperators.render(file, (number, png) -> {}))
         .isInstanceOf(PdfPages.PageOverLimitException.class)

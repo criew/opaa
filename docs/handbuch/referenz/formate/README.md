@@ -82,10 +82,11 @@ gemeinsame Obergrenzen:
   einer Seite im Speicher, bis die Seite fertig ist; ohne diese Grenze könnte eine wenige Kilobyte
   große Datei, die eine Zeichnung tausendfach auf eine Seite setzt, den Speicher füllen, bevor
   `max-text-characters` greift. Eine Seite darüber macht das ganze Dokument „fehlgeschlagen".
-- **Fehlerhafte Zeichenanweisungen eines PDF** (fest, 10.000): Eine Anweisung, die der Leser nicht
-  ausführen kann, etwa weil ihr Werte fehlen, überspringt er und protokolliert sie als Fehler.
-  Das kostet ein Vielfaches einer gültigen Anweisung; über alle Seiten und Lesedurchgänge darf ein
-  PDF deshalb höchstens so viele davon enthalten, sonst ist es „fehlgeschlagen". So kann eine
+- **Fehlerhafte Zeichenanweisungen eines PDF** (`max-pdf-broken-operators`): Eine Anweisung, die
+  der Leser nicht ausführen kann, etwa weil ihr Werte oder eine benannte Ressource fehlen,
+  überspringt er und protokolliert sie als Fehler. Das kostet ein Vielfaches einer gültigen
+  Anweisung. Jede zählt in jedem Lesedurchgang, der sie trifft; zusammen über alle Seiten und
+  Durchgänge darf ein PDF höchstens so viele haben, sonst ist es „fehlgeschlagen". So kann eine
   wenige Kilobyte große Datei mit Millionen fehlerhafter Anweisungen weder minutenlang lesen noch
   das Protokoll füllen.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
@@ -133,6 +134,7 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 | `max-pdf-parse-seconds` | 120 | Sekunden, die das Öffnen und Lesen eines PDF höchstens dauern darf |
 | `max-pdf-pages` | 10.000 | Seiten eines PDF |
 | `max-pdf-objects` | 1.000.000 | Objekte eines PDF: Einträge aller Querverweise, Objekte entpackter Objektströme und bei beschädigter Datei die gefundenen Objekte; Objekte in Objektströmen zählen doppelt |
+| `max-pdf-broken-operators` | 50.000 | Zeichenanweisungen, die der Leser nicht ausführen kann, über alle Seiten eines PDF; jede zählt in jedem Lesedurchgang, der sie trifft |
 
 ## Bewusst nicht zugelassen
 

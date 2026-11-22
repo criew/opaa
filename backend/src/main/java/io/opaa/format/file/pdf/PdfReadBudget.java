@@ -40,11 +40,11 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * since the budget was created. A single content stream may decode to no more than its own limit,
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
- * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. Operators PDFBox fails on
- * count against {@link #MAX_BROKEN_OPERATORS}. The objects PDFBox registers while it loads the file
- * count against their own limit. An image the renderer draws is checked by {@link #requireImage}
- * before PDFBox decodes it. Not thread-safe: one budget belongs to one read of one document or one
- * rendered page.
+ * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. Every operator PDFBox fails on
+ * counts against its own limit, again in every pass that meets it. The objects PDFBox registers
+ * while it loads the file count against their own limit. An image the renderer draws is checked by
+ * {@link #requireImage} before PDFBox decodes it. Not thread-safe: one budget belongs to one read
+ * of one document or one rendered page.
  */
 final class PdfReadBudget {
 
@@ -84,20 +84,13 @@ final class PdfReadBudget {
    */
   static final long MAX_PAGE_GLYPHS = 200_000;
 
-  /**
-   * The most operators of one document PDFBox may fail on, over every pass. PDFBox skips such an
-   * operator but builds an exception for it and logs it as an error with its stack trace, each many
-   * times the cost of a working operator, so the operator limit alone lets a page of millions of
-   * them take minutes and flood the log.
-   */
-  static final long MAX_BROKEN_OPERATORS = 10_000;
-
   private final long maxCharacters;
   private final long maxOperators;
   private final long maxContentBytes;
   private final long maxStreamBytes;
   private final long maxSeconds;
   private final long maxObjects;
+  private final long maxBrokenOperators;
   private final long maxNanos;
   private long deadline;
   private final Map<COSStream, Long> decodedLengths = new IdentityHashMap<>();
@@ -116,13 +109,15 @@ final class PdfReadBudget {
       long maxContentBytes,
       long maxStreamBytes,
       long maxSeconds,
-      long maxObjects) {
+      long maxObjects,
+      long maxBrokenOperators) {
     this.maxCharacters = maxCharacters;
     this.maxOperators = maxOperators;
     this.maxContentBytes = maxContentBytes;
     this.maxStreamBytes = maxStreamBytes;
     this.maxSeconds = maxSeconds;
     this.maxObjects = maxObjects;
+    this.maxBrokenOperators = maxBrokenOperators;
     // capped so the difference in requireTime() cannot overflow
     this.maxNanos = Math.min(TimeUnit.SECONDS.toNanos(maxSeconds), Long.MAX_VALUE / 4);
     this.deadline = System.nanoTime() + maxNanos;
@@ -135,11 +130,13 @@ final class PdfReadBudget {
         limits.maxPdfContentBytes(),
         limits.maxPdfStreamBytes(),
         limits.maxPdfParseSeconds(),
-        limits.maxPdfObjects());
+        limits.maxPdfObjects(),
+        limits.maxPdfBrokenOperators());
   }
 
   static PdfReadBudget unbounded() {
     return new PdfReadBudget(
+        Long.MAX_VALUE,
         Long.MAX_VALUE,
         Long.MAX_VALUE,
         Long.MAX_VALUE,
@@ -194,13 +191,16 @@ final class PdfReadBudget {
   }
 
   /**
-   * Counts one operator PDFBox failed to process; throws once the document has failed on more than
-   * {@link #MAX_BROKEN_OPERATORS}.
+   * Counts one operator PDFBox failed to process, in the pass that met it: a page read in two
+   * passes counts each of its broken operators twice. Throws once the document's count, over all
+   * pages and passes, exceeds its limit.
    */
   void countBrokenOperator() {
-    if (++brokenOperators > MAX_BROKEN_OPERATORS) {
+    if (++brokenOperators > maxBrokenOperators) {
       throw new ParserLimitExceededException(
-          "PDF content has more than " + MAX_BROKEN_OPERATORS + " broken operators");
+          "PDF content exceeds the configured limit of "
+              + maxBrokenOperators
+              + " broken operators");
     }
   }
 
