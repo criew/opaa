@@ -40,10 +40,11 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * since the budget was created. A single content stream may decode to no more than its own limit,
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
- * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. The objects PDFBox registers
- * while it loads the file count against their own limit. An image the renderer draws is checked by
- * {@link #requireImage} before PDFBox decodes it. Not thread-safe: one budget belongs to one read
- * of one document or one rendered page.
+ * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. Operators PDFBox fails on
+ * count against {@link #MAX_BROKEN_OPERATORS}. The objects PDFBox registers while it loads the file
+ * count against their own limit. An image the renderer draws is checked by {@link #requireImage}
+ * before PDFBox decodes it. Not thread-safe: one budget belongs to one read of one document or one
+ * rendered page.
  */
 final class PdfReadBudget {
 

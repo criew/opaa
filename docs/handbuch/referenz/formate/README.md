@@ -82,6 +82,12 @@ gemeinsame Obergrenzen:
   einer Seite im Speicher, bis die Seite fertig ist; ohne diese Grenze könnte eine wenige Kilobyte
   große Datei, die eine Zeichnung tausendfach auf eine Seite setzt, den Speicher füllen, bevor
   `max-text-characters` greift. Eine Seite darüber macht das ganze Dokument „fehlgeschlagen".
+- **Fehlerhafte Zeichenanweisungen eines PDF** (fest, 10.000): Eine Anweisung, die der Leser nicht
+  ausführen kann, etwa weil ihr Werte fehlen, überspringt er und protokolliert sie als Fehler.
+  Das kostet ein Vielfaches einer gültigen Anweisung; über alle Seiten und Lesedurchgänge darf ein
+  PDF deshalb höchstens so viele davon enthalten, sonst ist es „fehlgeschlagen". So kann eine
+  wenige Kilobyte große Datei mit Millionen fehlerhafter Anweisungen weder minutenlang lesen noch
+  das Protokoll füllen.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
   Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
   über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.

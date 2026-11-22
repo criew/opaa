@@ -214,10 +214,9 @@ class PdfDocumentFormatLimitsTest {
   }
 
   /**
-   * Regression guard for #3845: a few kilobytes of deflated content inflate to eight million
-   * {@code Tf} without operands. Each one costs PDFBox an exception (and, in production, an error
-   * logged with its stack trace), far below the operator limit; each reading pass took tens of
-   * seconds.
+   * Regression guard for #3845: a few kilobytes of deflated content inflate to eight million {@code
+   * Tf} without operands. Each one costs PDFBox an exception (and, in production, an error logged
+   * with its stack trace), far below the operator limit; each reading pass took tens of seconds.
    */
   @Test
   void aPageOfBrokenOperatorsFailsQuickly() throws IOException {

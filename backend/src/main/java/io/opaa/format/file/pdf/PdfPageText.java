@@ -210,7 +210,8 @@ final class PdfPageText {
   /**
    * Writes every word through {@link #separateRaisedDigits} and counts every glyph, every operator
    * and every content stream it is about to parse against the budget before PDFBox acts on it, so a
-   * page that draws one form over and over, or nests forms that draw nothing, stops early.
+   * page that draws one form over and over, or nests forms that draw nothing, stops early; every
+   * operator PDFBox fails on is counted as well.
    */
   private static class RaisedDigitStripper extends PDFTextStripper {
 
@@ -235,6 +236,13 @@ final class PdfPageText {
     protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
       budget.countOperator(operands);
       super.processOperator(operator, operands);
+    }
+
+    @Override
+    protected void operatorException(Operator operator, List<COSBase> operands, IOException e)
+        throws IOException {
+      budget.countBrokenOperator();
+      super.operatorException(operator, operands, e);
     }
 
     @Override

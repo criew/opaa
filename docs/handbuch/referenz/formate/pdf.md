@@ -143,7 +143,8 @@ Stelle nicht umrahmt ist.
 ## 6. Grenzwerte
 
 Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
-Rechenschritte, gelesene Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite,
+Rechenschritte, fehlerhafte Zeichenanweisungen, gelesene Inhaltsdaten, Lesezeit und Seiten je
+Dokument, für die Zeichen je Seite,
 für die Größe eines einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt
 werden, und für die Gliederung
 ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
