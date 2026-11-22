@@ -1,3 +1,12 @@
+// Plugins resolve their own dependencies from Maven Central first; the Plugin Portal only has to
+// serve the plugin markers, so an outage of its Central proxy does not break the build.
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 rootProject.name = "backend"
 
 // opaa-api: the OpenAPI spec, the Java generator config (incl. the typeMappings
