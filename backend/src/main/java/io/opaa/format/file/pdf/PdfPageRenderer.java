@@ -234,6 +234,13 @@ final class PdfPageRenderer {
     }
 
     @Override
+    protected void operatorException(Operator operator, List<COSBase> operands, IOException e)
+        throws IOException {
+      budget.countBrokenOperator();
+      super.operatorException(operator, operands, e);
+    }
+
+    @Override
     public void processPage(PDPage page) throws IOException {
       budget.chargePage(page);
       super.processPage(page);

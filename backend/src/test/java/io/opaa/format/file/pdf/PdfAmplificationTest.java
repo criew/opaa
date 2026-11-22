@@ -37,10 +37,10 @@ class PdfAmplificationTest {
   private static final int BOMB_BYTES = 16 * 1024 * 1024;
 
   private static final ParserLimitProperties FOUR_MIB_STREAMS =
-      new ParserLimitProperties(0, 0, 0, 0, 0, 4L * 1024 * 1024, 0, 0, 0);
+      new ParserLimitProperties(0, 0, 0, 0, 0, 4L * 1024 * 1024, 0, 0, 0, 0);
 
   private static final ParserLimitProperties TEN_THOUSAND_OBJECTS =
-      new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 10_000);
+      new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 10_000, 0);
 
   @TempDir Path tempDir;
 

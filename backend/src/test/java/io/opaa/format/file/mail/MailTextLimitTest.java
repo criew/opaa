@@ -66,7 +66,7 @@ class MailTextLimitTest {
         new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 1)),
         new MailProperties(0, 0, 0),
         Clock.systemUTC(),
-        new ParserLimitProperties(maxTextCharacters, 0, 0, 0, 0, 0, 0, 0, 0));
+        new ParserLimitProperties(maxTextCharacters, 0, 0, 0, 0, 0, 0, 0, 0, 0));
   }
 
   private Path eml(String name, String body) throws IOException {

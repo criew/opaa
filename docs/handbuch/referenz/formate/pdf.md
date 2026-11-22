@@ -143,12 +143,12 @@ Stelle nicht umrahmt ist.
 ## 6. Grenzwerte
 
 Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
-Rechenschritte, gelesene Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite,
-für die Größe eines einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt
-werden, und für die Gliederung
-([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
-Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
-Dateigrößengrenze des Konnektors.
+Rechenschritte, fehlerhafte Zeichenanweisungen (`max-pdf-broken-operators`), gelesene
+Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite, für die Größe eines
+einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt werden, und für die
+Gliederung ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des
+gemeinsamen Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift
+zusätzlich die Dateigrößengrenze des Konnektors.
 
 **Zeichnungslastige PDFs** wie Bebauungs- oder Lagepläne bestehen aus Millionen von
 Zeichenanweisungen je Seite und können `max-pdf-operators`, `max-pdf-stream-bytes`,
