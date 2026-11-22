@@ -929,3 +929,374 @@ vulnerabilities:
       Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
       Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt.
     expired_at: 2027-02-15
+
+  # Sandbox image, Debian trixie without a fix (triage of 22.11.2026, one statement per package
+  # group). Every entry is bound to the Debian packages of the group by purl.
+  - id: CVE-2026-124709
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen und die ohne Ausgang keinen Server erreichen
+      würde. CVE-2026-107493 trifft nur Anwendungen, die PEM_X509_INFO_read_bio_ex() einen bestehenden
+      Stapel übergeben; OpenSSL selbst tut das nicht, und fremde PEM-Daten gelangen nicht in die
+      Sandbox. Folge wäre ein Absturz des einen Laufs; ein Skript, das einen dieser Pfade selbst
+      aufbaut, etwa über ctypes, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-35190
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen und die ohne Ausgang keinen Server erreichen
+      würde. CVE-2026-107493 trifft nur Anwendungen, die PEM_X509_INFO_read_bio_ex() einen bestehenden
+      Stapel übergeben; OpenSSL selbst tut das nicht, und fremde PEM-Daten gelangen nicht in die
+      Sandbox. Folge wäre ein Absturz des einen Laufs; ein Skript, das einen dieser Pfade selbst
+      aufbaut, etwa über ctypes, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-95690
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen und die ohne Ausgang keinen Server erreichen
+      würde. CVE-2026-107493 trifft nur Anwendungen, die PEM_X509_INFO_read_bio_ex() einen bestehenden
+      Stapel übergeben; OpenSSL selbst tut das nicht, und fremde PEM-Daten gelangen nicht in die
+      Sandbox. Folge wäre ein Absturz des einen Laufs; ein Skript, das einen dieser Pfade selbst
+      aufbaut, etwa über ctypes, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-84786
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen und die ohne Ausgang keinen Server erreichen
+      würde. CVE-2026-107493 trifft nur Anwendungen, die PEM_X509_INFO_read_bio_ex() einen bestehenden
+      Stapel übergeben; OpenSSL selbst tut das nicht, und fremde PEM-Daten gelangen nicht in die
+      Sandbox. Folge wäre ein Absturz des einen Laufs; ein Skript, das einen dieser Pfade selbst
+      aufbaut, etwa über ctypes, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-107493
+    purls:
+      - pkg:deb/debian/libssl3t64
+      - pkg:deb/debian/openssl
+      - pkg:deb/debian/openssl-provider-legacy
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libssl3t64 nutzen Python (Module ssl und hashlib) und
+      libcurl4t64, eine Abhängigkeit von LibreOffice; das Werkzeug openssl und den Legacy-Provider
+      ruft kein Prozess des Images auf. CVE-2026-124709 (Speicher wächst im QUIC-Server),
+      CVE-2026-35190 (TLS-1.3-Server mit Suite-B-Flag) und CVE-2026-95690 (DTLS-Endpunkt) treffen nur
+      einen solchen Dienst; kein Programm des Images betreibt einen TLS-, DTLS- oder QUIC-Server, und
+      Python bietet weder QUIC noch DTLS an. CVE-2026-84786 trifft nur einen TLS-Client mit
+      DANE-Prüfung, die weder Python noch libcurl nutzen und die ohne Ausgang keinen Server erreichen
+      würde. CVE-2026-107493 trifft nur Anwendungen, die PEM_X509_INFO_read_bio_ex() einen bestehenden
+      Stapel übergeben; OpenSSL selbst tut das nicht, und fremde PEM-Daten gelangen nicht in die
+      Sandbox. Folge wäre ein Absturz des einen Laufs; ein Skript, das einen dieser Pfade selbst
+      aufbaut, etwa über ctypes, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-, DTLS- oder QUIC-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-100101
+    purls:
+      - pkg:deb/debian/fonts-opensymbol
+      - pkg:deb/debian/libreoffice-base-core
+      - pkg:deb/debian/libreoffice-common
+      - pkg:deb/debian/libreoffice-core-nogui
+      - pkg:deb/debian/libreoffice-style-colibre
+      - pkg:deb/debian/libreoffice-uiconfig-common
+      - pkg:deb/debian/libreoffice-writer-nogui
+      - pkg:deb/debian/libuno-cppu3t64
+      - pkg:deb/debian/libuno-cppuhelpergcc3-3t64
+      - pkg:deb/debian/libuno-purpenvhelpergcc3-3t64
+      - pkg:deb/debian/libuno-sal3t64
+      - pkg:deb/debian/libuno-salhelpergcc3-3t64
+      - pkg:deb/debian/uno-libs-private
+      - pkg:deb/debian/ure
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Betroffen ist das Hilfsskript senddoc, das LibreOffice nur
+      für die Bedienfunktion „Datei > Senden > Dokument als E-Mail“ startet und das den Dateinamen des
+      Dokuments der Shell überlässt. soffice läuft im Image nur über fill_template.py mit --headless
+      --convert-to pdf, ohne Oberfläche und ohne Mailversand; der Name der umgewandelten Datei geht
+      vorher durch safe_name, das nur Buchstaben, Ziffern, Leerzeichen, Punkt, Binde- und Unterstrich
+      durchlässt. Ein Skript, das senddoc selbst mit präpariertem Namen startet, führt nur Befehle
+      aus, die es als uid 1000 ohnehin ausführen darf. Trivy meldet alle 14 Pakete des Quellpakets
+      libreoffice über die gemeinsame Version. Debian trixie hat keinen Fix (Stand 22.11.2026). Neu zu
+      bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag entfällt), das Paket in einem
+      Image außerhalb der Sandbox auftaucht (der purl gilt in jedem Debian-Image; heute ist das außer
+      der Sandbox nur das Backend auf distroless, das keines dieser Pakete trägt), die Sandbox Ausgang
+      oder Geheimnisse erhält oder die Härtung entfällt, oder sobald soffice in der Sandbox anders als
+      zur PDF-Umwandlung aufgerufen wird.
+    expired_at: 2027-02-15
+  - id: CVE-2026-125709
+    purls:
+      - pkg:deb/debian/gcc-14-base
+      - pkg:deb/debian/libatomic1
+      - pkg:deb/debian/libgcc-s1
+      - pkg:deb/debian/libstdc++6
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libstdc++ nutzen LibreOffice und die C++-Teile der
+      Python-Wheels; gcc-14-base, libgcc-s1 und libatomic1 stammen aus demselben Quellpaket und meldet
+      Trivy über die gemeinsame Version. Die Lücke verlangt, dass Schreibvorgänge eines Dateistroms
+      wiederholt fehlschlagen, etwa bei voller Platte; dann kann der Puffer überlaufen, mit Absturz
+      oder Speicherbeschädigung im schreibenden Prozess. Schreibfehler herbeiführen kann in der
+      Sandbox nur das Skript des Laufs, das als uid 1000 ohnehin beliebigen Code ausführt, oder eine
+      Vorlage, deren Ausgabe den Speicherplatz des Laufs füllt; einen gezielten Überlauf steuert sie
+      damit nicht. Realistische Folge ist der Abbruch des einen Laufs. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+    expired_at: 2027-02-15
+  - id: CVE-2026-132138
+    purls:
+      - pkg:deb/debian/libsasl2-2
+      - pkg:deb/debian/libsasl2-modules-db
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libsasl2 kommt als Client-Bibliothek über libldap2 mit, eine
+      Abhängigkeit von libcurl. Beide Lücken liegen in Server-Mechanismen: CVE-2026-132138 im
+      SCRAM-Server, CVE-2026-129483 im SRP-Server. Kein Prozess des Images betreibt einen SASL-Server,
+      die Mechanismus-Plugins aus libsasl2-modules sind nicht installiert (libsasl2-modules-db enthält
+      nur das sasldb-Plugin), und ohne Ausgang baut auch kein Client eine LDAP-Verbindung auf. Debian
+      trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald in der Sandbox ein SASL-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-129483
+    purls:
+      - pkg:deb/debian/libsasl2-2
+      - pkg:deb/debian/libsasl2-modules-db
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libsasl2 kommt als Client-Bibliothek über libldap2 mit, eine
+      Abhängigkeit von libcurl. Beide Lücken liegen in Server-Mechanismen: CVE-2026-132138 im
+      SCRAM-Server, CVE-2026-129483 im SRP-Server. Kein Prozess des Images betreibt einen SASL-Server,
+      die Mechanismus-Plugins aus libsasl2-modules sind nicht installiert (libsasl2-modules-db enthält
+      nur das sasldb-Plugin), und ohne Ausgang baut auch kein Client eine LDAP-Verbindung auf. Debian
+      trixie hat keinen Fix (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann
+      neu bauen, Eintrag entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl
+      gilt in jedem Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das
+      keines dieser Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung
+      entfällt, oder sobald in der Sandbox ein SASL-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-127039
+    purls:
+      - pkg:deb/debian/libgnutls30t64
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). GnuTLS kommt über libcurl3t64-gnutls und libldap2 als
+      Abhängigkeit von LibreOffice mit. CVE-2026-127040 liegt im Server-Teil
+      (RSA-PSK-ClientKeyExchange). CVE-2026-127039 und CVE-2026-127231 treffen das Verarbeiten der
+      Zertifikatskette einer Gegenstelle und greifen nur unter Speicherdruck, wenn eine
+      Speicheranforderung genau an dieser Stelle fehlschlägt. Kein Programm des Images betreibt einen
+      TLS-Server, und ohne Ausgang erreicht kein Client eine Gegenstelle, die eine präparierte Kette
+      liefern könnte. Folge wäre ein Absturz des einen Laufs; ein Skript, das GnuTLS selbst
+      präparierte Zertifikate gibt, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-127040
+    purls:
+      - pkg:deb/debian/libgnutls30t64
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). GnuTLS kommt über libcurl3t64-gnutls und libldap2 als
+      Abhängigkeit von LibreOffice mit. CVE-2026-127040 liegt im Server-Teil
+      (RSA-PSK-ClientKeyExchange). CVE-2026-127039 und CVE-2026-127231 treffen das Verarbeiten der
+      Zertifikatskette einer Gegenstelle und greifen nur unter Speicherdruck, wenn eine
+      Speicheranforderung genau an dieser Stelle fehlschlägt. Kein Programm des Images betreibt einen
+      TLS-Server, und ohne Ausgang erreicht kein Client eine Gegenstelle, die eine präparierte Kette
+      liefern könnte. Folge wäre ein Absturz des einen Laufs; ein Skript, das GnuTLS selbst
+      präparierte Zertifikate gibt, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-127231
+    purls:
+      - pkg:deb/debian/libgnutls30t64
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). GnuTLS kommt über libcurl3t64-gnutls und libldap2 als
+      Abhängigkeit von LibreOffice mit. CVE-2026-127040 liegt im Server-Teil
+      (RSA-PSK-ClientKeyExchange). CVE-2026-127039 und CVE-2026-127231 treffen das Verarbeiten der
+      Zertifikatskette einer Gegenstelle und greifen nur unter Speicherdruck, wenn eine
+      Speicheranforderung genau an dieser Stelle fehlschlägt. Kein Programm des Images betreibt einen
+      TLS-Server, und ohne Ausgang erreicht kein Client eine Gegenstelle, die eine präparierte Kette
+      liefern könnte. Folge wäre ein Absturz des einen Laufs; ein Skript, das GnuTLS selbst
+      präparierte Zertifikate gibt, gewinnt nichts über run_code hinaus. Debian trixie hat keinen Fix
+      (Stand 22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald in der Sandbox ein TLS-Dienst läuft.
+    expired_at: 2027-02-15
+  - id: CVE-2026-128241
+    purls:
+      - pkg:deb/debian/libexpat1
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). Die Lücke liegt im Kommandozeilenwerkzeug xmlwf, dessen
+      Ausgabemodus -d symbolischen Links folgt. xmlwf gehört zum Paket expat, das nicht installiert
+      ist; im Image liegt nur die Bibliothek libexpat1, die Trivy über die gemeinsame Version des
+      Quellpakets meldet. Auch ein von einem Skript mitgebrachtes xmlwf überschriebe als uid 1000 nur
+      Dateien, die dieser Nutzer ohnehin schreiben darf. Debian trixie hat keinen Fix (Stand
+      22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald xmlwf ins Image gelangt.
+    expired_at: 2027-02-15
+  - id: CVE-2026-132998
+    purls:
+      - pkg:deb/debian/libeot0
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libeot kommt als Abhängigkeit von libreoffice-core-nogui mit;
+      LibreOffice liest damit in Dokumente eingebettete Schriften im Format Embedded OpenType. Fremde
+      Eingabe dafür ist nur die Vorlage, die fill_template per soffice in PDF wandelt und die nur
+      hochlädt, wer das Recht „Vorlagen anlegen“ hat; Skripte von run_code gewinnen über libeot nichts
+      hinzu. Schlimmste Folge von Überlauf (CVE-2026-132998) und Use-after-free (CVE-2026-132999) ist
+      wie beim libxml2-Eintrag Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen
+      Person läuft: fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann
+      also die Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen
+      Ausgang und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert.
+      Vertrauensgrenze ist das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand
+      22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+    expired_at: 2027-02-15
+  - id: CVE-2026-132999
+    purls:
+      - pkg:deb/debian/libeot0
+    statement: >-
+      Nur im Sandbox-Image (sandbox/Dockerfile): ein Wegwerf-Container je Agentenlauf ohne Ausgang und
+      ohne Geheimnisse, Skripte als uid 1000, mit Laufzeit- und Lebensdauergrenze; run_code führt dort
+      ohnehin ungeprüften Code aus. Voraussetzung ist die Härtung des Sandbox-Dienstes:
+      no_new_privileges und gedroppte Capabilities wie SYS_ADMIN (sandbox/config.toml, unter
+      Kubernetes das OpenSandbox-Chart). libeot kommt als Abhängigkeit von libreoffice-core-nogui mit;
+      LibreOffice liest damit in Dokumente eingebettete Schriften im Format Embedded OpenType. Fremde
+      Eingabe dafür ist nur die Vorlage, die fill_template per soffice in PDF wandelt und die nur
+      hochlädt, wer das Recht „Vorlagen anlegen“ hat; Skripte von run_code gewinnen über libeot nichts
+      hinzu. Schlimmste Folge von Überlauf (CVE-2026-132998) und Use-after-free (CVE-2026-132999) ist
+      wie beim libxml2-Eintrag Code der Vorlagen-Autorin, der als uid 1000 im Lauf einer anderen
+      Person läuft: fill_template und run_code teilen sich die Sandbox eines Laufs, dieser Code kann
+      also die Ausgaben in /workspace/out verändern, bevor OPAA sie prüft und anhängt. Er hat keinen
+      Ausgang und findet keine Geheimnisse, die Prüfungen der Anhänge gelten unverändert.
+      Vertrauensgrenze ist das Recht „Vorlagen anlegen“. Debian trixie hat keinen Fix (Stand
+      22.11.2026). Neu zu bewerten, sobald Debian einen Fix liefert (dann neu bauen, Eintrag
+      entfällt), das Paket in einem Image außerhalb der Sandbox auftaucht (der purl gilt in jedem
+      Debian-Image; heute ist das außer der Sandbox nur das Backend auf distroless, das keines dieser
+      Pakete trägt), die Sandbox Ausgang oder Geheimnisse erhält oder die Härtung entfällt, oder
+      sobald Vorlagen von Personen ohne Vorlagenrecht eingebracht werden können.
+    expired_at: 2027-02-15
