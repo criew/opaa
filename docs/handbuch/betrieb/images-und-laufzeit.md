@@ -300,5 +300,8 @@ Beim Stopp nimmt das Backend keine neuen Verbindungen an und lässt laufende Anf
   das Modell zu warten. Die Person sieht einen Hinweis, die Runde wird nicht gespeichert, und die
   Frage steht wieder im Eingabefeld.
 - **Mails** liegen bis zur Zustellung in der Datenbank und gehen nicht verloren.
+- **Das Frontend** nimmt beim Stopp keine neuen Verbindungen mehr an, beantwortet aber noch die
+  nächste Anfrage auf einer gerade benutzten Verbindung und schließt sie danach. Ein Client oder
+  Proxy, der seine Verbindung weiterverwendet, verliert dabei keine Anfrage.
 - Bei einem Rolling Update stellt der Helm-Chart die Zeitfenster passend ein
   ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).
