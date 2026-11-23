@@ -6,17 +6,24 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import java.time.Duration;
 import java.util.SplittableRandom;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.reader.ExtractedTextFormatter;
 
-/** Blank-line collapsing with Spring AI's result, without its stack depth per blank line. */
+/**
+ * Blank-line collapsing with the result of the two regular expressions in the class comment,
+ * without the regex engine's stack depth per blank line.
+ */
 class AdjacentBlankLinesTest {
 
   private static final char[] ALPHABET = {
     'a', ' ', '\t', '\f', '\n', '\n', '\n', '\r', '\r', '\u0085', '\u2028', '\u2029'
   };
 
+  /** The reference: both expressions through the regex engine, safe on short inputs only. */
+  private static String byRegex(String text) {
+    return text.replaceAll("(?m)(^ *\n)", "\n").replaceAll("(?m)^$([\r\n]+?)(^$[\r\n]+?^)+", "$1");
+  }
+
   @Test
-  void everyShortTextComesOutAsSpringsFormatterLeavesIt() {
+  void everyShortTextComesOutAsTheRegularExpressionsLeaveIt() {
     SplittableRandom random = new SplittableRandom(3379);
     for (int i = 0; i < 200_000; i++) {
       char[] chars = new char[random.nextInt(0, 32)];
@@ -27,7 +34,7 @@ class AdjacentBlankLinesTest {
 
       assertThat(AdjacentBlankLines.trim(text))
           .as("%s", text.chars().mapToObj(Integer::toHexString).toList())
-          .isEqualTo(ExtractedTextFormatter.defaults().format(text));
+          .isEqualTo(byRegex(text));
     }
   }
 

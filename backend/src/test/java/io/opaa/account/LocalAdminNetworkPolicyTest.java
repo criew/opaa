@@ -68,4 +68,15 @@ class LocalAdminNetworkPolicyTest {
     assertThat(LocalAdminNetworkPolicy.isNumericAddress("256.0.0.1")).isFalse();
     assertThat(LocalAdminNetworkPolicy.isNumericAddress("idp.example")).isFalse();
   }
+
+  // regression guard for CVE-2026-59333: an address of the other family whose leading bytes
+  // coincide with a configured network must not match (Spring Security >= 7.1.3)
+  @Test
+  void anAddressOfTheOtherFamilyNeverMatchesByItsLeadingBytes() {
+    LocalAdminNetworkPolicy ipv4Only = policyFor(List.of("10.0.0.0/8"));
+    LocalAdminNetworkPolicy ipv6Only = policyFor(List.of("2001:db8::/32"));
+
+    assertThat(ipv4Only.permitsAdminSignIn("a00::1")).isFalse();
+    assertThat(ipv6Only.permitsAdminSignIn("32.1.13.184")).isFalse();
+  }
 }

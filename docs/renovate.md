@@ -33,7 +33,7 @@ jederzeit auch lokal ausführen (unten).
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)), das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) und das ZAP-Image in `zap-baseline.yml` (`ZAP_IMAGE`, ebenso; nur Release-Tags `X.Y.Z`, ohne Auto-Merge, weil der Digest die Scan-Regeln festlegt, eine neue ZAP-Version also neue Befunde bringen kann, und der Scan kein Required Check ist) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
-angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle —
+angehoben, die kein Build-Skript direkt deklariert (z. B. Bouncy Castle —
 siehe den `dependencyManagement`-Block in `backend/build.gradle.kts`), genügt ein bloßer
 `[versions]`-Eintrag nicht: Der `gradle`-Manager leitet seine Koordinaten aus `[libraries]` ab und
 sieht eine Version ohne `module` überhaupt nicht. Der Pin bekäme dann nie einen Update-PR und
