@@ -813,14 +813,10 @@ dependencyManagement {
         mavenBom(libs.opentelemetry.bom.get().toString())
         mavenBom(libs.opentelemetry.alpha.bom.get().toString())
     }
-    // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
-    // by spring-boot-dependencies and the Bouncy Castle versions Tika's parser modules resolve
-    // (CVE-2026-8763, CVE-2026-13506). Each entry states its own removal
-    // condition in libs.versions.toml, which is also where the versions live.
+    // Security overrides for artifacts nothing here declares directly: the Bouncy Castle versions
+    // Tika's parser modules resolve (CVE-2026-8763, CVE-2026-13506). Each entry states its own
+    // removal condition in libs.versions.toml, which is also where the versions live.
     dependencies {
-        dependency(libs.tomcat.embed.core.get().toString())
-        dependency(libs.tomcat.embed.el.get().toString())
-        dependency(libs.tomcat.embed.websocket.get().toString())
         dependency(libs.bouncycastle.bcprov.get().toString())
         dependency(libs.bouncycastle.bcutil.get().toString())
         dependency(libs.bouncycastle.bcpkix.get().toString())
