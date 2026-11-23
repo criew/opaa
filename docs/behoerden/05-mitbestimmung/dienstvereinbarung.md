@@ -334,9 +334,10 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
 3. Jede Antwort eines Agenten und jede Datei daraus ist ein Entwurf. Wer sie verwendet, prüft sie
    vorher; eine Entscheidung stützt sich nie allein auf sie.
 4. Die Nutzung je Person, je Space und je angelegtem Agenten wird nicht erhoben; die
-   Betriebsmetriken zählen Agentenläufe nur installationsweit, getrennt nach mitgeliefertem und
-   angelegten Agenten: Ergebnis, Laufdauer, Werkzeugaufrufe je Werkzeug, nicht belegbare
-   Quellenangaben und Abweisungen nach Grund, nichts davon je Person
+   Betriebsmetriken zählen Agentenläufe nur installationsweit: Ergebnis, Laufdauer und nicht
+   belegbare Quellenangaben, getrennt nach mitgeliefertem und angelegten Agenten, dazu
+   Werkzeugaufrufe je Werkzeug, Abweisungen nach Grund sowie belegte und verfügbare Plätze für
+   gleichzeitige Läufe im Zeitverlauf, nichts davon je Person
    ({{faktenblatt:datenkatalog#operational-metrics}}).
    Nur solange ein Lauf läuft, hält OPAA fest, wer ihn gestartet hat, damit gleichzeitige Läufe
    je Person begrenzt sind und nur diese Person den Lauf stoppen kann; der Eintrag verschwindet

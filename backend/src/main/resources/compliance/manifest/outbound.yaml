@@ -422,11 +422,11 @@ dataFlows:
     viaOutboundProxy: false
     target: >-
       Der Sandbox-Dienst des Betriebs (OpenSandbox-Server) neben dem Backend, der je Agentenlauf
-      einen Container ohne Internetzugang startet und am Ende des Laufs löscht. Unter Kubernetes
-      nimmt die Sandbox nur Verbindungen vom Sandbox-Dienst an und baut selbst keine auf; unter
-      Docker Compose erreichen sich gleichzeitig laufende Sandboxen gegenseitig, auch die anderer
-      Personen. Getrennt voneinander sind sie nur unter Kubernetes mit einem CNI, das
-      NetworkPolicies durchsetzt
+      einen Container startet und am Ende des Laufs löscht. Unter Kubernetes mit einem CNI, das
+      NetworkPolicies durchsetzt, hat die Sandbox keinen Internetzugang, nimmt nur Verbindungen
+      vom Sandbox-Dienst an, baut selbst keine auf und ist von anderen Sandboxen getrennt; ohne ein
+      solches CNI gilt keine dieser Sperren. Unter Docker Compose hat sie keinen Internetzugang,
+      aber gleichzeitig laufende Sandboxen erreichen sich gegenseitig, auch die anderer Personen
     data: >-
       Die Python-Skripte, die das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
       es aus den gefundenen Textstellen übernimmt; beim Werkzeug fill_template die DOCX-Datei einer

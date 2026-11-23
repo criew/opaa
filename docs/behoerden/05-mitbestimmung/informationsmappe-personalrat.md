@@ -211,9 +211,10 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   Modell. Den Stempel sieht nur die Person an ihrer Antwort und in ihrer Selbstauskunft; eine Datei
   nimmt ihn beim Weitergeben mit ([Agentenergebnis prüfen](../../handbuch/benutzer/agentenergebnis-pruefen.md)).
 - **Keine Nutzungserhebung je Person:** Die Nutzung je Person, je Space und je angelegtem Agenten
-  wird nicht erhoben; die Betriebsmetriken zählen Agentenläufe nur installationsweit, getrennt nach
-  mitgeliefertem und angelegten Agenten: Ergebnis, Laufdauer, Werkzeugaufrufe je Werkzeug, nicht
-  belegbare Quellenangaben und Abweisungen nach Grund, nichts davon je Person
+  wird nicht erhoben; die Betriebsmetriken zählen Agentenläufe nur installationsweit: Ergebnis,
+  Laufdauer und nicht belegbare Quellenangaben, getrennt nach mitgeliefertem und angelegten
+  Agenten, dazu Werkzeugaufrufe je Werkzeug, Abweisungen nach Grund sowie belegte und verfügbare
+  Plätze für gleichzeitige Läufe im Zeitverlauf, nichts davon je Person
   ({{faktenblatt:datenkatalog#operational-metrics}}). Wer wann welchen Agenten aufgerufen hat,
   steht nur an der Antwort im Chat der Person, nicht im Protokoll. Einzige Ausnahme ist die Dauer
   eines Laufs: Solange er läuft, steht in der Datenbank, wer ihn gestartet hat, damit gleichzeitige
@@ -227,9 +228,10 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   mit Zweck, Frist und den Abfragewegen, die es gibt und nicht gibt.
 - **Datenfluss:** Ein Agent schickt dem Sprachmodell wie der Chat Frage, Verlauf und Textstellen,
   dazu die Ergebnisse seiner Schritte ({{faktenblatt:datenfluesse#chat-model}}). Code eines Agenten
-  läuft nur in einer abgeschotteten Umgebung ohne Internetzugang. Unter Docker Compose
-  erreichen sich gleichzeitig laufende Sandboxen gegenseitig, auch die anderer Personen; getrennt
-  voneinander sind sie nur unter Kubernetes mit einem CNI, das NetworkPolicies durchsetzt
+  läuft nur in einer abgeschotteten Sandbox: unter Kubernetes mit einem CNI, das NetworkPolicies
+  durchsetzt, ohne Internetzugang, nur mit Verbindungen vom Sandbox-Dienst und von anderen
+  Sandboxen getrennt; unter Docker Compose ohne Internetzugang, aber gleichzeitig laufende
+  Sandboxen erreichen sich gegenseitig, auch die anderer Personen
   ({{faktenblatt:datenfluesse#code-sandbox}}).
 
 - **Agentenverzeichnis:** Welche Agenten und Vorlagen es gibt und was sie tun, zeigt OPAA selbst:

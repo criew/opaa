@@ -127,7 +127,7 @@ Die Person findet die Kennung, wenn sie die Schritte unter der Antwort aufklappt
 | Antwort mit Schritten im Chat | Antwort, Schritte mit Teilfrage und Trefferzahl, erzeugte Dateien, Laufkennung, Fassungsstempel | nur die Person | wie der Chat |
 | Schrittprotokoll | Werkzeug, Ergebnis, Trefferzahl, Dauer, Abbruchgrund je Schritt; kein Konto, keine Teilfrage | Systemverwaltung mit Laufkennung und Anlass | einstellbar, [Datenschutz einstellen](../administration/datenschutz.md) |
 | Sandboxprotokoll | Ergebnis, Dauer, Zahl der Skripte und Dateien je Sandbox; kein Skript, kein Dateiinhalt | wie Schrittprotokoll | nie länger als das Schrittprotokoll |
-| Betriebsmetriken | Zahl und Dauer der Agentenläufe nach Ergebnis, getrennt nach mitgeliefertem und angelegten Agenten, Werkzeugaufrufe nach Werkzeug und Ergebnis, nicht belegbare Quellenangaben, abgewiesene Läufe nach Grund; ohne Person, Space oder Namen eines Agenten | Betrieb über das Monitoring | wie das Monitoring sie hält |
+| Betriebsmetriken | Zahl und Dauer der Agentenläufe nach Ergebnis und nicht belegbare Quellenangaben, beide getrennt nach mitgeliefertem und angelegten Agenten; Werkzeugaufrufe nach Werkzeug und Ergebnis, abgewiesene Läufe nach Grund, belegte und verfügbare Plätze für gleichzeitige Läufe; ohne Person, Space oder Namen eines Agenten | Betrieb über das Monitoring | wie das Monitoring sie hält |
 | Nachweisprotokoll | jeder Abruf des Schritt- oder Sandboxprotokolls, Anlegen und Ändern von Agenten und Vorlagen; nicht das Aufrufen eines Agenten | Revision | allgemeine Protokollfrist |
 
 Die Auskunft über die Datenerhebung beschreibt diese Bestände Feld für Feld, mit Zweck, Frist und

@@ -155,7 +155,8 @@ settings:
     effect: >-
       Ob Agenten die Werkzeuge run_code und fill_template angeboten bekommen: Skripte des
       Chat-Modells und das Befüllen von Dokumentvorlagen laufen dann je Agentenlauf in einer Sandbox
-      ohne Netz beim Sandbox-Dienst; erzeugte Dateien werden Anhang der Antwort. Ausgeschaltet gibt
+      ohne Internetzugang beim Sandbox-Dienst, abgeschottet wie im Datenfluss code-sandbox
+      beschrieben; erzeugte Dateien werden Anhang der Antwort. Ausgeschaltet gibt
       es weder Client noch Werkzeuge
     bearings: [DATA_FLOW]
     notes:
