@@ -6,7 +6,7 @@ spring-ai = "2.0.3"
 # block in build.gradle.kts). Spring Boot 4.1.3 pins jackson-bom 3.1.8 and jackson-2-bom 2.21.8;
 # the override keeps the newer 3.2.x / 2.22.x lines the build runs on, so removing it would
 # downgrade Jackson. Remove these entries, their [libraries] entries and the override once
-# Spring Boot pins jackson-bom >= 3.2.3 and jackson-2-bom >= 2.22.4.
+# Spring Boot pins jackson-bom and jackson-2-bom at least as new as jackson3 and jackson2 below.
 jackson3 = "3.2.3"
 jackson2 = "2.22.4"
 # Override of the OpenTelemetry BOM spring-boot-dependencies imports (see the dependencyManagement
