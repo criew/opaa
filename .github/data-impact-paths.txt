@@ -130,6 +130,9 @@ backend/src/main/java/io/opaa/query/runlog/**/*.java
 backend/src/main/java/io/opaa/instance/InstanceRegistry.java
 backend/src/main/java/io/opaa/connection/token/ConnectionLifecycleSettings.java
 backend/src/main/java/io/opaa/library/PrivateLibraryDeletion*.java
+# Responsible party of an asset: the period until the lock and the lock with its visibility effect
+backend/src/main/java/io/opaa/asset/AssetResponsibility*.java
+backend/src/main/java/io/opaa/asset/ResponsibilityLock*.java
 
 # Service accounts and access tokens: lifecycle, consents, reminders
 backend/src/main/java/io/opaa/externalaccess/token/**/*.java

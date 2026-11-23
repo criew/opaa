@@ -496,9 +496,12 @@ data:
     title: Betriebsmetriken beim Prometheus des Betriebs
     purpose: >-
       Betrieb, Störungserkennung und Kapazitätsplanung: Zähler, Dauern und Zustände der
-      Installation (Anfragen, Modellaufrufe und Tokens, Indizierung, Warteschlangen,
-      Hintergrundläufe, ausgehende Aufrufe, abgewiesene Anmeldungen), abgefragt am
-      Prometheus-Endpunkt des Management-Ports
+      Installation, abgefragt am Prometheus-Endpunkt des Management-Ports, unter anderem zu
+      Anfragen, Modellaufrufen und Tokens, Indizierung, Warteschlangen, Hintergrundläufen,
+      ausgehenden Aufrufen, abgewiesenen Anmeldungen, Agentenläufen (Ergebnis, Laufdauer,
+      Werkzeugaufrufe je Werkzeug, nicht belegbare Quellenangaben, Abweisungen nach Grund),
+      Sitzungen des Live-Diktats nach Art ihres Endes und an den Speicherkontingenten
+      abgewiesenen Chat-Anhängen nach Kontingent
     personalReference: NONE
     tables: []
     personExcluded: >-
@@ -522,7 +525,7 @@ data:
       höchstens nach Instanz (host) und Build, nie für eine Person oder ein einzelnes Objekt; Tags
       nehmen nur Werte aus
       festen, kleinen Wertemengen an (Modell, Anbieter, Rolle, Operation, Konnektortyp,
-      Ergebnisklasse, Job- oder Queue-Name), nie Kennungen von Personen, Spaces, Bibliotheken,
+      Ergebnisklasse, Werkzeug, Abweisungsgrund, Job- oder Queue-Name), nie Kennungen von Personen, Spaces, Bibliotheken,
       Dokumenten oder Chats, Adressen, Suchbegriffe oder Inhalte. Erfolgreiche Anmeldungen und
       aktive Personen werden nicht gezählt, abgewiesene Anmeldungen nur nach Art und Grund; private
       Bibliotheken zählen unter einer Sammelangabe statt unter ihrem Quellentyp
@@ -531,6 +534,12 @@ data:
         Metriken sind eine Auswertungsmöglichkeit im Sinn der Mitbestimmung; in sehr kleinen
         Installationen kann auch eine installationsweite Zahl auf wenige Personen deuten, feine
         Zeitauflösung und Aufteilung nach Kanal bleiben deshalb aus den mitgelieferten Dashboards
+      - >-
+        Einige Abweisungsgründe betreffen die Grenze einer einzelnen Person: person_limit bei
+        Agentenläufen (die Person hat ihren Anteil gleichzeitiger Läufe ausgeschöpft), person_busy
+        beim Live-Diktat (die Person diktiert bereits) und quota=account bei Chat-Anhängen (das
+        Kontingent des Kontos ist voll). Sie zählen ohne Kennung der Person, zeigen aber
+        installationsweit, wie oft Personen an ihre eigene Grenze stoßen
       - Aufbewahrung und Zugriff auf Prometheus und Grafana regelt der Betrieb
 nonPersonalTables:
   organizations: [id, name, created_at]
