@@ -128,6 +128,10 @@ spring:
     # Observations carry no content (ADR-0071): no prompt, answer, retrieved chunk or tool argument
     # goes into a log, span or metric. Set explicitly so a changed library default cannot switch
     # one on; SpringAiContentPropertiesTest requires every such property Spring AI declares here.
+    audio:
+      transcription:
+        observations:
+          log-transcript: false
     chat:
       observations:
         log-prompt: false

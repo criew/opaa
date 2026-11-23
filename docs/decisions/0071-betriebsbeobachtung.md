@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-22 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
+Akzeptiert · zuletzt geändert 2026-11-23 · ergänzt ADR-0030, ADR-0053, ADR-0055, ADR-0059, ADR-0060 und ADR-0066
 
 ## Kontext
 
@@ -55,8 +55,8 @@ unterscheiden, zählt OPAA selbst: `opaa.model.tokens` trägt den Zweck eines Au
 Chat-Modells (Antwort, Zerlegung, Notiz, Nebenaufgaben, Agent) und als `model` den Namen aus der
 Modellverwaltung, nicht den Namen, den die Antwort des Anbieters nennt. Titel und Metadaten teilen
 sich den Zweck Nebenaufgaben, damit keine Reihe die neuen Chats eines Zeitraums zählt. Jede
-Inhalts-Property von Spring AI (`log-prompt`, `log-completion`, `log-query-response`,
-`include-content`) steht in `application.yml` ausdrücklich auf `false`, damit ein geänderter
+Inhalts-Property von Spring AI (`log-prompt`, `log-completion`, `log-transcript`,
+`log-query-response`, `include-content`) steht in `application.yml` ausdrücklich auf `false`, damit ein geänderter
 Standardwert der Bibliothek keine Inhalte in Observations, Logs oder Spans bringt; eine Prüfung
 verlangt jede solche Property, die ein Spring-AI-Modul auf dem Klassenpfad deklariert.
 

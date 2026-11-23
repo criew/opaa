@@ -29,6 +29,7 @@ class SpringAiContentPropertiesTest {
   /** The content switches of Spring AI's observations. */
   static final List<String> KEYS =
       List.of(
+          "spring.ai.audio.transcription.observations.log-transcript",
           "spring.ai.chat.observations.log-prompt",
           "spring.ai.chat.observations.log-completion",
           "spring.ai.chat.client.observations.log-prompt",
