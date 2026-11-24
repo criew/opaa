@@ -24,9 +24,10 @@ import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
  * server's body and headers, so neither its content nor its {@code Location} goes further.
  *
  * <p>Built for synchronous callers: a cancel of the outer call does not reach the inner one, which
- * ends by its own copy of the timeouts or when its body is closed; closing the body cancels the
- * inner call, so an abandoned stream does not keep the model writing. A refusal is logged at WARN
- * once per endpoint and instance, then at DEBUG (ADR-0053, je Instanz).
+ * ends by its own copy of the timeouts or when its body is closed; a close that fails while the
+ * body is still being read cancels the inner call, so an abandoned stream does not keep the model
+ * writing. A refusal is logged at WARN once per endpoint and instance, then at DEBUG (ADR-0053, je
+ * Instanz).
  */
 public final class ModelRedirectRefusal implements OpenAiHttpClientBuilderCustomizer {
 
@@ -96,9 +97,10 @@ public final class ModelRedirectRefusal implements OpenAiHttpClientBuilderCustom
   }
 
   /**
-   * The inner call's body; closing it cancels the inner call. A body closed before its end - a
-   * streamed answer the reader abandoned - thereby closes the connection to the model at once, also
-   * when another thread is still reading it. On a fully read body the cancel changes nothing.
+   * The inner call's body; a close that OkHttp cannot complete cancels the inner call. OkHttp's own
+   * close fails while another thread is still reading the body - a streamed answer abandoned
+   * mid-read - and would leave the connection to the model open; the cancel closes it. Any other
+   * close stays OkHttp's, so a connection whose answer ended goes back to the pool.
    */
   private static final class CancelOnClose extends ResponseBody {
 
@@ -128,9 +130,10 @@ public final class ModelRedirectRefusal implements OpenAiHttpClientBuilderCustom
     @Override
     public void close() {
       try {
-        call.cancel();
-      } finally {
         delegate.close();
+      } catch (RuntimeException e) {
+        call.cancel();
+        throw e;
       }
     }
   }

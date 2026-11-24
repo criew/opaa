@@ -16,6 +16,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,16 +34,20 @@ import reactor.core.Disposable;
  * Disposing the streamed answer of the chat client, built exactly as {@link
  * ActiveChatModelResolver} builds it, closes the connection to the model: a model that keeps
  * writing chunks sees its reader gone within seconds, instead of generating the rest of the answer
- * for nobody.
+ * for nobody. A streamed answer that ends regularly leaves its connection open for the next call.
  */
 class ModelClientStreamCancelTest {
 
   private static final Duration CHUNK_INTERVAL = Duration.ofMillis(500);
   private static final int MAX_CHUNKS = 60;
+  private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
   private final ExecutorService serverThreads = Executors.newCachedThreadPool();
   private final CountDownLatch firstChunkWritten = new CountDownLatch(1);
   private final CountDownLatch readerGone = new CountDownLatch(1);
+  private final Set<Integer> clientPorts = ConcurrentHashMap.newKeySet();
+  private volatile int chunksPerAnswer = MAX_CHUNKS;
+  private volatile Duration chunkInterval = CHUNK_INTERVAL;
   private HttpServer model;
 
   @BeforeEach
@@ -51,16 +57,17 @@ class ModelClientStreamCancelTest {
     model.createContext(
         "/v1/chat/completions",
         exchange -> {
+          clientPorts.add(exchange.getRemoteAddress().getPort());
           exchange.getRequestBody().readAllBytes();
           exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
           exchange.sendResponseHeaders(200, 0);
           OutputStream out = exchange.getResponseBody();
           try {
-            for (int index = 0; index < MAX_CHUNKS; index++) {
+            for (int index = 0; index < chunksPerAnswer; index++) {
               out.write(chunk(index).getBytes(StandardCharsets.UTF_8));
               out.flush();
               firstChunkWritten.countDown();
-              Thread.sleep(CHUNK_INTERVAL.toMillis());
+              Thread.sleep(chunkInterval.toMillis());
             }
             out.write("data: [DONE]\n\n".getBytes(StandardCharsets.UTF_8));
             out.close();
@@ -102,6 +109,24 @@ class ModelClientStreamCancelTest {
     assertThat(readerGone.await(5, TimeUnit.SECONDS))
         .as("the model's connection is closed once the stream is disposed")
         .isTrue();
+  }
+
+  // regression guard for #3855: closing a regularly ended stream must not cancel the call - the
+  // cancel would drop the keep-alive connection and every answer would open a new one
+  @Test
+  void aRegularlyEndedStreamLeavesItsConnectionForTheNextCall() {
+    chunksPerAnswer = 3;
+    chunkInterval = Duration.ZERO;
+    ChatClient client = chatResolver().resolveChatClient();
+
+    for (int answer = 0; answer < 3; answer++) {
+      assertThat(client.prompt("Frage").stream().content().collectList().block(TIMEOUT))
+          .containsExactly("Teil 0 ", "Teil 1 ", "Teil 2 ");
+    }
+
+    assertThat(clientPorts)
+        .as("the three streamed answers share one connection to the model")
+        .hasSize(1);
   }
 
   private static String chunk(int index) {
