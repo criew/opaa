@@ -1226,9 +1226,10 @@ führt sie lokal aus (`pnpm test`, siehe oben) oder startet den Workflow per `wo
 Der Job baut Backend- und Frontend-Image zunächst separat mit einem GitHub-Actions-Layer-Cache
 (`docker/build-push-action`, `cache-from/to: type=gha`) und lädt sie lokal, bevor
 `scripts/run-e2e.mjs` mit `E2E_SKIP_BUILD=true` läuft und diese Images wiederverwendet, statt sie
-erneut zu bauen. **Das 10-Minuten-Budget aus #231 bezieht sich auf den Suite-Lauf selbst** (aktuell
-wenige Sekunden), nicht auf den Image-Build davor — der Job hat dafür ein eigenes, großzügigeres
-`timeout-minutes`-Budget.
+erneut zu bauen. Das `timeout-minutes`-Budget des Jobs deckt Image-Build, Chromium-Suite und
+Firefox-Rauchtest gemeinsam ab. Es muss auch einen Image-Build mit kaltem Layer-Cache tragen, wie
+ihn jede Änderung an den Abhängigkeiten auslöst: Der Backend-Build dauert dann Minuten statt
+Sekunden.
 
 Bei Fehlschlägen (inkl. Timeout/Cancel) werden Playwright-HTML-Report, Traces/Screenshots sowie die
 Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen. Jeder fehlgeschlagene
