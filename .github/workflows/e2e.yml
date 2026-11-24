@@ -30,10 +30,10 @@ env:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    # Covers the image build, the Chromium suite and the Firefox smoke run.
-    # The image build is outside the suite budget (see e2e/README.md); with a
-    # cold layer cache, as after every dependency change, it takes minutes
-    # instead of seconds, and the limit has to hold for that case too.
+    # Covers the image build, the Chromium suite and the Firefox smoke run
+    # (job budget in e2e/README.md, section CI). With a cold layer cache, as
+    # after every dependency change, the image build takes minutes instead of
+    # seconds, and the limit has to hold for that case too.
     # Re-evaluate this number as the suite grows.
     timeout-minutes: 35
     steps:
