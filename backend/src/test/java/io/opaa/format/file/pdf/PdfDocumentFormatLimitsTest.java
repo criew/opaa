@@ -24,6 +24,9 @@ import java.util.Arrays;
 import java.util.List;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSInteger;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -458,6 +461,47 @@ class PdfDocumentFormatLimitsTest {
       assertThatThrownBy(() -> budget.chargeContent(content))
           .isInstanceOf(ParserLimitExceededException.class);
     }
+  }
+
+  /**
+   * {@code '} and {@code "} move to the next line through {@code T*}, which PDFBox runs with no
+   * operand list at all; the text on both sides of them is read.
+   */
+  @Test
+  void textShownOnTheNextLineByQuoteOperatorsIsRead() throws IOException {
+    Path file = tempDir.resolve("quote-operators.pdf");
+    writeContentPage(
+        file,
+        "BT /F1 12 Tf 14 TL 72 700 Td (Erste Zeile) Tj (Zweite Zeile) ' 1 0 (Dritte Zeile) \" ET\n",
+        "",
+        0);
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofFile(file, "quote.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks())
+        .extracting(chunk -> chunk.getText())
+        .anySatisfy(
+            text -> assertThat(text).contains("Erste Zeile", "Zweite Zeile", "Dritte Zeile"));
+  }
+
+  /**
+   * A missing operand list, a null operand and a null array element each count without failing, and
+   * the operator limit still holds: one, then one plus the inner array's two elements, reach the
+   * limit of four, and the next operator passes it.
+   */
+  @Test
+  void theBudgetCountsOperatorsWithNullOperandsAgainstItsLimit() {
+    PdfReadBudget budget = new PdfReadBudget(0, 4, 0, 0, 60, 0, 0);
+    COSArray withNull = new COSArray();
+    withNull.add((COSBase) null);
+    withNull.add(COSInteger.ONE);
+
+    budget.countOperator(null);
+    budget.countOperator(Arrays.asList(null, withNull));
+    assertThatThrownBy(() -> budget.countOperator(null))
+        .isInstanceOf(ParserLimitExceededException.class);
   }
 
   /** The same probe as a form's content, behind the abbreviated filter name {@code /DCT}. */

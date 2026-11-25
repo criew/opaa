@@ -173,13 +173,16 @@ final class PdfReadBudget {
 
   /**
    * Counts one processed operator and the elements of its array operands; throws once the document
-   * has used up its operators or its time.
+   * has used up its operators or its time. {@code operands} is null when PDFBox runs an operator on
+   * its own behalf, as the {@code T*} inside {@code '}; such an operator still counts as one.
    */
   void countOperator(List<COSBase> operands) {
     long units = 1;
-    for (COSBase operand : operands) {
-      if (operand instanceof COSArray array) {
-        units += elements(array);
+    if (operands != null) {
+      for (COSBase operand : operands) {
+        if (operand instanceof COSArray array) {
+          units += elements(array);
+        }
       }
     }
     operators += units;
