@@ -16,14 +16,15 @@ const PDFJS_VERSION: string = JSON.parse(
 export const PDFJS_ASSET_DIR = `assets/pdfjs-${PDFJS_VERSION}`
 
 /**
- * The files pdf.js loads at runtime besides its bundled code: the worker, emitted as `.js` so it is
+ * The files pdf.js loads at runtime besides its bundled code: the worker of the legacy build
+ * (src/features/library/utils/pdfjs.ts), emitted as `.js` so it is
  * served as JavaScript whatever nginx's mime table says about `.mjs`, and the JavaScript fallbacks
  * of the JBIG2/CCITT and JPEG 2000 decoders that run instead of WebAssembly (`useWasm: false`),
  * with their licenses. Keys are paths below {@link PDFJS_ASSET_DIR}.
  */
-function pdfjsFiles(): Record<string, string> {
+export function pdfjsFiles(): Record<string, string> {
   const files: Record<string, string> = {
-    'pdf.worker.min.js': join(PDFJS_ROOT, 'build', 'pdf.worker.min.mjs'),
+    'pdf.worker.min.js': join(PDFJS_ROOT, 'legacy', 'build', 'pdf.worker.min.mjs'),
   }
   for (const name of readdirSync(join(PDFJS_ROOT, 'wasm'))) {
     if (name.endsWith('_nowasm_fallback.js') || name.startsWith('LICENSE')) {
