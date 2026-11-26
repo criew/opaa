@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { ThemeProvider } from '@mui/material/styles'
 import { createAppTheme } from '../theme/theme'
 import BrandMark from './BrandMark'
-import { WORDMARK } from './brandMarkPaths'
+import { MARK, WORDMARK } from './brandMarkPaths'
 import { OPAA_BRANDING, useBrandingStore } from '../branding/brandingStore'
 
 const theme = createAppTheme('light')
@@ -147,11 +147,19 @@ describe('BrandMark', () => {
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('shows only the decorative mark in the rail', () => {
+  it('shows only the decorative underlined o in the rail for a configured name', () => {
+    useBrandingStore.setState({
+      branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
+    })
     const { container } = renderMark(<BrandMark logoOnly />)
 
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.queryByText('Landesamt-Assistent')).not.toBeInTheDocument()
     expect(container.querySelectorAll('svg')).toHaveLength(1)
+    expect(container.querySelector('svg')).toHaveAttribute(
+      'viewBox',
+      `0 0 ${MARK.width} ${MARK.height}`,
+    )
   })
 
   it('draws the standard wordmark without a tagline at every size', () => {

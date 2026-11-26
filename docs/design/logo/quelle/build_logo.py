@@ -3,8 +3,9 @@
 
 The wordmark "opaa" and the mark (an underlined "o") are converted to outlines, so no file needs the
 font at display time. The first "a" and its underline are Hellblau, as in the concept's artwork; the
-rest is Dunkelblau, or white on dark surfaces. No tagline: the long form stays out of public use. Needs `pnpm install` in frontend/ and e2e/ plus `pnpm run install:browsers` in e2e/
-(Prettier, Playwright's Chromium; CHROMIUM_PATH names another Chromium binary).
+rest is Dunkelblau, or white on dark surfaces. No tagline: the long form stays out of public use.
+Needs `pnpm install` in frontend/ and e2e/ plus `pnpm run install:browsers` in e2e/ (Prettier,
+Playwright's Chromium; CHROMIUM_PATH names another Chromium binary).
 Run from the repository root after changing anything here:
 
     pip install fonttools==4.69.1 brotli==1.2.1 && python3 docs/design/logo/quelle/build_logo.py
