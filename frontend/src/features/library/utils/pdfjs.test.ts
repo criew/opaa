@@ -3,7 +3,10 @@ import { loadPdf, pdfLoadOptions } from './pdfjs'
 
 const getDocument = vi.fn(() => ({ promise: Promise.resolve() }))
 
-vi.mock('pdfjs-dist', () => ({ GlobalWorkerOptions: { workerSrc: '' }, getDocument }))
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+  GlobalWorkerOptions: { workerSrc: '' },
+  getDocument,
+}))
 
 const ASSETS = new URL(`/${__PDFJS_ASSET_DIR__}/`, document.baseURI).href
 
@@ -20,7 +23,7 @@ describe('loadPdf', () => {
   })
 
   it('serves the worker and the image decoder fallbacks from the app origin', async () => {
-    const pdfjs = await import('pdfjs-dist')
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
     await loadPdf(new ArrayBuffer(1))
 
