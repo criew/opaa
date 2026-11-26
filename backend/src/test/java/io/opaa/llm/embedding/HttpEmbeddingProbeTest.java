@@ -22,7 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class HttpEmbeddingProbeTest {
 
-  private static final List<String> ONE_TEXT = List.of("opaa Probeeinbettung");
+  private static final List<String> ONE_TEXT = List.of("OPAA Probeeinbettung");
 
   private final HttpEmbeddingProbe probe = new HttpEmbeddingProbe(JsonMapper.builder().build());
   private HttpServer server;

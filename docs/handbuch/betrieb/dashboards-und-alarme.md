@@ -69,7 +69,7 @@ metrics:
   den `ServiceMonitor` voraus. Einzelne Gruppen und die Schwellen beschreibt
   [Alarme im Chart](kubernetes.md#alarme).
 - **Dashboards:** `metrics.grafanaDashboards.enabled` legt je Dashboard eine ConfigMap mit dem Label
-  `grafana_dashboard: "1"` und dem Ordner `opaa` an. Weil die Kacheln die Alarme lesen, verlangt der
+  `grafana_dashboard: "1"` und dem Ordner `OPAA` an. Weil die Kacheln die Alarme lesen, verlangt der
   Chart dafür `metrics.prometheusRule.enabled`. Sind alle Alarmgruppen abgeschaltet, aus denen eine
   Kachel ihren Zustand liest (`metrics.prometheusRule.groups`), zeigt sie „nicht gemessen“ statt
   dauerhaft Grün; das gilt etwa für „Chat“ ohne die Gruppe `chat`. Der Sidecar des Grafana aus

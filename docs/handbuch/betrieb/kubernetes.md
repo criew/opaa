@@ -1798,7 +1798,7 @@ Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen `OpaaBac
 | `metrics.runbookBaseUrl` | die Alarmseite dieses Handbuchs im Netz | Adresse der Alarmseite für `runbook_url` und die Links der Dashboards |
 | `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt `metrics.prometheusRule.enabled` |
 | `metrics.grafanaDashboards.label`, `labelValue` | `grafana_dashboard`, `"1"` | Label, nach dem der Sidecar ConfigMaps auswählt |
-| `metrics.grafanaDashboards.folder` | `opaa` | Ordner im Grafana (Annotation `grafana_folder`); leer: der Ordner des Sidecars |
+| `metrics.grafanaDashboards.folder` | `OPAA` | Ordner im Grafana (Annotation `grafana_folder`); leer: der Ordner des Sidecars |
 | `metrics.grafanaDashboards.labels`, `annotations` | leer | weitere Labels und Annotationen der ConfigMaps |
 
 Die Schwellen unter `metrics.prometheusRule`; Anteile sind Zahlen zwischen 0 und 1:

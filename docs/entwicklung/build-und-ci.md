@@ -567,7 +567,7 @@ Schreibwege der Verwaltung antworten dann mit `409` und der Bitte, neu zu laden
 
 Dass die Anmeldung so bleibt, prüft `signInSavesNoExistingVersionedRow`: Von den Einstiegen in
 `SIGN_IN_ENTRIES` (`UserProvisioningFilter#doFilterInternal` und die Empfänger von
-`UserProvisionedEvent` und `AuditorRoleRevokedEvent`) aus folgt sie den Aufrufen und Methodenreferenzen in OPAAs eigenem Code,
+`UserProvisionedEvent` und `AuditorRoleRevokedEvent`) aus folgt sie den Aufrufen und Methodenreferenzen in dem eigenen Code von opaa,
 Lambdas eingeschlossen, bei einer Schnittstelle in jede Implementierung, und meldet jedes `save`,
 `saveAll`, `saveAndFlush` und `saveAllAndFlush` auf dem Repository einer Entity aus
 `SECURITY_STATE_ENTITIES` mit `@Version`. Ein solches `save` scheitert an einer gleichzeitigen
