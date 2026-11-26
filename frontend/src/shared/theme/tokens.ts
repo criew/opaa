@@ -6,59 +6,54 @@
  * component code.
  */
 
-/** Accent and action color scale ("Blau"), sampled from the corporate master assets. */
+/**
+ * Accent and action color scale ("Blau"), derived from the brand concept's two blues: 500 is
+ * Hellblau (`#009DDB`, accent lines and large type - white on it reaches only 3.07:1), 700 is
+ * Mittelblau (`#0055A4`, accent text in the light scheme and every filled action surface).
+ */
 export const blue = {
-  50: '#E7F4FE',
-  100: '#C6E3FC',
-  200: '#9BCEFA',
-  300: '#61B5F6',
-  400: '#349EF2',
-  500: '#1292EE',
-  600: '#0F80D6',
-  700: '#0B6FBC',
-  800: '#085B9C',
-  900: '#05447A',
-} as const
-
-/** Structure and text color scale ("Navy"). 800 is the base navy of the brand. */
-export const navy = {
-  900: '#00152D',
-  800: '#012142',
-  700: '#02305E',
-  600: '#034079',
-  500: '#055396',
-} as const
-
-/** Cool gray scale, harmonised with the navy. */
-export const gray = {
-  100: '#E6EBF1',
-  200: '#CBD4DF',
-  300: '#A4B1C1',
-  400: '#778797',
-  500: '#556473',
-  600: '#3B4958',
-  700: '#26323F',
-  800: '#162231',
+  50: '#EBF7FC',
+  100: '#CCEBF8',
+  200: '#99D8F1',
+  300: '#66C4E9',
+  400: '#33B1E2',
+  500: '#009DDB',
+  600: '#0079C0',
+  700: '#0055A4',
+  800: '#004686',
+  900: '#00386C',
 } as const
 
 /**
- * Neutral dark scale of the dark scheme - aligned with the dark scheme of the Claude
- * docs site (code.claude.com, sampled 2026-08-20): a near-black, neutral gray with clear
- * surface steps instead of navy-on-navy. Navy remains the sidebar's block in the light scheme.
+ * Structure and text color scale ("Dunkelblau"). 800 is the brand's Dunkelblau `#242855`; the
+ * darker steps carry the dark scheme, the lighter ones the hover and active tiles of the sidebar.
  */
-export const carbon = {
-  950: '#09090B',
-  900: '#171717',
-  850: '#1F1F1F',
-  800: '#252525',
-  700: '#333333',
+export const navy = {
+  950: '#151731',
+  900: '#1B1E40',
+  800: '#242855',
+  700: '#2F335E',
+  600: '#3E4269',
+  500: '#666888',
+} as const
+
+/** Cool gray scale around the brand's gray `#555A78` (500), harmonised with the Dunkelblau. */
+export const gray = {
+  100: '#E7E8EC',
+  200: '#CFD1D9',
+  300: '#AAACBC',
+  400: '#80839A',
+  500: '#555A78',
+  600: '#3F4468',
+  700: '#30345E',
+  800: '#20244C',
 } as const
 
 export const white = '#FFFFFF'
 /** Light raised surface. */
 export const offWhite = '#F6F8FB'
-/** Light muted surface and rules. */
-export const smoke = '#EEF2F7'
+/** Light muted surface ("Hellblaugrau" of the brand concept). */
+export const smoke = '#EEF3FB'
 
 /**
  * Tones of a signal colour (guidelines 2.2), mapped onto MUI's main/dark/light. `main` is also a
@@ -74,7 +69,7 @@ export interface SignalTones {
 
 /** Danger tones of the light schemes; the main tone is >= 4.5:1 against white, off-white, smoke. */
 const dangerLight: SignalTones = { main: '#CE2C31', hover: '#901E22', soft: '#D23B40' }
-/** Danger tones of the dark grounds; the main tone is >= 4.5:1 against carbon and navy-900..700. */
+/** Danger tones of the dark grounds; the main tone is >= 4.5:1 against navy-950..800. */
 const dangerDark: SignalTones = { main: '#FF6369', hover: '#FF7A80', soft: '#FF8287' }
 /** Light-scheme amber: the dark grounds' amber reaches only 1.78:1 as text on white. */
 const warningLight: SignalTones = { main: '#8F5A00', hover: '#6B4300', soft: '#9A6100' }
@@ -108,15 +103,15 @@ export interface SchemeRoles {
   fg3: string
   /**
    * Action, reference, active state - as text and indicator colour. Replaceable via branding.
-   * Proven >= 4.5:1 against bg-1..3 of its own scheme: blue-700 in the light scheme,
-   * blue-500 in the dark ones.
+   * Proven >= 4.5:1 against bg-1..3 of its own scheme: blue-700 in the light scheme, blue-500
+   * in the dark one, blue-300 on the lighter navy steps of sidebar and rail.
    */
   accent: string
   /** Text on accent surfaces. */
   accentFg: string
   /**
    * Filled action surfaces (contained buttons, filled primary chips): blue-700 in every
-   * scheme, so accentFg (white) reaches >= 4.5:1 on it - blue-500 only managed 3.3:1.
+   * scheme, so accentFg (white) reaches >= 4.5:1 on it - blue-500 only reaches 3.07:1.
    */
   accentSurface: string
   /** Accent surface hover state (-8% lightness of the surface, sampled). */
@@ -151,13 +146,12 @@ export const lightRoles: SchemeRoles = {
   bg3: smoke,
   fg1: navy[800],
   fg2: gray[600],
-  // gray[500], not gray[400]: gray[400] only reaches 3.68:1 against white, below the
-  // 4.5:1 WCAG AA floor for the fg-3 role (tertiary text, table heads, metadata - see
-  // frontend/src/shared/theme/theme.test.ts). gray[500] reaches 6.08:1 and keeps the gray scale
-  // itself at its original, ordered values.
+  // gray[500], not gray[400]: gray[400] only reaches 3.73:1 against white, below the 4.5:1
+  // WCAG AA floor for the fg-3 role (tertiary text, table heads, metadata - see
+  // frontend/src/shared/theme/theme.test.ts). gray[500] reaches 6.73:1.
   fg3: gray[500],
   // blue[700], not blue[500]: accent is also a text colour (links, footnote digits,
-  // ghost buttons) and blue[500] reaches only 3.3:1 on white - blue[700] reaches 5.2:1.
+  // ghost buttons) and blue[500] reaches only 3.07:1 on white - blue[700] reaches 7.41:1.
   accent: blue[700],
   accentFg: white,
   accentSurface: blue[700],
@@ -173,19 +167,20 @@ export const lightRoles: SchemeRoles = {
 }
 
 export const darkRoles: SchemeRoles = {
-  bg1: carbon[950],
-  bg2: carbon[900],
-  bg3: carbon[850],
-  fg1: '#DEDEDE',
-  fg2: '#9E9E9E',
-  fg3: '#8A8A8A',
+  bg1: navy[950],
+  bg2: navy[900],
+  bg3: navy[800],
+  fg1: white,
+  fg2: '#C8C9D4',
+  fg3: '#A3A5B8',
+  // Hellblau reaches 4.53:1 on navy-800 (bg-3) and more on the darker grounds.
   accent: blue[500],
   accentFg: white,
   accentSurface: blue[700],
   accentHover: blue[800],
   accentPress: blue[900],
-  border: carbon[800],
-  borderStrong: carbon[700],
+  border: navy[700],
+  borderStrong: navy[600],
   danger: dangerDark.main,
   dangerHover: dangerDark.hover,
   dangerSoft: dangerDark.soft,
@@ -194,18 +189,17 @@ export const darkRoles: SchemeRoles = {
 }
 
 /**
- * The navy block the sidebar keeps in the light scheme - the former dark-scheme
- * values, now scoped to that one surface. In the dark scheme the sidebar follows
- * {@link darkRoles} instead.
+ * The Dunkelblau block of the sign-in page's brand panel. Its accent is blue-300: Hellblau falls
+ * below 4.5:1 on the lighter navy steps.
  */
 export const navyRoles: SchemeRoles = {
   bg1: navy[800],
   bg2: navy[700],
   bg3: navy[600],
   fg1: white,
-  fg2: '#B9C6D4',
-  fg3: '#7A8BA0',
-  accent: blue[500],
+  fg2: '#C8C9D4',
+  fg3: '#A3A5B8',
+  accent: blue[300],
   accentFg: white,
   accentSurface: blue[700],
   accentHover: blue[800],
@@ -223,19 +217,17 @@ export const navyRoles: SchemeRoles = {
  * The global rail left of the space column: one shade darker than the navy
  * block so the two navigation levels read apart at a glance. bg2 is the hover fill, bg3 the
  * active tile (navy-800 hover, navy-700 active with a navy-600 border). In the dark
- * scheme the rail follows {@link darkRoles} like the sidebar - carbon has no darker step, so
- * the separation comes from the border instead.
+ * scheme the rail follows {@link darkRoles} like the sidebar, so the separation comes from the
+ * border instead.
  */
 export const railRoles: SchemeRoles = {
   bg1: navy[900],
   bg2: navy[800],
   bg3: navy[700],
   fg1: white,
-  // The design paints the muted labels as 60% white; roles are opaque values, so this is that
-  // tone composited over bg1.
-  fg2: '#99A1AB',
-  fg3: '#7A8BA0',
-  accent: blue[500],
+  fg2: '#C8C9D4',
+  fg3: '#A3A5B8',
+  accent: blue[300],
   accentFg: white,
   accentSurface: blue[700],
   accentHover: blue[800],
@@ -390,11 +382,11 @@ export const badgeShape = {
  */
 export const shadow = {
   /** Hairline lift for resting rows that need a whisper of depth (input row). */
-  hairline: '0 1px 2px rgba(1, 32, 66, 0.06)',
+  hairline: '0 1px 2px rgba(36, 40, 85, 0.06)',
   /** Level 2: menus, popovers, suggestion lists. */
-  floating: '0 2px 6px rgba(1, 32, 66, 0.08)',
+  floating: '0 2px 6px rgba(36, 40, 85, 0.08)',
   /** Level 3: dialogs, side panels. */
-  overlay: '0 8px 24px rgba(1, 32, 66, 0.10)',
+  overlay: '0 8px 24px rgba(36, 40, 85, 0.10)',
 } as const
 
 /**

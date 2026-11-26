@@ -36,43 +36,40 @@ Die Skalen sind der Vorrat, aus dem die semantischen Rollen (2.2) schöpfen. **K
 nie direkt auf Skalenwerte zu** — sie verwenden Rollen. Ausnahmen sind in 2.3 abschließend
 aufgezählt.
 
+Die Ankerwerte stammen aus dem Markenkonzept: Dunkelblau `#242855`, Hellblau `#009DDB`,
+Mittelblau `#0055A4`, Hellblaugrau `#EEF3FB`, Grau `#555A78` und Weiß. Die übrigen Stufen sind
+daraus abgeleitet.
+
 **Blau** — Akzent- und Handlungsfarbe:
 
-| Stufe | Wert      | Stufe | Wert                                 |
-| ----- | --------- | ----- | ------------------------------------ |
-| 50    | `#E7F4FE` | 500   | `#1292EE` _(Basis)_                  |
-| 100   | `#C6E3FC` | 600   | `#0F80D6` _(Hover, −8 % Helligkeit)_ |
-| 200   | `#9BCEFA` | 700   | `#0B6FBC` _(Aktiv/Gedrückt, −16 %)_  |
-| 300   | `#61B5F6` | 800   | `#085B9C`                            |
-| 400   | `#349EF2` | 900   | `#05447A`                            |
+| Stufe | Wert      | Stufe | Wert                                                    |
+| ----- | --------- | ----- | ------------------------------------------------------- |
+| 50    | `#EBF7FC` | 500   | `#009DDB` _(Hellblau: Akzentlinie, Großschrift)_        |
+| 100   | `#CCEBF8` | 600   | `#0079C0`                                               |
+| 200   | `#99D8F1` | 700   | `#0055A4` _(Mittelblau: Akzent-Text hell, Aktionsfläche)_ |
+| 300   | `#66C4E9` | 800   | `#004686` _(Hover)_                                     |
+| 400   | `#33B1E2` | 900   | `#00386C` _(Gedrückt)_                                  |
 
-**Navy** — Struktur- und Textfarbe:
+Weiß auf Hellblau erreicht nur 3,07:1: **Hellblau ist nie Fläche unter weißer Schrift.** Weiß auf
+Mittelblau erreicht 7,41:1, deshalb ist Mittelblau die Aktionsfläche in allen Schemata.
 
-| Name     | Wert      | Verwendung                                          |
-| -------- | --------- | --------------------------------------------------- |
-| Navy     | `#012142` | Primärtext (hell), dunkle Grundfläche               |
-| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche                      |
-| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema                    |
-| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema                  |
-| Navy-500 | `#055396` | Grenzfälle, Diagramme                               |
+**Navy** (Dunkelblau) — Struktur- und Textfarbe:
 
-**Grau** (kühl, auf Navy abgestimmt): `#E6EBF1` (100), `#CBD4DF` (200), `#A4B1C1` (300),
-`#778797` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800).
+| Name     | Wert      | Verwendung                                                 |
+| -------- | --------- | ---------------------------------------------------------- |
+| Navy-950 | `#151731` | Seitengrund im dunklen Schema                              |
+| Navy-900 | `#1B1E40` | erhöhte Fläche dunkel, globale Leiste hell, Überlagerungen |
+| Navy-800 | `#242855` | Dunkelblau: Primärtext hell, gedämpfte Fläche dunkel       |
+| Navy-700 | `#2F335E` | Standardrahmen dunkel, Aktivkachel der Rail, Tooltip hell  |
+| Navy-600 | `#3E4269` | betonter Rahmen dunkel, Tooltip dunkel                     |
+| Navy-500 | `#666888` | Grenzfälle, Diagramme                                      |
 
-**Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF2F7`
-(gedämpfte Fläche, Trennlinien).
+**Grau** (kühl, um das Grau `#555A78` des Markenkonzepts): `#E7E8EC` (100), `#CFD1D9` (200),
+`#AAACBC` (300), `#80839A` (400), `#555A78` (500), `#3F4468` (600), `#30345E` (700),
+`#20244C` (800).
 
-**Carbon** — neutrale Dunkel-Skala des dunklen Schemas (#654, angelehnt an das dunkle Schema
-der Claude-Docs-Website, erhoben am 20.08.2026). Navy bleibt der Block der globalen Leiste und
-der Anmeldeseite im hellen Schema:
-
-| Name       | Wert      | Verwendung                      |
-| ---------- | --------- | ------------------------------- |
-| Carbon-950 | `#09090B` | Seitengrund dunkel              |
-| Carbon-900 | `#171717` | erhöhte Fläche dunkel           |
-| Carbon-850 | `#1F1F1F` | gedämpfte Fläche dunkel         |
-| Carbon-800 | `#252525` | Standardrahmen dunkel           |
-| Carbon-700 | `#333333` | betonter Rahmen, Tooltip dunkel |
+**Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF3FB`
+(Hellblaugrau: gedämpfte Fläche, Trennlinien).
 
 **Semantik:** Gefahr, Warnung und Erfolg sind Rollen je Schema (`danger`, `warning`, `success`,
 siehe 2.2), weil sie auch als Textfarbe dienen. Gefahr: Hell `#CE2C31`, Dunkel `#FF6369` (#2150;
@@ -87,17 +84,17 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 
 | Rolle            | Bedeutung                                                        | Hell                | Dunkel               |
 | ---------------- | ---------------------------------------------------------------- | ------------------- | -------------------- |
-| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Carbon-950 `#09090B` |
-| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | Carbon-900 `#171717` |
-| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF2F7`     | Carbon-850 `#1F1F1F` |
-| `fg-1`           | Primärtext                                                       | Navy `#012142`      | `#DEDEDE`            |
-| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3B4958`  | `#9E9E9E`            |
-| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#556473`  | `#8A8A8A`            |
-| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0B6FBC`  | Blau-500 `#1292EE`   |
-| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0B6FBC`  | Blau-700 `#0B6FBC`   |
+| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Navy-950 `#151731`   |
+| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | Navy-900 `#1B1E40`   |
+| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF3FB`     | Navy-800 `#242855`   |
+| `fg-1`           | Primärtext                                                       | Navy-800 `#242855`  | Weiß `#FFFFFF`       |
+| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3F4468`  | `#C8C9D4`            |
+| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#555A78`  | `#A3A5B8`            |
+| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0055A4`  | Blau-500 `#009DDB`   |
+| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0055A4`  | Blau-700 `#0055A4`   |
 | `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Weiß                 |
-| `border`         | Standardrahmen                                                   | Grau-100 `#E6EBF1`  | Carbon-800 `#252525` |
-| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CBD4DF`  | Carbon-700 `#333333` |
+| `border`         | Standardrahmen                                                   | Grau-100 `#E7E8EC`  | Navy-700 `#2F335E`   |
+| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CFD1D9`  | Navy-600 `#3E4269`   |
 | `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF6369`            |
 | `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF7A80`            |
 | `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF8287`            |
@@ -109,31 +106,34 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 `#0B5A3B`/`#0E7A52`, dunkel `#38C18F`/`#5BCB9F`. Die Werte stehen in
 `frontend/src/shared/theme/tokens.ts` (`SignalTones`).
 
-`fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
-Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
-der Wissensbibliotheken-Tabelle (Spaltenkopf, Metadaten) sichtbar unter der Schwelle. Grau-500
-erreicht 6,08:1 gegen Weiß und bleibt auch gegen `bg-2`/`bg-3` klar über 4,5:1; die Grau-Skala
-selbst (2.1) bleibt dabei unverändert.
+Das dunkle Schema steht auf Dunkelblau, nicht auf neutralem Grau: Es spiegelt die Logofassung für
+dunkle Flächen. Die Texte sind Weiß und dessen Abstufungen, der Akzent ist Hellblau; er erreicht
+auf Navy-800 (`bg-3`) 4,53:1 und auf den dunkleren Stufen mehr.
+
+`fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#80839A`) erreicht gegen
+Weiß nur 3,73:1 — unter der 4,5:1-Anforderung für Fließtext (2.4). Grau-500 erreicht 6,73:1 gegen
+Weiß und bleibt auch gegen `bg-2`/`bg-3` klar über 4,5:1.
 
 Das Rollenset auf Navy-Basis (`navyRoles`: Flächen Navy-800/700/600, Text
-Weiß/`#B9C6D4`/`#7A8BA0`) trägt seit #1922 nur noch **den Markenblock der Anmeldeseite**
-(`AuthLayout.tsx`) — die Werte des früheren dunklen Schemas, auf diese eine Fläche begrenzt
-(#654). Die Seitenleiste des Space nutzt es nicht mehr (siehe 2.3).
+Weiß/`#C8C9D4`/`#A3A5B8`) trägt seit #1922 nur noch **den Markenblock der Anmeldeseite**
+(`AuthLayout.tsx`). Die Seitenleiste des Space nutzt es nicht mehr (siehe 2.3).
 
 Die globale Leiste (Rail, #786) verwendet im hellen Schema das Rollenset `railRoles`
 (Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700 mit Navy-600-Rahmen, Text
-Weiß/`#99A1AB`/`#7A8BA0`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
-allem rechts davon ab. Im dunklen Schema folgt die Rail dem Carbon-Schema; Carbon hat keine
-dunklere Stufe, die Trennung übernimmt der Standardrahmen.
+Weiß/`#C8C9D4`/`#A3A5B8`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
+allem rechts davon ab. Im dunklen Schema folgt die Rail dem dunklen Schema; die Trennung übernimmt
+der Standardrahmen.
 
-`fg-3` (`#7A8BA0`) erreicht in `navyRoles` gegen `bg-1` 4,65:1, gegen `bg-2` 3,80:1 und gegen
-`bg-3` 2,99:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 5,26:1, gegen `bg-2`
-4,65:1 und gegen `bg-3` 3,80:1 — je Rollenset unterschreitet nur `bg-3` (und im Navy-Set
-zusätzlich `bg-2`) die 4,5:1-Schwelle (#853). Das ist folgenlos, weil `fg-3` dort nie als Text
-auf Hover- oder Aktivflächen landet: Rail-Kacheln zeigen im Hover `fg-2` (inaktiv, 6,20:1 gegen
-`bg-2`) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. Eine künftige Komponente, die `fg-3` als Text auf
-`bg-2`/`bg-3` dieser Rollensets einsetzt, verletzt 2.4 und braucht einen dunkleren Ton oder eine
-andere Rolle.
+Auf den helleren Navy-Stufen von `navyRoles` und `railRoles` fiele Hellblau unter 4,5:1 (auf
+Navy-700 3,90:1). Beide Rollensets führen deshalb Blau-300 `#66C4E9` als `accent`.
+
+`fg-3` (`#A3A5B8`) erreicht in `navyRoles` gegen `bg-1` 5,72:1, gegen `bg-2` 4,92:1 und gegen
+`bg-3` 3,94:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 6,61:1, gegen `bg-2`
+5,72:1 und gegen `bg-3` 4,92:1 — nur `bg-3` von `navyRoles` unterschreitet die 4,5:1-Schwelle
+(#853). Das ist folgenlos, weil `fg-3` dort nie als Text auf Hover- oder Aktivflächen landet:
+Rail-Kacheln zeigen im Hover `fg-2` (inaktiv) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. Eine
+künftige Komponente, die `fg-3` als Text auf `bg-3` von `navyRoles` einsetzt, verletzt 2.4 und
+braucht einen helleren Ton oder eine andere Rolle.
 
 ### 2.3 Regeln
 
@@ -195,13 +195,13 @@ E2E-Suite misst die gescannten Seiten (#2493).
 Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
 deshalb wird er bei dunklem Text heller statt dunkler. Im hellen Schema tragen Gefahr, Warnung
 und Erfolg Weiß, ihr Hover ist dunkler (`danger-hover` `#901E22` mit 8,77:1); im dunklen Schema
-tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF7A80` mit 7,91:1)
-(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
-mehr — Weiß erreichte auf Blau-500 nur 3,3:1; gefüllte Flächen liegen deshalb auf
-`accent-surface` (Blau-700, 5,2:1), und das helle Schema führt `accent` selbst als Blau-700,
-damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Carbon-950 = 6,0:1). Ausnahme: `fg-3` in `navyRoles`/`railRoles`
-erfüllt das nicht gegen `bg-2`/`bg-3` (siehe 2.2) — dort ist `fg-3` als Text ausgeschlossen, nicht
-nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
+tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF7A80` mit 6,96:1)
+(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination —
+Weiß erreicht auf Blau-500 (Hellblau) nur 3,07:1; gefüllte Flächen liegen deshalb auf
+`accent-surface` (Blau-700, 7,41:1), und das helle Schema führt `accent` selbst als Blau-700,
+damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Navy-950 = 5,71:1, auf
+Navy-800 = 4,53:1). Ausnahme: `fg-3` in `navyRoles` erfüllt das nicht gegen `bg-3` (siehe 2.2) —
+dort ist `fg-3` als Text ausgeschlossen, nicht nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ---
 
@@ -287,11 +287,10 @@ Gruppen deutlich getrennt (24–48).
 - Ebene 0/1 (Seite, Karte): Trennung ausschließlich über `border` und `bg`-Abstufung. **Kein
   Schatten auf ruhenden Karten.**
 - Ebene 2 (schwebend: Menü, Popover, @-Vorschlagsliste): Rahmen **plus** dezenter Schatten
-  `0 2px 6px rgba(1,32,66,0.08)`.
-- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`. Der Grund
+  `0 2px 6px rgba(36,40,85,0.08)`.
+- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(36,40,85,0.10)`. Der Grund
   dahinter tritt unter einem Schleier mit 2 px Unschärfe zurück; der Schleier trägt den Ton des
-  Schemas — hell `navy-900` mit 42 %, dunkel das neutrale `carbon-950` mit 72 %, nie Navy auf
-  dem Carbon-Grund.
+  Schemas — hell `navy-900` mit 42 %, dunkel das tiefere `navy-950` mit 72 %.
 - Im dunklen Schema bleiben die Schattenwerte gleich; die Trennung leisten dort vor allem die
   helleren Flächenstufen.
 
@@ -977,7 +976,7 @@ Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und
 Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
 Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
 Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit weißer Ziffer (`accent`
-selbst trüge Weiß im Dunkelschema nur mit 3,3:1); die Ziffer der ruhenden Marke rückt, wo die
+selbst trüge Weiß im Dunkelschema nur mit 3,07:1); die Ziffer der ruhenden Marke rückt, wo die
 Tönung sie unter 4,5:1 drückt, wie jeder Akzenttext vom Grund weg, und ein Tooltip nennt je Fundstelle
 Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts
@@ -1525,7 +1524,7 @@ eigenes Logo konfiguriert.
 | Bestandteil | Farbe                                                                       |
 | ----------- | --------------------------------------------------------------------------- |
 | Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy                          |
-| Siegel      | Dateien: Blau-500 `#1292EE`; in der App die Akzentfläche (`accent-surface`) |
+| Siegel      | Dateien: das frühere Blau-500 bis zur Logo-Umstellung; in der App die Akzentfläche (`accent-surface`) |
 | Haken       | Weiß                                                                        |
 | Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Sprechblase           |
 

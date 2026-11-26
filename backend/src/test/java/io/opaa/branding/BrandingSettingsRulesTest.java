@@ -25,6 +25,17 @@ class BrandingSettingsRulesTest {
   }
 
   @Test
+  void theStandardColourFollowsTheDefault() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            "", null, null, null, " " + BrandingDefaults.PRIMARY_COLOR.toLowerCase() + " ");
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values())
+        .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null));
+  }
+
+  @Test
   void valuesAreTrimmedAndKept() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(
@@ -61,7 +72,7 @@ class BrandingSettingsRulesTest {
             "Der Claim darf keine Steuerzeichen und keinen Zeilenumbruch enthalten",
             "Der Hinweis zur KI-Nutzung darf keine Steuerzeichen und keinen Zeilenumbruch enthalten",
             "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
-                + " #1292EE");
+                + " #0055A4");
   }
 
   @Test

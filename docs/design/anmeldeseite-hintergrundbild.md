@@ -14,7 +14,7 @@ Was das Bild von OPAA erzählt ([Vision](../VISION.md)):
 - **Aufbruch**: Morgenlicht, ohne Pathos.
 - **Platz für die Marke**: Das linke Drittel bleibt frei; dort stehen Logo und Claim.
 
-Keine Personen, kein Text, keine Logos, keine Bildschirme. Die Farben sind die des Navy-Schemas (`navyRoles` in `frontend/src/shared/theme/tokens.ts`): Flächen `#012142`, `#00152D`, `#02305E`, Akzent `#1292EE`, `#61B5F6`, Aufhellung bis `#C6E3FC`, ein zurückgenommenes warmes Gold `#F5B83D` nur am Fenster.
+Keine Personen, kein Text, keine Logos, keine Bildschirme. Das Bild entstand mit der Navy-Palette vor der Umstellung auf die Farben des Markenkonzepts (tiefes Navy, klares Blau, ein zurückgenommenes warmes Gold `#F5B83D` nur am Fenster); die Werte stehen im Prompt unten. Seitdem liegt es unter einem Schleier in Dunkelblau `#242855` (`navyRoles.bg1`), der seine Töne an die Marke heranzieht.
 
 ## Erzeugung
 
@@ -60,21 +60,21 @@ Ergebnis: 1600 × 1600, 120 948 Byte. Die Farbunterabtastung des WebP-Encoders e
 
 ## Kontrastnachweis
 
-Über dem Bild liegt ein Schleier aus `navyRoles.bg1` mit der Deckkraft `LOGIN_BACKDROP_DEFAULT_SCRIM_OPACITY` (0,56) in `AuthLayout.tsx`; hochgeladene Bilder behalten den festen Worst-Case-Schleier von 0,82, weil ihre Helligkeit unbekannt ist. Produktname (Weiß) und Claim (Weiß mit 78 % Deckkraft) müssen über jedem Pixel des Bildes mindestens 4,5:1 erreichen ([accessibility.md](./accessibility.md)).
+Über dem Bild liegt ein Schleier aus `navyRoles.bg1` mit der Deckkraft `LOGIN_BACKDROP_DEFAULT_SCRIM_OPACITY` (0,62) in `AuthLayout.tsx`; hochgeladene Bilder behalten den festen Worst-Case-Schleier von 0,82, weil ihre Helligkeit unbekannt ist. Produktname (Weiß) und Claim (Weiß mit 78 % Deckkraft) müssen über jedem Pixel des Bildes mindestens 4,5:1 erreichen ([accessibility.md](./accessibility.md)).
 
 `frontend/scripts/measure-login-backdrop.mjs` dekodiert die Datei mit ffmpeg, legt den Schleier rechnerisch über jedes der 2 560 000 Pixel (gleiche Formel wie `compositeOver` in `frontend/src/shared/utils/contrast.ts`) und meldet das Pixel mit dem geringsten Kontrast sowie die SHA-256-Prüfsumme der Datei:
 
 ```bash
-cd frontend && node scripts/measure-login-backdrop.mjs src/features/auth/assets/login-backdrop.webp 0.56
+cd frontend && node scripts/measure-login-backdrop.mjs src/features/auth/assets/login-backdrop.webp 0.62
 ```
 
 | Messwert | Wert |
 |---|---|
-| Hellstes Pixel (zugleich ungünstigstes für Name und Claim) | `#ADB295` |
-| Kontrast Produktname über diesem Pixel | 6,52:1 |
-| Kontrast Claim über diesem Pixel | 4,72:1 |
+| Ungünstigstes Pixel für Name und Claim | `#90B3BE` |
+| Kontrast Produktname über diesem Pixel | 6,61:1 |
+| Kontrast Claim über diesem Pixel | 4,77:1 |
 | SHA-256 der Datei | `c7b2110edaeaf0dcf6872af1f221374986366c4ca7050b92f4021ac8da180496` |
 
 `AuthLayout.contrast.test.ts` bindet Prüfsumme, Worst-Case-Pixel und die Konstanten des Skripts (Grundfarbe, Claim-Deckkraft) aneinander und rechnet den Kontrast nach, zusätzlich mit einer Toleranz von 3 % Aufhellung für Dekoder-Unterschiede. Wer das Bild ersetzt, führt das Skript erneut aus und zieht die Werte im Test nach; bis dahin schlägt der Test an der Prüfsumme fehl.
 
-Warum nicht ohne Schleier: Bei voller Sichtbarkeit müsste das hellste Pixel unter etwa `#5C5C5C` liegen, damit der Claim 4,5:1 hält; das Bild wäre dann kein Bild mehr. Der Schleier von 0,56 zeigt 44 % des Motivs, gegenüber 18 % unter dem Worst-Case-Schleier.
+Warum nicht ohne Schleier: Bei voller Sichtbarkeit müsste das hellste Pixel unter etwa `#5C5C5C` liegen, damit der Claim 4,5:1 hält; das Bild wäre dann kein Bild mehr. Der Schleier von 0,62 zeigt 38 % des Motivs, gegenüber 18 % unter dem Worst-Case-Schleier.

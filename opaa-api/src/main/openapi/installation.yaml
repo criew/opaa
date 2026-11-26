@@ -1002,4 +1002,4 @@ components:
             Six-digit hex triplet with a leading '#'; empty or absent means the OPAA default,
             anything else is a field error.
           pattern: "^$|^#[0-9A-Fa-f]{6}$"
-          example: "#1292EE"
+          example: "#0055A4"

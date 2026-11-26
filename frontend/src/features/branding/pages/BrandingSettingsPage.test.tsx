@@ -214,7 +214,7 @@ describe('BrandingSettingsPage', () => {
 
     const colorField = screen.getByLabelText('Primärfarbe (optional)')
     await user.clear(colorField)
-    await user.type(colorField, '#0B6FBC')
+    await user.type(colorField, '#1A5FA0')
 
     expect(screen.queryByText('Kontrast unterschritten')).not.toBeInTheDocument()
   })
@@ -314,7 +314,7 @@ describe('BrandingSettingsPage', () => {
         claim: 'Kurz und klar',
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
-        primaryColor: '#0B6FBC',
+        primaryColor: '#1A5FA0',
       },
       isLoaded: true,
     })
