@@ -23,7 +23,7 @@
     
     
       
-        <title>Konnektor: Nextcloud - OPAA-Handbuch</title>
+        <title>Konnektor: Nextcloud - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4465,21 +4465,21 @@ Dateiablagen teilen, steht dort.</p>
 <li><strong>Dokument:</strong> Die Datei-ID der Nextcloud ist die Identität. <strong>Umbenennen und Verschieben</strong> behalten
   das Dokument; die Datei wird einmal neu geladen, aber bei gleichem Inhalt nicht neu verarbeitet.
   Der <strong>Beleg-Link</strong> <code>&lt;Nextcloud&gt;/index.php/f/&lt;Datei-ID&gt;</code> öffnet die Datei in der Weboberfläche nach
-  deren eigener Anmeldung. <strong>„Original öffnen"</strong> lädt sie durch OPAA, von dem Ort, den der letzte
+  deren eigener Anmeldung. <strong>„Original öffnen"</strong> lädt sie durch opaa, von dem Ort, den der letzte
   Lauf gespeichert hat; eine seither verschobene Datei liefert bis zum nächsten Lauf kein Original.</li>
-<li><strong>Rechte</strong> aus der Nextcloud übernimmt OPAA nicht: Was das Konto in den Ordnern lesen kann, sehen
+<li><strong>Rechte</strong> aus der Nextcloud übernimmt opaa nicht: Was das Konto in den Ordnern lesen kann, sehen
   alle Leseberechtigten der Bibliothek.</li>
 </ul>
 <h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Nextcloud im privaten Netz: ihren Hostnamen für die
    <a href="index.html#12-zieladressprüfung">Zieladressprüfung</a> freigeben.</li>
-<li>Einen <strong>technischen Nutzer</strong> anlegen, kein persönliches Konto. Er braucht nur Leserechte; OPAA
+<li>Einen <strong>technischen Nutzer</strong> anlegen, kein persönliches Konto. Er braucht nur Leserechte; opaa
    schreibt nie. Ordner kommen über <strong>Freigaben</strong> (Lesen genügt) oder als <strong>Gruppenordner</strong> zu ihm.
-   Eine Freigabe mit gesperrtem Herunterladen hält OPAA nicht zuverlässig ab.</li>
+   Eine Freigabe mit gesperrtem Herunterladen hält opaa nicht zuverlässig ab.</li>
 <li>Für ihn ein <strong>App-Passwort</strong> erzeugen: <em>Persönliche Einstellungen › Sicherheit › Geräte &amp;
    Sitzungen</em> oder <code>occ user:auth-tokens:add &lt;nutzer&gt;</code>. Es lässt sich einzeln widerrufen. Unter LDAP
-   dürfen Anmeldename und Nutzer-ID abweichen; OPAA fragt die ID bei der Anmeldung ab.</li>
+   dürfen Anmeldename und Nutzer-ID abweichen; opaa fragt die ID bei der Anmeldung ab.</li>
 <li>Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben. Wer sonst Bibliotheken anlegen
    soll, bekommt „Konnektorbibliotheken anlegen" für die Quellart oder einen Zugang
    (<a href="../../referenz/rechte-matrix.html">Berechtigungen</a>, „Konnektor-Freigabe").</li>
@@ -4521,10 +4521,10 @@ Vorgaben für weitere Einstellungen gibt es nicht.</p>
 technischen Nutzer, und speist daraus eine <a href="../private-bibliothek.html">private Bibliothek</a>.</p>
 <ol>
 <li>In der eigenen Nextcloud unter <em>Persönliche Einstellungen › Sicherheit › Geräte &amp; Sitzungen</em> ein
-   App-Passwort mit einem Namen wie „OPAA" erstellen; es wird nur einmal angezeigt. Das Kontopasswort
-   gehört nicht in OPAA.</li>
-<li>In OPAA unter <em>Einstellungen › Verbundene Konten</em> beim Zugang „Verbinden" wählen und Benutzername
-   und App-Passwort eintragen. OPAA speichert sie nur, wenn die Anmeldung gelingt
+   App-Passwort mit einem Namen wie „opaa" erstellen; es wird nur einmal angezeigt. Das Kontopasswort
+   gehört nicht in opaa.</li>
+<li>In opaa unter <em>Einstellungen › Verbundene Konten</em> beim Zugang „Verbinden" wählen und Benutzername
+   und App-Passwort eintragen. opaa speichert sie nur, wenn die Anmeldung gelingt
    (<a href="../../administration/konten.html">Benutzerverwaltung</a>, „Verbundene Konten").</li>
 <li>Im Assistenten im Schritt „Quelle" in der Zeile „Verbindung" den Zugang mit dem Zusatz
    <strong>„privat"</strong> wählen, dann die Ordner.</li>
@@ -4544,11 +4544,11 @@ steigt aber nur in Ordner ab, deren Prüfsumme sich geändert hat.</p>
     D -- ja --&gt; S[übersprungen]
     D -- nein --&gt; F[laden]</code></pre>
 <p><strong>Unveränderte Ordner.</strong> Nextcloud ändert die Prüfsumme (ETag) eines Ordners, sobald sich darin oder
-darunter etwas ändert, bis zur Wurzel, auch bei Freigaben und Gruppenordnern. OPAA merkt sich nach
+darunter etwas ändert, bis zur Wurzel, auch bei Freigaben und Gruppenordnern. opaa merkt sich nach
 jedem vollständigen Lauf die Prüfsumme jedes Ordners; ein Ordner mit gleicher Prüfsumme wird nicht
 gelistet. Ein unveränderter Ordner kostet so eine Anfrage, dazu eine für die Anmeldung. Wieder
 gelistet wird ein Ordner, der sich geändert hat, umbenannt oder verschoben wurde oder in dem beim
-letzten Lauf etwas nicht geladen oder aufgenommen werden konnte oder in OPAA gelöscht wurde. Den
+letzten Lauf etwas nicht geladen oder aufgenommen werden konnte oder in opaa gelöscht wurde. Den
 ganzen Baum listet ein Lauf nach einer Änderung von Größengrenze, Formaten, Adresse oder Ordnern,
 einmal nach einem Update, das die Grundlage ändert, und spätestens nach dem
 <a href="index.html#14-vollabgleich-rhythmus">Vollabgleich-Rhythmus</a> von Nextcloud — das fängt Änderungen ab,
@@ -4580,8 +4580,8 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.</p>
 <a href="../../referenz/konfiguration.html#alle-umgebungsvariablen">Konfigurationsreferenz</a>.</p>
 <ul>
 <li><strong>Zieladressprüfung</strong> (<a href="index.html#12-zieladressprüfung">Konnektoren</a>). Nennt die Nextcloud eine
-  Adresse außerhalb ihrer eigenen Dateien, schickt OPAA dorthin keine Zugangsdaten.</li>
-<li>Eine Ratenbegrenzung (<code>429</code>) wartet OPAA ab und wiederholt.</li>
+  Adresse außerhalb ihrer eigenen Dateien, schickt opaa dorthin keine Zugangsdaten.</li>
+<li>Eine Ratenbegrenzung (<code>429</code>) wartet opaa ab und wiederholt.</li>
 <li>Ein Ordner mit sehr vielen Einträgen kann die Grenze einer Auflistungsantwort
   (<code>max-response-bytes</code>) überschreiten und gilt dann als nicht auflistbar.</li>
 <li><strong>ownCloud 10</strong> spricht dasselbe WebDAV; von Hand geprüft mit 10.15 (Anmeldung, Datei-ID,

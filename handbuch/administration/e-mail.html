@@ -23,7 +23,7 @@
     
     
       
-        <title>E-Mail-Versand (SMTP) - OPAA-Handbuch</title>
+        <title>E-Mail-Versand (SMTP) - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4300,10 +4300,10 @@
 
 
 <h1 id="e-mail-versand-smtp">E-Mail-Versand (SMTP)<a class="headerlink" href="#e-mail-versand-smtp" title="Permanent link">&para;</a></h1>
-<p class="kopf"><strong>Ziel:</strong> OPAA verschickt Einladungen, Rücksetzlinks und Hinweise per E-Mail.</p>
+<p class="kopf"><strong>Ziel:</strong> opaa verschickt Einladungen, Rücksetzlinks und Hinweise per E-Mail.</p>
 <p class="kopf"><strong>Wer:</strong> Systemverwaltung, „Administration → E-Mail“</p>
-<p>OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
-Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
+<p>opaa versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
+Ohne diese Einstellung versendet opaa nichts — und meldet das als Ergebnis, statt einen Vorgang
 scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.
 Wozu Mails gebraucht werden, beschreibt die <a href="konten.html">Benutzerverwaltung</a>; der
 Mailserver ist einer der optionalen Bausteine der <a href="../betrieb/index.html">Betrieb</a>. Für Erprobung und
@@ -4319,14 +4319,14 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
   ihn mit denselben Regeln und schaltet den Versand ein. Übersprungen bleibt der Versand aus.</li>
 <li><strong>Die öffentliche Adresse ist eine Bereitstellungsentscheidung.</strong> <code>OPAA_PUBLIC_BASE_URL</code> steht in
   der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
-  Adresse aus dem <code>Host</code>-Kopf einer Anfrage wird nie verwendet. Ohne Wert baut OPAA keinen Link —
+  Adresse aus dem <code>Host</code>-Kopf einer Anfrage wird nie verwendet. Ohne Wert baut opaa keinen Link —
   die Verwaltung der Konten prüft das vor jedem Ablauf, der auf einen Link angewiesen ist, und
   bietet ihn erst gar nicht an.</li>
 </ul>
 <h2 id="einrichtung">Einrichtung<a class="headerlink" href="#einrichtung" title="Permanent link">&para;</a></h2>
 <ol>
 <li><code>OPAA_PUBLIC_BASE_URL</code> setzen — vollständig mit Schema, ohne abschließenden Schrägstrich, genau
-   die Adresse, unter der Nutzende OPAA im Browser öffnen.</li>
+   die Adresse, unter der Nutzende opaa im Browser öffnen.</li>
 <li>Als Systemverwalter unter „Administration → E-Mail → SMTP-Zugang" eintragen: Server, Port,
    Verschlüsselung, bei Bedarf
    Zugangsdaten, Absenderadresse und Absendername. Der Versand lässt sich erst einschalten, wenn
@@ -4345,7 +4345,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 <tbody>
 <tr>
 <td>Versand aktiv</td>
-<td>Hauptschalter. Aus bedeutet: OPAA versendet nichts und meldet jeden Versand als übersprungen</td>
+<td>Hauptschalter. Aus bedeutet: opaa versendet nichts und meldet jeden Versand als übersprungen</td>
 </tr>
 <tr>
 <td>Server, Port</td>
@@ -4357,7 +4357,7 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 </tr>
 <tr>
 <td>Benutzername, Passwort</td>
-<td>Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und nie wieder angezeigt: Das Feld zeigt „Gesetzt“, „Ersetzen“ öffnet ein leeres Feld für ein neues, „Gespeichertes Passwort löschen“ entfernt es beim Speichern. Die API zeigt es als <code>***</code>; wer <code>***</code> zurückschickt, lässt es unverändert, ein leerer Wert löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab</td>
+<td>Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und nie wieder angezeigt: Das Feld zeigt „Gesetzt“, „Ersetzen“ öffnet ein leeres Feld für ein neues, „Gespeichertes Passwort löschen“ entfernt es beim Speichern. Die API zeigt es als <code>***</code>; wer <code>***</code> zurückschickt, lässt es unverändert, ein leerer Wert löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt opaa das Speichern ab</td>
 </tr>
 <tr>
 <td>Absenderadresse, Absendername</td>
@@ -4368,12 +4368,12 @@ Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 <p>Das SMTP-Passwort schützt <code>OPAA_SETTINGS_ENCRYPTION_KEY</code>, derselbe Schlüssel wie die API-Schlüssel
 der Chat-Modelle (<a href="../betrieb/netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.</p>
-<p>Über den Versand laufen Einladungen und Rücksetzlinks. Deshalb fragt OPAA vor dem Speichern des
+<p>Über den Versand laufen Einladungen und Rücksetzlinks. Deshalb fragt opaa vor dem Speichern des
 Zugangs und einer Vorlage nach einer
 <a href="../betrieb/authentifizierung.html#erneute-anmeldung-vor-sensiblen-vorgängen">erneuten Anmeldung</a>,
 wenn die letzte nicht gerade eben war; die Testnachricht braucht keine.</p>
 <h2 id="zustellung-über-die-warteschlange">Zustellung über die Warteschlange<a class="headerlink" href="#zustellung-über-die-warteschlange" title="Permanent link">&para;</a></h2>
-<p>OPAA verschickt auf zwei Wegen:</p>
+<p>opaa verschickt auf zwei Wegen:</p>
 <ul>
 <li><strong>Sofort, mit Ergebnis an der Aktion:</strong> die Testnachricht sowie Einladung, Zurücksetzen durch die
   Verwaltung und Übergabelink. Schlägt der Versand fehl, zeigt die Oberfläche den Link zur
@@ -4389,7 +4389,7 @@ wenn die letzte nicht gerade eben war; die Testnachricht braucht keine.</p>
 Log nennt den Grund. Eine wartende Mail übersteht einen Neustart des Backends, und
 bei mehreren Backend-Instanzen stellt jede zu, eine Mail aber immer nur eine zur selben Zeit.</p>
 <ul>
-<li><strong>Wiederholung:</strong> Lehnt der Mailserver ab oder ist er nicht erreichbar, versucht OPAA es erneut,
+<li><strong>Wiederholung:</strong> Lehnt der Mailserver ab oder ist er nicht erreichbar, versucht opaa es erneut,
   zuerst nach einer Minute, dann mit jeweils doppeltem Abstand bis höchstens einer Stunde, insgesamt
   achtmal (rund zwei Stunden). Danach wird die Mail verworfen.</li>
 <li><strong>Versand ausgeschaltet:</strong> Solange der Versand aus ist, kommt keine neue Mail in die Warteschlange,
@@ -4413,7 +4413,7 @@ löschen — der Satz ist fest, damit keine Installation mit einer Vorlage ohne 
   ein Wert für einen verwendeten Platzhalter, wird nicht versendet, statt eine Nachricht mit einer
   Lücke an der Stelle des Links zu verschicken.</li>
 <li><strong>Der Produktname kommt aus dem Branding.</strong> Er muss nirgends eingetragen werden.</li>
-<li><strong>Eine überschriebene Vorlage folgt geänderten Abläufen nicht von selbst.</strong> OPAA merkt sich nicht,
+<li><strong>Eine überschriebene Vorlage folgt geänderten Abläufen nicht von selbst.</strong> opaa merkt sich nicht,
   auf welchem ausgelieferten Stand eine eigene Fassung beruht. Die „Bestätigung der
   Selbstregistrierung" führt heute zum Festlegen von Name und Passwort und bittet, eine nicht selbst
   ausgelöste Registrierung zu ignorieren; die Anrede bleibt dort immer leer, weil der Name noch von
@@ -4479,7 +4479,7 @@ steht im Log, dort ohne die Empfängeradresse.</p>
 </tr>
 <tr>
 <td>Meldung zu STARTTLS</td>
-<td>Der Server bietet STARTTLS nicht an; OPAA bricht ab, statt unverschlüsselt fortzufahren</td>
+<td>Der Server bietet STARTTLS nicht an; opaa bricht ab, statt unverschlüsselt fortzufahren</td>
 <td>Beim Mailserver TLS einrichten, oder — nur im vertrauenswürdigen Netz — Verschlüsselung <code>NONE</code> wählen</td>
 </tr>
 <tr>

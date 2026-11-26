@@ -23,7 +23,7 @@
     
     
       
-        <title>Originalablage - OPAA-Handbuch</title>
+        <title>Originalablage - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4444,10 +4444,10 @@
 <h1 id="originalablage">Originalablage<a class="headerlink" href="#originalablage" title="Permanent link">&para;</a></h1>
 <p>Ein hochgeladenes Dokument wird nicht nur indiziert — sein <strong>Original</strong> bleibt greifbar, damit aus
 einer Fundstelle die Datei wird, die ein Prüfer in die Hand nehmen kann. Die Originalablage ist der
-Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: OPAA schreibt, ersetzt und löscht dort,
+Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: opaa schreibt, ersetzt und löscht dort,
 und nur dort.</p>
 <p>Betroffen sind ausschließlich <strong>Uploads</strong>. Dokumente, die über einen Konnektor hereinkommen, bleiben
-Eigentum ihrer Quelle; OPAA liest sie dort und legt keine Kopie an. Wer die Originalablage
+Eigentum ihrer Quelle; opaa liest sie dort und legt keine Kopie an. Wer die Originalablage
 umstellt, ändert nichts an Verzeichnissen, Webverzeichnissen, Feeds, Confluence-Instanzen oder
 S3-Quellen einer Bibliothek.</p>
 <p>Jede Dokumentzeile in der Datenbank trägt den <strong>Verweis</strong> auf ihr Original. Beim Verzeichnisweg ist
@@ -4477,7 +4477,7 @@ die auf nicht vorhandene Originale zeigt.</p>
 <tr>
 <td><strong>Netzlaufwerk</strong></td>
 <td>Häuser, deren Bestände ohnehin auf einem Dateiserver liegen</td>
-<td>Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren</td>
+<td>Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in opaa nichts weiter zu konfigurieren</td>
 <td>Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". <strong><code>chown</code> wirkt auf einem CIFS/SMB-Mount nicht</strong> — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (<code>uid=65532,gid=65532</code>) oder über den <code>user:</code>-Eintrag, siehe <a href="docker-compose.html#nicht-root-betrieb-des-backend-containers">„Nicht-root-Betrieb des Backend-Containers"</a></td>
 </tr>
 <tr>
@@ -4542,14 +4542,14 @@ an jedem Objekt, zu welchem Haus es gehört — auch dann, wenn die zugehörige 
 gelöscht ist und die Dokumentzeile nicht mehr existiert. Der Zugriff prüft beide Ebenen: Ein
 Verweis, dessen Organisations- oder Bibliotheksteil nicht zum abgerufenen Dokument passt, antwortet
 mit „nicht gefunden" — ununterscheidbar von einem unbekannten Dokument.</p>
-<p>Der Bucket <strong>muss vorhanden sein</strong> — OPAA legt keinen an. Ordner darin legt OPAA ebenfalls nicht an:
+<p>Der Bucket <strong>muss vorhanden sein</strong> — opaa legt keinen an. Ordner darin legt opaa ebenfalls nicht an:
 Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.</p>
-<p><strong>Was OPAA am Bucket nicht tut</strong>, und was deshalb der Betrieb dort einstellt: Verschlüsselung
-ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. OPAA setzt keine
+<p><strong>Was opaa am Bucket nicht tut</strong>, und was deshalb der Betrieb dort einstellt: Verschlüsselung
+ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. opaa setzt keine
 Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. <strong>Empfohlen sind Verschlüsselung ruhender
 Daten und Versionierung</strong>: Versionierung schützt vor einem Überschreiben und vor einem
 fehlgeleiteten Kopierkommando bei der Umstellung.</p>
-<p><strong>Löschen entfernt alle Versionen.</strong> Löscht OPAA ein Original — ein Dokument, eine Bibliothek, ein
+<p><strong>Löschen entfernt alle Versionen.</strong> Löscht opaa ein Original — ein Dokument, eine Bibliothek, ein
 verwaistes Original, eine private Bibliothek —, entfernt es jede Version des Schlüssels und jeden
 Löschmarker einzeln. Ein versionierter Bucket behält von einem gelöschten Original also nichts
 zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
@@ -4557,14 +4557,14 @@ zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
 <p><strong>Rechte für das Löschen von Versionen.</strong> Für einen versionierten Bucket — auch einen, dessen
 Versionierung nur ausgesetzt ist — braucht der Zugangsschlüssel zusätzlich <code>s3:ListBucketVersions</code>
 und <code>s3:DeleteObjectVersion</code>. Für einen Bucket, der nie versioniert war, genügt statt dieser beiden
-<code>s3:GetBucketVersioning</code>: Damit stellt OPAA fest, dass es keine älteren Versionen geben kann. Die
+<code>s3:GetBucketVersioning</code>: Damit stellt opaa fest, dass es keine älteren Versionen geben kann. Die
 Liste aller Rechte steht bei <code>OPAA_UPLOAD_S3_ACCESS_KEY</code> in der <a href="../referenz/konfiguration.html">Variablenliste</a>.
 <strong>Beim Update</strong> auf diesen Stand die Richtlinie des Zugangsschlüssels um die passenden Rechte
 ergänzen; sonst schließt das Löschen privater Bibliotheken nicht ab (siehe unten).</p>
 <ul>
-<li><strong>Fehlen die Rechte</strong>, löscht OPAA nur die aktuelle Version; in einem versionierten Bucket bleibt
+<li><strong>Fehlen die Rechte</strong>, löscht opaa nur die aktuelle Version; in einem versionierten Bucket bleibt
   das Original dann als ältere Version liegen. Das Löschen einer privaten Bibliothek prüft auch die
-  Versionen und gilt erst als erledigt, wenn dort nachweislich nichts mehr liegt. Kann OPAA weder
+  Versionen und gilt erst als erledigt, wenn dort nachweislich nichts mehr liegt. Kann opaa weder
   die Versionen auflisten noch bestätigen, dass der Bucket nie versioniert war, bleibt die
   Bibliothek zur Löschung vorgemerkt, und jeder Lauf versucht es erneut.</li>
 <li><strong>Die Startprüfung</strong> versucht einmal, Versionen aufzulisten. Gelingt das nicht, protokolliert sie
@@ -4753,7 +4753,7 @@ prüfen, dann löschen.</p>
 <li><strong>Die oberste Ebene erreicht er nicht.</strong> Ein Eintrag direkt unter dem Upload-Pfad beziehungsweise
   dem Schlüsselpräfix ist eine Organisation; zu welcher Organisation ein Eintrag gehörte, der keine
   ist, steht nirgends mehr, und ein Lauf innerhalb einer Organisation darf ihn deshalb weder melden
-  noch löschen. Ein solcher Eintrag stammt nicht von OPAA; er findet sich im Abgleich mit
+  noch löschen. Ein solcher Eintrag stammt nicht von opaa; er findet sich im Abgleich mit
   <code>SELECT id FROM organizations;</code> und wird von Hand entfernt.</li>
 </ul>
 <h2 id="eine-laufende-installation-auf-den-objektspeicher-umstellen">Eine laufende Installation auf den Objektspeicher umstellen<a class="headerlink" href="#eine-laufende-installation-auf-den-objektspeicher-umstellen" title="Permanent link">&para;</a></h2>

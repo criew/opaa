@@ -23,7 +23,7 @@
     
     
       
-        <title>Datenbank - OPAA-Handbuch</title>
+        <title>Datenbank - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4446,11 +4446,11 @@
 <h1 id="datenbank">Datenbank<a class="headerlink" href="#datenbank" title="Permanent link">&para;</a></h1>
 <p>PostgreSQL ist die einzige Wahrheit einer Installation: Dokumente, Chunks samt Vektoren, Volltext,
 Metadaten, Konten, Rechte, Chats und Protokolle liegen in einer Datenbank. Daneben steht nur die
-<a href="originalablage.html">Originalablage</a>. Dieses Kapitel beschreibt, was eine Datenbank für OPAA mitbringen
+<a href="originalablage.html">Originalablage</a>. Dieses Kapitel beschreibt, was eine Datenbank für opaa mitbringen
 muss; wie sie im Compose-Stapel läuft, steht unter <a href="docker-compose.html#datenbank-im-stapel">Docker Compose</a>,
 wie sie gesichert wird, unter <a href="sicherung-und-wiederherstellung.html">Sicherung und Wiederherstellung</a>.</p>
 <h2 id="vektorspeicher-pgvector">Vektorspeicher: pgvector<a class="headerlink" href="#vektorspeicher-pgvector" title="Permanent link">&para;</a></h2>
-<p>OPAA speichert Vektoren in PostgreSQL mit der Erweiterung pgvector; das ist der einzige unterstützte
+<p>opaa speichert Vektoren in PostgreSQL mit der Erweiterung pgvector; das ist der einzige unterstützte
 Vektorspeicher, ein Wechsel ist nicht vorgesehen. Metadaten und Vektorindex liegen damit in derselben
 Datenbank: ein Sicherungslauf, eine Wiederherstellung, ein Nachweispfad. Bekannte Grenze: pgvector
 stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen.</p>
@@ -4495,12 +4495,12 @@ Distanzfunktion (<code>vector_cosine_ops</code> für <code>cosine_distance</code
 </ul>
 <h2 id="voraussetzungen-einer-eigenen-postgresql">Voraussetzungen einer eigenen PostgreSQL<a class="headerlink" href="#voraussetzungen-einer-eigenen-postgresql" title="Permanent link">&para;</a></h2>
 <p>Der mitgelieferte Compose-Stapel startet PostgreSQL mit einem Superuser-Konto; dort ist nichts
-vorzubereiten. Eine Datenbank des Rechenzentrums stellt OPAA dagegen meist ein Konto ohne
+vorzubereiten. Eine Datenbank des Rechenzentrums stellt opaa dagegen meist ein Konto ohne
 Superuser-Rechte zur Verfügung. Die Schemamigration braucht dann zwei Dinge, die ein
 Datenbankverwalter <strong>vor dem ersten Start</strong> einmalig anlegt:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">-- in der Datenbank von OPAA, als Superuser:</span>
+<div class="highlight"><pre><span></span><code><span class="c1">-- in der Datenbank von opaa, als Superuser:</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">vector</span><span class="p">;</span>
-<span class="c1">-- nur, wenn das Konto von OPAA nicht CREATEROLE hat:</span>
+<span class="c1">-- nur, wenn das Konto von opaa nicht CREATEROLE hat:</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">opaa_audit_owner</span><span class="w"> </span><span class="n">NOLOGIN</span><span class="p">;</span>
 <span class="k">GRANT</span><span class="w"> </span><span class="n">opaa_audit_owner</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="n">opaa</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">ADMIN</span><span class="w"> </span><span class="k">OPTION</span><span class="p">;</span>
 </code></pre></div>
@@ -4509,7 +4509,7 @@ Datenbankverwalter <strong>vor dem ersten Start</strong> einmalig anlegt:</p>
   sein, etwa über das Image <code>pgvector/pgvector</code> oder das Paket <code>postgresql-&lt;Version&gt;-pgvector</code>.
   Anlegen darf sie ein Superuser; verwaltete Dienste (etwa Amazon RDS, Azure Database for
   PostgreSQL, Google Cloud SQL) erlauben es auch ihrer eigenen Verwaltungsrolle.</li>
-<li><strong>Rolle <code>opaa_audit_owner</code>.</strong> Ihr gehören die Protokolltabellen, damit das Konto von OPAA sie
+<li><strong>Rolle <code>opaa_audit_owner</code>.</strong> Ihr gehören die Protokolltabellen, damit das Konto von opaa sie
   nicht löschen kann. Hat das Konto <code>CREATEROLE</code>, legt die Migration die Rolle selbst an. Eine
   vorab angelegte Rolle braucht <code>WITH ADMIN OPTION</code>, sonst scheitert die Migration mit
   <code>permission denied to grant role</code>.</li>
@@ -4520,24 +4520,24 @@ Datenbank. Für ein eigenes Schema gelten die Regeln im folgenden Abschnitt.</p>
 <code>opaa-invalidation-bus</code>). Über sie erfährt sie Änderungen an Rechten, Anmeldeanbietern und
 Einstellungen sofort, auch wenn eine andere Instanz sie vorgenommen hat. Sie braucht eine direkte
 Verbindung oder einen Verbindungs-Proxy im Sitzungsmodus; im Transaktionsmodus (etwa PgBouncer mit
-<code>pool_mode = transaction</code>) kommt sie nicht zustande. OPAA liest Rechte und Einstellungen dann bei
+<code>pool_mode = transaction</code>) kommt sie nicht zustande. opaa liest Rechte und Einstellungen dann bei
 jeder Anfrage aus der Datenbank und meldet im Protokoll <code>The invalidation bus does not listen</code>. Die
 Verbindung zählt bei <code>max_connections</code> mit.</p>
 <p>Fehlt ein Recht, bricht die Migration mit der Meldung von PostgreSQL ab, etwa
 <code>permission denied to create extension "vector"</code>. Ist pgvector auf dem Server gar nicht installiert,
-prüft OPAA das vor der Migration und bricht mit einem eigenen Bericht ab, weil die Meldung von
+prüft opaa das vor der Migration und bricht mit einem eigenen Bericht ab, weil die Meldung von
 PostgreSQL in diesem Fall verloren ginge:</p>
 <div class="highlight"><pre><span></span><code>    APPLICATION FAILED TO START
 
     Description:
-    The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
+    The PostgreSQL server has the pgvector extension not installed; the schema migration of opaa needs it (CREATE EXTENSION vector).
 
     Action:
-    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-&lt;version&gt;-pgvector - and start OPAA again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
+    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-&lt;version&gt;-pgvector - and start opaa again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
 </code></pre></div>
 <h2 id="eigenes-datenbankschema">Eigenes Datenbankschema<a class="headerlink" href="#eigenes-datenbankschema" title="Permanent link">&para;</a></h2>
-<p>Ohne weitere Angabe legt OPAA alles im Schema <code>public</code> an. Mit <code>OPAA_DB_SCHEMA</code> lässt sich ein
-anderes Schema wählen, etwa um OPAA neben anderen Anwendungen in einer gemeinsam genutzten Datenbank
+<p>Ohne weitere Angabe legt opaa alles im Schema <code>public</code> an. Mit <code>OPAA_DB_SCHEMA</code> lässt sich ein
+anderes Schema wählen, etwa um opaa neben anderen Anwendungen in einer gemeinsam genutzten Datenbank
 zu betreiben. Das Backend setzt dann den <code>search_path</code> jeder Verbindung auf <code>&lt;schema&gt;, public</code>;
 Migrationen, Tabellen der Anwendung, die Vektortabelle und die Verwaltungstabelle der Migrationen landen
 im gewählten Schema. <code>public</code> bleibt nur als Rückfall im Suchpfad, damit eine dort bereits
@@ -4546,14 +4546,14 @@ installierte Erweiterung <code>vector</code> auffindbar bleibt.</p>
 <ul>
 <li>Das Schema <strong>muss vor dem ersten Start existieren</strong>. Fehlt es, bricht die Migration beim Start
   ab, statt stillschweigend in <code>public</code> anzulegen.</li>
-<li>Empfohlen: Das Schema gehört einer Verwaltungsrolle, und das Konto von OPAA erhält nur <code>USAGE</code>
+<li>Empfohlen: Das Schema gehört einer Verwaltungsrolle, und das Konto von opaa erhält nur <code>USAGE</code>
   und <code>CREATE</code>, und zwar mit Weitergaberecht. Die Migration braucht dieses Recht, um es an die
   Eigentümerrolle der Protokolltabellen (<code>opaa_audit_owner</code>) weiterzugeben:</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="n">opaa</span><span class="w"> </span><span class="k">AUTHORIZATION</span><span class="w"> </span><span class="n">dba</span><span class="p">;</span>
 <span class="k">GRANT</span><span class="w"> </span><span class="k">USAGE</span><span class="p">,</span><span class="w"> </span><span class="k">CREATE</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="n">opaa</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="n">opaa</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">GRANT</span><span class="w"> </span><span class="k">OPTION</span><span class="p">;</span>
 </code></pre></div>
-<p>Gehört das Schema stattdessen dem Konto von OPAA (<code>CREATE SCHEMA opaa AUTHORIZATION opaa</code>),
+<p>Gehört das Schema stattdessen dem Konto von opaa (<code>CREATE SCHEMA opaa AUTHORIZATION opaa</code>),
   läuft die Anwendung ebenso. Das Konto darf dann aber als Schema-Eigentümer auch die Tabellen von
   <code>opaa_audit_owner</code> löschen, und der Löschschutz des Protokolls entfällt. Dasselbe gilt in <code>public</code>,
   wenn das Konto Eigentümer der Datenbank ist.</p>
@@ -4561,7 +4561,7 @@ installierte Erweiterung <code>vector</code> auffindbar bleibt.</p>
 <li>Das Schema wird <strong>vor der Erstinstallation</strong> festgelegt. Ein späterer Wechsel verschiebt keine
   Daten; die Installation im neuen Schema beginnt leer.</li>
 <li>Die Rolle <code>opaa_audit_owner</code> (Eigentümerin der Protokolltabellen) gilt für die ganze
-  PostgreSQL-Instanz. Eine zweite OPAA-Installation in derselben Instanz, aber mit anderem Konto,
+  PostgreSQL-Instanz. Eine zweite opaa-Installation in derselben Instanz, aber mit anderem Konto,
   startet nicht: Ihre Migration darf die bestehende Rolle nicht vergeben
   (<code>permission denied to grant role</code>). Mit demselben Konto startet sie, kann dann aber das
   Protokoll der anderen Installation verändern. Getrennte Installationen gehören deshalb in

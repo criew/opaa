@@ -23,7 +23,7 @@
     
     
       
-        <title>Releases und Nachweise - OPAA-Handbuch</title>
+        <title>Releases und Nachweise - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4398,7 +4398,7 @@
 
 
 <h1 id="releases-und-nachweise">Releases und Nachweise<a class="headerlink" href="#releases-und-nachweise" title="Permanent link">&para;</a></h1>
-<p>Wer OPAA betreibt oder beschafft, muss wissen, welche Version er einsetzt, wie lange sie
+<p>Wer opaa betreibt oder beschafft, muss wissen, welche Version er einsetzt, wie lange sie
 Sicherheitsupdates bekommt und wie sich belegen lässt, woraus sie besteht und woher sie stammt.
 Dieses Kapitel fasst zusammen, was ein Release liefert, wie man es prüft und wie das Projekt mit
 Schwachstellen und Lizenzen umgeht. Es gehört zum Teil Betrieb des <a href="../index.html">Handbuchs</a>.</p>
@@ -4419,12 +4419,12 @@ Erproben gedacht, bekommen kein wanderndes Tag <code>X.Y</code> und keine Sicher
 <p>Schemaänderungen der Datenbank laufen nur vorwärts; zurück auf eine ältere Version geht es über die
 Sicherung (<a href="aktualisierung.html">Aktualisierung</a>).</p>
 <h3 id="linien-und-supportzeiträume">Linien und Supportzeiträume<a class="headerlink" href="#linien-und-supportzeiträume" title="Permanent link">&para;</a></h3>
-<p>OPAA erscheint zweimal im Jahr mit einem Funktionsrelease <code>X.Y.0</code>, etwa im Juni und im Dezember,
+<p>opaa erscheint zweimal im Jahr mit einem Funktionsrelease <code>X.Y.0</code>, etwa im Juni und im Dezember,
 jeweils 4–6 Wochen nach einer neuen Version von Spring Boot, der Basis des Backends. Jedes finale
 <code>X.Y.0</code> eröffnet die <strong>Linie</strong> <code>X.Y</code>. Ihre Patch-Releases bringen nur Sicherheitskorrekturen und
 Behebungen kritischer Fehler, keine neue Funktion und keinen Bruch; eine Behörde kann sie deshalb
 sofort einspielen. Kritisch ist ein Fehler ohne zumutbaren Workaround, der Daten verliert oder
-verfälscht, OPAA oder eine Kernfunktion ausfallen lässt oder Rechte falsch auswertet.</p>
+verfälscht, opaa oder eine Kernfunktion ausfallen lässt oder Rechte falsch auswertet.</p>
 <table>
 <thead>
 <tr>
@@ -4510,15 +4510,15 @@ Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstüt
 <td>das Helm-Chart <code>oci://ghcr.io/criew/charts/opaa</code> in Version <code>X.Y.Z</code>, mit signierter Provenance; es verweist per Digest auf die Images von Backend und Frontend</td>
 </tr>
 <tr>
-<td>GitHub-Release <code>OPAA vX.Y.Z</code></td>
+<td>GitHub-Release <code>opaa vX.Y.Z</code></td>
 <td>die Release-Notizen und das Update-Paket mit Prüfsummendatei</td>
 </tr>
 <tr>
-<td>GitHub-Release <code>OPAA vX.Y.Z</code></td>
+<td>GitHub-Release <code>opaa vX.Y.Z</code></td>
 <td>SBOM und Lizenzübersicht des Texterkennungs-Images, attestiert</td>
 </tr>
 <tr>
-<td>GitHub-Release <code>OPAA vX.Y.Z</code></td>
+<td>GitHub-Release <code>opaa vX.Y.Z</code></td>
 <td>das Offline-Bündel für Netze ohne Internetzugang, attestiert, wegen seiner Größe in Teilen (<a href="images-und-laufzeit.html#installation-ohne-internetzugang">Installation ohne Internetzugang</a>)</td>
 </tr>
 </tbody>
@@ -4534,7 +4534,7 @@ Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstüt
 </ul>
 <p><a id="herkunft-prüfen"></a></p>
 <p><strong>Herkunft prüfen.</strong> Images und Chart tragen je eine signierte Provenance des Release-Laufs. Sie
-belegt, dass genau dieses Image aus dem Release-Workflow von OPAA zum Tag <code>vX.Y.Z</code> stammt. Die
+belegt, dass genau dieses Image aus dem Release-Workflow von opaa zum Tag <code>vX.Y.Z</code> stammt. Die
 Prüfung nennt deshalb Workflow und Tag; eine Signatur aus einem anderen Workflow oder einem anderen
 Stand besteht sie nicht:</p>
 <div class="highlight"><pre><span></span><code>gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>oci://ghcr.io/criew/opaa-backend:X.Y.Z<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
@@ -4570,7 +4570,7 @@ Browser, ohne Internetzugang.</p>
 <a href="nachvollziehbarkeit.html#das-update-paket-eines-release">Das Update-Paket eines Release</a>.</p>
 <p><a id="herkunft-und-software-stückliste"></a></p>
 <h2 id="provenance-und-software-stückliste">Provenance und Software-Stückliste<a class="headerlink" href="#provenance-und-software-stückliste" title="Permanent link">&para;</a></h2>
-<p>Eine <strong>Software-Stückliste</strong> (SBOM) zählt auf, welche Bestandteile in einem Artefakt stecken. OPAA
+<p>Eine <strong>Software-Stückliste</strong> (SBOM) zählt auf, welche Bestandteile in einem Artefakt stecken. opaa
 liefert sie auf zwei Wegen:</p>
 <ul>
 <li><strong>Am Image.</strong> Jedes veröffentlichte Image, Release wie <code>main</code>, trägt je Architektur eine SBOM und
@@ -4603,14 +4603,14 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
   deren Supportende, das Texterkennungs-Image eingeschlossen.</li>
 <li><strong>Behandeln:</strong> Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter <a href="#sicherheitsupdates">Sicherheitsupdates</a>.</li>
-<li><strong>Melden:</strong> Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
+<li><strong>Melden:</strong> Lücken in opaa vertraulich über das Private Vulnerability Reporting von GitHub
   (Reiter „Security“ im Repository), nicht über öffentliche Issues. Behobene Lücken erscheinen dort
   als Security Advisory. Einzelheiten regelt <code>SECURITY.md</code> im Repository.</li>
 </ul>
 <h2 id="lizenzen">Lizenzen<a class="headerlink" href="#lizenzen" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>OPAA</strong> steht unter der GNU Affero General Public License v3.0 (Datei <code>LICENSE</code> im Repository).
-  Wer OPAA verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
+<li><strong>opaa</strong> steht unter der GNU Affero General Public License v3.0 (Datei <code>LICENSE</code> im Repository).
+  Wer opaa verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
   Fassung anbieten.</li>
 <li><strong>Abhängigkeiten:</strong> Die CI lässt nur Lizenzen zu, die mit der GPLv3 verträglich sind, sonst eine
   begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter <code>lizenzen/</code>. Für das

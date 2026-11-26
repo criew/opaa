@@ -23,7 +23,7 @@
     
     
       
-        <title>Konnektor: S3-Objektspeicher - OPAA-Handbuch</title>
+        <title>Konnektor: S3-Objektspeicher - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4449,7 +4449,7 @@ Dateiablagen teilen, steht dort.</p>
 <li><strong>Anmeldung:</strong> eigene Zugangsdaten der Bibliothek (<a href="../../administration/zugaenge.html">Zugänge</a>, „Eigene
   Zugangsdaten der Bibliothek"): Access Key und Secret Key, für zeitlich begrenzte STS-Schlüssel
   dazu ein Session-Token. Signiert wird immer mit der konfigurierten Region; Umgebungsvariablen,
-  Profile und die Instanzrolle des OPAA-Hosts werden nie befragt. Ein Zugang ist möglich und darf
+  Profile und die Instanzrolle des opaa-Hosts werden nie befragt. Ein Zugang ist möglich und darf
   Region und Adressstil vorgeben.</li>
 <li><strong>Liest:</strong> die <strong>aktuelle Version</strong> jedes Objekts in einem unterstützten Format, dessen Schlüssel
   in einem Geltungsbereich liegt und die Muster passiert; die Anhänge von Mail-Objekten werden
@@ -4458,21 +4458,21 @@ Dateiablagen teilen, steht dort.</p>
 <li><strong>Dokument:</strong> Bucket und Schlüssel sind die Identität (<code>s3://&lt;bucket&gt;/&lt;schlüssel&gt;</code>), der Endpoint
   nur der Weg: Ein Umzug auf einen anderen Endpoint mit denselben Buckets baut den Bestand nicht
   neu. Einen Beleg-Link gibt es nicht, denn eine <code>s3://</code>-Adresse öffnet kein Browser. <strong>„Original
-  öffnen"</strong> lädt das Objekt im Moment des Klicks durch OPAA aus dem Speicher, ohne eine Kopie
+  öffnen"</strong> lädt das Objekt im Moment des Klicks durch opaa aus dem Speicher, ohne eine Kopie
   aufzubewahren, und nur aus einem Geltungsbereich, den die Bibliothek noch hat.</li>
-<li><strong>Rechte</strong> aus Bucket-Policies und IAM übernimmt OPAA nicht: Was der Schlüssel in den
+<li><strong>Rechte</strong> aus Bucket-Policies und IAM übernimmt opaa nicht: Was der Schlüssel in den
   Geltungsbereichen lesen darf, sehen alle Leseberechtigten der Bibliothek.</li>
 </ul>
 <h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Rechte des Schlüssels.</strong> Auf jedem Bucket eines Geltungsbereichs braucht der Schlüssel
    <code>s3:ListBucket</code> und <code>s3:GetObject</code>. <code>s3:ListBucket</code> ist auch nötig, damit ein fehlendes Objekt mit
-   <code>404</code> statt <code>403</code> antwortet — ohne das Recht kann OPAA eine Löschung nie bestätigen. Eine Bedingung
+   <code>404</code> statt <code>403</code> antwortet — ohne das Recht kann opaa eine Löschung nie bestätigen. Eine Bedingung
    auf <code>s3:prefix</code> darf das Recht nicht auf genau das Präfix des Bereichs beschränken
-   (<code>StringLike</code> mit <code>präfix/*</code> genügt): OPAA bestätigt ein <code>404</code> mit einer Auflistung, deren Präfix der
+   (<code>StringLike</code> mit <code>präfix/*</code> genügt): opaa bestätigt ein <code>404</code> mit einer Auflistung, deren Präfix der
    ganze Schlüssel ist.
    <code>s3:ListAllMyBuckets</code> braucht die Auflistung der Buckets bei der Auswahl und der Umfang
-   „Alle Buckets"; ohne das Recht lässt er sich nicht wählen. Schreibrechte braucht OPAA nie.</li>
+   „Alle Buckets"; ohne das Recht lässt er sich nicht wählen. Schreibrechte braucht opaa nie.</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
@@ -4529,7 +4529,7 @@ Dateiablagen teilen, steht dort.</p>
 <td>Hetzner Object Storage</td>
 <td>aus dem Ort abgeleitet (<code>fsn1</code>, <code>nbg1</code>, <code>hel1</code>), <code>https://&lt;ort&gt;.your-objectstorage.com</code>; der Ort ist die Region</td>
 <td>Virtual-Host</td>
-<td>keine Benachrichtigungen; Verschlüsselung nur als SSE-C, die OPAA nicht lesen kann</td>
+<td>keine Benachrichtigungen; Verschlüsselung nur als SSE-C, die opaa nicht lesen kann</td>
 </tr>
 <tr>
 <td>Anderer Anbieter</td>
@@ -4603,9 +4603,9 @@ Serverfehler), nennt er die Stufe „Adresse".</p>
 <p><strong>Über einen Zugang:</strong> Der Endpoint ist mit der Server-Adresse vorbelegt, die Anbietervorlage
 entfällt, Access Key und Secret Key tragen die Verwaltenden der Bibliothek ein. Gibt der Zugang Region
 oder Adressstil vor, stehen sie nur lesbar da.
-Ändert die Systemverwaltung Region oder Adressstil, prüft OPAA vor dem Speichern für jede Bibliothek,
+Ändert die Systemverwaltung Region oder Adressstil, prüft opaa vor dem Speichern für jede Bibliothek,
 ob sie ihre Ziele noch erreicht, und ändert sonst nichts; danach listet der nächste Lauf jeder
-Bibliothek alles von vorn. Ändert sich die Server-Adresse, verwirft OPAA die Zugangsdaten der
+Bibliothek alles von vorn. Ändert sich die Server-Adresse, verwirft opaa die Zugangsdaten der
 Bibliotheken, bis die Verwaltenden sie neu eintragen.</p>
 <h2 id="4-betriebsarten-und-änderungserkennung">4. Betriebsarten und Änderungserkennung<a class="headerlink" href="#4-betriebsarten-und-änderungserkennung" title="Permanent link">&para;</a></h2>
 <table>
@@ -4665,7 +4665,7 @@ Sicherheitsnetz und der einzige Lauf, der Löschungen ohne Benachrichtigung nach
 <p>Benachrichtigungen verkürzen die Zeit bis zur Aufnahme auf Sekunden. Ohne sie ist nichts falsch, nur
 später; ein verlorenes Ereignis holt der nächste Vollabgleich nach. Hetzner kennt keine.</p>
 <p><strong>Einrichten.</strong> Im Reiter „Quelle" unter den Zeilen, Abschnitt „Ereignisbenachrichtigung", <strong>„Benachrichtigung
-einrichten"</strong>. OPAA zeigt das Token <strong>einmal</strong>, mit der Adresse
+einrichten"</strong>. opaa zeigt das Token <strong>einmal</strong>, mit der Adresse
 <code>https://&lt;opaa-host&gt;/api/v1/libraries/&lt;Bibliotheks-ID&gt;/push</code> und den Befehlen je Anbieter. „Token neu
 erzeugen" rotiert: Das alte Token gilt sofort nicht mehr, und das neue muss im Speicher nachgetragen
 werden — sonst gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Änderungen
@@ -4700,7 +4700,7 @@ erreichbar sein, <strong>über TLS</strong>, denn das Token geht im Klartext mit
 </table>
 <p>SNS und SQS sind nicht gebaut. Fängt ein Proxy <code>Bearer</code>-Kopfzeilen ab, lässt sich bei MinIO auch
 <code>auth_token="Basic &lt;Base64(opaa:Token)&gt;"</code> hinterlegen.</p>
-<p><strong>Was eine Nachricht auslöst.</strong> OPAA liest Bucket und Schlüssel aus dem S3-Format (<code>Records</code>) oder dem
+<p><strong>Was eine Nachricht auslöst.</strong> opaa liest Bucket und Schlüssel aus dem S3-Format (<code>Records</code>) oder dem
 EventBridge-Umschlag; die Ereignisart ist nur ein Hinweis. Schlüssel außerhalb der Bereiche oder
 Muster werden verworfen und gezählt. Nachrichten werden je Bibliothek gesammelt
 (<code>opaa.indexing.events.debounce</code>) und in <strong>einem</strong> Ereignislauf geprüft; über <code>max-pending-keys</code>
@@ -4796,14 +4796,14 @@ verschwindet es, verschwinden seine Anhänge mit.</p>
 <li><strong>Zieladressprüfung</strong> auf Endpoint-Host und, bei Virtual-Host, auf jedem Bucket-Host — beim
   Speichern, im Verbindungstest und vor jeder Anfrage (<a href="index.html#12-zieladressprüfung">Konnektoren</a>).
   Redirects folgt der Konnektor nicht: Ein <code>301</code> oder <code>307</code> ist ein Konfigurationsfehler.</li>
-<li><strong>Drosselung:</strong> Bei <code>503 SlowDown</code>, <code>429</code> und vorübergehenden Transportfehlern wiederholt OPAA mit
+<li><strong>Drosselung:</strong> Bei <code>503 SlowDown</code>, <code>429</code> und vorübergehenden Transportfehlern wiederholt opaa mit
   wachsendem Abstand bis höchstens 20 Sekunden. Bleibt eine <strong>Auflistung</strong> gedrosselt, scheitert der
   Lauf; ein <strong>Download</strong> zählt als fehlgeschlagen, und der Lauf geht weiter.</li>
 <li><strong>Archivklassen:</strong> <code>GLACIER</code>, <code>DEEP_ARCHIVE</code> und <code>INTELLIGENT_TIERING</code> in einer Archivstufe werden
-  übersprungen, bis eine Wiederherstellung abgeschlossen ist; <code>GLACIER_IR</code> wird gelesen. OPAA stößt
+  übersprungen, bis eine Wiederherstellung abgeschlossen ist; <code>GLACIER_IR</code> wird gelesen. opaa stößt
   keine Wiederherstellung an.</li>
 <li><strong>Verschlüsselung:</strong> SSE-S3 und SSE-KMS sind transparent, sofern der Schlüssel das KMS-Recht hat;
-  SSE-C kann OPAA nicht lesen.</li>
+  SSE-C kann opaa nicht lesen.</li>
 <li><strong>Versionierung:</strong> nur die aktuelle Version; ein Löschmarker gilt als Löschung.</li>
 <li><strong>„Original öffnen"</strong> läuft mit dem Schlüssel der Bibliothek, nicht mit dem des Lesers, mit 5
   Sekunden je Versuch und einer Wiederholung. Jeder Klick kostet einen <code>GetObject</code> und schreibt das
@@ -4880,7 +4880,7 @@ verschwindet es, verschwinden seine Anhänge mit.</p>
 </tr>
 <tr>
 <td>„… wegen Zeitabweichung ab (RequestTimeTooSkewed) …"</td>
-<td>Uhr des OPAA-Hosts weicht ab</td>
+<td>Uhr des opaa-Hosts weicht ab</td>
 <td>NTP prüfen</td>
 </tr>
 <tr>
@@ -4985,7 +4985,7 @@ verschwindet es, verschwinden seine Anhänge mit.</p>
 </tr>
 <tr>
 <td>AWS: SNS-Subscription bleibt „pending confirmation"</td>
-<td>den SNS-Handshake führt OPAA nicht aus</td>
+<td>den SNS-Handshake führt opaa nicht aus</td>
 <td>EventBridge verwenden</td>
 </tr>
 <tr>

@@ -23,7 +23,7 @@
     
     
       
-        <title>Konnektor: Feed - OPAA-Handbuch</title>
+        <title>Konnektor: Feed - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4410,8 +4410,8 @@ auf ihren Hauptinhalt und holt die dort verlinkten Anlagen als eigene Dokumente.
   <code>pubDate</code> gilt als fehlend.</li>
 <li><strong>Dokument:</strong> Der Eintrag ist ein Dokument, jede Anlage ein eigenes mit dem Eintrag als
   Elterndokument. Im Chat öffnet „Dokument öffnen" an einer Fundstelle daraus das Dokument durch
-  OPAA; die Adresse des Eintrags zeigt das Belegfenster nicht.</li>
-<li><strong>Rechte</strong> der Website übernimmt OPAA nicht.</li>
+  opaa; die Adresse des Eintrags zeigt das Belegfenster nicht.</li>
+<li><strong>Rechte</strong> der Website übernimmt opaa nicht.</li>
 </ul>
 <h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
 <ol>
@@ -4423,23 +4423,23 @@ auf ihren Hauptinhalt und holt die dort verlinkten Anlagen als eigene Dokumente.
    Hängen die Anlagen ohne Dateiendung an der Seite, wie beim Government Site Builder, braucht
    sie das <strong>Anlagenprofil</strong> <code>GSB</code> (Abschnitt „Anhänge“).</li>
 <li>Optional einen Zugang anlegen. Die Profilpflicht „Nur über Zugänge" legt nur die Feed-Adresse
-   fest; Detailseiten auf anderen Servern bestimmt der Betreiber des Feeds. Das sagt OPAA, bevor die
+   fest; Detailseiten auf anderen Servern bestimmt der Betreiber des Feeds. Das sagt opaa, bevor die
    Pflicht eingeschaltet wird.</li>
 </ol>
 <h2 id="3-quellkonfiguration">3. Quellkonfiguration<a class="headerlink" href="#3-quellkonfiguration" title="Permanent link">&para;</a></h2>
 <p>Die Angaben sind dieselben wie beim <a href="http-directory.html#3-quellkonfiguration">Webverzeichnis</a>:
 „Adresse (URL)" des Feeds und optionale Anmeldedaten <code>benutzer:passwort</code>. Dort steht auch, wann
 gespeicherte Zugangsdaten beim Bearbeiten erhalten bleiben. Die
-Oberfläche weist beim Anlegen darauf hin, dass OPAA auch die verlinkten Detailseiten abruft.</p>
+Oberfläche weist beim Anlegen darauf hin, dass opaa auch die verlinkten Detailseiten abruft.</p>
 <p><strong>Über einen Zugang:</strong> wie beim Webverzeichnis; die Feed-Adresse liegt unter der Server-Adresse des
-Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne
+Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft opaa weiter ab, aber ohne
 Zugangsdaten.</p>
-<p><strong>Umfang:</strong> wie OPAA die Detailseiten dieses Feeds liest. Beide Angaben sind optional; leer gilt
+<p><strong>Umfang:</strong> wie opaa die Detailseiten dieses Feeds liest. Beide Angaben sind optional; leer gilt
 die Werkseinstellung: Inhaltsselektor <code>main, article, [role=main]</code>, Anlagenprofil <code>GENERIC</code>. Die Zeile sehen auch Lesende der Bibliothek.</p>
 <ul>
 <li>„Inhaltsselektor“: ein CSS-Selektor in Jsoup-Syntax, etwa <code>#inhalt</code> oder <code>.artikel-text</code>. Jeder
   Treffer ist ein Inhaltsbereich; trifft er nichts, nimmt der Lauf die ganze Seite. Einen Selektor,
-  der nicht gelesen werden kann oder zu aufwendig wäre, lehnt OPAA beim Speichern ab (Abschnitt
+  der nicht gelesen werden kann oder zu aufwendig wäre, lehnt opaa beim Speichern ab (Abschnitt
   „Grenzen und Schutzmechanismen“).</li>
 <li>„Anlagenprofil“: welche Links als Anlagen gelten (Abschnitt „Anhänge“).</li>
 </ul>
@@ -4467,7 +4467,7 @@ nie etwas, weil es fehlt.</p>
     W --&gt; A[Anlagen laden]</code></pre>
 <p>Unverändertes erkennt er in drei Stufen:</p>
 <ol>
-<li><strong>Feed, bedingter GET.</strong> OPAA merkt sich ETag und Last-Modified. Antwortet der Server mit 304,
+<li><strong>Feed, bedingter GET.</strong> opaa merkt sich ETag und Last-Modified. Antwortet der Server mit 304,
    endet der Lauf nach einer Anfrage mit null Elementen — der Normalfall bei stündlichem Zeitplan.</li>
 <li><strong>Eintrag, Veröffentlichungsdatum.</strong> Ein Eintrag mit gleichem <code>pubDate</code>, der zuletzt erfolgreich
    indiziert wurde, wird übersprungen; ein fehlendes Datum gilt als geändert.</li>
@@ -4477,7 +4477,7 @@ nie etwas, weil es fehlt.</p>
 <p>Ein unveränderter Eintrag ohne Anlagen-Dokumente lädt seine Detailseite einmal, nur um Anlagen zu
 finden; der Text wird dabei nicht neu verarbeitet.</p>
 <p>Nach einer Änderung von Inhaltsselektor oder Anlagenprofil entfallen die Stufen 1 und 2, bis ein
-Lauf jeden Eintrag des Feeds einmal unter den neuen Angaben gelesen hat: OPAA merkt sich mit dem
+Lauf jeden Eintrag des Feeds einmal unter den neuen Angaben gelesen hat: opaa merkt sich mit dem
 Feed-Zustand, unter welchen Angaben das geschah.</p>
 <p><strong>Zurückstellen.</strong> Den Feed-Zustand aus Stufe 1 speichert ein Lauf nur, wenn er vollständig war:
 kein Fehler, kein abgeschnittener Feed, keine verlorene Anlage, keine Ablehnung am Kontingent und
@@ -4534,13 +4534,13 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.</p>
 <ul>
 <li><strong>Zieladressprüfung</strong> auf Feed, Detailseite, Anlage und jedem Redirect
   (<a href="index.html#12-zieladressprüfung">Konnektoren</a>).</li>
-<li><strong>Fremde Server:</strong> Eine Detailseite auf einem anderen Server holt OPAA ohne Zugangsdaten. Ein
+<li><strong>Fremde Server:</strong> Eine Detailseite auf einem anderen Server holt opaa ohne Zugangsdaten. Ein
   Redirect, der den Ursprung der Detailseite oder Anlage verlässt, wird
   abgelehnt, bevor das fremde Ziel kontaktiert wird. Anlagen zählen nur auf dem Ursprung der
   Detailseite (Abschnitt 6). Beim Feed selbst werden bis zu fünf Redirects gefolgt, auf einen
   fremden Ursprung ohne Zugangsdaten.</li>
 <li><strong>„Original öffnen"</strong> holt einen Eintrag oder eine Anlage mit den Zugangsdaten nur, wenn die
-  Adresse auf dem Ursprung des Feeds liegt; eine Adresse auf einem anderen Server ruft OPAA ohne
+  Adresse auf dem Ursprung des Feeds liegt; eine Adresse auf einem anderen Server ruft opaa ohne
   Zugangsdaten ab.</li>
 <li><strong>Prüfung je Eintrag</strong>, bevor etwas geladen wird: Ein Link mit anderem Schema als <code>http</code>/<code>https</code>
   oder kaputter Adresse wird abgewiesen.</li>

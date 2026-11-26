@@ -23,7 +23,7 @@
     
     
       
-        <title>Mehrere Backend-Instanzen - OPAA-Handbuch</title>
+        <title>Mehrere Backend-Instanzen - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4584,14 +4584,14 @@
 
 
 <h1 id="mehrere-backend-instanzen">Mehrere Backend-Instanzen<a class="headerlink" href="#mehrere-backend-instanzen" title="Permanent link">&para;</a></h1>
-<p>Dieses Kapitel erklärt, wie mehrere Backend-Instanzen von OPAA gleichzeitig arbeiten, wie sie sich
+<p>Dieses Kapitel erklärt, wie mehrere Backend-Instanzen von opaa gleichzeitig arbeiten, wie sie sich
 über die Datenbank abstimmen und was daraus für den Betrieb folgt. Es beschreibt, wie es
 funktioniert und warum; wie man die Instanzen einrichtet, steht bei den Betriebswegen
 <a href="docker-compose.html#mehrere-backend-instanzen">Docker Compose</a> und
 <a href="kubernetes.html#mehrere-backend-instanzen">Kubernetes</a>. Die Bausteine einer Installation beschreibt
 die <a href="index.html">Betriebsübersicht</a>.</p>
 <blockquote>
-<p><strong>Beispiel.</strong> Ein Landratsamt betreibt OPAA mit zwei Backend-Instanzen unter Kubernetes. In der
+<p><strong>Beispiel.</strong> Ein Landratsamt betreibt opaa mit zwei Backend-Instanzen unter Kubernetes. In der
 Nacht fällt ein Knoten aus und nimmt eine Instanz mit. Die andere beantwortet die Fragen weiter,
 der nächtliche Löschlauf läuft trotzdem genau einmal, und den Indexierungslauf, den die
 ausgefallene Instanz gerade ausführte, gibt die verbliebene nach kurzer Zeit frei; er lässt sich
@@ -4618,7 +4618,7 @@ antwortet die andere Instanz weiter, und ein Update tauscht die Instanzen nachei
 <ul>
 <li><strong>Ausfallsicherheit:</strong> Fällt eine Instanz aus, beantworten die übrigen die Anfragen weiter.</li>
 <li><strong>Update ohne Ausfall:</strong> Eine neue Version wird Instanz für Instanz eingespielt, soweit sie die
-  laufende neben sich zulässt; OPAA bleibt dabei erreichbar (<a href="#update-ohne-ausfall">Update ohne Ausfall</a>).</li>
+  laufende neben sich zulässt; opaa bleibt dabei erreichbar (<a href="#update-ohne-ausfall">Update ohne Ausfall</a>).</li>
 <li><strong>Mehr Arbeit gleichzeitig:</strong> Indexierungsläufe und Uploads verteilen sich auf mehr Prozesse.</li>
 </ul>
 <p>Was es bewusst nicht ist:</p>
@@ -4733,7 +4733,7 @@ geschieht, hängt von der Art der Anfrage ab:</p>
 </ul>
 <h2 id="abstimmung-nur-über-die-datenbank">Abstimmung nur über die Datenbank<a class="headerlink" href="#abstimmung-nur-über-die-datenbank" title="Permanent link">&para;</a></h2>
 <p>Mehrere Instanzen müssen sich absprechen: Wer startet den nächtlichen Lauf? Wer verschickt die
-Erinnerungsmail? Wie erfährt Instanz B, dass auf Instanz A gerade ein Recht entzogen wurde? OPAA
+Erinnerungsmail? Wie erfährt Instanz B, dass auf Instanz A gerade ein Recht entzogen wurde? opaa
 löst das ohne zusätzliche Infrastruktur, ohne Nachrichtenvermittler und ohne Zwischenspeicher-Dienst.
 Alles läuft über die Datenbank, die ohnehin da ist, gesichert und überwacht wird.</p>
 <pre class="mermaid"><code>flowchart TB
@@ -4847,7 +4847,7 @@ sich selbst; die Notizen des Release sagen es. Eine Instanz außerhalb des Fenst
 sie älter ist oder neuer. <strong>Bis zum ersten Release mit dieser Zusage läuft nur dieselbe Version
 nebeneinander.</strong> Images des Stands <code>main</code> tragen alle dieselbe Entwicklungsversion: Zwischen ihnen
 prüft das Fenster nichts, sie gelten als gleich. Ob sie nebeneinander laufen, sichert nur ihr
-Abstand, nicht OPAA.</p>
+Abstand, nicht opaa.</p>
 <p>Einen Wert des Abdrucks ändert deshalb <strong>nur ein Neustart aller Instanzen</strong>: erst alle beenden, dann
 mit dem neuen Wert starten. Ein Update, das zugleich einen solchen Wert ändert, bleibt an der ersten
 neuen Instanz stehen, ohne dass der Dienst ausfällt. Wurde eine Instanz hart beendet, etwa mit
@@ -4876,7 +4876,7 @@ Sitzungen gilt so auf jeder Instanz mit deren nächster Anfrage.</p>
 <li><strong>Abmelden und Sperren wirken überall.</strong> Bei der Abmeldung einer lokalen Sitzung kommt ihr Token
   auf eine Sperrliste in der Datenbank, die jede Instanz bei jeder Anfrage liest. Einen Passwortwechsel,
   eine Sperre, das Zurücksetzen durch die Verwaltung, das Ausschalten der lokalen Konten und ein
-  erkannter wiederverwendeter Token beantwortet OPAA, indem es einen Zähler am Konto hochzählt; ein
+  erkannter wiederverwendeter Token beantwortet opaa, indem es einen Zähler am Konto hochzählt; ein
   Token mit altem Zählerstand gilt auf jeder Instanz als ungültig. Beides braucht keinen Vergleich von
   Uhrzeiten zwischen Rechnern.</li>
 <li><strong>Voraussetzung an die Datenbank:</strong> Die Hörverbindung braucht eine direkte Verbindung oder einen
@@ -4884,7 +4884,7 @@ Sitzungen gilt so auf jeder Instanz mit deren nächster Anfrage.</p>
   (<a href="datenbank.html#voraussetzungen-einer-eigenen-postgresql">Voraussetzungen einer eigenen PostgreSQL</a>).</li>
 </ul>
 <h2 id="geplante-läufe-laufen-genau-einmal">Geplante Läufe laufen genau einmal<a class="headerlink" href="#geplante-läufe-laufen-genau-einmal" title="Permanent link">&para;</a></h2>
-<p>OPAA hat zeitgesteuerte Aufgaben: Indexierung nach Zeitplan, Verzeichnisabgleich, Lösch- und
+<p>opaa hat zeitgesteuerte Aufgaben: Indexierung nach Zeitplan, Verzeichnisabgleich, Lösch- und
 Aufbewahrungsläufe, Erinnerungen, die Prüfung der Modellrollen. Jede Instanz kennt dieselben
 Termine, also wollen alle gleichzeitig loslegen. Zwei Mechanismen verhindern doppelte Arbeit.</p>
 <pre class="mermaid"><code>flowchart LR
@@ -4934,7 +4934,7 @@ lässt aber die Anfragen von Personen zu Ende laufen
 (<a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a>).</p>
 <h2 id="eine-uhr-für-alle">Eine Uhr für alle<a class="headerlink" href="#eine-uhr-für-alle" title="Permanent link">&para;</a></h2>
 <p>Zwei Rechner gehen trotz Zeitabgleich um Millisekunden bis Sekunden auseinander. Für alles, was eine
-Instanz schreibt und eine andere liest und vergleicht, nimmt OPAA deshalb die Uhr der Datenbank.</p>
+Instanz schreibt und eine andere liest und vergleicht, nimmt opaa deshalb die Uhr der Datenbank.</p>
 <table>
 <thead>
 <tr>
@@ -4959,7 +4959,7 @@ Instanz schreibt und eine andere liest und vergleicht, nimmt OPAA deshalb die Uh
 </table>
 <h2 id="mails-ohne-verlust">Mails ohne Verlust<a class="headerlink" href="#mails-ohne-verlust" title="Permanent link">&para;</a></h2>
 <p>Eine Mail, auf deren Versand niemand in derselben Anfrage wartet, etwa eine Einladung, ein
-Rücksetzlink oder eine Erinnerung, legt OPAA zusammen mit dem Vorgang, den sie meldet, in eine
+Rücksetzlink oder eine Erinnerung, legt opaa zusammen mit dem Vorgang, den sie meldet, in eine
 Warteschlange in der Datenbank. Wird der Vorgang verworfen, verschwindet auch die Mail.</p>
 <pre class="mermaid"><code>flowchart LR
     V[Vorgang, etwa&lt;br/&gt;Einladung] --&gt; Q[(Warte-&lt;br/&gt;schlange)]
@@ -4974,10 +4974,10 @@ Mailserver und dem Vermerk ab, kann eine Mail ein zweites Mal ankommen, erkennba
 Kennung der Nachricht.</p>
 <p>Eine Ausnahme sind „Passwort vergessen“ und die Selbstregistrierung: Ihre Bearbeitung samt Mail
 wartet zunächst im Speicher der Instanz, nur Millisekunden lang. Stoppt die Instanz genau dann, geht
-die Anfrage verloren, und wer keine Mail bekommt, fragt erneut (<a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a>). Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
+die Anfrage verloren, und wer keine Mail bekommt, fragt erneut (<a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a>). Wiederholungen, Verschlüsselung und die Mails, die opaa sofort versendet,
 beschreibt <a href="../administration/e-mail.html#zustellung-über-die-warteschlange">E-Mail-Versand</a>.</p>
 <h2 id="grenzen-und-budgets">Grenzen und Budgets<a class="headerlink" href="#grenzen-und-budgets" title="Permanent link">&para;</a></h2>
-<p>OPAA begrenzt an vielen Stellen, wie viel in einem Zeitfenster oder gleichzeitig geschehen darf, etwa
+<p>opaa begrenzt an vielen Stellen, wie viel in einem Zeitfenster oder gleichzeitig geschehen darf, etwa
 Fragen je Adresse und Konto, gleichzeitige Einbettungen oder Transkriptionen. Mit mehreren Instanzen
 stellt sich für jede Grenze die Frage: Gilt sie für die ganze Installation oder je Instanz?</p>
 <pre class="mermaid"><code>flowchart LR
@@ -5110,7 +5110,7 @@ auch neben Instanzen der neuen, also auch dann, wenn schon alle Instanzen ersetz
 vorige Version danach Fehler, bleibt die Sicherung von vor dem Update der Rückfall. Bis zum ersten
 Release mit dieser Zusage und über eine Versionsgrenze hinweg führt der Rückweg nur über diese
 Sicherung.</p>
-<p><strong>Wechsel des Embedding-Modells.</strong> Während eines Updates lehnt OPAA Wechsel, Verwerfen und
+<p><strong>Wechsel des Embedding-Modells.</strong> Während eines Updates lehnt opaa Wechsel, Verwerfen und
 Endpunktwechsel des Embedding-Modells ab: Alle laufenden Instanzen müssen dieselbe Version haben,
 zwei Builds derselben Version gelten dabei als gleich. Umgekehrt gehört ein Rückweg auf die vorige
 Version nicht in die Zeit eines laufenden Wechsels (<a href="modell-endpunkte.html#modell-wechseln">Modell wechseln</a>).</p>
@@ -5243,7 +5243,7 @@ sind drei Fragen wichtig:</p>
 <tbody>
 <tr>
 <td><strong>Instanz</strong></td>
-<td>ein laufender Backend-Prozess von OPAA; unter Kubernetes ein Pod, unter Compose ein Container</td>
+<td>ein laufender Backend-Prozess von opaa; unter Kubernetes ein Pod, unter Compose ein Container</td>
 </tr>
 <tr>
 <td><strong>Instanzregister</strong></td>

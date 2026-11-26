@@ -23,7 +23,7 @@
     
     
       
-        <title>Aktualisierung - OPAA-Handbuch</title>
+        <title>Aktualisierung - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4336,7 +4336,7 @@ außer hinter die Umstellung der gespeicherten Geheimnisse
   einem Modellwechsel, erst umschalten lassen oder den Wechsel verwerfen und danach auf das frühere
   Release zurückgehen. Eine ältere Version kennt die Generation des Modells nicht und könnte einen
   Wechsel unter gleichem Modellnamen beim Start für erledigt halten. Solange Instanzen verschiedener
-  Versionen laufen, lehnt OPAA Wechsel, Verwerfen und Endpunktwechsel ab.</p>
+  Versionen laufen, lehnt opaa Wechsel, Verwerfen und Endpunktwechsel ab.</p>
 </li>
 <li>
 <p><strong>Die Distanzfunktion wird beim Start geprüft.</strong> Passt <code>OPAA_PGVECTOR_DISTANCE_TYPE</code> nicht zum
@@ -4356,7 +4356,7 @@ einen Neuaufbau einer Bibliothek gemeinsam zurücksetzen, dann regulär indizier
 </code></pre></div>
 </blockquote>
 <h2 id="kein-rückweg-nach-der-umstellung-der-geheimnisse">Kein Rückweg nach der Umstellung der Geheimnisse<a class="headerlink" href="#kein-rückweg-nach-der-umstellung-der-geheimnisse" title="Permanent link">&para;</a></h2>
-<p>Seit der Version mit dem <a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a> speichert OPAA
+<p>Seit der Version mit dem <a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a> speichert opaa
 Zugangsdaten und Modellschlüssel im Format <code>enc:v2</code>, sobald alle Instanzen die neue Version fahren,
 und stellt den Bestand im Hintergrund darauf um. Eine Version davor liest dieses Format nicht: Nach
 einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfläche zeigt sie als
@@ -4364,14 +4364,14 @@ einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfl�
 <ul>
 <li><strong>Zurück hinter diese Version nur mit der Rücksicherung</strong> von vor dem Update.</li>
 <li><strong>Rückweg ohne Rücksicherung offenhalten:</strong> die neue Version mit
-  <code>OPAA_ENCRYPTION_KEYED_FORMAT=false</code> starten. OPAA schreibt dann weiter das bisherige Format und
+  <code>OPAA_ENCRYPTION_KEYED_FORMAT=false</code> starten. opaa schreibt dann weiter das bisherige Format und
   stellt nichts auf das neue Format um. Ist der Rückweg nicht mehr nötig, die Variable entfernen und
   alle Instanzen gemeinsam neu starten.</li>
 <li><strong>Nachträglich lässt er sich nicht öffnen:</strong> Wer erst nach der Umstellung auf <code>false</code> schaltet,
   behält die schon umgestellten Werte im neuen Format; der Weg zurück führt dann weiter nur über die
   Rücksicherung.</li>
 <li><strong>Abschluss der Umstellung:</strong> Findet der Hintergrundlauf zweimal im Abstand von mindestens fünf
-  Minuten und zwei Heartbeat-Intervallen keinen Wert mehr im alten Format, lehnt OPAA alte Werte
+  Minuten und zwei Heartbeat-Intervallen keinen Wert mehr im alten Format, lehnt opaa alte Werte
   und Klartext danach ab (siehe <a href="netz-und-sicherheit.html#zugangsdaten-verschlüsselung">Zugangsdaten-Verschlüsselung</a>). Ein Start
   mit <code>OPAA_ENCRYPTION_KEYED_FORMAT=false</code> hebt diesen Abschluss wieder auf, damit die in dieser Zeit
   geschriebenen Werte nach dem Zurückschalten lesbar bleiben und umgestellt werden; danach schließt

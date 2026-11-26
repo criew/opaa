@@ -23,7 +23,7 @@
     
     
       
-        <title>Konnektor: Windows-Dateifreigabe (SMB) - OPAA-Handbuch</title>
+        <title>Konnektor: Windows-Dateifreigabe (SMB) - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4430,21 +4430,21 @@ was alle Dateiablagen teilen, steht dort.</p>
   Ordnern <strong>einer</strong> Freigabe; die Anhänge von Mail-Dateien werden eigene Dokumente.</li>
 <li><strong>Dokument:</strong> Der Pfad <code>smb://server/freigabe/ordner/datei</code> ist die Identität. <strong>Umbenennen oder
   Verschieben</strong> entfernt das alte Dokument und legt ein neues an. Einen Beleg-Link gibt es nicht,
-  denn <code>smb://</code> öffnet kein Browser; <strong>„Original öffnen"</strong> lädt die Datei durch OPAA vom Pfad des
+  denn <code>smb://</code> öffnet kein Browser; <strong>„Original öffnen"</strong> lädt die Datei durch opaa vom Pfad des
   Dokuments, nur innerhalb der konfigurierten Ordner und nie über eine Verknüpfung.</li>
-<li><strong>Rechte</strong> aus der Freigabe übernimmt OPAA nicht: Was das Dienstkonto lesen kann, sehen alle
+<li><strong>Rechte</strong> aus der Freigabe übernimmt opaa nicht: Was das Dienstkonto lesen kann, sehen alle
   Leseberechtigten der Bibliothek.</li>
 </ul>
 <h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Dateiserver im privaten Netz: seinen Hostnamen für die
-   <a href="index.html#12-zieladressprüfung">Zieladressprüfung</a> freigeben. OPAA braucht Port 445 zum Server.</li>
+   <a href="index.html#12-zieladressprüfung">Zieladressprüfung</a> freigeben. opaa braucht Port 445 zum Server.</li>
 <li>Ein <strong>Dienstkonto</strong> anlegen, kein persönliches. Es braucht nur Leserechte, auf der Freigabe und
    im Dateisystem darunter, und das Recht „Auf diesen Computer vom Netzwerk aus zugreifen". Sperrt
    die Domäne NTLM, muss das Konto auf die Ausnahmeliste.</li>
 <li><strong>Leserecht auf alles im Bereich.</strong> Ist auf der Freigabe die zugriffsbasierte Aufzählung
    (Access-Based Enumeration) eingeschaltet, zeigt der Server einen Ordner ohne Leserecht gar nicht
-   an — für OPAA ist er dann verschwunden, und seine Dokumente werden <strong>entfernt</strong>. Ohne diese
+   an — für opaa ist er dann verschwunden, und seine Dokumente werden <strong>entfernt</strong>. Ohne diese
    Aufzählung meldet der Lauf den Ordner als nicht lesbar und entfernt nichts.</li>
 <li>Auf dem Server SMB 2 oder 3 mit Signatur einschalten.</li>
 <li>Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben; wer sonst Bibliotheken anlegen
@@ -4486,7 +4486,7 @@ nicht.</p>
 <p>Jeder Lauf ist ein <strong>Vollabgleich</strong>; SMB kennt kein Änderungsprotokoll. Er listet jeden Ordner
 unterhalb der konfigurierten Ordner, in Namensreihenfolge, und lädt Dateien schon, während die
 Auflistung weiterläuft. Eine Datei, deren <strong>Änderungszeit und Größe</strong> dem gespeicherten Stand
-entsprechen, wird nicht neu geladen. Ordner merkt sich OPAA nicht: Ihre Änderungszeit ändert sich nur,
+entsprechen, wird nicht neu geladen. Ordner merkt sich opaa nicht: Ihre Änderungszeit ändert sich nur,
 wenn darin direkt etwas angelegt, gelöscht oder umbenannt wird.</p>
 <pre class="mermaid"><code>flowchart LR
     A[Anmeldung,&lt;br/&gt;Freigabe öffnen] --&gt; B[alle Ordner&lt;br/&gt;auflisten]
@@ -4495,7 +4495,7 @@ wenn darin direkt etwas angelegt, gelöscht oder umbenannt wird.</p>
     C -- nein --&gt; F[laden]
     B --&gt; L[Verknüpfungen:&lt;br/&gt;gezählt, nicht&lt;br/&gt;verfolgt]</code></pre>
 <p><strong>Über mehrere Läufe.</strong> Reicht das Budget nicht, endet der Lauf als „unvollständig, wird
-fortgesetzt", und OPAA merkt sich die Stelle samt nicht lesbaren und schon gesehenen Ordnern. Der
+fortgesetzt", und opaa merkt sich die Stelle samt nicht lesbaren und schon gesehenen Ordnern. Der
 nächste Lauf öffnet nur die Ordner auf dem Weg dorthin erneut und setzt fort
 (<a href="index.html#22-ein-vollabgleich-über-mehrere-läufe">Konnektoren</a>). Ein Lauf, der an einem Fehler
 scheitert, ändert die Stelle nicht. Die Obergrenze <code>max-entries-per-run</code> gilt für den ganzen
@@ -4551,7 +4551,7 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.</p>
   ist mit … Zeichen zu groß …"), und ein Lauf, der am Budget endet, kommt in diesem Bereich nicht
   weiter. Abhilfe: den Bereich aufteilen.</li>
 <li><strong>Geteilte Datei-ID.</strong> Teilen sich zwei Ordner eine Kennung, etwa bei Samba mit mehreren
-  Dateisystemen unter einer Freigabe, hält OPAA den zweiten für eine Verknüpfung; er fehlt ohne
+  Dateisystemen unter einer Freigabe, hält opaa den zweiten für eine Verknüpfung; er fehlt ohne
   Befund, und sein Bestand wird entfernt.</li>
 </ul>
 <h2 id="9-protokoll-und-fehlerbilder">9. Protokoll und Fehlerbilder<a class="headerlink" href="#9-protokoll-und-fehlerbilder" title="Permanent link">&para;</a></h2>
@@ -4575,7 +4575,7 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.</p>
 <td>Recht „Auf diesen Computer vom Netzwerk aus zugreifen"</td>
 </tr>
 <tr>
-<td>„… lässt keine Anmeldung mit NTLM zu. OPAA unterstützt Kerberos noch nicht …"</td>
+<td>„… lässt keine Anmeldung mit NTLM zu. opaa unterstützt Kerberos noch nicht …"</td>
 <td>NTLM gesperrt</td>
 <td>Dienstkonto auf die NTLM-Ausnahmeliste</td>
 </tr>
@@ -4631,7 +4631,7 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.</p>
 </tr>
 <tr>
 <td>„Geltungsbereich „/…": Der Fortsetzungspunkt … beginnt neu."</td>
-<td>Stelle aus einer anderen Fassung von OPAA; nichts wird entfernt</td>
+<td>Stelle aus einer anderen Fassung von opaa; nichts wird entfernt</td>
 <td>nichts</td>
 </tr>
 </tbody>

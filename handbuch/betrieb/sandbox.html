@@ -23,7 +23,7 @@
     
     
       
-        <title>Sandbox für Agenten - OPAA-Handbuch</title>
+        <title>Sandbox für Agenten - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4369,7 +4369,7 @@ für ein PDF, eine Tabelle oder ein Diagramm. Dieses Skript hat niemand geprüft
 im Backend, sondern in einer <strong>Sandbox</strong>: einem Wegwerf-Container ohne Netzausgang, der nur seinen
 eigenen Arbeitsordner sieht. Dort befüllt auch das Werkzeug <code>fill_template</code> eine
 <a href="../benutzer/vorlage-anlegen.html">Dokumentvorlage</a> mit den Werten des Modells, über ein festes Skript
-des Images statt über Code des Modells. Ohne Sandbox bietet OPAA beide Werkzeuge nicht an.</p>
+des Images statt über Code des Modells. Ohne Sandbox bietet opaa beide Werkzeuge nicht an.</p>
 <pre class="mermaid"><code>flowchart LR
     BE[Backend] --&gt;|Schlüssel,&lt;br/&gt;Skript| SV[Sandbox-Dienst&lt;br/&gt;OpenSandbox]
     SV --&gt;|startet, löscht| SB[Sandbox je Lauf]
@@ -4379,22 +4379,22 @@ des Images statt über Code des Modells. Ohne Sandbox bietet OPAA beide Werkzeug
 <ul>
 <li><strong>Eine Sandbox je Agentenlauf.</strong> Der erste Aufruf von <code>run_code</code> oder <code>fill_template</code> in einem
   Lauf startet sie, jeder weitere Aufruf desselben Laufs arbeitet im selben Ordner weiter. Am
-  Ende des Laufs nimmt OPAA die Dateien aus <code>/workspace/out</code> als Anhänge der fragenden Person an
+  Ende des Laufs nimmt opaa die Dateien aus <code>/workspace/out</code> als Anhänge der fragenden Person an
   die Antwort und löscht die Sandbox, auch nach einem Fehler. Der nächste Lauf beginnt leer.</li>
 <li><strong>Eigenes Verzeichnis für Vorlagen:</strong> <code>fill_template</code> schreibt in ein neues Verzeichnis mit
-  Zufallsnamen je Aufruf. OPAA liest dort direkt nach dem Befüllen nur die gemeldete Word-Datei
+  Zufallsnamen je Aufruf. opaa liest dort direkt nach dem Befüllen nur die gemeldete Word-Datei
   und das PDF; nur was gelesen und geprüft ist, meldet es dem Modell als angehängt.</li>
 <li><strong>Nie geteilt:</strong> Eine Sandbox gehört genau einem Lauf einer Person.</li>
 <li><strong>Nur was das Skript enthält:</strong> Die Sandbox sieht weder Wissensbasis noch Datenbank noch
   Dateiablage. Was sie verwenden soll, schreibt das Modell ins Skript.</li>
-<li><strong>Ausgaben sind fremd:</strong> Dateinamen, Größe und Dateityp prüft OPAA wie bei einem Upload. Je Lauf
+<li><strong>Ausgaben sind fremd:</strong> Dateinamen, Größe und Dateityp prüft opaa wie bei einem Upload. Je Lauf
   werden höchstens fünf Dateien zu je 10 MB angehängt, nur in den Formaten, die auch ein Upload
   annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Jede
-  Word-Datei prüft OPAA wie eine hochgeladene Vorlage auf aktive Inhalte (Makros, eingebettete
+  Word-Datei prüft opaa wie eine hochgeladene Vorlage auf aktive Inhalte (Makros, eingebettete
   Objekte, Felder, die Inhalte nachladen); eine solche wird nicht angehängt. Lässt sich eine Datei
   nicht abholen oder scheitert das Befüllen, fehlt sie; die Antwort bleibt.</li>
 <li><strong>Restrisiko:</strong> Hat <code>run_code</code> im selben Lauf vorher Code ausgeführt, kann ein Prozess dieses
-  Codes eine Datei von <code>fill_template</code> verändern, bevor OPAA sie liest. Er kann damit nichts
+  Codes eine Datei von <code>fill_template</code> verändern, bevor opaa sie liest. Er kann damit nichts
   anhängen, was <code>run_code</code> nicht auch selbst hätte anhängen können; die Prüfungen gelten
   unverändert.</li>
 <li><strong>Grenzen:</strong> Ein Skript läuft höchstens <code>OPAA_SANDBOX_RUN_TIMEOUT</code> und nie über das Laufende
@@ -4467,13 +4467,13 @@ Ausführungsagenten, das Basis-Image von <code>opaa/sandbox-python</code> und de
 Version und Prüfsumme festgelegt; ein <code>docker compose pull</code> holt deshalb nie still einen anderen
 Stand. pip ist im fertigen Image nicht enthalten. Die Debian-Pakete des Images kommen aus dem
 Debian-Release des Basis-Images mit seinen Sicherheitsupdates zum Zeitpunkt des Baus. Neue
-Fassungen kommen mit einem OPAA-Update. Danach den
+Fassungen kommen mit einem opaa-Update. Danach den
 Stapel mit <code>up -d --build</code> neu starten, damit auch das Sandbox-Image neu gebaut wird, und <code>run_code</code>
 und <code>fill_template</code> einmal von einem Agenten ausführen lassen.</p>
 <h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
 <p>OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa der Dienst in
 <code>opensandbox-system</code> und die Sandboxen in <code>opensandbox</code>. Den Schlüssel bekommt der Dienst als
-<code>OPENSANDBOX_SERVER_API_KEY</code>. Im OPAA-Chart:</p>
+<code>OPENSANDBOX_SERVER_API_KEY</code>. Im opaa-Chart:</p>
 <table>
 <thead>
 <tr>
@@ -4496,7 +4496,7 @@ und <code>fill_template</code> einmal von einem Agenten ausführen lassen.</p>
 </tr>
 <tr>
 <td><code>sandbox.namespace</code></td>
-<td>Namespace der Sandbox-Pods, nie der Namespace von OPAA</td>
+<td>Namespace der Sandbox-Pods, nie der Namespace von opaa</td>
 </tr>
 <tr>
 <td><code>sandbox.serverNamespaceSelector</code>, <code>sandbox.serverPodSelector</code></td>
@@ -4510,7 +4510,7 @@ Recht, NetworkPolicies in diesem Namespace anzulegen. Das Backend bekommt mit
 <code>networkPolicy.egress.enabled</code> eine Regel zum Dienst. Voraussetzung ist ein Netz-Plugin (CNI), das
 NetworkPolicies durchsetzt; ohne es gilt keine der Sperren.</p>
 <p><strong>Isolationsstufe:</strong> Wie stark eine Sandbox vom Knoten getrennt ist, legt der Sandbox-Dienst über
-seine Laufzeitklasse fest, nicht OPAA:</p>
+seine Laufzeitklasse fest, nicht opaa:</p>
 <table>
 <thead>
 <tr>

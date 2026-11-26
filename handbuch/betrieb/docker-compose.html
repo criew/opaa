@@ -23,7 +23,7 @@
     
     
       
-        <title>Docker Compose - OPAA-Handbuch</title>
+        <title>Docker Compose - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -5028,7 +5028,7 @@
 
 
 <h1 id="docker-compose">Docker Compose<a class="headerlink" href="#docker-compose" title="Permanent link">&para;</a></h1>
-<p>Der Compose-Stapel des Repositorys (<code>docker-compose.yml</code>) startet OPAA auf einem einzelnen Rechner:
+<p>Der Compose-Stapel des Repositorys (<code>docker-compose.yml</code>) startet opaa auf einem einzelnen Rechner:
 Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
 und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen
 gedacht; seine Vorgaben sind bequem und <strong>nicht</strong> gehärtet. Was für jeden Betriebsweg gilt — Images,
@@ -5062,7 +5062,7 @@ docker<span class="w"> </span>compose<span class="w"> </span>--profile<span clas
 </code></pre></div>
 <p>Nur auf diesem Weg beim Embedding-Modell der Installation die Eingabegrenze 8192 eintragen (in der
 Antwortdatei <code>"maxInputTokens": 8192</code>): <code>ollama-pull</code> legt <code>bge-m3</code> mit dieser Grenze an. Ohne die
-Angabe gilt die Vorgabe 2.048, und OPAA teilt längere Chunks.</p>
+Angabe gilt die Vorgabe 2.048, und opaa teilt längere Chunks.</p>
 <p>Wer nicht warten muss, startet gleich mit <code>docker compose --profile ollama up --build</code>; <code>ollama-pull</code>
 lädt dann im Hintergrund.</p>
 <p><strong>Weg B — ein vorhandener Ollama-Server</strong>, auf dem Host oder in einem anderen Netz. Läuft er auf dem
@@ -5278,7 +5278,7 @@ nicht in der Liste der Quellen.
 Das Passwort steht nie in der JSON-Datei, sondern nur in der
 Datei, auf die <code>passwordFile</code> zeigt; API-Schlüssel der Modelle ebenso über <code>apiKeyFile</code>. Das
 erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange <code>requirePasswordChange</code>
-nicht <code>false</code> ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
+nicht <code>false</code> ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht opaa die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
 <code>docker compose logs backend | grep "answer file"</code> nennt Schritt und Grund.</p>
 <p><code>installation/installation.live-transcription.example.json</code> zeigt dieselbe Datei mit
@@ -5426,7 +5426,7 @@ weitere Befehl für diesen Stapel nennt beide Dateien.</p>
 <h2 id="monitoring-im-compose-stapel">Monitoring im Compose-Stapel<a class="headerlink" href="#monitoring-im-compose-stapel" title="Permanent link">&para;</a></h2>
 <p>Das Overlay <code>docker-compose.monitoring.yml</code> startet Prometheus mit den Alarmen und Grafana mit den
 Dashboards auf einem eigenen Port an <code>127.0.0.1</code>, für eine eigene Subdomain hinter dem
-Reverse-Proxy, nie unter dem Hostnamen von OPAA, auch nicht mit anderem Port. Das Admin-Passwort <code>OPAA_GRAFANA_ADMIN_PASSWORD</code> ist
+Reverse-Proxy, nie unter dem Hostnamen von opaa, auch nicht mit anderem Port. Das Admin-Passwort <code>OPAA_GRAFANA_ADMIN_PASSWORD</code> ist
 Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell oder <code>.env</code>. Einrichtung und
 Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
 <a href="dashboards-und-alarme.html#compose">Dashboards und Alarme</a>.</p>
@@ -5661,7 +5661,7 @@ gehören nicht dazu.</p>
 <li><strong>Keine anonyme Systemverwaltung jenseits von Loopback.</strong> Keine Vorlage setzt
   <code>OPAA_AUTH_DEV_ALLOW_REMOTE=true</code>, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus <code>dev</code> den Start verweigern kann.</li>
-<li><strong>Keine festen Geheimnisse von OPAA.</strong> Signaturschlüssel, Verschlüsselungsschlüssel und Tokens
+<li><strong>Keine festen Geheimnisse von opaa.</strong> Signaturschlüssel, Verschlüsselungsschlüssel und Tokens
   bleiben in den Vorlagen leer. Fest vorgegeben sind nur die Zugangsdaten der Entwicklungsdienste
   (Datenbank, Keycloak-Administrator, Objektspeicher) und eines Testdienstes; jede davon ist in der
   Prüfung einzeln begründet.</li>
@@ -5784,7 +5784,7 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:</p>
    früheren Fassungen einer <code>e2e/*.env</code>, bricht der Start im Modus <code>oidc</code> ab, ebenso mit einem
    <code>OPAA_AUTH_JWT_SECRET</code> aus einer solchen Datei. Einen eigenen Schlüssel erzeugen
    (<code>openssl rand -base64 32</code>) und den bisherigen in <code>OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS</code> bzw.
-   <code>OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS</code> eintragen; OPAA verschlüsselt die gespeicherten Werte dann
+   <code>OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS</code> eintragen; opaa verschlüsselt die gespeicherten Werte dann
    selbst neu (<a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a>). Ein neues
    Signaturgeheimnis (<code>openssl rand -base64 48</code>) beendet alle lokalen Sitzungen
    (<a href="netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).</li>
@@ -5835,7 +5835,7 @@ wird daraufhin geprüft.</p>
 <p>CORS passt nicht: <code>OPAA_CORS_ALLOWED_ORIGINS</code> muss die Adresse des Frontends nennen (etwa
 <code>http://localhost:3000</code>). GET-Anfragen funktionieren trotzdem, weil sie keinen CORS-Preflight auslösen.</p>
 <h3 id="postgresql-passwort-authentifizierung-für-benutzer-fehlgeschlagen">PostgreSQL: „Passwort-Authentifizierung für Benutzer fehlgeschlagen"<a class="headerlink" href="#postgresql-passwort-authentifizierung-für-benutzer-fehlgeschlagen" title="Permanent link">&para;</a></h3>
-<p>Betrifft die <strong>Datenbank</strong>, kein Konto von OPAA: Das Volume stammt aus einer früheren Initialisierung
+<p>Betrifft die <strong>Datenbank</strong>, kein Konto von opaa: Das Volume stammt aus einer früheren Initialisierung
 mit anderen Zugangsdaten (<a href="#datenbank-im-stapel">Datenbank im Stapel</a>).</p>
 <h3 id="docker-exec-in-den-backend-container-schlägt-mit-executable-file-not-found-fehl"><code>docker exec</code> in den Backend-Container schlägt mit „executable file not found" fehl<a class="headerlink" href="#docker-exec-in-den-backend-container-schlägt-mit-executable-file-not-found-fehl" title="Permanent link">&para;</a></h3>
 <p>Das Image enthält keine Shell; die Wege ohne Shell stehen unter

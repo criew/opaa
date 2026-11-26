@@ -23,7 +23,7 @@
     
     
       
-        <title>Konnektor: Confluence - OPAA-Handbuch</title>
+        <title>Konnektor: Confluence - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4453,14 +4453,14 @@ Aufbereitung des Seiteninhalts beschreibt das Kapitel <a href="../../referenz/fo
   Datenbanken, archivierte Seiten und der Papierkorb.</li>
 <li><strong>Dokument:</strong> Jede Seite trägt Space, Gliederungspfad (die Titel der übergeordneten Seiten), Titel
   und Version; die Fundstelle im Chat verlinkt auf die Seite bzw. den Anhang in Confluence.</li>
-<li><strong>Rechte</strong> aus Confluence übernimmt OPAA nicht: Was das Token in den gewählten Spaces lesen darf,
+<li><strong>Rechte</strong> aus Confluence übernimmt opaa nicht: Was das Token in den gewählten Spaces lesen darf,
   sehen alle Leseberechtigten der Bibliothek.</li>
 </ul>
 <h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Selbst betriebene Instanz im privaten Netz: ihren Hostnamen für die
    <a href="index.html#12-zieladressprüfung">Zieladressprüfung</a> freigeben. Ein eigenes Zertifikat der
-   Behörden-CA gehört in den Truststore von OPAA
+   Behörden-CA gehört in den Truststore von opaa
    (<a href="index.html#13-zertifikatsprüfung">Zertifikatsprüfung</a>).</li>
 <li><strong>Ein Dienstkonto je Leserkreis</strong>, kein persönliches Konto — ein persönliches Token trägt die
    Rechte einer Person und verfällt mit ihrem Austritt. Das Token bestimmt die Obergrenze dessen,
@@ -4477,7 +4477,7 @@ Aufbereitung des Seiteninhalts beschreibt das Kapitel <a href="../../referenz/fo
 <p>Die Zeile <strong>„Verbindung"</strong> fragt:</p>
 <ol>
 <li><strong>„Adresse"</strong> — Cloud mit oder ohne <code>/wiki</code>, Data Center mit Kontextpfad, etwa
-   <code>https://wiki.behoerde.example/confluence</code>. Kurz nach der Eingabe erkennt OPAA ohne
+   <code>https://wiki.behoerde.example/confluence</code>. Kurz nach der Eingabe erkennt opaa ohne
    Zugangsdaten am Antwortverhalten der Instanz, ob es Cloud oder Data Center ist, auch hinter
    eigener Domain, und nennt es unter dem Feld („Edition: …"). Die Edition ist danach
    unveränderlich; eine migrierte Instanz bekommt eine neue Bibliothek.</li>
@@ -4485,7 +4485,7 @@ Aufbereitung des Seiteninhalts beschreibt das Kapitel <a href="../../referenz/fo
    Zugriffstoken", je mit dem Hinweis, wo man es beim Anbieter findet. Beim Bearbeiten bleibt ein
    leeres Feld beim hinterlegten Token; eine Adresse auf einem anderen Server verlangt ein neues.</li>
 </ol>
-<p>Beim Wechsel in die Zeile <strong>„Umfang"</strong> testet OPAA die Verbindung. Lehnt die Instanz die
+<p>Beim Wechsel in die Zeile <strong>„Umfang"</strong> testet opaa die Verbindung. Lehnt die Instanz die
 Zugangsdaten ab, scheitert der Test an der Stufe „Anmeldung"; antwortet sie mit <code>403</code>, sind sie
 angenommen, und er nennt die Stufe „Rechte". Scheitert er vorher an Zieladressprüfung, TLS, Netz,
 Edition oder einem Serverfehler, nennt er die Stufe „Adresse". Dort steht der Umfang:</p>
@@ -4501,7 +4501,7 @@ Edition oder einem Serverfehler, nennt er die Stufe „Adresse". Dort steht der 
 <p>Den Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer gilt der Rhythmus der Quellart, <a href="index.html#14-vollabgleich-rhythmus">Konnektoren</a>). Edition und
 Spaces sieht jede Leseberechtigung; Adresse, Webhook-Zustand und Laufprotokoll nur Verwaltende.</p>
 <p><strong>Über einen Zugang:</strong> Die Adresse liegt unter der Server-Adresse des Zugangs. Gibt der Zugang die
-Edition vor, steht sie nur lesbar da, und OPAA erkennt sie nicht neu. Solange Bibliotheken auf
+Edition vor, steht sie nur lesbar da, und opaa erkennt sie nicht neu. Solange Bibliotheken auf
 einem Zugang liegen, lässt
 sich seine Edition nicht ändern und keine Bibliothek der anderen Edition zuordnen. Wer eine
 Bibliothek vom Zugang löst, behält dessen Edition.</p>
@@ -4562,7 +4562,7 @@ weil nur er Löschungen nachvollzieht. Sein Rhythmus ist verlängerbar, nicht ab
 <h2 id="5-benachrichtigungen">5. Benachrichtigungen<a class="headerlink" href="#5-benachrichtigungen" title="Permanent link">&para;</a></h2>
 <p>Ein Webhook verkürzt die Zeit bis zur Aufnahme einer Änderung auf Sekunden. Ohne ihn ist nichts
 falsch, nur später.</p>
-<p><strong>Einrichten.</strong> Im Reiter „Quelle" unter den Zeilen, Abschnitt „Webhook", <strong>„Webhook einrichten"</strong>. OPAA zeigt das
+<p><strong>Einrichten.</strong> Im Reiter „Quelle" unter den Zeilen, Abschnitt „Webhook", <strong>„Webhook einrichten"</strong>. opaa zeigt das
 Geheimnis <strong>einmal</strong>, zusammen mit der Adresse des Eingangs
 <code>https://&lt;opaa-host&gt;/api/v1/libraries/&lt;Bibliotheks-ID&gt;/push</code>. „Geheimnis neu erzeugen" rotiert: Das
 alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetragen werden — sonst
@@ -4571,16 +4571,16 @@ gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Än
 TLS; der vorgelagerte Proxy muss <code>X-Forwarded-For</code> setzen
 (<a href="../../betrieb/netz-und-sicherheit.html#vertraute-proxys-und-client-adresse">Vertraute Proxys</a>), sonst greift die Ratenbegrenzung je Client nicht.</p>
 <ul>
-<li><strong>Data Center:</strong> Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus OPAA.
-  Confluence signiert jede Nachricht (<code>X-Hub-Signature</code>), OPAA prüft sie. Ereignisse: Seite
+<li><strong>Data Center:</strong> Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus opaa.
+  Confluence signiert jede Nachricht (<code>X-Hub-Signature</code>), opaa prüft sie. Ereignisse: Seite
   erstellt, aktualisiert, entfernt, in den Papierkorb verschoben, wiederhergestellt; Anhang
   erstellt, aktualisiert, entfernt.</li>
 <li><strong>Cloud:</strong> ohne App über eine <strong>Automation-Regel</strong> (Umfang je nach Atlassian-Tarif). Auslöser
   „Seite veröffentlicht" und „Seite aktualisiert", Aktion „Web-Anfrage senden" mit <code>POST</code>, Body
   <code>{"pageId": "{{page.id}}"}</code> und der Kopfzeile <code>X-OPAA-Webhook-Secret</code> mit dem Geheimnis. Eine
-  site-weite Regel genügt; Seiten außerhalb der Auswahl lässt OPAA liegen.</li>
+  site-weite Regel genügt; Seiten außerhalb der Auswahl lässt opaa liegen.</li>
 </ul>
-<p><strong>Was eine Nachricht auslöst.</strong> OPAA liest nur Seitenkennungen; was mit der Seite geschah, sagt der
+<p><strong>Was eine Nachricht auslöst.</strong> opaa liest nur Seitenkennungen; was mit der Seite geschah, sagt der
 Abruf. Nachrichten werden je Bibliothek gesammelt (<code>opaa.indexing.events.debounce</code>) und in <strong>einem</strong>
 kurzen Lauf geholt; mehr als <code>max-pending-keys</code> Seiten ergeben einen gewöhnlichen Lauf. Gesammelt
 wird in der Datenbank: Ein Neustart verliert keine Nachricht, und bei mehreren Backend-Instanzen
@@ -4612,7 +4612,7 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <p>Unter „Alle Spaces" entfernt ein Vollabgleich im selben Lauf, was aus einem Space indiziert ist,
 den das Token nicht mehr sieht oder der archiviert wurde; nach einem inkrementellen Lauf tut es der
 nächste Vollabgleich.</p>
-<p>Wer den Bestand eines Spaces aus OPAA entfernen will, nimmt ihn aus der Auswahl, startet
+<p>Wer den Bestand eines Spaces aus opaa entfernen will, nimmt ihn aus der Auswahl, startet
 „Vollabgleich starten" (Menü „Weitere Aktionen") und prüft, dass dieser Lauf vollständig aufgelistet hat. Sofort wirkt nur das
 Löschen der Dokumente oder der Bibliothek.</p>
 <h2 id="7-ordner">7. Ordner<a class="headerlink" href="#7-ordner" title="Permanent link">&para;</a></h2>

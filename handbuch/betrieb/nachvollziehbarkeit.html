@@ -23,7 +23,7 @@
     
     
       
-        <title>Nachvollziehbarkeit - OPAA-Handbuch</title>
+        <title>Nachvollziehbarkeit - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -3468,7 +3468,7 @@
   <a href="#was-opaa-automatisch-nachweist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Was OPAA automatisch nachweist
+        Was opaa automatisch nachweist
       
     </span>
   </a>
@@ -4340,7 +4340,7 @@
   <a href="#was-opaa-automatisch-nachweist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Was OPAA automatisch nachweist
+        Was opaa automatisch nachweist
       
     </span>
   </a>
@@ -4499,8 +4499,8 @@
 
 <h1 id="nachvollziehbarkeit">Nachvollziehbarkeit<a class="headerlink" href="#nachvollziehbarkeit" title="Permanent link">&para;</a></h1>
 <p>Vor einer Einführung und bei jedem Update fragen Datenschutz, Personalrat und
-Informationssicherheit dasselbe: Welche Daten speichert OPAA, wie lange, wer sieht sie, was
-verlässt die Installation und was ist voreingestellt? Dieses Kapitel beschreibt, wie OPAA diese
+Informationssicherheit dasselbe: Welche Daten speichert opaa, wie lange, wer sieht sie, was
+verlässt die Installation und was ist voreingestellt? Dieses Kapitel beschreibt, wie opaa diese
 Fragen aus dem eigenen Code beantwortet, wo die Antworten liegen und was bei jeder Codeänderung
 automatisch geprüft wird, damit sie stimmen. Es gehört zum Teil Betrieb des
 <a href="../index.html">Handbuchs</a>.</p>
@@ -4514,8 +4514,8 @@ Konfigurationsschlüssel, ohne den Code lesen zu müssen. Ein späteres Update, 
 ändert, steht in den Release-Notizen unter „Datenrelevante Änderungen“ und im Delta seines
 Update-Pakets.</p>
 </blockquote>
-<h2 id="was-opaa-automatisch-nachweist">Was OPAA automatisch nachweist<a class="headerlink" href="#was-opaa-automatisch-nachweist" title="Permanent link">&para;</a></h2>
-<p>Grundlage ist das <strong>Fakten-Manifest</strong>: eine Beschreibung im Code, welche Daten OPAA speichert,
+<h2 id="was-opaa-automatisch-nachweist">Was opaa automatisch nachweist<a class="headerlink" href="#was-opaa-automatisch-nachweist" title="Permanent link">&para;</a></h2>
+<p>Grundlage ist das <strong>Fakten-Manifest</strong>: eine Beschreibung im Code, welche Daten opaa speichert,
 welche Protokollereignisse es schreibt, was jede Rolle über andere sieht, welche Verbindungen nach
 außen es aufbaut, welche Voreinstellungen, Standardmodelle und System-Prompts gelten und welche
 Fristen laufen. Das Manifest wird wie Code geändert und geprüft. Aus ihm entstehen die
@@ -4651,7 +4651,7 @@ gilt:</p>
   dazu gehört, liegt getrennt in einer eigenen Tabelle (<code>datenkatalog</code>, Eintrag <code>audit-pseudonyms</code>).</li>
 <li><strong>Feste Angaben je Ereignisart:</strong> Was ein Eintrag über den Stand vorher und nachher festhält,
   legt ein Ereigniskatalog je Ereignisart fest, etwa bei einer geänderten Rolle in einem Space nur
-  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt OPAA nicht ins Protokoll und meldet
+  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt opaa nicht ins Protokoll und meldet
   sie im Log als Fehler. Welche Angaben je Ereignisart erlaubt sind, steht im Auszug für die
   Personalvertretung. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist,
   und die Revision sieht sie bei jedem Eintrag; Einträge von vor dem Katalog tragen keine.</li>
@@ -4696,7 +4696,7 @@ in Verzeichnis, Löschkonzept und Auskunft der Behörde.</p>
   Lauf öffnen, Abschnitt „Artifacts“.</li>
 </ul>
 <p>Beide enthalten die Blätter als Markdown und <code>faktenblaetter.json</code> mit allen Inhalten für Werkzeuge.</p>
-<p>Jedes Blatt nennt in seinem Kopf, wofür es gilt: die OPAA-Version, den Commit, das
+<p>Jedes Blatt nennt in seinem Kopf, wofür es gilt: die opaa-Version, den Commit, das
 Erzeugungsdatum und <code>erzeugung: generiert</code>. Im Update-Paket ist das Erzeugungsdatum das Datum des
 Commits, sodass ein erneut erzeugtes Paket gleich ausfällt. Die Blätter aus der CI auf <code>main</code> tragen
 immer die Version <code>0.0.0-dev</code>; welchen Stand sie beschreiben, bestimmt der Commit. Unter dem Titel steht
@@ -4775,7 +4775,7 @@ erscheint deshalb jeder Eintrag als neu. Stufen und Bezüge sind Vorschläge, di
 gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>opaa-update-paket-&lt;Version&gt;.tar.gz<span class="w"> </span>--repo<span class="w"> </span>criew/opaa<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--signer-workflow<span class="w"> </span>criew/opaa/.github/workflows/publish-images.yml<span class="w"> </span>--source-ref<span class="w"> </span>refs/tags/v&lt;Version&gt;
 </code></pre></div>
-<p>Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von OPAA zu
+<p>Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von opaa zu
 genau dieser Version erzeugt hat.</p>
 <p>Der Release-Lauf erzeugt das Paket nur, wenn der Wächter (siehe <a href="#was-bei-jeder-änderung-geprüft-wird">Was bei jeder Änderung geprüft
 wird</a>) besteht; sonst erscheint das Release nicht.</p>
@@ -5008,7 +5008,7 @@ auch durch wiederholte Abrufe nicht erkennen, solange ihr Monat läuft.</p>
 <tbody>
 <tr>
 <td>Kopf</td>
-<td>OPAA-Version, Commit des Images und Zeitpunkt des Abrufs</td>
+<td>opaa-Version, Commit des Images und Zeitpunkt des Abrufs</td>
 </tr>
 <tr>
 <td>Abweichungen von der Voreinstellung</td>
@@ -5020,7 +5020,7 @@ auch durch wiederholte Abrufe nicht erkennen, solange ihr Monat läuft.</p>
 </tr>
 <tr>
 <td>Ausgehende Datenflüsse</td>
-<td>jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt</td>
+<td>jede Verbindung, die opaa selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt</td>
 </tr>
 <tr>
 <td>Konnektortypen in Gebrauch</td>
@@ -5051,14 +5051,14 @@ Manifest als datenwirksam führt; Schlüssel, Passwörter und Token gehören nie
 erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protokollsätze und Inhalte
 von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
 Bibliotheken.</p>
-<p><strong>Anlassbezogene Klärungen</strong> zählt OPAA je Monat und Anlass, ohne Person, Begründung und Verweis
+<p><strong>Anlassbezogene Klärungen</strong> zählt opaa je Monat und Anlass, ohne Person, Begründung und Verweis
 auf die Freigabe; die Zahlen bleiben erhalten, wenn Anträge und Freigaben nach ihrer Frist gelöscht
 sind. „Abgelaufen“ heißt, dass die Nutzbarkeit einer Freigabe im Zeitraum endete.
 Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, bleibt unbeantwortet.
 Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall nicht hervortritt.
 Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
 Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.</p>
-<p><strong>Angehaltene Chat-Löschungen</strong> zählt OPAA je Monat, ohne Person: wie oft eine Anhaltung der
+<p><strong>Angehaltene Chat-Löschungen</strong> zählt opaa je Monat, ohne Person: wie oft eine Anhaltung der
 Löschung der Chats eines gesperrten Kontos mit der Freigabe durch eine zweite Person wirksam wurde.
 Darunter steht je Zweck, wie viele Anhaltungen beantragt, freigegeben, verlängert, abgelehnt
 (einschließlich zurückgezogener und unbeantwortet verfallener Anträge) und mit ihrer Höchstdauer
@@ -5151,7 +5151,7 @@ Code und Beschreibung auseinanderlaufen.</p>
 <tr>
 <td><strong>Wächter im Backend-Build</strong></td>
 <td>bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf <code>main</code></td>
-<td>Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jedem ausgehenden Client im Code von OPAA und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten</td>
+<td>Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jedem ausgehenden Client im Code von opaa und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten</td>
 </tr>
 <tr>
 <td><strong>Kennzeichnung <code>data-impact</code></strong></td>
@@ -5183,7 +5183,7 @@ Code und Beschreibung auseinanderlaufen.</p>
 <p>Die Prüfungen ergänzen sich: Der Wächter stellt sicher, <strong>dass</strong> es einen Eintrag gibt, nicht, ob
 er stimmt. Ob ein Personenbezug, ein Zweck oder eine Sichtbarkeit zutrifft, prüfen das Review jedes
 Pull Requests und die Drift-Routine.</p>
-<p><strong>Verbindungen eingebundener Bibliotheken.</strong> Der Wächter liest den Code von OPAA. Eine Bibliothek,
+<p><strong>Verbindungen eingebundener Bibliotheken.</strong> Der Wächter liest den Code von opaa. Eine Bibliothek,
 die von sich aus eine Verbindung aufbaut, etwa zum Abruf einer Konfiguration bei ihrem Hersteller,
 erkennt er nicht. Solche Abrufe fallen nur im Lauf ohne Internetzugang auf, und nur in dem, was er
 durchläuft; was er nicht abdeckt, steht unter den Grenzen seines Nachweises. Bekannte Abrufe

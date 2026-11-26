@@ -23,7 +23,7 @@
     
     
       
-        <title>Kubernetes - OPAA-Handbuch</title>
+        <title>Kubernetes - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -5684,7 +5684,7 @@
 
 
 <h1 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h1>
-<p>OPAA lässt sich unter Kubernetes mit dem Helm-Chart des Projekts betreiben. Der Chart startet
+<p>opaa lässt sich unter Kubernetes mit dem Helm-Chart des Projekts betreiben. Der Chart startet
 dieselben Images wie der Compose-Stapel (<a href="docker-compose.html">Docker Compose</a>): ein Backend und
 ein Frontend. Datenbank, Modelle, Objektspeicher und Identitätsanbieter betreibt das Haus selbst; der
 Chart bindet sie an.</p>
@@ -5919,7 +5919,7 @@ an; alle Pods erreicht <code>-l app.kubernetes.io/component=backend</code>, für
 <tbody>
 <tr>
 <td>Kubernetes</td>
-<td>eine der drei jüngsten Minor-Versionen, die das Kubernetes-Projekt zum Zeitpunkt des OPAA-Releases pflegt; ältere können funktionieren, werden aber nicht geprüft</td>
+<td>eine der drei jüngsten Minor-Versionen, die das Kubernetes-Projekt zum Zeitpunkt des opaa-Releases pflegt; ältere können funktionieren, werden aber nicht geprüft</td>
 </tr>
 <tr>
 <td>Knoten</td>
@@ -5943,7 +5943,7 @@ an; alle Pods erreicht <code>-l app.kubernetes.io/component=backend</code>, für
 </tr>
 <tr>
 <td>Datenbank</td>
-<td>PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für OPAA; Vorbereitung siehe <a href="datenbank.html#voraussetzungen-einer-eigenen-postgresql">Voraussetzungen einer eigenen PostgreSQL</a></td>
+<td>PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für opaa; Vorbereitung siehe <a href="datenbank.html#voraussetzungen-einer-eigenen-postgresql">Voraussetzungen einer eigenen PostgreSQL</a></td>
 </tr>
 <tr>
 <td>Originalablage</td>
@@ -5980,9 +5980,9 @@ kubectl<span class="w"> </span>label<span class="w"> </span>namespace<span class
 braucht dann kein <code>--create-namespace</code>.</p>
 <h3 id="2-datenbank-vorbereiten">2. Datenbank vorbereiten<a class="headerlink" href="#2-datenbank-vorbereiten" title="Permanent link">&para;</a></h3>
 <p>Ein Datenbankverwalter legt die Erweiterung <code>vector</code> und gegebenenfalls die Rolle
-<code>opaa_audit_owner</code> an, bevor OPAA zum ersten Mal startet. Die Befehle stehen unter
+<code>opaa_audit_owner</code> an, bevor opaa zum ersten Mal startet. Die Befehle stehen unter
 <a href="datenbank.html#voraussetzungen-einer-eigenen-postgresql">Voraussetzungen einer eigenen PostgreSQL</a>.
-Soll OPAA in einem eigenen Schema liegen, muss es ebenfalls vorher existieren
+Soll opaa in einem eigenen Schema liegen, muss es ebenfalls vorher existieren
 (<a href="datenbank.html#eigenes-datenbankschema">Eigenes Datenbankschema</a>).</p>
 <p>Mit der <a href="#datenbank">Erprobungsdatenbank</a> entfällt dieser Schritt: Ihr Konto ist Superuser und legt
 Erweiterung und Rolle bei der Migration selbst an.</p>
@@ -6071,8 +6071,8 @@ denselben Schlüsselnamen an.</p>
   Geheimnisse und beim Objektspeicher <code>uploads.s3.endpoint</code> und <code>uploads.s3.bucket</code>; mit Antwortdatei
   zusätzlich <code>bootstrap.chatModel.*</code> und <code>embedding.baseUrl</code> und <code>embedding.model</code>. Fehlt einer, lehnt
   der Chart die Installation mit einer Meldung ab, die den Wert nennt.</li>
-<li><code>publicBaseUrl</code> ist die Adresse, unter der Personen OPAA aufrufen: mit Schema, ohne Pfad und ohne
-  Schrägstrich am Ende. OPAA läuft immer an der Wurzel seines Hostnamens; ein Unterpfad ist mit dem
+<li><code>publicBaseUrl</code> ist die Adresse, unter der Personen opaa aufrufen: mit Schema, ohne Pfad und ohne
+  Schrägstrich am Ende. opaa läuft immer an der Wurzel seines Hostnamens; ein Unterpfad ist mit dem
   Chart nicht möglich.</li>
 <li>Die Dimension des Embedding-Modells ermittelt die Probeeinbettung der Installation; einstellen
   muss sie niemand. <code>embedding.dimensions</code> ist ohne Wirkung und wird nur noch angenommen, damit
@@ -6085,12 +6085,12 @@ denselben Schlüsselnamen an.</p>
   Nötig ist ein Eintrag für Modelle auf anderen Hosts, die die Verwaltung später anlegt, etwa Rerank-
   und Transkriptionsmodell (<a href="modell-endpunkte.html#adressprüfung-der-modelle">Adressprüfung der Modelle</a>).</li>
 <li><code>bootstrap.*</code> ist die <strong>Antwortdatei</strong> der <a href="installation.html">Installation</a>: Mit
-  <code>bootstrap.initialAdmin.email</code> rendert der Chart sie, und der erste Start richtet OPAA daraus ein
+  <code>bootstrap.initialAdmin.email</code> rendert der Chart sie, und der erste Start richtet opaa daraus ein
   (siehe <a href="#7-installation-und-erste-anmeldung">7. Installation und erste Anmeldung</a>). Ohne die
-  Adresse bleibt OPAA im Installationsmodus, bis die Installation im Browser abgeschlossen ist.</li>
+  Adresse bleibt opaa im Installationsmodus, bis die Installation im Browser abgeschlossen ist.</li>
 <li><strong>Modelle vorher prüfen.</strong> Das Modell aus <code>bootstrap.chatModel.model</code> und das aus <code>embedding.model</code>
   müssen im jeweiligen Endpunkt vorhanden sein. Fehlt das Chat-Modell, scheitert schon der
-  Verbindungstest der Installation, und OPAA bleibt im Installationsmodus. Ein OpenAI-kompatibler
+  Verbindungstest der Installation, und opaa bleibt im Installationsmodus. Ein OpenAI-kompatibler
   Endpunkt nennt seine Modelle unter <code>&lt;baseUrl&gt;/models</code>, etwa mit
   <code>curl -s https://modelle.example.org/v1/models</code>; verlangt der Endpunkt einen Schlüssel, kommt
   <code>-H "Authorization: Bearer &lt;Schlüssel&gt;"</code> dazu.</li>
@@ -6115,7 +6115,7 @@ aller Werte samt Kommentaren liefert <code>helm show values</code>:</p>
 helm<span class="w"> </span>show<span class="w"> </span>values<span class="w"> </span>oci://ghcr.io/criew/charts/opaa<span class="w"> </span>--version<span class="w"> </span>&lt;x.y.z&gt;
 </code></pre></div>
 <h3 id="5-installieren">5. Installieren<a class="headerlink" href="#5-installieren" title="Permanent link">&para;</a></h3>
-<p>Jedes Release von OPAA veröffentlicht den Chart neben den Images in der GitHub Container Registry.
+<p>Jedes Release von opaa veröffentlicht den Chart neben den Images in der GitHub Container Registry.
 Chart und Images tragen dieselbe Versionsnummer; ohne eigene Angabe startet der Chart genau die Images
 seiner Version:</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>opaa<span class="w"> </span>oci://ghcr.io/criew/charts/opaa<span class="w"> </span>--version<span class="w"> </span>&lt;x.y.z&gt;<span class="w"> </span>-n<span class="w"> </span>opaa<span class="w"> </span>-f<span class="w"> </span>opaa-werte.yaml
@@ -6160,7 +6160,7 @@ dabei <code>UP</code>. Zwei Wege führen hinaus:</p>
   wie Quellen: Ein Modell im Cluster, etwa Ollama, braucht seinen Host in
   <code>targetValidation.indexingAllowlist</code>. Die erste Anmeldung verlangt ein neues Passwort, damit das im
   Secret danach nicht mehr gilt (<code>bootstrap.initialAdmin.requirePasswordChange</code>, Vorgabe <code>true</code>).
-  Fehlt das Passwort im Secret, startet der Pod trotzdem; OPAA bleibt dann im Installationsmodus, und
+  Fehlt das Passwort im Secret, startet der Pod trotzdem; opaa bleibt dann im Installationsmodus, und
   das Protokoll nennt die fehlende Datei. Mit <code>bootstrap.mail.host</code> enthält die Antwortdatei auch den
   Mailserver; der erste Start prüft Verbindung und Anmeldung, ohne eine Nachricht zu senden. Host und
   Port trägt der Chart in <code>installationMailTargetAllowlist</code> ein, damit ein Server im eigenen Netz die
@@ -6245,7 +6245,7 @@ Volume für die Originale und Geheimnissen in den Werten:</p>
 <p>Die Erprobungsdatenbank hat keine Sicherung, keine Replikation und keinen Aktualisierungsweg über
 Hauptversionen von PostgreSQL. Wer aus der Erprobung einen Betrieb macht, setzt neu auf.</p>
 <h2 id="erprobung-mit-dem-beispiel-setup">Erprobung mit dem Beispiel-Setup<a class="headerlink" href="#erprobung-mit-dem-beispiel-setup" title="Permanent link">&para;</a></h2>
-<p>Wer OPAA unter Kubernetes vorführen oder einen ersten Eindruck gewinnen will, braucht neben dem Chart
+<p>Wer opaa unter Kubernetes vorführen oder einen ersten Eindruck gewinnen will, braucht neben dem Chart
 alle Dienste, die der Chart nur anbindet. Das Beispiel-Setup im Repository unter
 <code>examples/kubernetes-trial/</code> baut sie mit einem Befehl in einem leeren lokalen Cluster auf und
 installiert den Chart mit passenden Werten. Ablauf, Einstellungen und Fehlersuche stehen in der
@@ -6308,7 +6308,7 @@ examples/kubernetes-trial/trial.sh<span class="w"> </span>up
 Rücksetzlinks zeigt und die Testkonten bekannt sind. Das Skript arbeitet im aktuellen kubectl-Kontext
 und nennt ihn zuerst. Einen Kontext, der nicht nach einem lokalen Cluster aussieht, lehnt es ab, und
 es ändert keinen gleichnamigen Namespace, den es nicht selbst angelegt hat. Es legt die Namespaces
-<code>opaa-trial</code> (OPAA, Pod Security Standard <code>restricted</code>) und <code>opaa-trial-services</code> (die Dienste) an
+<code>opaa-trial</code> (opaa, Pod Security Standard <code>restricted</code>) und <code>opaa-trial-services</code> (die Dienste) an
 und wartet, bis alles bereit ist. Am Ende nennt es die Adressen und die Befehle, mit denen die
 erzeugten Verwaltungspasswörter aus den Secrets gelesen werden. Angemeldet wird über Keycloak oder
 als erster Systemverwalter über <code>/login/system</code>.</p>
@@ -6332,12 +6332,12 @@ als erster Systemverwalter über <code>/login/system</code>.</p>
 <tr>
 <td><code>TRIAL_CHAT_MODEL</code></td>
 <td><code>qwen2.5:3b</code></td>
-<td>Chat-Modell, das Ollama zieht und OPAA beim ersten Start übernimmt</td>
+<td>Chat-Modell, das Ollama zieht und opaa beim ersten Start übernimmt</td>
 </tr>
 <tr>
 <td><code>OPAA_IMAGE_TAG</code></td>
 <td><code>main</code></td>
-<td>Tag der OPAA-Images</td>
+<td>Tag der opaa-Images</td>
 </tr>
 <tr>
 <td><code>KUBE_CONTEXT</code></td>
@@ -6356,12 +6356,12 @@ als erster Systemverwalter über <code>/login/system</code>.</p>
 <li><strong>Issuer und Signaturschlüssel.</strong> Der Browser erreicht Keycloak unter einer Adresse, die im Cluster
   nicht auflöst. Das Backend vergleicht den Issuer nur mit dem Token und holt die Schlüssel über
   <code>bootstrap.oidc.jwkSetUri</code> unter der internen Adresse (siehe <a href="#identitätsanbieter">Identitätsanbieter</a>).</li>
-<li><strong>Content-Security-Policy.</strong> Keycloak liegt auf einem anderen Origin als OPAA; sein Origin steht
+<li><strong>Content-Security-Policy.</strong> Keycloak liegt auf einem anderen Origin als opaa; sein Origin steht
   deshalb in <code>frontend.cspConnectSrcExtra</code>, und die Ausgabe von <code>helm install</code> bestätigt ihn.</li>
 <li><strong>Modelle vor dem ersten Start.</strong> Das Chat-Modell aus <code>bootstrap.chatModel</code> muss im Endpunkt
   vorhanden sein, sonst scheitert der Verbindungstest der Installation; ein späterer Wechsel geht über
   die Modellverwaltung.</li>
-<li><strong>Bucket vorab.</strong> OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.</li>
+<li><strong>Bucket vorab.</strong> opaa legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.</li>
 <li><strong>Mailserver in der Oberfläche.</strong> Das Beispiel-Setup setzt <code>bootstrap.mail</code> nicht und trägt ihn
   über die Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
   (<a href="../administration/e-mail.html">E-Mail-Versand</a>).</li>
@@ -6472,7 +6472,7 @@ Installation ab. Bei einem vorhandenen Secret sieht der Chart nur den Namen; feh
 Pflichtschlüssel, startet der Pod nicht (<code>CreateContainerConfigError</code>), und <code>kubectl describe pod</code>
 nennt den Schlüssel. Ein optionaler Schlüssel darf fehlen, ebenso die Dateien der Antwortdatei
 (<code>installation-*</code>), die der Pod nur einhängt, wenn es sie gibt. <code>OPAA_INITIAL_ADMIN_PASSWORD</code> und
-<code>OPAA_OPENAI_EMBEDDING_API_KEY</code> aus einem Secret bis <code>v0.1.0-rc.4</code> liest OPAA nicht mehr; sie gehören
+<code>OPAA_OPENAI_EMBEDDING_API_KEY</code> aus einem Secret bis <code>v0.1.0-rc.4</code> liest opaa nicht mehr; sie gehören
 entfernt.</p>
 <p><strong>Der Chart erzeugt keine Schlüssel.</strong> Ein bei der Installation zufällig erzeugter Schlüssel ginge mit
 <code>helm template</code>, in GitOps-Werkzeugen oder bei einer Neuinstallation verloren. Geht einer der beiden
@@ -6493,7 +6493,7 @@ vorhandenen Secret wird das Backend vor der Änderung auf null Pods skaliert
 Ablauf eines Wechsels der Verschlüsselungsschlüssel beschreibt
 <a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a>.</p>
 <h2 id="wertereferenz">Wertereferenz<a class="headerlink" href="#wertereferenz" title="Permanent link">&para;</a></h2>
-<p>OPAA kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich:</p>
+<p>opaa kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich:</p>
 <table>
 <thead>
 <tr>
@@ -6612,7 +6612,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.</p>
 <td><code>database.username</code></td>
 <td><code>opaa</code></td>
 <td><code>OPAA_DB_USERNAME</code></td>
-<td>Konto von OPAA; das Passwort kommt aus dem Secret</td>
+<td>Konto von opaa; das Passwort kommt aus dem Secret</td>
 </tr>
 <tr>
 <td><code>database.schema</code></td>
@@ -7503,7 +7503,7 @@ Chart selbst auf den Backend-Service.</p>
 <p>Die Werte unter <code>metrics</code> beschreibt der Abschnitt <a href="#betriebsüberwachung">Betriebsüberwachung</a>.</p>
 <h2 id="anbindungen">Anbindungen<a class="headerlink" href="#anbindungen" title="Permanent link">&para;</a></h2>
 <h3 id="datenbank">Datenbank<a class="headerlink" href="#datenbank" title="Permanent link">&para;</a></h3>
-<p>OPAA braucht genau eine PostgreSQL-Datenbank mit pgvector. Für den Betrieb ist das die Datenbank des
+<p>opaa braucht genau eine PostgreSQL-Datenbank mit pgvector. Für den Betrieb ist das die Datenbank des
 Rechenzentrums oder ein Operator im Cluster, etwa CloudNativePG. Die Vorbereitung durch den
 Datenbankverwalter und die Wahl eines eigenen Schemas stehen im Kapitel
 <a href="datenbank.html">Datenbank</a>.</p>
@@ -7528,7 +7528,7 @@ die Originalablage ist und wie sich beide Wege unterscheiden, steht unter
 <a href="originalablage.html">Originalablage</a>.</p>
 <p><strong>Objektspeicher</strong> (<code>uploads.store: s3</code>, Vorgabe). Der Bucket muss vorher existieren. Der konfigurierte
 Endpunkt passiert die Adressprüfung immer, auch mit einer internen Adresse. Ist der Speicher nicht
-erreichbar, läuft OPAA weiter; der Zustand steht in der Health Group <code>upload-store</code>. Jeder Upload
+erreichbar, läuft opaa weiter; der Zustand steht in der Health Group <code>upload-store</code>. Jeder Upload
 legt zunächst eine Arbeitsdatei unter <code>/tmp</code> an; <code>backend.tmp.sizeLimit</code> muss mehrere gleichzeitige
 Uploads fassen.</p>
 <p><strong>Volume</strong> (<code>uploads.store: persistentVolumeClaim</code>). Der Chart legt einen Claim an oder verwendet
@@ -7544,10 +7544,10 @@ Plattformen, die Kennungen selbst zuweisen, setzen dort ihre eigene Gruppe oder 
 das Volume auf der Platte eines einzelnen Knotens an, etwa <code>local-path</code> von k3s, lokale
 PersistentVolumes oder <code>hostPath</code>. Der Backend-Pod kann dann nur auf diesem Knoten laufen. Wird der
 Knoten gewartet (<code>kubectl cordon</code> und <code>kubectl drain</code>) oder fällt er aus, bleibt der neue Pod im
-Zustand <code>Pending</code>, und OPAA antwortet nicht, bis der Knoten zurück ist. Soll das Backend den Knoten
+Zustand <code>Pending</code>, und opaa antwortet nicht, bis der Knoten zurück ist. Soll das Backend den Knoten
 wechseln können, gehört die Originalablage auf eine StorageClass mit Netzspeicher oder in den
 Objektspeicher. Dasselbe gilt für das Volume der Erprobungsdatenbank.</p>
-<p>Auch mit Netzspeicher unterbricht eine Knotenwartung OPAA mit einer Backend-Instanz so lange, bis
+<p>Auch mit Netzspeicher unterbricht eine Knotenwartung opaa mit einer Backend-Instanz so lange, bis
 der Pod auf einem anderen Knoten bereit ist (siehe <a href="#kubernetes-oder-compose">Kubernetes oder Compose</a>).
 Mit mehreren Pods auf verschiedenen Knoten antworten die übrigen weiter
 (<a href="#mehrere-backend-instanzen">Mehrere Backend-Instanzen</a>).</p>
@@ -7572,7 +7572,7 @@ muss die Dateien unter seiner Kennung lesen dürfen. Einhängepfade unter <code>
 <code>/opt/java</code> lehnt der Chart ab. Einrichtung und Verhalten der Quelle stehen im Kapitel
 <a href="../benutzer/konnektoren/filesystem.html">Dateisystem</a>.</p>
 <h3 id="eigene-zertifizierungsstelle">Eigene Zertifizierungsstelle<a class="headerlink" href="#eigene-zertifizierungsstelle" title="Permanent link">&para;</a></h3>
-<p>Spricht OPAA mit einem Dienst, dessen Zertifikat eine hauseigene CA ausgestellt hat, gehört diese CA
+<p>Spricht opaa mit einem Dienst, dessen Zertifikat eine hauseigene CA ausgestellt hat, gehört diese CA
 in eine ConfigMap oder ein Secret:</p>
 <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>opaa<span class="w"> </span>create<span class="w"> </span>configmap<span class="w"> </span>opaa-ca<span class="w"> </span>--from-file<span class="o">=</span>haus-ca.pem
 </code></pre></div>
@@ -7963,7 +7963,7 @@ Probes und Metriken laufen über den Management-Port (siehe
    Verschlüsselungsschlüssel aus den Wertesätzen der CI, den Testläufen des Repositorys oder dem
    Profil <code>dev</code>, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und den bisherigen als
    abgelösten Schlüssel eintragen (<code>secrets.credentialsEncryptionPreviousKeys</code> bzw.
-   <code>secrets.settingsEncryptionPreviousKeys</code>); OPAA verschlüsselt den Bestand dann selbst neu
+   <code>secrets.settingsEncryptionPreviousKeys</code>); opaa verschlüsselt den Bestand dann selbst neu
    (<a href="netz-und-sicherheit.html#schlüsselwechsel">Schlüsselwechsel</a>). Dasselbe gilt für ein
    <code>secrets.jwtSecret</code> aus diesen Dateien; ein neues Signaturgeheimnis (<code>openssl rand -base64 48</code>)
    beendet alle lokalen Sitzungen (<a href="netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).</li>
@@ -7979,13 +7979,13 @@ Probes und Metriken laufen über den Management-Port (siehe
 kubectl<span class="w"> </span>-n<span class="w"> </span>opaa<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/opaa-backend<span class="w"> </span>--timeout<span class="o">=</span>15m
 helm<span class="w"> </span><span class="nb">test</span><span class="w"> </span>opaa<span class="w"> </span>-n<span class="w"> </span>opaa
 </code></pre></div>
-<p>Die Hinweise, die <code>helm upgrade</code> ausgibt, beginnen mit „OPAA ist aktualisiert auf
+<p>Die Hinweise, die <code>helm upgrade</code> ausgibt, beginnen mit „opaa ist aktualisiert auf
    Chart-Version …“ und nennen die neue Revision; der <a href="#rückweg">Rückweg</a> führt auf die Revision
    davor.</p>
 <p>Mit einem Backend-Pod und der Strategie <code>Recreate</code> endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 <code>backend.shutdownTimeoutSeconds</code> auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
 Start als abgebrochen erkannt (siehe <a href="images-und-laufzeit.html#graceful-shutdown">Graceful Shutdown</a>).
-Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.</p>
+Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet opaa nicht.</p>
 <p>Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hundert MB. Der Knoten lädt
 es erst, wenn der alte Pod beendet ist, und je nach Anbindung an die Registry ist der Download der
 größte Teil der Unterbrechung. Kürzer wird sie, wenn das Image vorher auf allen Knoten liegt, auf
@@ -8012,7 +8012,7 @@ ist das Protokoll des alten Pods nicht mehr abrufbar. Es lässt sich während de
   <code>bootstrap.initialAdmin.email</code> aus der Antwortdatei, dafür gehören das Passwort als
   <code>installation-admin-password</code> und gegebenenfalls die Modellschlüssel als <code>installation-*-api-key</code>
   ins Secret; ohne die Adresse im Browser. <code>embedding.dimensions</code> und die Schlüssel
-  <code>OPAA_INITIAL_ADMIN_PASSWORD</code> und <code>OPAA_OPENAI_EMBEDDING_API_KEY</code> liest OPAA nicht mehr. Interne
+  <code>OPAA_INITIAL_ADMIN_PASSWORD</code> und <code>OPAA_OPENAI_EMBEDDING_API_KEY</code> liest opaa nicht mehr. Interne
   Identitätsanbieter brauchen ihren Host mit Port in der Allowlist der Adressprüfung; den Anbieter aus
   <code>bootstrap.oidc</code> trägt der Chart selbst ein.</li>
 <li><strong>Werte-Datei statt <code>--reuse-values</code>.</strong> <code>--reuse-values</code> übernimmt die Werte der alten Fassung und
@@ -8081,7 +8081,7 @@ von vor dem Upgrade. Wer sich den Rückweg offenhalten will, setzt beim Upgrade
 <code>OPAA_ENCRYPTION_KEYED_FORMAT=false</code> über <code>backend.extraEnv</code> und entfernt den Eintrag, wenn der
 Rückweg nicht mehr gebraucht wird
 (<a href="aktualisierung.html#kein-rückweg-nach-der-umstellung-der-geheimnisse">Kein Rückweg nach der Umstellung der Geheimnisse</a>).
-Solange der Eintrag gesetzt ist, lehnt OPAA alte Formate und Klartext nicht ab; nach dem Entfernen
+Solange der Eintrag gesetzt ist, lehnt opaa alte Formate und Klartext nicht ab; nach dem Entfernen
 schließt der Hintergrundlauf die Umstellung von selbst erneut ab.</p>
 <p>Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle <code>flyway_schema_history</code>.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:</p>
@@ -8309,7 +8309,7 @@ curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span>
 curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span>http://localhost:8081/actuator/health/vector-store
 </code></pre></div>
 <h2 id="betriebsüberwachung">Betriebsüberwachung<a class="headerlink" href="#betriebsüberwachung" title="Permanent link">&para;</a></h2>
-<p>OPAA bindet sich an die Überwachung des Clusters an und bringt keine eigene mit. Das Backend liefert
+<p>opaa bindet sich an die Überwachung des Clusters an und bringt keine eigene mit. Das Backend liefert
 Metriken im Prometheus-Format, der Chart beschreibt sie für den Prometheus Operator und bringt Alarme
 und Grafana-Dashboards mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.</p>
 <h3 id="management-port">Management-Port<a class="headerlink" href="#management-port" title="Permanent link">&para;</a></h3>
@@ -8727,7 +8727,7 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actu
 </thead>
 <tbody>
 <tr>
-<td>OPAA bleibt im Installationsmodus, obwohl <code>bootstrap.initialAdmin.email</code> gesetzt ist</td>
+<td>opaa bleibt im Installationsmodus, obwohl <code>bootstrap.initialAdmin.email</code> gesetzt ist</td>
 <td>Eine Prüfung der Antwortdatei ist gescheitert, etwa der Verbindungstest des Chat-Modells oder des Anbieters, oder das Passwort verletzt die Passwortregel. Das Protokoll nennt Schritt und Grund (<code>grep "answer file"</code>); Werte korrigieren und mit <code>helm upgrade</code> neu starten</td>
 </tr>
 <tr>
@@ -8747,7 +8747,7 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actu
 <td>Die Weiterleitungs-URI beim Anbieter ist nicht <code>&lt;publicBaseUrl&gt;/auth/callback</code>, oder <code>publicBaseUrl</code> stimmt nicht mit der Adresse im Browser überein</td>
 </tr>
 <tr>
-<td>Anmeldung gelingt beim Anbieter, OPAA antwortet <code>401</code></td>
+<td>Anmeldung gelingt beim Anbieter, opaa antwortet <code>401</code></td>
 <td>Der Issuer im Token ist nicht <code>bootstrap.oidc.issuerUri</code>, das Backend erreicht die Signaturschlüssel nicht (dann <code>bootstrap.oidc.jwkSetUri</code> setzen oder die Egress-Regel ergänzen), oder die Client-ID passt nicht. Den Grund nennt der Header <code>WWW-Authenticate</code></td>
 </tr>
 <tr>
@@ -8782,7 +8782,7 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actu
 <td>Der Controller puffert die Antwort oder bricht sie zu früh ab, siehe <a href="#eingang">Eingang</a></td>
 </tr>
 <tr>
-<td>Während einer Aktualisierung antwortet OPAA mit <code>502</code> oder <code>503</code></td>
+<td>Während einer Aktualisierung antwortet opaa mit <code>502</code> oder <code>503</code></td>
 <td>Mit der Strategie <code>Recreate</code> erwartet: Es gibt kurz keinen bereiten Backend-Pod. Mit <code>RollingUpdate</code> nicht erwartet; dann prüfen, ob der Controller davor die Verbindung früher abbricht als <code>frontend.backendReadTimeout</code> oder ob <code>backend.preStopSleepSeconds</code> auf <code>0</code> steht</td>
 </tr>
 <tr>

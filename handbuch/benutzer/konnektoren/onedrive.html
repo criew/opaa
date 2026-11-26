@@ -23,7 +23,7 @@
     
     
       
-        <title>Konnektor: OneDrive - OPAA-Handbuch</title>
+        <title>Konnektor: OneDrive - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4414,7 +4414,7 @@
 <h2 id="1-was-der-konnektor-ist">1. Was der Konnektor ist<a class="headerlink" href="#1-was-der-konnektor-ist" title="Permanent link">&para;</a></h2>
 <p>Der Konnektor liest das <strong>eigene OneDrive for Business einer Person</strong> über <strong>Microsoft Graph v1.0</strong>
 und speist daraus ihre <a href="../private-bibliothek.html">private Bibliothek</a>. Beispiel: Eine Referentin
-verbindet ihr Dienstkonto bei Microsoft 365 mit OPAA und wählt in ihrem OneDrive den Ordner
+verbindet ihr Dienstkonto bei Microsoft 365 mit opaa und wählt in ihrem OneDrive den Ordner
 „Vorlagen"; danach findet sie deren Inhalt im Chat, und außer ihr niemand. OneDrive ist eine der
 <a href="index.html#2-dateiablagen">Dateiablagen</a>; Speicher, Abgleich und Löscherkennung teilt es mit
 <a href="sharepoint.html">SharePoint</a>.</p>
@@ -4429,9 +4429,9 @@ verbindet ihr Dienstkonto bei Microsoft 365 mit OPAA und wählt in ihrem OneDriv
   <strong>Pflicht</strong>; er trägt die App-Registrierung des Hauses, das verbundene Konto die Zustimmung. Eine
   geteilte Bibliothek über ein Dienstkonto gibt es nicht; OneDrive speist nur private Bibliotheken.</li>
 <li><strong>Konnektor-eigen:</strong> die delegierten Berechtigungen <strong><code>Files.Read</code></strong> und <strong><code>offline_access</code></strong>, keine
-  Anwendungsberechtigung. OPAA liest damit nur, was die Person selbst lesen darf, und nur ihr
+  Anwendungsberechtigung. opaa liest damit nur, was die Person selbst lesen darf, und nur ihr
   eigenes OneDrive: Vor jedem Lauf, jedem Verbindungstest, jeder Auflistung und jedem „Original
-  öffnen" fragt OPAA bei Graph, welches OneDrive zum verbundenen Konto gehört, und liest nur dann
+  öffnen" fragt opaa bei Graph, welches OneDrive zum verbundenen Konto gehört, und liest nur dann
   weiter, wenn es das der Bibliothek ist.</li>
 <li><strong>Liest:</strong> Dateien in unterstützten Formaten im ganzen OneDrive oder in bis zu fünfzig gewählten
   Ordnern samt Unterordnern, Office-Dateien so, wie sie liegen. <strong>Nicht</strong> gelesen werden Dateien,
@@ -4441,9 +4441,9 @@ verbindet ihr Dienstkonto bei Microsoft 365 mit OPAA und wählt in ihrem OneDriv
   Arbeits- oder Schulkonto).</li>
 <li><strong>Dokument:</strong> OneDrive und Datei-Kennung sind die Identität. Umbenennen und Verschieben innerhalb
   des OneDrive behalten das Dokument. Einen Link in die OneDrive-Oberfläche gibt es nicht;
-  <strong>„Original öffnen"</strong> lädt die Datei durch OPAA, nur aus dem OneDrive, das die Bibliothek gewählt
+  <strong>„Original öffnen"</strong> lädt die Datei durch opaa, nur aus dem OneDrive, das die Bibliothek gewählt
   hat, und nur, solange das verbundene Konto dazu gehört.</li>
-<li><strong>Rechte</strong> aus OneDrive übernimmt OPAA nicht. Es braucht keine: Eine private Bibliothek liest
+<li><strong>Rechte</strong> aus OneDrive übernimmt opaa nicht. Es braucht keine: Eine private Bibliothek liest
   außer ihrer Besitzerin niemand.</li>
 </ul>
 <h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
@@ -4452,33 +4452,33 @@ danach ihr eigenes Konto.</p>
 <ol>
 <li><strong>App-Registrierung.</strong> Im Microsoft-Entra-Admin-Center „App-Registrierungen" → „Neue
    Registrierung", etwa <code>opaa-onedrive</code>, nur Konten dieses Verzeichnisses. Als Umleitungs-URI die
-   Plattform <strong>„Web"</strong> mit <code>&lt;öffentliche Adresse von OPAA&gt;/connections/callback</code> eintragen
+   Plattform <strong>„Web"</strong> mit <code>&lt;öffentliche Adresse von opaa&gt;/connections/callback</code> eintragen
    (<code>OPAA_PUBLIC_BASE_URL</code>, <a href="../../referenz/konfiguration.html#alle-umgebungsvariablen">Konfiguration</a>).
    Anwendungs-ID (Client-ID) und Verzeichnis-ID (Mandanten-ID) notieren.</li>
 <li><strong>Secret.</strong> „Zertifikate &amp; Geheimnisse" → „Neuer geheimer Clientschlüssel"; die Spalte „Wert"
    sofort kopieren, nicht die „Geheime ID" daneben, und das Ablaufdatum notieren.</li>
 <li><strong>Berechtigungen.</strong> „API-Berechtigungen" → „Microsoft Graph" → <strong>„Delegierte Berechtigungen"</strong>:
-   <code>Files.Read</code> und <code>offline_access</code>. Anwendungsberechtigungen braucht OPAA nicht; <code>Files.Read.All</code>
+   <code>Files.Read</code> und <code>offline_access</code>. Anwendungsberechtigungen braucht opaa nicht; <code>Files.Read.All</code>
    oder <code>Sites.Read.All</code> sind nicht nötig. Ob die Personen selbst zustimmen dürfen oder die
    Verwaltung „Administratorzustimmung erteilen" muss, hängt von den Einstellungen zur
    Benutzerzustimmung im Mandanten ab.</li>
 <li><strong>Zugang.</strong> Unter <strong>Administration → Anbindungen → Zugänge</strong> einen Zugang für OneDrive mit der
    Anmeldeart OAuth und der Besitzart „Person" anlegen: Client-ID, Client-Secret, „Ablaufdatum des
    Secrets" und als „Mandant" die Verzeichnis-ID oder die Domäne, etwa <code>contoso.onmicrosoft.com</code>.
-   „Scopes" leer lassen; OPAA fragt <code>Files.Read offline_access</code>. Die Server-Adresse ist fest.</li>
+   „Scopes" leer lassen; opaa fragt <code>Files.Read offline_access</code>. Die Server-Adresse ist fest.</li>
 <li>Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
    (<a href="../../referenz/rechte-matrix.html">Berechtigungen</a>, „Konnektor-Freigabe").</li>
 </ol>
 <p>Als „Mandant" gehört der eigene Mandant eingetragen, nicht <code>common</code> oder <code>organizations</code>, und die
 App-Registrierung bleibt auf Konten dieses Verzeichnisses beschränkt: Sonst kann sich auch ein
 Arbeitskonto eines fremden Mandanten verbinden und sein OneDrive einlesen; die Prüfung des eigenen
-OneDrive hält es nicht auf. Ein privates Microsoft-Konto weist OPAA in jedem Fall ab.</p>
+OneDrive hält es nicht auf. Ein privates Microsoft-Konto weist opaa in jedem Fall ab.</p>
 <p>Client-ID und Secret gehen nur an den Token-Endpunkt des Mandanten, das Zugriffstoken nur an
-<code>https://graph.microsoft.com</code>. Downloads leitet Graph auf eine kurzlebige Adresse um; OPAA folgt
+<code>https://graph.microsoft.com</code>. Downloads leitet Graph auf eine kurzlebige Adresse um; opaa folgt
 nur über <code>https</code>, prüft das Ziel und sendet dorthin kein Token.</p>
 <p><strong>Verbinden.</strong> Die Person wählt unter <strong>Einstellungen → Verbundene Konten</strong> beim Zugang „Verbinden"
 und meldet sich bei Microsoft mit ihrem Arbeits- oder Schulkonto an; Microsoft fragt dabei immer,
-welches Konto gemeint ist. Nach der Zustimmung nennt OPAA das Konto mit der E-Mail-Adresse, die
+welches Konto gemeint ist. Nach der Zustimmung nennt opaa das Konto mit der E-Mail-Adresse, die
 Graph als Besitzer des OneDrive angibt; nennt Graph keine, den Anzeigenamen oder nichts
 (<a href="../../administration/konten.html">Benutzerverwaltung</a>, „Verbundene Konten").</p>
 <h2 id="3-quellkonfiguration">3. Quellkonfiguration<a class="headerlink" href="#3-quellkonfiguration" title="Permanent link">&para;</a></h2>
@@ -4497,7 +4497,7 @@ gibt es nicht, und der Schritt „Freigaben" entfällt. Gibt es nur einen solche
 gewählt und steht als Zeile ohne Auswahlknopf da, samt Hinweis; die Zeile „Verbindung" bleibt dann
 zuerst aufgeklappt. Bei mehreren wählt man einen ausdrücklich.</p>
 <ul>
-<li><strong>Verbindung</strong> fragt weder Adresse noch Zugangsdaten ab. OPAA ermittelt das OneDrive des
+<li><strong>Verbindung</strong> fragt weder Adresse noch Zugangsdaten ab. opaa ermittelt das OneDrive des
   verbundenen Kontos selbst und nennt es mit seinem Namen als „das OneDrive Ihres verbundenen
   Microsoft-Kontos". Lässt es sich nicht ermitteln, steht dort „Das OneDrive ließ sich nicht
   ermitteln." mit dem Grund aus Abschnitt „Protokoll und Fehlerbilder" und „Erneut ermitteln"; der
@@ -4524,10 +4524,10 @@ mit „Abgelaufen" und „Konto neu verbinden", und ihr Bestand bleibt durchsuch
 (<a href="../private-bibliothek.html">Private Bibliotheken</a>). Eine Warnung vor dem Ablauf gibt es nicht.
 Ein Token ohne Berechtigung, etwa bei fehlender Administratorzustimmung, beendet dagegen nur den
 Lauf mit der Meldung zur Zustimmung; die Verbindung läuft nicht ab, und niemand wird benachrichtigt.
-Verbindet die Person ein anderes Microsoft-Konto, liest OPAA das OneDrive der Bibliothek nicht mehr:
+Verbindet die Person ein anderes Microsoft-Konto, liest opaa das OneDrive der Bibliothek nicht mehr:
 Jeder Lauf scheitert, bis sie mit dem Konto neu verbindet, dem das OneDrive gehört, oder das OneDrive
 neu wählt.</p>
-<p><strong>Trennen</strong> löscht das Token in OPAA. <strong>Bei Microsoft widerruft OPAA nichts</strong>, weil Entra dafür keinen
+<p><strong>Trennen</strong> löscht das Token in opaa. <strong>Bei Microsoft widerruft opaa nichts</strong>, weil Entra dafür keinen
 Weg anbietet; die Zustimmung bleibt dort gültig, bis sie abläuft oder widerrufen wird. Wer sichergehen
 will, entzieht sie zusätzlich bei Microsoft: die Person in ihrem Konto unter „Meine Apps" bei der App,
 die Verwaltung im Entra-Admin-Center mit „Sitzungen widerrufen" am Benutzer oder durch Entfernen der
@@ -4555,19 +4555,19 @@ Mandanten bestätigt. Dasselbe gilt für „Alle Verbindungen trennen" am Zugang
 </tr>
 </tbody>
 </table>
-<p>Vor jedem Lauf prüft OPAA, dass das verbundene Konto zum OneDrive der Bibliothek gehört; sonst
+<p>Vor jedem Lauf prüft opaa, dass das verbundene Konto zum OneDrive der Bibliothek gehört; sonst
 scheitert der Lauf, bevor er das OneDrive anfragt, und der Bestand bleibt.</p>
 <p><strong>Unverändertes erkennen</strong> und <strong>Fortsetzung über mehrere Läufe</strong> wie bei
 <a href="sharepoint.html#4-betriebsarten-und-änderungserkennung">SharePoint</a>: Inhaltsprüfsumme, ersatzweise
 Inhaltsversion oder Änderungszeit, jeweils mit Größe, Name und Ordner; reicht das Budget nicht, setzt
-der nächste Lauf an der gemerkten Stelle fort, und am Ende liest OPAA das Änderungsprotokoll ab dem
+der nächste Lauf an der gemerkten Stelle fort, und am Ende liest opaa das Änderungsprotokoll ab dem
 Stand, der zu Beginn galt (<a href="index.html#23-wann-eine-gelöschte-datei-als-nachgewiesen-gilt">Konnektoren</a>).</p>
 <h2 id="5-löscherkennung">5. Löscherkennung<a class="headerlink" href="#5-löscherkennung" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Ereignis in OneDrive</th>
-<th>Verhalten in OPAA</th>
+<th>Verhalten in opaa</th>
 </tr>
 </thead>
 <tbody>
@@ -4617,9 +4617,9 @@ Ordner tragen können, und zu tiefe Ketten folgen den Regeln des Kapitels
 <ul>
 <li><strong>Nur das eigene OneDrive.</strong> Die Bibliothek merkt sich die Kennung ihres OneDrive. Weicht das
   OneDrive des verbundenen Kontos davon ab, ist es kein OneDrive for Business oder hat das Konto
-  keines, liest OPAA nichts: kein Lauf, keine Auflistung, kein Original.</li>
+  keines, liest opaa nichts: kein Lauf, keine Auflistung, kein Original.</li>
 <li><strong>Verknüpfungen.</strong> Was eine Person mit „Zu ‚Meine Dateien‘ hinzufügen" in ihr OneDrive holt, liegt
-  im Laufwerk einer anderen Person oder einer Site. OPAA führt solche Einträge als übersprungen und
+  im Laufwerk einer anderen Person oder einer Site. opaa führt solche Einträge als übersprungen und
   lädt sie nie; die Ordnerauswahl bietet sie nicht an.</li>
 <li><strong>Drosselung</strong>, <strong>Kosten eines Laufs</strong>, <strong>zu langes Änderungsprotokoll</strong>, <strong>Fortsetzungspunkte</strong>
   und <strong>lange Downloads</strong> wie bei <a href="sharepoint.html#8-grenzen-und-schutzmechanismen">SharePoint</a>, mit

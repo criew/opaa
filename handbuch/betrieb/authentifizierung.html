@@ -23,7 +23,7 @@
     
     
       
-        <title>Authentifizierung - OPAA-Handbuch</title>
+        <title>Authentifizierung - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4850,8 +4850,8 @@
 
 
 <h1 id="authentifizierung">Authentifizierung<a class="headerlink" href="#authentifizierung" title="Permanent link">&para;</a></h1>
-<p>Dieses Kapitel beschreibt, wie Menschen sich bei OPAA anmelden: über einen oder mehrere
-Identitätsanbieter mit OpenID Connect, über Konten, die OPAA selbst führt, und über das eine
+<p>Dieses Kapitel beschreibt, wie Menschen sich bei opaa anmelden: über einen oder mehrere
+Identitätsanbieter mit OpenID Connect, über Konten, die opaa selbst führt, und über das eine
 Notanker-Konto der Systemverwaltung. Es beschreibt außerdem, wie Gruppen und Kontosperren aus dem
 Verzeichnis kommen und was zu tun ist, wenn niemand mehr hereinkommt. Wie die Verwaltung lokale
 Konten im Alltag pflegt, steht im Kapitel <a href="../administration/konten.html">Administration</a>; was Gruppen
@@ -4879,7 +4879,7 @@ Backend den Start mit einer Meldung ab</strong>.</p>
 <tr>
 <td><code>oidc</code></td>
 <td><code>oidc</code></td>
-<td><strong>Betriebsmodus</strong> und der einzige für den Betrieb zulässige: Identitätsanbieter und lokale Konten. Der Name ist geblieben, obwohl der Modus auch die Konten enthält, die OPAA selbst führt</td>
+<td><strong>Betriebsmodus</strong> und der einzige für den Betrieb zulässige: Identitätsanbieter und lokale Konten. Der Name ist geblieben, obwohl der Modus auch die Konten enthält, die opaa selbst führt</td>
 </tr>
 <tr>
 <td><code>dev</code></td>
@@ -4913,25 +4913,25 @@ Installation, sofern die lokale Benutzerverwaltung eingeschaltet ist. Ist die lo
 Verweis „Anmeldung für die Systemverwaltung" auf <code>/login/system</code>. Wie Produktname und Bilder der
 Anmeldeseite festgelegt werden, steht im Kapitel <a href="../administration/branding.html">Branding</a>.</p>
 <p><strong>Anmeldung ohne Klick.</strong> Hat jemand beim vorgeschlagenen Anbieter — zuletzt verwendet, sonst
-Standard, sonst der erste — noch eine laufende Sitzung, erreicht er die Anwendung ohne Klick: OPAA
+Standard, sonst der erste — noch eine laufende Sitzung, erreicht er die Anwendung ohne Klick: opaa
 startet je Browser-Tab einmal einen Anmeldeversuch, bei dem der Anbieter keine eigene Seite zeigen
 darf (<code>prompt=none</code>). Lehnt der Anbieter ab, steht die Anmeldeseite unverändert da, ohne
 Fehlermeldung. Der Versuch unterbleibt, wenn kein Anbieter aktiviert ist, eine Sitzung besteht, der
 Tab es schon versucht hat, nach einem Abmelden, nach einem Sitzungsende mit Grund und nach einem
 bewussten Klick auf einen Anbieter. Ein Schalter dafür ist nicht vorgesehen.</p>
 <ul>
-<li><strong>Ein anderes Konto desselben Anbieters:</strong> in OPAA abmelden. Das beendet die Sitzung beim Anbieter
+<li><strong>Ein anderes Konto desselben Anbieters:</strong> in opaa abmelden. Das beendet die Sitzung beim Anbieter
   mit, und der nächste Klick fragt wieder nach Anmeldedaten.</li>
 <li><strong>Ein lokales Konto trotz laufender Anbieter-Sitzung:</strong> <code>/login/system</code> aufrufen. Die Seite schaltet
   den Versuch für den Tab ab und führt zur regulären Anmeldeseite.</li>
 <li><strong>Direktlinks</strong> führen nach dem Versuch auf das verlinkte Ziel, ob er gelingt oder nicht.</li>
 <li><strong>Fehlersuche:</strong> Als Absage gilt jede Antwort mit einem OAuth-Fehlercode, auch eine falsch
-  eingetragene Client-ID oder eine fehlende Weiterleitungs-URI. OPAA schreibt den Fehlercode in die
+  eingetragene Client-ID oder eine fehlende Weiterleitungs-URI. opaa schreibt den Fehlercode in die
   <strong>Browser-Konsole</strong> (<code>Silent sign-in refused by the provider</code>). Bei einer Anmeldung per Klick endet
   derselbe Fehler sichtbar auf der Rückmeldeseite <code>/auth/callback</code>.</li>
 </ul>
 <h2 id="oidc-keycloak">OIDC (Keycloak)<a class="headerlink" href="#oidc-keycloak" title="Permanent link">&para;</a></h2>
-<p>OPAA nimmt Anmeldungen von <strong>einem oder mehreren OIDC-Anbietern</strong> an. Angebunden wird jeder Anbieter
+<p>opaa nimmt Anmeldungen von <strong>einem oder mehreren OIDC-Anbietern</strong> an. Angebunden wird jeder Anbieter
 mit OpenID Connect, Discovery-Dokument und Authorization Code Flow mit PKCE über einen öffentlichen
 Client. Der Compose-Stapel bringt einen Keycloak mit:</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>oidc<span class="w"> </span>up<span class="w"> </span>--build
@@ -4964,7 +4964,7 @@ Admin-Konsole liegt unter <code>http://localhost:8180</code>. Testkonten stehen 
 Keycloak zu ändern ist, unter <a href="#härtung-des-mitgelieferten-keycloak">Härtung des mitgelieferten Keycloak</a>.</p>
 <h3 id="content-security-policy-und-ein-anbieter-auf-fremdem-origin">Content-Security-Policy und ein Anbieter auf fremdem Origin<a class="headerlink" href="#content-security-policy-und-ein-anbieter-auf-fremdem-origin" title="Permanent link">&para;</a></h3>
 <p>Die Oberfläche holt das Discovery-Dokument und tauscht den Code nach der Anmeldung gegen Tokens per
-<code>fetch</code> direkt aus dem Browser. Liegt einer dieser Endpunkte nicht auf dem Origin von OPAA, blockiert
+<code>fetch</code> direkt aus dem Browser. Liegt einer dieser Endpunkte nicht auf dem Origin von opaa, blockiert
 die Content-Security-Policy des Frontends den Aufruf
 (<a href="netz-und-sicherheit.html#sicherheits-header-und-strict-transport-security">Sicherheits-Header</a>), bis der Origin in
 <code>OPAA_CSP_CONNECT_SRC_EXTRA</code> steht.</p>
@@ -5017,11 +5017,11 @@ abgerufen im Oktober 2026:</p>
   <code>/auth/callback</code> mit einer technischen Fehlermeldung (in Chromium <code>Failed to fetch</code>). In beiden
   Fällen nennt die Browser-Konsole die blockierte Adresse und die Direktive <code>connect-src</code>.</li>
 <li><strong>Nur Origins eintragen.</strong> Ein Eintrag folgt Content Security Policy Level 3: ein Origin
-  (<code>https://login.example.org</code>), ein Host ohne Schema (dann gilt das Schema der OPAA-Seite) oder ein
+  (<code>https://login.example.org</code>), ein Host ohne Schema (dann gilt das Schema der opaa-Seite) oder ein
   Platzhalter für Subdomains (<code>https://*.example.org</code> erlaubt <code>login.example.org</code>, nicht
   <code>example.org</code>). Ohne Port gilt der Standardport. Ein Pfad schränkt die Quelle ein:
   <code>https://login.example.org/realms/opaa</code> erlaubt weder Discovery-Dokument noch <code>token_endpoint</code>.</li>
-<li><strong>Ein Anbieter nur über <code>http</code></strong> scheitert an einer per <code>https</code> ausgelieferten OPAA-Seite
+<li><strong>Ein Anbieter nur über <code>http</code></strong> scheitert an einer per <code>https</code> ausgelieferten opaa-Seite
   unabhängig von der Policy als Mixed Content; ausgenommen sind <code>localhost</code> und seine Subdomains,
   <code>127.0.0.0/8</code> und <code>[::1]</code>.</li>
 </ul>
@@ -5068,7 +5068,7 @@ gepflegt (nur Systemverwaltung); jede Änderung wirkt ohne Neustart. Je Anbieter
 </table>
 <p><strong>Beim Anbieter einzutragen</strong> (die Oberfläche zeigt die Werte mit dem eigenen Origin): die
 Weiterleitungs-URI <code>&lt;Origin&gt;/auth/callback</code> (für alle Anbieter dieselbe), der erlaubte Web-Origin und
-die Abmelde-Weiterleitung <code>&lt;Origin&gt;</code>. In OPAA kommen der Origin des Anbieters nach
+die Abmelde-Weiterleitung <code>&lt;Origin&gt;</code>. In opaa kommen der Origin des Anbieters nach
 <code>OPAA_CSP_CONNECT_SRC_EXTRA</code> und, wenn der Anbieter in einem privaten Netz liegt, sein Host nach
 <code>OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST</code>. Der <strong>Verbindungstest</strong> prüft Discovery-Dokument und JWK-Set
 vor dem Speichern; ist die Issuer-URI vom Backend aus nicht erreichbar, prüft er das JWK-Set über die
@@ -5082,7 +5082,7 @@ Fehlerstatus, gesperrte Adresse), bleibt ein Fehler.</p>
 <li><strong>Der Standardanbieter</strong> kann weder deaktiviert noch gelöscht werden, solange ein anderer Anbieter
   an seine Stelle treten kann.</li>
 <li><strong>Mindestens ein anmeldefähiger Systemverwalter bleibt.</strong> Einen Anbieter zu deaktivieren oder zu
-  löschen, lehnt OPAA ab, wenn danach keiner übrig bliebe (Hinweis: zuerst ein lokales
+  löschen, lehnt opaa ab, wenn danach keiner übrig bliebe (Hinweis: zuerst ein lokales
   Systemverwalterkonto mit Passwort einrichten). Der <strong>letzte aktivierte</strong> Anbieter verlangt eine
   ausdrückliche Bestätigung; danach melden sich nur noch lokale Konten an. Ein Zustand ohne Anbieter
   ist zulässig.</li>
@@ -5150,14 +5150,14 @@ den Rollen-Claim.</p>
 einer Umstellung vorübergehend falsch gesetzt, verlöre sonst jedes Konto bei seiner nächsten Anmeldung
 Rollen und Gruppenrechte, jede Änderung als reguläres Ereignis, das wie eine beabsichtigte aussieht.
 Der <strong>Overage-Hinweis</strong> ist der Fall, in dem der Anbieter den Claim wegen seiner Größe durch einen
-Verweis ersetzt (Entra ID ab 200 Gruppen); OPAA lädt die Gruppen nicht nach, meldet den Vorfall aber
+Verweis ersetzt (Entra ID ab 200 Gruppen); opaa lädt die Gruppen nicht nach, meldet den Vorfall aber
 eigens. Wer die Meldung sieht, prüft die Claim-Zuordnung und die Mapper des Anbieters; bis dahin
 arbeiten die Konten mit ihrem letzten bekannten Stand. Ein durch einen benannten Rollen-Claim
 entzogener letzter <code>AUDITOR</code> ist nur im Anbieter wiederherstellbar.</p>
 <h3 id="verzeichnisabgleich-je-anbieter">Verzeichnisabgleich je Anbieter<a class="headerlink" href="#verzeichnisabgleich-je-anbieter" title="Permanent link">&para;</a></h3>
 <p>Ein Anbieter hat <strong>genau einen Gruppenmechanismus</strong>: den <strong>Gruppen-Claim</strong> seiner Tokens (Vorgabe,
 ohne Konfiguration) oder den <strong>Verzeichnisabgleich</strong> (empfohlen für Häuser mit gepflegtem
-Verzeichnis). Beides zugleich lehnt OPAA ab, sonst entstünde dieselbe Gruppe zweimal mit zwei
+Verzeichnis). Beides zugleich lehnt opaa ab, sonst entstünde dieselbe Gruppe zweimal mit zwei
 Wahrheiten über die Mitgliedschaft. Was das für Rechte und Rechtehistorie bedeutet, steht im Kapitel
 <a href="../administration/gruppen.html#woher-gruppen-kommen">Administration</a>.</p>
 <p>Der Abgleich läuft für die Konten <strong>dieses</strong> Anbieters: Mitglieder werden nur unter seinem Issuer
@@ -5235,7 +5235,7 @@ Ergebnis „fehlgeschlagen", ohne Ursache.</p>
 <p><strong>Der Bestätigungsweg.</strong> Ein wartender Plan steht mit seinem <strong>Alter</strong> in der Übersicht. Ein neuer
 Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen; das Alter läuft dabei weiter, denn es
 misst, wie lange die Entscheidung schon aussteht. <strong>Bestätigt wird gegen einen frischen
-Stand</strong>, mit Pflichtangabe eines Anlasses: OPAA liest das Verzeichnis erneut und wendet nur an, was
+Stand</strong>, mit Pflichtangabe eines Anlasses: opaa liest das Verzeichnis erneut und wendet nur an, was
 dem vorgelegten Plan noch entspricht; weicht es ab, wird nichts angewendet, und der neue Plan tritt an
 die Stelle des alten. <strong>Verwerfen</strong> entscheidet über diesen Plan, nicht über den Befund — der nächste
 Lauf legt ihn gegebenenfalls erneut vor. Bestätigen und Verwerfen stehen mit Person und Anlass im
@@ -5246,7 +5246,7 @@ eines solchen Berichts mit mindestens einer Person hinterlässt einen Eintrag im
 mit handelnder Person, Anbieter, Weg und Zahl der genannten Gruppen und Personen, ohne die Namen. Die
 Übersicht selbst ruft keinen Plan ab; erst das Öffnen eines Anbieters mit offenem Plan erzeugt einen
 Eintrag, ein erneutes Öffnen bei geöffneter Seite keinen weiteren. Lässt sich der Eintrag nicht
-schreiben, liefert OPAA den Bericht nicht aus — bei einem Lauf von Hand und einer Bestätigung ist die
+schreiben, liefert opaa den Bericht nicht aus — bei einem Lauf von Hand und einer Bestätigung ist die
 Änderung dann trotzdem angewendet; was sie bewirkt hat, zeigen Statuszeile und Protokoll.</p>
 <p><strong>Kontostatus aus dem Verzeichnis.</strong> Derselbe Lauf übernimmt den <strong>Kontostatus</strong>: Ein Konto, das das
 Verzeichnis als gesperrt meldet <strong>oder gar nicht mehr meldet</strong>, verliert beim nächsten Lauf seinen
@@ -5254,8 +5254,8 @@ Zugang, nicht erst mit dem Ablauf seines Tokens.</p>
 <ul>
 <li><strong>Gesperrt, nicht gelöscht.</strong> Mitgliedschaften, Spaces, Rollen und Eigentum bleiben stehen. Meldet
   das Verzeichnis das Konto wieder als freigeschaltet, hebt der nächste Lauf die Sperre auf; eine
-  Entsperrung von Hand gibt es nicht, weil OPAA nie ins Verzeichnis schreibt. Mit der Sperre
-  beginnt die Frist, nach der OPAA die Chats des Kontos löscht
+  Entsperrung von Hand gibt es nicht, weil opaa nie ins Verzeichnis schreibt. Mit der Sperre
+  beginnt die Frist, nach der opaa die Chats des Kontos löscht
   (<a href="../administration/konten.html#sperren-statt-löschen">Chats gesperrter Konten</a>).</li>
 <li><strong>Sofort wirksam.</strong> Jede weitere Anfrage des Kontos wird abgewiesen, auch mit gültigem Token, und
   seine Zugangstokens treten außer Kraft. Die Person sieht beim nächsten Aufruf Grund und
@@ -5275,14 +5275,14 @@ mehr gepflegt" aus; sie bleiben mit eingefrorener Mitgliedschaft stehen. <strong
 entzogen</strong> — ihre Rechte gehen mit einer eigenen Übertragung auf die neuen Gruppen über.</p>
 <h3 id="keycloak-als-verzeichnis">Keycloak als Verzeichnis<a class="headerlink" href="#keycloak-als-verzeichnis" title="Permanent link">&para;</a></h3>
 <p>Angebunden ist bisher <strong>Keycloak</strong> über seine Admin-API. Viele Häuser haben Keycloak ohnehin vor dem
-Active Directory; seine LDAP-Mapper importieren die AD-Gruppen, und OPAA liest sie aus Keycloak.</p>
-<p><strong>Was OPAA liest.</strong> Mit einem Dienstkonto den Gruppenbaum des Realms samt direkter Mitglieder und die
+Active Directory; seine LDAP-Mapper importieren die AD-Gruppen, und opaa liest sie aus Keycloak.</p>
+<p><strong>Was opaa liest.</strong> Mit einem Dienstkonto den Gruppenbaum des Realms samt direkter Mitglieder und die
 Konten mit ihrem Kennzeichen <code>enabled</code>, jeweils seitenweise und ohne Attribute und Anmeldedaten:</p>
 <table>
 <thead>
 <tr>
 <th>Keycloak</th>
-<th>OPAA</th>
+<th>opaa</th>
 </tr>
 </thead>
 <tbody>
@@ -5315,8 +5315,8 @@ Konten mit ihrem Kennzeichen <code>enabled</code>, jeweils seitenweise und ohne 
 <p>Die Keycloak-Benutzer-ID <em>ist</em> das Subject der Tokens desselben Realms; die Zuordnung braucht keine
 Regel. Der Realm kommt aus der <strong>Issuer-URI der Anbieterzeile</strong> (<code>https://kc.example/realms/haus</code> →
 Realm <code>haus</code>) und ist bewusst nicht einstellbar: So liest ein Lauf nur den Realm, aus dem die Tokens
-dieses Anbieters stammen. Ist die Issuer-URI keine Keycloak-Realm-Adresse, lehnt OPAA den Zugang ab.</p>
-<p><strong>Nur direkte Mitglieder.</strong> Eine Abteilung, die nur Untergruppen hat, ist in OPAA eine <strong>leere
+dieses Anbieters stammen. Ist die Issuer-URI keine Keycloak-Realm-Adresse, lehnt opaa den Zugang ab.</p>
+<p><strong>Nur direkte Mitglieder.</strong> Eine Abteilung, die nur Untergruppen hat, ist in opaa eine <strong>leere
 Gruppe</strong>; eine Freigabe an sie erreicht niemanden. Der Bericht nennt deshalb je Gruppe die
 Mitgliederzahl. Wer eine ganze Abteilung erreichen will, nimmt ihre Mitglieder auch in die
 Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.</p>
@@ -5331,20 +5331,20 @@ Abteilungsgruppe auf oder gibt an die Referatsgruppen frei.</p>
    die Admin-API nur Tokens mit der Audience dieses Scopes durch; Keycloak weist ihn von sich aus nur
    seinen eigenen Admin-Clients zu. Ohne ihn wird das Dienstkonto trotz der Rollen abgewiesen.</li>
 </ol>
-<p>In OPAA wird der Zugang im Dialog des Anbieters unter <strong>Verzeichniszugang</strong> hinterlegt, getestet
+<p>In opaa wird der Zugang im Dialog des Anbieters unter <strong>Verzeichniszugang</strong> hinterlegt, getestet
 und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: Realm „haus" mit 14
 Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden Rollen und den Client-Scope. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel <code>http://keycloak:8180</code> statt
 <code>http://localhost:8180</code> —, gehört die Backend-Adresse in das Feld der Admin-API; ohne Angabe leitet
-OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe <a href="#adressprüfung-und-tokenprüfung">Adressprüfung</a>
+opaa sie aus der Issuer-URI ab. Sie durchläuft dieselbe <a href="#adressprüfung-und-tokenprüfung">Adressprüfung</a>
 wie die Issuer-URI; Redirects folgt das Backend nicht.</p>
 <p><strong>Das Geheimnis liegt verschlüsselt</strong> mit <code>OPAA_CREDENTIALS_ENCRYPTION_KEY</code>; ohne diesen Schlüssel
 lässt sich kein Zugang speichern (<a href="netz-und-sicherheit.html#schlüssel-und-geheimnisse">Schlüssel und Geheimnisse</a>).
 Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienstkontos lässt sich
-jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ein Test ohne eingetragenes
+jederzeit wechseln: in Keycloak neu erzeugen, in opaa neu hinterlegen. Ein Test ohne eingetragenes
 Geheimnis nutzt das gespeicherte nur für die gespeicherte Admin-API-Adresse; für eine geänderte
-Adresse ist das Geheimnis einzutragen, sonst lehnt OPAA den Test ab, statt es dorthin zu senden.
-Aus demselben Grund entfernt OPAA einen Zugang ohne eingetragene Admin-API-Adresse, wenn eine
+Adresse ist das Geheimnis einzutragen, sonst lehnt opaa den Test ab, statt es dorthin zu senden.
+Aus demselben Grund entfernt opaa einen Zugang ohne eingetragene Admin-API-Adresse, wenn eine
 geänderte Issuer-URI die abgeleitete Adresse ändert; er ist danach für die neue Adresse neu zu
 hinterlegen, die Entfernung steht im Nachweisprotokoll. Eine Umbenennung des Anbieters lässt den
 Zugang stehen.
@@ -5446,7 +5446,7 @@ lautet die Client-ID nicht <code>opaa-frontend</code>, gehört ihr Wert in <code
 <span class="w">  </span>-s<span class="w"> </span><span class="s1">'config."access.token.claim"=true'</span>
 </code></pre></div>
 <h2 id="erneute-anmeldung-vor-sensiblen-vorgängen">Erneute Anmeldung vor sensiblen Vorgängen<a class="headerlink" href="#erneute-anmeldung-vor-sensiblen-vorgängen" title="Permanent link">&para;</a></h2>
-<p>OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eben bestätigt hat, damit
+<p>opaa kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eben bestätigt hat, damit
 ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
 (<code>OPAA_AUTH_RECENT_LOGIN_MAX_AGE</code> in der <a href="../referenz/konfiguration.html">Variablenliste</a>), danach wird wieder
 gefragt. Verlangt wird sie vor dem Download der eigenen Daten
@@ -5467,9 +5467,9 @@ Einstellungen oder einen anderen sicherheitsrelevanten Wert ändert. Die Vorscha
 <li><strong>Lokales Konto:</strong> Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.</li>
 <li><strong>Konto eines Identitätsanbieters:</strong> Die Bestätigung ist eine Anmeldung beim Anmeldedienst, die
-  OPAA auch bei bestehender Sitzung verlangt. Der Anbieter muss dafür die Anfrageparameter
+  opaa auch bei bestehender Sitzung verlangt. Der Anbieter muss dafür die Anfrageparameter
   <code>prompt=login</code> und <code>max_age=0</code> beachten und den Anmeldezeitpunkt (<code>auth_time</code>) ins Zugangstoken
-  schreiben; Keycloak tut beides mit dem mitgelieferten Client-Scope <code>basic</code>. Sonst lässt OPAA den
+  schreiben; Keycloak tut beides mit dem mitgelieferten Client-Scope <code>basic</code>. Sonst lässt opaa den
   Vorgang nicht zu.</li>
 <li><strong>Entwicklungsmodus:</strong> Es gibt keine Anmeldung; jede Anfrage gilt als bestätigt.</li>
 </ul>
@@ -5506,7 +5506,7 @@ Anzeigename dürfen sich ändern.</p>
 Systemverwalter, auch wenn die Adresse übereinstimmt; es bezeichnet nur das Notanker-Konto. Im Modus
 <code>dev</code> ist <code>dev-admin</code> Systemverwalter.</p>
 <h2 id="lokale-benutzerverwaltung">Lokale Benutzerverwaltung<a class="headerlink" href="#lokale-benutzerverwaltung" title="Permanent link">&para;</a></h2>
-<p>Lokale Konten sind Konten, die OPAA selbst führt, mit E-Mail-Adresse und Passwort. Ihre Verwaltung ist
+<p>Lokale Konten sind Konten, die opaa selbst führt, mit E-Mail-Adresse und Passwort. Ihre Verwaltung ist
 <strong>ein Schalter unter Administration → Benutzer → Einstellungen</strong>. Der Abschluss der
 <a href="installation.html">Installation</a> schaltet ihn <strong>ein</strong>, mit „nur lokale Konten" wie mit einem
 Identitätsanbieter; das Revisionsprotokoll hält es unter der Installation fest.
@@ -5527,7 +5527,7 @@ steht im Kapitel <a href="../administration/konten.html">Administration</a>. Fü
   dieses Auszugs zusätzlich zur vierteljährlichen Kontenprüfung
   (<a href="../administration/konten.html#liste-prüfen">Administration</a>).</li>
 <li><strong>Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse</strong>
-  (<code>OPAA_PUBLIC_BASE_URL</code>, <a href="../administration/e-mail.html">E-Mail-Versand</a>). Ohne beides zeigt OPAA den Link zur Übergabe
+  (<code>OPAA_PUBLIC_BASE_URL</code>, <a href="../administration/e-mail.html">E-Mail-Versand</a>). Ohne beides zeigt opaa den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.</li>
 <li><strong>Bei der Selbstregistrierung legt erst der Bestätigungslink Name und Passwort fest.</strong> Wer eine
   fremde Adresse der erlaubten Domänen zuerst registriert, bestimmt damit weder Passwort noch Namen
@@ -5563,7 +5563,7 @@ wirksamen Grenzen im Log. Sehr strenge Werte können auch das Notanker-Konto lan
 ursprünglichen Zeit. Ein Konto, das schon so viele Fehlversuche hat, wie eine gesenkte Zahl
 erlaubt, wird erst beim nächsten Fehlversuch gesperrt, nicht durch die Änderung selbst. Während der
 Sperre antwortet die Anmeldung wie bei einem falschen Passwort. Gleichzeitige Versuche gegen
-dasselbe Konto entscheidet OPAA nacheinander, auch über mehrere Instanzen: Viele parallele
+dasselbe Konto entscheidet opaa nacheinander, auch über mehrere Instanzen: Viele parallele
 Anmeldungen zählen nicht über die Grenze hinaus, und ein richtiges Passwort, dessen Prüfung erst
 nach Eintreten der Sperre endet, wird wie ein falsches beantwortet. Die Sperre steht im
 Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch nur im Protokoll (mit
@@ -5710,7 +5710,7 @@ Anmeldung, ohne Keycloak im Prüfpfad; die Anmeldevorgänge selbst prüfen der D
 und das Ziel <code>local-auth</code> (lokale Anmeldung). Dass das Notanker-Konto in zwei Stapeln ein festes,
 öffentlich bekanntes Passwort trägt, ist genau der Grund, warum keines dieser Passwörter auf einer
 erreichbaren Instanz verwendet wird. Zugangsdaten, mit denen eine Bibliothek ihre Quelle abruft,
-sind kein Konto bei OPAA (<a href="netz-und-sicherheit.html#zugangsdaten-verschlüsselung">Schlüssel und Geheimnisse</a>).</p>
+sind kein Konto bei opaa (<a href="netz-und-sicherheit.html#zugangsdaten-verschlüsselung">Schlüssel und Geheimnisse</a>).</p>
 <h2 id="fehlerbehebung">Fehlerbehebung<a class="headerlink" href="#fehlerbehebung" title="Permanent link">&para;</a></h2>
 <h3 id="oidc-completing-sign-in-hängt">OIDC: „Completing sign in..." hängt<a class="headerlink" href="#oidc-completing-sign-in-hängt" title="Permanent link">&para;</a></h3>
 <ul>
@@ -5748,7 +5748,7 @@ ganze Haus. Die aufgelöste Client-Adresse zeigt der Diagnose-Endpunkt
 (<a href="ueberwachung-und-fehlerbehebung.html#diagnose-ohne-shell">Diagnose ohne Shell</a>).</p>
 <h3 id="eine-anmeldung-wird-abgelehnt-ohne-einen-grund-zu-nennen">Eine Anmeldung wird abgelehnt, ohne einen Grund zu nennen<a class="headerlink" href="#eine-anmeldung-wird-abgelehnt-ohne-einen-grund-zu-nennen" title="Permanent link">&para;</a></h3>
 <p>Beabsichtigt: Unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes und noch nicht
-bestätigtes Konto beantwortet OPAA <strong>gleich</strong>. Den Zustand eines Kontos zeigt die Kontenliste
+bestätigtes Konto beantwortet opaa <strong>gleich</strong>. Den Zustand eines Kontos zeigt die Kontenliste
 (<a href="../administration/konten.html#liste-prüfen">Administration</a>). Wird eine Person
 nach der Anmeldung sofort auf „Passwort ändern" geführt, ist ein Wechsel erzwungen; die Seite nennt den
 Anlass.</p>

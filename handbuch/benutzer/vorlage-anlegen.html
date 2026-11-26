@@ -23,7 +23,7 @@
     
     
       
-        <title>Vorlage anlegen - OPAA-Handbuch</title>
+        <title>Vorlage anlegen - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4267,7 +4267,7 @@
    Stelle“ (Gruppe, Einheit oder Funktion, keine Einzelperson) und auf Wunsch Rollen.</li>
 <li><strong>Prüfen:</strong> die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.</li>
 </ol>
-<p>OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
+<p>opaa prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen
 Block nicht schließen oder aktive Inhalte tragen: Makros (auch als <code>.dotm</code>), ActiveX-Elemente,
 eingebettete Objekte, eine verknüpfte Dokumentvorlage, eine Seriendruck-Datenquelle, Makros an
@@ -4304,7 +4304,7 @@ Seitenzahl, Datum, Verweis und Inhaltsverzeichnis, aber kein Feld innerhalb eine
 <code>-</code>, <code>~</code> zum Verketten und die Filter <code>default</code>, <code>upper</code>, <code>lower</code>, <code>title</code>, <code>capitalize</code>, <code>trim</code>,
 <code>round</code>, <code>int</code>, <code>float</code>, <code>abs</code>, <code>join</code>, <code>length</code>, <code>count</code>, <code>first</code> und <code>last</code> mit festen Werten als
 Argument, etwa <code>{{ name|default('unbekannt') }}</code>. Funktionsaufrufe, <code>set</code>, <code>macro</code>, andere Filter
-und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokument landet.</p>
+und Ähnliches lehnt opaa beim Hochladen ab, damit jeder Wert als Text im Dokument landet.</p>
 <p>Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
 <code>{%tr for … %}</code> in der ersten und <code>{%tr endfor %}</code> in einer eigenen Zeile darunter. Ein <code>-</code> am Rand
 eines Tags (<code>{%- if … -%}</code>) entfernt Leerraum wie gewohnt. Namen bestehen aus Buchstaben, Ziffern
@@ -4315,7 +4315,7 @@ und Unterstrich. Ein Kommentar <code>{# … #}</code> erscheint nicht im Ergebni
 Vorlage kann mehreren Agenten dienen. Mit dem Werkzeug „Vorlage ausfüllen“ bekommt er in jedem Lauf
 seine Vorlagen, die die fragende Person lesen darf, mit ihren Platzhaltern angeboten; ohne
 zugeordnete Vorlage fehlt das Werkzeug. Das Modell liefert nur die Werte, etwa Aktenzeichen und
-Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
+Maßnahmen aus den gefundenen Belegen. opaa füllt die Vorlage damit in der
 <a href="../betrieb/sandbox.html">Sandbox</a> und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
 Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert nicht,
 bleibt ein Feld leer (oder zeigt, was <code>default(…)</code> vorgibt), eine Liste hat keine Einträge, und eine
@@ -4356,7 +4356,7 @@ Leserecht, nicht zugeordnet) oder Sandbox antwortet der Agent ohne Datei im Chat
 </table>
 <p><strong>Gut zu wissen:</strong></p>
 <ul>
-<li>OPAA führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
+<li>opaa führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
   einer abgeschotteten Umgebung; Werte aus dem Chat landen dort immer als Text, nie als Befehl.</li>
 <li>Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen, und die
   Vorlage bekommt eine neue Fassung; eine Agentenantwort nennt die Fassung, die sie ausgefüllt hat.</li>

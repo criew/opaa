@@ -23,7 +23,7 @@
     
     
       
-        <title>Überwachung und Fehlerbehebung - OPAA-Handbuch</title>
+        <title>Überwachung und Fehlerbehebung - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4459,7 +4459,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_model_tokens_total</code></td>
-<td>Tokens jedes Aufrufs des Chat-Modells nach Zweck (<code>purpose</code>: <code>answer</code>, <code>decompose</code>, <code>note</code>, <code>auxiliary</code> Titel und Metadaten, <code>agent</code>), Art (<code>token_type</code>: <code>input</code>, <code>output</code>) und <code>model</code>, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft OPAA mit einer Warnung im Log</td>
+<td>Tokens jedes Aufrufs des Chat-Modells nach Zweck (<code>purpose</code>: <code>answer</code>, <code>decompose</code>, <code>note</code>, <code>auxiliary</code> Titel und Metadaten, <code>agent</code>), Art (<code>token_type</code>: <code>input</code>, <code>output</code>) und <code>model</code>, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft opaa mit einer Warnung im Log</td>
 </tr>
 <tr>
 <td><code>gen_ai_client_operation_seconds_*</code></td>
@@ -4599,7 +4599,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_audit_payload_dropped_total</code></td>
-<td>Einträge ins Revisionsprotokoll, aus denen OPAA eine Angabe entfernt hat, die der Ereigniskatalog für die Ereignisart (<code>event_type</code>) nicht nennt; jede Ereignisart beginnt beim Start eines Pods bei 0. Jeder Anstieg ist ein Programmfehler, das Log nennt die Angaben ohne ihre Werte</td>
+<td>Einträge ins Revisionsprotokoll, aus denen opaa eine Angabe entfernt hat, die der Ereigniskatalog für die Ereignisart (<code>event_type</code>) nicht nennt; jede Ereignisart beginnt beim Start eines Pods bei 0. Jeder Anstieg ist ein Programmfehler, das Log nennt die Angaben ohne ihre Werte</td>
 </tr>
 <tr>
 <td><code>opaa_audit_chain_lag_seconds</code></td>
@@ -4711,7 +4711,7 @@ Installation beschreibt die <a href="index.html">Betriebsübersicht</a>.</p>
 </tr>
 <tr>
 <td><code>opaa_auth_logins_total</code></td>
-<td>abgewiesene Anmeldungen nach <code>method</code> und <code>result</code>: lokale Konten mit <code>bad_credentials</code>, <code>locked</code>, <code>other</code>; beim Identitätsanbieter (<code>oidc</code>) abgewiesene Tokens mit <code>bad_credentials</code>, <code>idp_error</code>, wenn die Signaturschlüssel (JWKS) des Anbieters nicht abgerufen werden konnten, und <code>other</code>. Erfolgreiche Anmeldungen zählt OPAA bei keiner Methode. Ohne Konto, Adresse und Anbieter</td>
+<td>abgewiesene Anmeldungen nach <code>method</code> und <code>result</code>: lokale Konten mit <code>bad_credentials</code>, <code>locked</code>, <code>other</code>; beim Identitätsanbieter (<code>oidc</code>) abgewiesene Tokens mit <code>bad_credentials</code>, <code>idp_error</code>, wenn die Signaturschlüssel (JWKS) des Anbieters nicht abgerufen werden konnten, und <code>other</code>. Erfolgreiche Anmeldungen zählt opaa bei keiner Methode. Ohne Konto, Adresse und Anbieter</td>
 </tr>
 <tr>
 <td><code>opaa_external_access_alarms_total</code></td>
@@ -4755,7 +4755,7 @@ meldet sie <code>NaN</code> statt eines veralteten Werts und warnt im Log. Ein u
 Erfolg. Private Bibliotheken erscheinen bei Läufen, letztem Erfolg und Überfälligkeit nur
 zusammengefasst als <code>connector="private"</code>; <code>opaa_indexing_documents_total</code> zählt ihre Dokumente
 unter dem Quellentyp, installationsweit. Eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer
-Anlage, nicht ab dem Einschalten des Zeitplans, weil OPAA diesen Zeitpunkt nicht speichert.</p>
+Anlage, nicht ab dem Einschalten des Zeitplans, weil opaa diesen Zeitpunkt nicht speichert.</p>
 <h3 id="ausgehende-aufrufe">Ausgehende Aufrufe<a class="headerlink" href="#ausgehende-aufrufe" title="Permanent link">&para;</a></h3>
 <p><code>opaa_outbound_requests_seconds_*</code> misst jeden Aufruf an einen fremden Dienst außer Chat und
 Embedding an einer Stelle, ohne Adresse, Host oder Bibliothek als Label. Die Labels nehmen nur
@@ -4778,7 +4778,7 @@ diese Werte an:</p>
 </ul>
 <p>So liest man die Werte:</p>
 <ul>
-<li><strong><code>timeout</code> umfasst Abbrüche.</strong> Bricht OPAA einen Aufruf ab, weil seine Frist abgelaufen ist,
+<li><strong><code>timeout</code> umfasst Abbrüche.</strong> Bricht opaa einen Aufruf ab, weil seine Frist abgelaufen ist,
   zählt er als <code>timeout</code>, auch wenn eine Unterbrechung den Aufruf beendet. Das gilt ebenso, wenn
   ein Lauf gestoppt wird oder die Instanz herunterfährt; eine Häufung von <code>timeout</code> während eines
   Rolling Updates ist deshalb kein Ausfall des Dienstes.</li>
@@ -4793,10 +4793,10 @@ diese Werte an:</p>
 <li><strong>Die Live-Transkription zählt hier nur den Verbindungsaufbau,</strong> einmal je Aufnahme oder Probe;
   wie ein Live-Diktat endet, zählt <code>opaa_transcription_live_sessions_total</code>. Lehnt der Dienst den Aufbau ab, zählt sein Status.</li>
 <li><strong>S3 und SMB</strong> zählen jeden Versuch wie die HTTP-Clients, eine Wiederholung eingeschlossen. Bei
-  S3 erkennt OPAA einen TLS-Fehler nicht gesondert, er erscheint als <code>io_error</code>. Bei SMB zählen
+  S3 erkennt opaa einen TLS-Fehler nicht gesondert, er erscheint als <code>io_error</code>. Bei SMB zählen
   Anmeldung, Öffnen eines Ordners und jeder Downloadversuch je einmal; ein wiederholter Download
   zählt also je Versuch. Eine Datei über der Größengrenze zählt als <code>client_error</code>.</li>
-<li><strong>Was OPAA vor dem Senden selbst ablehnt, zählt nicht.</strong> Ein Ziel, das die Zielprüfung sperrt,
+<li><strong>Was opaa vor dem Senden selbst ablehnt, zählt nicht.</strong> Ein Ziel, das die Zielprüfung sperrt,
   oder ein Versuch über dem Anfragebudget eines Laufs verlässt die Instanz nicht und erscheint bei
   keinem Ziel.</li>
 </ul>
@@ -4807,7 +4807,7 @@ unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln unter 
 Compose: <a href="dashboards-und-alarme.html">Dashboards und Alarme</a>, was bei einem Alarm zu tun ist:
 <a href="alarme.html">Alarme</a>.</p>
 <h2 id="ausleitung-an-ein-sicherheitsmonitoring">Ausleitung an ein Sicherheitsmonitoring<a class="headerlink" href="#ausleitung-an-ein-sicherheitsmonitoring" title="Permanent link">&para;</a></h2>
-<p>OPAA kann sein Revisionsprotokoll laufend an das zentrale Sicherheitsmonitoring (SIEM) der Behörde
+<p>opaa kann sein Revisionsprotokoll laufend an das zentrale Sicherheitsmonitoring (SIEM) der Behörde
 geben, damit Verwaltungshandeln wie Rechteänderungen, Kontosperren oder Zugriffe auf das Protokoll
 dort neben den Ereignissen anderer Fachverfahren erscheint.</p>
 <blockquote>
@@ -4820,10 +4820,10 @@ aber ohne die Person, die sie erteilt hat.</p>
 <li><strong>Was hinausgeht:</strong> je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis,
   Organisation sowie Art und Kennung des betroffenen Objekts und die Version des Ereigniskatalogs. Nie gehen Pseudonyme handelnder oder
   betroffener Personen, Begründungen oder Inhalte hinaus. Den Namen des Objekts (etwa eines Space
-  oder einer Gruppe) sendet OPAA nur mit <code>OPAA_SIEM_EXPORT_INCLUDE_LABELS</code>, weil Namen oft Personen
+  oder einer Gruppe) sendet opaa nur mit <code>OPAA_SIEM_EXPORT_INCLUDE_LABELS</code>, weil Namen oft Personen
   nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
   Bibliothek, privater Prompt), fehlen Kennung und Name immer. Wer gehandelt hat, klärt nur die
-  anlassbezogene Klärung in OPAA
+  anlassbezogene Klärung in opaa
   (<a href="../administration/systemrollen.html">Administration</a>).</li>
 <li><strong>Lesezugriff:</strong> Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
   nach, sonst nicht. Das ist neben der Revision, der Selbstauskunft und der Prüfsummenkette der
@@ -4947,7 +4947,7 @@ findet beide Zeilen der Anfrage, auch die eines Hintergrundlaufs, den sie angest
 <li><strong>Personenbeziehbar über Verknüpfung:</strong> Für sich nennt die Kennung niemanden. Das Zugriffslog
   enthält aber die Client-Adresse, manche Logzeilen des Backends die Kennung eines Kontos und das
   Revisionsprotokoll die handelnde Person; über die Request-ID lassen sich diese Zeilen verbinden.
-  Wie lange die Logs liegen, bestimmt die Log-Sammlung des Betriebs, nicht OPAA; solange das
+  Wie lange die Logs liegen, bestimmt die Log-Sammlung des Betriebs, nicht opaa; solange das
   Zugriffslog liegt, führt jeder Revisionseintrag über die Request-ID zur Client-Adresse. Die
   Muster-Dienstvereinbarung lässt die Verknüpfung nur zur Fehlerbehebung an einer einzelnen
   gemeldeten Anfrage und in der anlassbezogenen Klärung zu; das Revisionsprotokoll wird nur in der
@@ -4956,7 +4956,7 @@ findet beide Zeilen der Anfrage, auch die eines Hintergrundlaufs, den sie angest
   an einen Collector (<code>OPAA_TRACING_OTLP_ENDPOINT</code>, Pflicht, sonst bricht der Start ab), über den
   <a href="netz-und-sicherheit.html#ausgangsproxy">Ausgangsproxy</a>, falls einer eingerichtet ist. Ausgewählt
   wird nur ein kleiner Teil der Anfragen (<code>OPAA_TRACING_SAMPLING_PROBABILITY</code>). Einen mitgeschickten
-  <code>traceparent</code> verwerfen Frontend und Backend, die Auswahl trifft OPAA über eine selbst erzeugte
+  <code>traceparent</code> verwerfen Frontend und Backend, die Auswahl trifft opaa über eine selbst erzeugte
   Trace-ID. Ein Trace endet an der Installation: Kein ausgehender Aufruf an Modelle, Quellen oder
   Mailserver trägt einen <code>traceparent</code>, und keine Trace-ID erscheint in den Metriken. Ist das
   Tracing aus, verlässt nichts die Installation.</li>

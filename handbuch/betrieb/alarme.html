@@ -23,7 +23,7 @@
     
     
       
-        <title>Alarme - OPAA-Handbuch</title>
+        <title>Alarme - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -5484,7 +5484,7 @@
 
 
 <h1 id="alarme">Alarme<a class="headerlink" href="#alarme" title="Permanent link">&para;</a></h1>
-<p>Jeder Alarm, den OPAA mitbringt, hat hier seinen Abschnitt: was ausfällt, wer sich kümmert, die drei
+<p>Jeder Alarm, den opaa mitbringt, hat hier seinen Abschnitt: was ausfällt, wer sich kümmert, die drei
 ersten Prüfungen, was nachts reicht und wann man ihn stummschaltet. Die Annotation <code>runbook_url</code>
 jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafana kommen, steht unter
 <a href="dashboards-und-alarme.html">Dashboards und Alarme</a>.</p>
@@ -5500,7 +5500,7 @@ jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafan
 <tbody>
 <tr>
 <td><code>critical</code></td>
-<td>Personen können OPAA nicht oder kaum benutzen, oder Daten gehen verloren</td>
+<td>Personen können opaa nicht oder kaum benutzen, oder Daten gehen verloren</td>
 <td>weckt die Bereitschaft</td>
 </tr>
 <tr>
@@ -5518,7 +5518,7 @@ jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafan
 <p>Das Label <code>component</code> sagt, welcher Bereich betroffen ist, und taugt als Schlüssel für die Verteilung:
 <code>platform</code> (Pods, Datenbank, Anmeldung), <code>chat</code>, <code>search</code>, <code>model</code>, <code>agent</code> (Agentenläufe),
 <code>indexing</code>, <code>directory</code> (Verzeichnisabgleich), <code>background</code> (geplante Läufe, Mails), <code>audit</code>
-(Revisionsprotokoll) und <code>security</code>. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
+(Revisionsprotokoll) und <code>security</code>. Weckende Alarme stützen sich auf Metriken von opaa selbst, nicht auf Modellnamen oder
 Werte eines Anbieters.</p>
 <p>Jeder Alarm trägt außerdem <code>namespace</code>, den Namespace der Installation (unter Compose <code>opaa</code>).
 Jede Gruppe lässt sich abschalten; die Schwellen sind Werte des Charts
@@ -5528,14 +5528,14 @@ Jede Gruppe lässt sich abschalten; die Schwellen sind Werte des Charts
 <li><strong>Mindestvolumen:</strong> Quoten wie Fehleranteil, leere Suchen oder gescheiterte Mails zählen erst ab
   einer Mindestzahl von Vorgängen im Fenster. Eine einzelne gescheiterte Frage am Sonntagmorgen
   weckt niemanden.</li>
-<li><strong>Unlesbare Werte:</strong> Werte, die OPAA aus der Datenbank liest (Warteschlangen, Bestand,
+<li><strong>Unlesbare Werte:</strong> Werte, die opaa aus der Datenbank liest (Warteschlangen, Bestand,
   Instanzregister, Sperren, Revisionsprotokoll), sind <code>NaN</code>, wenn die Abfrage scheitert oder länger
   als zehn Sekunden braucht. Ein Vergleich mit <code>NaN</code> ist nie wahr; Alarme auf diesen Wert schweigen
   deshalb. Das meldet <a href="#OpaaMetricUnreadable">OpaaMetricUnreadable</a>; die Alarme des
   Revisionsprotokolls feuern bei <code>NaN</code> selbst. Ausgenommen sind die Texterkennung, solange sie aus
   ist, und private Bibliotheken unter der Mindestgruppengröße: Dort ist <code>NaN</code> gewollt.</li>
 <li><strong>Fehlende Werte:</strong> Fehlen alle Metriken eines Backends, feuert
-  <a href="#OpaaBackendMetricsMissing">OpaaBackendMetricsMissing</a>; die Alarme auf Werte von OPAA schweigen
+  <a href="#OpaaBackendMetricsMissing">OpaaBackendMetricsMissing</a>; die Alarme auf Werte von opaa schweigen
   dann. Die Alarme des Revisionsprotokolls melden auch eine fehlende Reihe, solange Prometheus das
   Backend erreicht.</li>
 </ul>
@@ -5579,7 +5579,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code
 <h3 id="opaabackendmetricsmissing">OpaaBackendMetricsMissing<a class="headerlink" href="#opaabackendmetricsmissing" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Auswirkung:</strong> Prometheus fragt weniger Backend-Pods ab, als laufen sollen; alle Alarme auf Werte
-  von OPAA sind für diese Pods blind.</li>
+  von opaa sind für diese Pods blind.</li>
 <li><strong>Zuständig:</strong> Betrieb der Überwachung.</li>
 <li><strong>Prüfen:</strong> 1. Laufen die Pods? 2. <code>ServiceMonitor</code> und dessen Labels für den Prometheus.</li>
 <li><code>metrics.scrapeFrom</code> und NetworkPolicy zum Management-Port.</li>
@@ -5738,7 +5738,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code
 <ul>
 <li><strong>Auswirkung:</strong> Kein Pod erreicht den Dienst der Rolle im Label <code>role</code>. <code>critical</code> für Chat und
   Embedding, solange Fragen gestellt werden: Fragen scheitern. <code>warning</code> für Neubewertung,
-  Spracherkennung, Texterkennung und Bildbeschreibung, solange OPAA sie aufruft: die Funktion fällt
+  Spracherkennung, Texterkennung und Bildbeschreibung, solange opaa sie aufruft: die Funktion fällt
   aus, der Rest läuft (<a href="modell-endpunkte.html#ausfall-eines-modells">Ausfall eines Modells</a>).</li>
 <li><strong>Zuständig:</strong> Modellbetreuung.</li>
 <li><strong>Prüfen:</strong> 1. Läuft der Modelldienst, ist er aus dem Cluster erreichbar (Ausgangsproxy,
@@ -5759,7 +5759,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code
   (<a href="kubernetes.html#eigene-zertifizierungsstelle">Eigene Zertifizierungsstelle</a>)? 3. Log nach der
   Antwort des Ziels.</li>
 <li><strong>Nachts:</strong> reicht am Morgen.</li>
-<li><strong>Stummschalten:</strong> nicht; ein dauerhaft entzogener Zugang wird in OPAA entfernt.</li>
+<li><strong>Stummschalten:</strong> nicht; ein dauerhaft entzogener Zugang wird in opaa entfernt.</li>
 </ul>
 <p><a id="OpaaOutboundThrottled"></a></p>
 <h3 id="opaaoutboundthrottled">OpaaOutboundThrottled<a class="headerlink" href="#opaaoutboundthrottled" title="Permanent link">&para;</a></h3>
@@ -5924,7 +5924,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code
 <p><a id="OpaaAuditPayloadDropped"></a></p>
 <h3 id="opaaauditpayloaddropped">OpaaAuditPayloadDropped<a class="headerlink" href="#opaaauditpayloaddropped" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Auswirkung:</strong> OPAA hat Einträge einer Ereignisart (Label <code>event_type</code>) ohne Angaben geschrieben,
+<li><strong>Auswirkung:</strong> opaa hat Einträge einer Ereignisart (Label <code>event_type</code>) ohne Angaben geschrieben,
   die der Ereigniskatalog nicht nennt. Ein Programmfehler; der Vorgang selbst ist durchgeführt.</li>
 <li><strong>Zuständig:</strong> Betrieb, Fund an das Projekt melden.</li>
 <li><strong>Prüfen:</strong> 1. Log nach „Dropped audit payload keys“. 2. Ereignisart und Version notieren.</li>
@@ -6044,7 +6044,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle <code>chat</code
 <li><strong>Auswirkung:</strong> Einträge des Revisionsprotokolls erreichen das Sicherheitsmonitoring verspätet
   (<a href="ueberwachung-und-fehlerbehebung.html#ausleitung-an-ein-sicherheitsmonitoring">Ausleitung</a>).</li>
 <li><strong>Zuständig:</strong> Betrieb mit dem Betrieb des Sicherheitsmonitorings.</li>
-<li><strong>Prüfen:</strong> 1. Erreicht OPAA den Empfänger? 2. Log nach gescheiterten Zustellungen. 3. Offene
+<li><strong>Prüfen:</strong> 1. Erreicht opaa den Empfänger? 2. Log nach gescheiterten Zustellungen. 3. Offene
   Transaktionen in <code>pg_stat_activity</code>.</li>
 <li><strong>Nachts:</strong> reicht am Morgen.</li>
 <li><strong>Stummschalten:</strong> während einer angekündigten Wartung des Empfängers.</li>

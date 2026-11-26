@@ -23,7 +23,7 @@
     
     
       
-        <title>Texterkennung - OPAA-Handbuch</title>
+        <title>Texterkennung - opaa-Handbuch</title>
       
     
     
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-header__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
@@ -99,7 +99,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            OPAA-Handbuch
+            opaa-Handbuch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -209,12 +209,12 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="https://opaa.io/" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+    <a href="https://opaa.io/" title="opaa-Handbuch" class="md-nav__button md-logo" aria-label="opaa-Handbuch" data-md-component="logo">
       
   <img src="../assets/opaa-wortmarke-hell.svg" alt="logo">
 
     </a>
-    OPAA-Handbuch
+    opaa-Handbuch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -233,7 +233,7 @@
   <span class="md-ellipsis">
     
   
-    OPAA-Handbuch
+    opaa-Handbuch
   
 
     
@@ -4373,7 +4373,7 @@ Systemverwaltung sie einträgt, steht unter
 <a href="modell-endpunkte.html#texterkennung-einschalten">Texterkennung einschalten</a>. Dieses Kapitel
 beschreibt den Dienst dahinter: welchen man nimmt, wie man ihn bemisst und absichert.</p>
 <h2 id="mitgelieferter-dienst-oder-eigener-endpunkt">Mitgelieferter Dienst oder eigener Endpunkt<a class="headerlink" href="#mitgelieferter-dienst-oder-eigener-endpunkt" title="Permanent link">&para;</a></h2>
-<p>OPAA bringt einen eigenen Dienst mit, <code>opaa-ocr</code>: docling-serve für die CPU mit der Texterkennung
+<p>opaa bringt einen eigenen Dienst mit, <code>opaa-ocr</code>: docling-serve für die CPU mit der Texterkennung
 RapidOCR und deutschen Modellen. Das Image entsteht mit jedem Release wie Backend und Frontend, mit
 SBOM und signierter Provenance (<a href="images-und-laufzeit.html">Images und Laufzeit</a>).</p>
 <pre class="mermaid"><code>flowchart LR
@@ -4411,7 +4411,7 @@ SBOM und signierter Provenance (<a href="images-und-laufzeit.html">Images und La
 Verbindungstyp <strong>docling-serve</strong>, der Adresse und dem Schlüssel: bei der Installation im Schritt
 „Texterkennung“ des Einrichtungs-Assistenten oder im Abschnitt <code>textRecognitionModel</code> der
 Antwortdatei (<a href="installation.html#einrichtungs-assistent-im-browser">Installation</a>), danach von der
-Systemverwaltung unter Modelle → Texterkennung. Den Schlüssel liest OPAA nicht vom Dienst; er wird
+Systemverwaltung unter Modelle → Texterkennung. Den Schlüssel liest opaa nicht vom Dienst; er wird
 dort eingetragen.</p>
 <table>
 <thead>
@@ -4467,7 +4467,7 @@ oder aus der eigenen Registry (<a href="images-und-laufzeit.html">Images und Lau
 etwa aus <code>openssl rand -hex 32</code>. Ohne ihn bricht Compose ab und der Chart rendert nicht; ein zu
 kurzer lässt den Container nicht starten.</p>
 <p>Derselbe Wert steht an zwei Stellen: beim Dienst (Compose <code>OPAA_OCR_API_KEY</code>, Kubernetes Schlüssel
-<code>ocr-api-key</code> im Secret) und in der Modellverwaltung unter Modelle → Texterkennung, wo OPAA ihn
+<code>ocr-api-key</code> im Secret) und in der Modellverwaltung unter Modelle → Texterkennung, wo opaa ihn
 verschlüsselt speichert. Ein Schlüsselwechsel ändert beide Stellen nacheinander; dazwischen
 scheitern Aufrufe mit „Schlüssel abgelehnt“, die der nächste Lauf wiederholt. Gesichert wird er
 mit den übrigen <a href="sicherung-und-wiederherstellung.html">Geheimnissen</a>.</p>
