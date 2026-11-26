@@ -66,8 +66,8 @@ describe('AuthLayout', () => {
     )
 
     // Exactly once: building both branches at the same time and hiding one of them would leave
-    // the name twice in the tree - for screen readers and for queries by text.
-    expect(screen.getAllByText('OPAA')).toHaveLength(1)
+    // the name twice in the tree - for screen readers and for queries by role.
+    expect(screen.getAllByRole('img', { name: 'OPAA' })).toHaveLength(1)
     expect(screen.getByText('Formular')).toBeInTheDocument()
   })
 
@@ -81,7 +81,7 @@ describe('AuthLayout', () => {
 
     // Setting a password and confirming an email are reached cold from an email - at
     // every width it must stay recognizable whose installation is asking.
-    expect(screen.getAllByText('OPAA')).toHaveLength(1)
+    expect(screen.getAllByRole('img', { name: 'OPAA' })).toHaveLength(1)
     expect(screen.getByText('Formular')).toBeInTheDocument()
   })
 

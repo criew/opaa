@@ -89,7 +89,7 @@ describe('AppShell', () => {
 
   it('renders OPAA branding', () => {
     renderShell()
-    expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('img', { name: 'OPAA' }).length).toBeGreaterThan(0)
   })
 
   // No footer - product name and version are in the profile menu under „Info zu …". A

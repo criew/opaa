@@ -70,7 +70,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Anmelden' })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     // The brand is a statement, not a heading level.
-    expect(screen.getByText('OPAA')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'OPAA' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
   })
 
@@ -112,7 +112,7 @@ describe('LoginPage', () => {
       withNotificationHost: false,
     })
 
-    expect(screen.getByText(OPAA_BRANDING.productName)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: OPAA_BRANDING.productName })).toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
   })
 

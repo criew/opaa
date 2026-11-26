@@ -1514,35 +1514,42 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
-### 7.1 Das OPAA-Standardlogo
+### 7.1 Das OPAA-Standardlogo (temporäre Fassung)
 
-Das Logo heißt **Fundstelle**: eine Antwort-Sprechblase aus Textzeilen mit einem Prüfsiegel. Die
-Sprechblase steht für den Assistenten, der antwortet und handelt, die Zeilen für das Wissen des
-Hauses, das Siegel mit Haken für den geprüften Beleg. Es ist der Fallback, solange ein Betreiber kein
-eigenes Logo konfiguriert.
+> **Temporär.** Die Fassung setzt das Markenkonzept um, bis dessen Reinzeichnung als Vektordatei
+> vorliegt. Die Wortmarke ist aus der freien Schrift Saira (SIL OFL) in Pfade gewandelt, das
+> Bildzeichen ist ein Vorschlag zur Erprobung. Mit der Reinzeichnung werden Dateien und dieser
+> Abschnitt ersetzt.
 
-| Bestandteil | Farbe                                                                       |
-| ----------- | --------------------------------------------------------------------------- |
-| Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy                          |
-| Siegel      | Dateien: das frühere Blau-500 bis zur Logo-Umstellung; in der App die Akzentfläche (`accent-surface`) |
-| Haken       | Weiß                                                                        |
-| Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Sprechblase           |
+Das Logo ist die **Wortmarke „opaa“**: Das zweite a und ein Unterstrich darunter stehen in Hellblau,
+der Rest in der Textfarbe der Fläche. Darunter steht in der großen Fassung die Unterzeile „open
+project ai assistant“. Es ist der Fallback, solange ein Betreiber kein eigenes Logo konfiguriert.
 
-- Zeilen und der Ring um das Siegel sind ausgespart, nicht weiß gefüllt; das Logo liegt deshalb auf
-  jeder Fläche, ohne dass eine Kachel dahinter nötig ist.
-- In der App folgt das Siegel der Akzentfläche, weil sie Weiß mit 4,5:1 trägt; bei konfigurierter
-  Akzentfarbe nimmt es also die abgeleitete Hausfarbe an.
-- **Icon-Fassung** für Favicon, App- und Touch-Icon: Navy-Kachel, darin die Marke in
-  Weiß auf 72 % der Fläche. Das SVG hat Radius 14/64; die Raster-PNGs sind vollflächig ohne Rundung,
-  weil Betriebssysteme Icons selbst maskieren.
-- In der Oberfläche steht die freie Marke ohne Kachel, ab 16 px. Die Wortmarke ab 24 px Höhe.
-  Schutzraum ringsum ein Viertel der Markenhöhe.
-- Nicht verzerren, nicht drehen, keine Schatten oder Verläufe.
+| Bestandteil             | Farbe                                             |
+| ----------------------- | ------------------------------------------------- |
+| „opa“ und Unterzeile    | Dunkelblau auf hellen Flächen, Weiß auf dunklen   |
+| zweites a, Unterstrich  | Hellblau `#009DDB`, auf jeder Fläche              |
+| Bildzeichen (Icon)      | „o“ in Dunkelblau bzw. Weiß, Unterstrich Hellblau |
 
-Die Quelldateien liegen in [`logo/`](./logo/): `opaa-mark.svg` und `opaa-logo.svg` (für helle
-Flächen), `-hell`-Fassungen für dunkle Flächen, `opaa-icon.svg` sowie die Icon-Raster in 32, 180, 192
-und 512 px. Die App zeichnet die Marke in `BrandMark` selbst, damit Sprechblase und Siegel den
-Farbrollen des Schemas folgen.
+- **Fassungen:** mit Unterzeile ab 120 px Breite (Anmeldeseite, README), ohne Unterzeile für kleine
+  Größen (Kopfzeile der App, Handbuch, Navigation der Homepage). Auf dunklen Flächen ohne weißen
+  Kasten.
+- **Bildzeichen** für Favicon, App- und Touch-Icon, `og:image` und die globale Leiste: ein kleines
+  „o“ mit hellblauem Unterstrich, der wie im Logo mit Abstand unter der Grundlinie steht. Die
+  Icon-Fassung steht auf einer Kachel in Dunkelblau (Favicon, Touch-Icon) oder Weiß, Radius 14/64;
+  die Raster-PNGs sind vollflächig ohne Rundung, weil Betriebssysteme Icons selbst maskieren.
+- **In der App** zeigt `BrandMark` mit dem Standardnamen „OPAA“ die Wortmarke statt Name und Marke
+  und gibt den Namen als zugänglichen Namen mit. Trägt die Installation einen eigenen Namen, aber
+  kein Logo, steht das Bildzeichen neben dem Namen. Ein konfiguriertes Logo ersetzt beides.
+- Schutzraum mindestens so hoch wie das hellblaue a. Nicht verzerren, nicht drehen, keine Schatten
+  oder Verläufe. Hellblau ist hier Bildmarke, keine Textfarbe; die Kontrastregel für Text (2.4) gilt
+  für Logos nicht.
+
+Die Dateien liegen in [`logo/`](./logo/): `opaa-logo.svg` (mit Unterzeile) und `opaa-wortmarke.svg`
+(ohne), `opaa-mark.svg` (Bildzeichen), jeweils mit `-hell`-Fassung für dunkle Flächen,
+`opaa-icon.svg` (dunkelblaue Kachel), `opaa-icon-weiss.svg` sowie die Icon-Raster in 32, 180, 192
+und 512 px. Alle entstehen mit `logo/quelle/build_logo.py` aus der Schrift daneben; das Skript
+schreibt auch die Kopien für App, Handbuch und Homepage und die Pfade, die `BrandMark` zeichnet.
 
 ---
 

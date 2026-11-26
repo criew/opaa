@@ -17,10 +17,11 @@ describe('BrandMark', () => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
   })
 
-  it('renders the OPAA standard name without the claim by default', () => {
+  it('renders the OPAA wordmark, named for screen readers, without the claim by default', () => {
     renderMark()
 
-    expect(screen.getByText('OPAA')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'OPAA' })).toBeInTheDocument()
+    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(screen.queryByText('Fragen. Belegen. Entscheiden.')).not.toBeInTheDocument()
   })
 
@@ -130,20 +131,35 @@ describe('BrandMark', () => {
 
   // Two marks on one page (rail and mobile header) must not share a mask id, or the second one
   // would cut its lines with the first one's mask.
-  it('gives every standard mark its own mask id', () => {
-    renderMark(
-      <>
-        <BrandMark />
-        <BrandMark logoOnly />
-      </>,
+  it('shows the underlined o beside a configured name when no logo is configured', () => {
+    useBrandingStore.setState({
+      branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
+    })
+
+    const { container } = renderMark()
+
+    expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'OPAA' })).not.toBeInTheDocument()
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('shows only the decorative mark in the rail', () => {
+    const { container } = renderMark(<BrandMark logoOnly />)
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('svg')).toHaveLength(1)
+  })
+
+  it('adds the tagline to the standard wordmark from 64 px height on', () => {
+    const { container, rerender } = renderMark(<BrandMark logoHeight={28} />)
+    const small = container.querySelector('svg')?.getAttribute('viewBox')
+
+    rerender(
+      <ThemeProvider theme={theme}>
+        <BrandMark logoHeight={96} />
+      </ThemeProvider>,
     )
 
-    const ids = Array.from(document.querySelectorAll('mask')).map((m) => m.id)
-    expect(ids).toHaveLength(2)
-    expect(new Set(ids).size).toBe(2)
-    document.querySelectorAll('path[mask]').forEach((path) => {
-      const ref = path.getAttribute('mask')?.match(/^url\(#(.+)\)$/)?.[1]
-      expect(ids).toContain(ref)
-    })
+    expect(container.querySelector('svg')?.getAttribute('viewBox')).not.toBe(small)
   })
 })

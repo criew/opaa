@@ -1,7 +1,7 @@
 <p>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/design/logo/opaa-logo-hell.svg">
-    <img src="docs/design/logo/opaa-logo.svg" alt="OPAA" height="64">
+    <img src="docs/design/logo/opaa-logo.svg" alt="opaa – open project ai assistant" height="80">
   </picture>
 </p>
 
