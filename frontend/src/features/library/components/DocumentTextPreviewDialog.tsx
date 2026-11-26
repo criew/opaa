@@ -146,7 +146,7 @@ export default function DocumentTextPreviewDialog({
         )
       }
       contentRef={markPassage}
-      toolbar={status}
+      toolbar={variant === 'c' && previewDocument?.anchor ? undefined : status}
       contentSx={
         variant === 'c'
           ? ([

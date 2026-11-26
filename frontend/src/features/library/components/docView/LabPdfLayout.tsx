@@ -217,10 +217,17 @@ function regionSx(variant: Exclude<DocViewVariant, null>) {
 
 function Tools(props: ViewProps & { pill: boolean }) {
   const { pill } = props
-  const group = (children: ReactNode) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>{children}</Box>
+  // on a phone the pill keeps only paging and zoom; the card above carries the jump
+  const wideOnly = pill ? { display: { xs: 'none', sm: 'flex' } } : {}
+  const group = (children: ReactNode, wide = false) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ...(wide ? wideOnly : {}) }}>
+      {children}
+    </Box>
   )
   const sep = <Divider orientation="vertical" flexItem sx={{ mx: 0.75, my: 0.75 }} />
+  const wideSep = (
+    <Divider orientation="vertical" flexItem sx={{ mx: 0.75, my: 0.75, ...wideOnly }} />
+  )
   return (
     <Box
       role="toolbar"
@@ -236,7 +243,7 @@ function Tools(props: ViewProps & { pill: boolean }) {
               borderRadius: 999,
               px: 1,
               py: 0.5,
-              boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+              boxShadow: '0 2px 6px rgba(16,24,40,0.12), 0 8px 24px rgba(36,40,85,0.18)',
               overflowX: 'auto',
             }
           : { px: 2, py: 0.75, borderBottom: 1, borderColor: 'divider' }),
@@ -258,8 +265,9 @@ function Tools(props: ViewProps & { pill: boolean }) {
               <TocIcon fontSize="small" />
             </IconButton>
           </Tooltip>,
+          true,
         )}
-      {props.outline && sep}
+      {props.outline && wideSep}
       {group(
         <>
           <Tooltip title="Vorherige Seite">
@@ -342,13 +350,17 @@ function Tools(props: ViewProps & { pill: boolean }) {
       )}
       {props.onJump && (
         <>
-          {pill && sep}
+          {pill && wideSep}
           <Button
             size="small"
             variant={pill ? 'text' : 'outlined'}
             startIcon={<CenterFocusStrongIcon fontSize="small" />}
             onClick={props.onJump}
-            sx={{ whiteSpace: 'nowrap', flex: 'none' }}
+            sx={{
+              whiteSpace: 'nowrap',
+              flex: 'none',
+              ...(pill && { display: { xs: 'none', sm: 'inline-flex' } }),
+            }}
           >
             Zur Fundstelle
           </Button>
