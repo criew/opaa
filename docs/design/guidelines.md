@@ -1475,7 +1475,7 @@ Verbindliche Begriffe:
 | **Kontozustand**          | Eingeladen · Aktiv · Gesperrt · Abgelaufen — als Punkt **und** Wort, nie als farbiger Chip; die Sperre nennt ihren Grund in Klammern (Verwalter · Fehlversuche · Inaktivität) |
 | **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
 | **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
-| Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
+| Claim                     | „opaa weiß, was war, und hilft bei dem, was kommt." (Standard aus dem Markenkonzept)                           |
 
 **Verben für Handlungen.** Für diese Handlungen gelten in Schaltflächen und Bestätigungen (5.10)
 genau diese Verben; Ändern, Festlegen, Zurücksetzen, Übertragen und Ähnliches bleiben daneben
@@ -1521,20 +1521,21 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 > Bildzeichen ist ein Vorschlag zur Erprobung. Mit der Reinzeichnung werden Dateien und dieser
 > Abschnitt ersetzt.
 
-Das Logo ist die **Wortmarke „opaa“**: Das zweite a und ein Unterstrich darunter stehen in Hellblau,
-der Rest in der Textfarbe der Fläche. Darunter steht in der großen Fassung die Unterzeile „open
-project ai assistant“. Es ist der Fallback, solange ein Betreiber kein eigenes Logo konfiguriert.
+Das Logo ist die **Wortmarke „opaa“**: Das erste a und ein Balken darunter stehen in Hellblau, der
+Rest in der Textfarbe der Fläche. Der Balken steht mit Abstand unter der Grundlinie, etwa auf Höhe der
+Unterlänge des p, und ragt seitlich etwas über das a hinaus. Es ist der Fallback, solange ein
+Betreiber kein eigenes Logo konfiguriert.
 
 | Bestandteil             | Farbe                                             |
 | ----------------------- | ------------------------------------------------- |
-| „opa“ und Unterzeile    | Dunkelblau auf hellen Flächen, Weiß auf dunklen   |
-| zweites a, Unterstrich  | Hellblau `#009DDB`, auf jeder Fläche              |
+| „op“ und letztes a      | Dunkelblau auf hellen Flächen, Weiß auf dunklen   |
+| erstes a, Balken        | Hellblau `#009DDB`, auf jeder Fläche              |
 | Bildzeichen (Icon)      | „o“ in Dunkelblau bzw. Weiß, Unterstrich Hellblau |
 
-- **Fassungen:** mit Unterzeile ab 120 px Breite (Anmeldeseite, README), ohne Unterzeile für kleine
-  Größen (Kopfzeile der App, Handbuch, Navigation der Homepage). Auf dunklen Flächen ohne weißen
-  Kasten.
-- **Bildzeichen** für Favicon, App- und Touch-Icon, `og:image` und die globale Leiste: ein kleines
+- **Ohne Unterzeile:** Die Langform „open project ai assistant“ steht nicht im Logo, solange ihre
+  markenrechtliche Prüfung offen ist. Auf dunklen Flächen steht die Wortmarke ohne weißen Kasten.
+- **In der globalen Leiste** steht die Wortmarke dekorativ und auf 44 px Breite verkleinert.
+- **Bildzeichen** für Favicon, App- und Touch-Icon und `og:image`: ein kleines
   „o“ mit hellblauem Unterstrich, der wie im Logo mit Abstand unter der Grundlinie steht. Die
   Icon-Fassung steht auf einer Kachel in Dunkelblau (Favicon, Touch-Icon) oder Weiß, Radius 14/64;
   die Raster-PNGs sind vollflächig ohne Rundung, weil Betriebssysteme Icons selbst maskieren.
@@ -1545,8 +1546,8 @@ project ai assistant“. Es ist der Fallback, solange ein Betreiber kein eigenes
   oder Verläufe. Hellblau ist hier Bildmarke, keine Textfarbe; die Kontrastregel für Text (2.4) gilt
   für Logos nicht.
 
-Die Dateien liegen in [`logo/`](./logo/): `opaa-logo.svg` (mit Unterzeile) und `opaa-wortmarke.svg`
-(ohne), `opaa-mark.svg` (Bildzeichen), jeweils mit `-hell`-Fassung für dunkle Flächen,
+Die Dateien liegen in [`logo/`](./logo/): `opaa-wortmarke.svg` und `opaa-mark.svg` (Bildzeichen),
+jeweils mit `-hell`-Fassung für dunkle Flächen,
 `opaa-icon.svg` (dunkelblaue Kachel), `opaa-icon-weiss.svg` sowie die Icon-Raster in 32, 180, 192
 und 512 px. Alle entstehen mit `logo/quelle/build_logo.py` aus der Schrift daneben; das Skript
 schreibt auch die Kopien für App, Handbuch und Homepage und die Pfade, die `BrandMark` zeichnet.

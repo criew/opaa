@@ -40,7 +40,7 @@ const AI_NOTICE_DEFAULT =
 
 export const OPAA_BRANDING: BrandingResponse = {
   productName: 'OPAA',
-  claim: 'Fragen. Belegen. Entscheiden.',
+  claim: 'opaa weiß, was war, und hilft bei dem, was kommt.',
   aiNotice: AI_NOTICE_DEFAULT,
   aiNoticeDefault: AI_NOTICE_DEFAULT,
   primaryColor: '#0055A4',

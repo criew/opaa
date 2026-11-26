@@ -2,10 +2,10 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { OPAA_BRANDING, useBrandingStore } from '../branding/brandingStore'
 import { fontSize } from '../theme/tokens'
-import { MARK, MARK_ACCENT, WORDMARK, WORDMARK_WITH_TAGLINE } from './brandMarkPaths'
+import { MARK, MARK_ACCENT, WORDMARK } from './brandMarkPaths'
 
-/** Logo height from which the standard wordmark carries its tagline (minimum width 120 px). */
-const TAGLINE_MIN_HEIGHT = 64
+/** Widest the standard wordmark may be in the 64px rail, leaving the tile its side padding. */
+const RAIL_WORDMARK_WIDTH = 44
 
 /** One outline in the text colour, one in the brand's Hellblau (the accented a, the underline). */
 function Outline({
@@ -42,8 +42,9 @@ interface BrandMarkProps {
   /** 'vertical' stacks logo, name and claim centered - the sign-in card's block. */
   orientation?: 'horizontal' | 'vertical'
   /**
-   * Logo emblem alone, no product name - the 64px global rail has no room
-   * for text, and its `nav` landmark already names the region for assistive tech.
+   * Logo alone, no product name - the 64px global rail has no room for text, and its `nav`
+   * landmark already names the region for assistive tech. The standard wordmark is drawn
+   * decorative there, narrowed to the rail's width.
    */
   logoOnly?: boolean
   /**
@@ -76,8 +77,7 @@ export default function BrandMark({
   const branding = useBrandingStore((s) => s.branding)
   const vertical = orientation === 'vertical'
   const logoUrl = (preferLoginLogo ? branding.loginLogoUrl : undefined) ?? branding.logoUrl
-  const standardWordmark =
-    !logoUrl && !logoOnly && branding.productName === OPAA_BRANDING.productName
+  const standardWordmark = !logoUrl && branding.productName === OPAA_BRANDING.productName
 
   return (
     <Box sx={vertical ? { textAlign: 'center' } : undefined}>
@@ -106,12 +106,14 @@ export default function BrandMark({
               objectFit: 'contain',
             }}
           />
-        ) : standardWordmark ? (
+        ) : standardWordmark && logoOnly ? (
+          // The rail's nav landmark already names the region, so the wordmark stays decorative.
           <Outline
-            shape={logoHeight >= TAGLINE_MIN_HEIGHT ? WORDMARK_WITH_TAGLINE : WORDMARK}
-            height={logoHeight}
-            label={branding.productName}
+            shape={WORDMARK}
+            height={Math.min(logoHeight, (RAIL_WORDMARK_WIDTH * WORDMARK.height) / WORDMARK.width)}
           />
+        ) : standardWordmark ? (
+          <Outline shape={WORDMARK} height={logoHeight} label={branding.productName} />
         ) : (
           <Outline shape={MARK} height={logoHeight} />
         )}

@@ -122,7 +122,9 @@ describe('LoginPage', () => {
     expect(
       screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
+    expect(
+      screen.getByText('opaa weiß, was war, und hilft bei dem, was kommt.'),
+    ).toBeInTheDocument()
     // the choice is one named group; the trust line explains where the password goes
     expect(screen.getByRole('group', { name: 'Identitätsanbieter' })).toBeInTheDocument()
     expect(screen.getByText(/OPAA erhält kein Kennwort/)).toBeInTheDocument()

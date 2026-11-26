@@ -78,6 +78,10 @@ public final class BrandingSettingsRules {
             "Der Produktname");
     String validClaim =
         text(errors, prefix + "claim", claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
+    // The standard claim is stored as "not set", so the installation follows a later standard.
+    if (BrandingDefaults.CLAIM.equals(validClaim)) {
+      validClaim = null;
+    }
     String notice = notice(errors, prefix + "aiNotice", aiNotice);
     String color = color(errors, prefix + "primaryColor", primaryColor);
     return new Checked(new Values(name, validClaim, notice, color), errors);

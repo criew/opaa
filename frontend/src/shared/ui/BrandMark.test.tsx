@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { ThemeProvider } from '@mui/material/styles'
 import { createAppTheme } from '../theme/theme'
 import BrandMark from './BrandMark'
+import { WORDMARK } from './brandMarkPaths'
 import { OPAA_BRANDING, useBrandingStore } from '../branding/brandingStore'
 
 const theme = createAppTheme('light')
@@ -22,7 +23,9 @@ describe('BrandMark', () => {
 
     expect(screen.getByRole('img', { name: 'OPAA' })).toBeInTheDocument()
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
-    expect(screen.queryByText('Fragen. Belegen. Entscheiden.')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('opaa weiß, was war, und hilft bei dem, was kommt.'),
+    ).not.toBeInTheDocument()
   })
 
   it('follows a configured branding with name and logo', () => {
@@ -122,15 +125,16 @@ describe('BrandMark', () => {
     expect(document.querySelector('img[alt=""]')).toHaveStyle({ maxWidth: '40px' })
   })
 
-  it('renders the emblem alone in logoOnly mode - the rail tile (#786)', () => {
+  it('renders the standard wordmark decorative and rail-wide in logoOnly mode (#786)', () => {
     renderMark(<BrandMark logoOnly />)
 
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
-    expect(document.querySelector('svg')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    const svg = document.querySelector('svg')
+    expect(svg).toHaveAttribute('viewBox', `0 0 ${WORDMARK.width} ${WORDMARK.height}`)
+    expect(svg).toHaveStyle({ width: '44px' })
   })
 
-  // Two marks on one page (rail and mobile header) must not share a mask id, or the second one
-  // would cut its lines with the first one's mask.
   it('shows the underlined o beside a configured name when no logo is configured', () => {
     useBrandingStore.setState({
       branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
@@ -150,16 +154,12 @@ describe('BrandMark', () => {
     expect(container.querySelectorAll('svg')).toHaveLength(1)
   })
 
-  it('adds the tagline to the standard wordmark from 64 px height on', () => {
-    const { container, rerender } = renderMark(<BrandMark logoHeight={28} />)
-    const small = container.querySelector('svg')?.getAttribute('viewBox')
+  it('draws the standard wordmark without a tagline at every size', () => {
+    renderMark(<BrandMark logoHeight={96} />)
 
-    rerender(
-      <ThemeProvider theme={theme}>
-        <BrandMark logoHeight={96} />
-      </ThemeProvider>,
+    expect(screen.getByRole('img', { name: 'OPAA' })).toHaveAttribute(
+      'viewBox',
+      `0 0 ${WORDMARK.width} ${WORDMARK.height}`,
     )
-
-    expect(container.querySelector('svg')?.getAttribute('viewBox')).not.toBe(small)
   })
 })

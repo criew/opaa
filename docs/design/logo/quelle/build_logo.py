@@ -2,8 +2,8 @@
 """Builds the temporary OPAA logo files from the free font Saira (SIL OFL, files beside this script).
 
 The wordmark "opaa" and the mark (an underlined "o") are converted to outlines, so no file needs the
-font at display time. The second "a" and the underline are Hellblau; the rest is Dunkelblau, or white
-on dark surfaces. Needs `pnpm install` in frontend/ and e2e/ plus `pnpm run install:browsers` in e2e/
+font at display time. The first "a" and its underline are Hellblau, as in the concept's artwork; the
+rest is Dunkelblau, or white on dark surfaces. No tagline: the long form stays out of public use. Needs `pnpm install` in frontend/ and e2e/ plus `pnpm run install:browsers` in e2e/
 (Prettier, Playwright's Chromium; CHROMIUM_PATH names another Chromium binary).
 Run from the repository root after changing anything here:
 
@@ -33,12 +33,13 @@ HELLBLAU = "#009DDB"
 WHITE = "#FFFFFF"
 
 WORD = "opaa"
-TAGLINE = "open project ai assistant"
-# Underline below the accented letter, in em: gap below the baseline and stroke thickness.
-UNDERLINE_GAP = 0.12
-UNDERLINE_THICKNESS = 0.08
-# Tagline in em of the wordmark: gap below the underline; its width matches the wordmark.
-TAGLINE_GAP = 0.2
+# The accented letter of the brand concept: the first "a" (o-p-[a]-a).
+ACCENT_INDEX = 2
+# Underline measured on the concept's artwork, in x-heights: gap below the baseline and stroke
+# thickness; its overhang beyond the letter, in letter widths, left and right.
+UNDERLINE_GAP = 0.075
+UNDERLINE_THICKNESS = 0.2
+UNDERLINE_OVERHANG = (0.1, 0.135)
 
 
 def fmt(value: float) -> str:
@@ -74,44 +75,42 @@ def rect(x0, y0, x1, y1) -> str:
     return f"M{fmt(x0)} {fmt(y0)}H{fmt(x1)}V{fmt(y1)}H{fmt(x0)}Z"
 
 
-def wordmark(size: float, with_tagline: bool):
+def x_height(size: float) -> float:
+    """Ink height of the "o" - the measure the concept's underline is drawn in."""
+    box = outline(SRC / "saira-latin-600.woff", "o", size, 0, 0)[0][2]
+    return box[3] - box[1]
+
+
+def wordmark(size: float):
     """Returns (base path, accent path, width, height) with the ink starting at 0/0."""
+    xh = x_height(size)
     glyphs = outline(SRC / "saira-latin-600.woff", WORD, size, 0, 0)
-    left = min(g[2][0] for g in glyphs)
+    a_box = glyphs[ACCENT_INDEX][2]
+    a_width = a_box[2] - a_box[0]
+    under_left = a_box[0] - UNDERLINE_OVERHANG[0] * a_width
+    under_right = a_box[2] + UNDERLINE_OVERHANG[1] * a_width
+    under_top = UNDERLINE_GAP * xh
+    under_bottom = under_top + UNDERLINE_THICKNESS * xh
+    left = min(min(g[2][0] for g in glyphs), under_left)
     top = min(g[2][1] for g in glyphs)
-    right = max(g[2][2] for g in glyphs)
-    under_top = UNDERLINE_GAP * size
-    under_bottom = under_top + UNDERLINE_THICKNESS * size
+    right = max(max(g[2][2] for g in glyphs), under_right)
     bottom = max(max(g[2][3] for g in glyphs), under_bottom)
     # Shift so the ink box starts at 0/0.
     dx, dy = -left, -top
     glyphs = outline(SRC / "saira-latin-600.woff", WORD, size, dx, dy)
-    base_d = "".join(g[1] for g in glyphs[:-1])
-    a_box = glyphs[-1][2]
-    accent_d = glyphs[-1][1] + rect(a_box[0], dy + under_top, a_box[2], dy + under_bottom)
-    width = right - left
-    height = bottom - top
-    if with_tagline:
-        probe = outline(SRC / "saira-latin-500.woff", TAGLINE, 100, 0, 0)
-        probe_width = max(g[2][2] for g in probe) - min(g[2][0] for g in probe)
-        tag_size = 100 * width / probe_width
-        probe = outline(SRC / "saira-latin-500.woff", TAGLINE, tag_size, 0, 0)
-        tag_left = min(g[2][0] for g in probe)
-        tag_top = min(g[2][1] for g in probe)
-        tag_bottom = max(g[2][3] for g in probe)
-        y_top = height + TAGLINE_GAP * size
-        tag = outline(SRC / "saira-latin-500.woff", TAGLINE, tag_size, -tag_left, y_top - tag_top)
-        base_d += "".join(g[1] for g in tag)
-        height = y_top + (tag_bottom - tag_top)
-    return base_d, accent_d, width, height
+    base_d = "".join(g[1] for i, g in enumerate(glyphs) if i != ACCENT_INDEX)
+    accent_d = glyphs[ACCENT_INDEX][1] + rect(
+        under_left + dx, under_top + dy, under_right + dx, under_bottom + dy
+    )
+    return base_d, accent_d, right - left, bottom - top
 
 
 def mark(size: float):
     """The underlined "o": (glyph path, underline path, width, height), ink at 0/0."""
     glyph = outline(SRC / "saira-latin-600.woff", "o", size, 0, 0)[0]
-    x0, y0, x1, _ = glyph[2]
-    under_top = UNDERLINE_GAP * size
-    under_bottom = under_top + UNDERLINE_THICKNESS * size
+    x0, y0, x1, y1 = glyph[2]
+    under_top = UNDERLINE_GAP * (y1 - y0)
+    under_bottom = under_top + UNDERLINE_THICKNESS * (y1 - y0)
     glyph = outline(SRC / "saira-latin-600.woff", "o", size, -x0, -y0)[0]
     underline = rect(0, under_top - y0, x1 - x0, under_bottom - y0)
     return glyph[1], underline, x1 - x0, under_bottom - y0
@@ -125,11 +124,10 @@ def svg(width, height, body, comment):
     )
 
 
-def logo_file(with_tagline: bool, text_color: str) -> str:
-    base, accent, width, height = wordmark(64, with_tagline)
+def logo_file(text_color: str) -> str:
+    base, accent, width, height = wordmark(64)
     body = f'  <path fill="{text_color}" d="{base}"/>\n  <path fill="{HELLBLAU}" d="{accent}"/>\n'
-    kind = "Wortmarke mit Unterzeile" if with_tagline else "Wortmarke"
-    return svg(width, height, body, f"Temporäre {kind} (Saira, in Pfade gewandelt) bis zur Reinzeichnung")
+    return svg(width, height, body, "Temporäre Wortmarke (Saira, in Pfade gewandelt) bis zur Reinzeichnung")
 
 
 def mark_file(text_color: str) -> str:
@@ -165,8 +163,7 @@ def icon_file(tile: str, text_color: str) -> str:
 
 
 def brand_mark_ts() -> str:
-    base, accent, width, height = wordmark(64, False)
-    tbase, taccent, twidth, theight = wordmark(64, True)
+    base, accent, width, height = wordmark(64)
     glyph, underline, mwidth, mheight = mark(64)
     return f"""/**
  * Outlines of the temporary OPAA wordmark and mark, generated by
@@ -178,13 +175,6 @@ export const WORDMARK = {{
   height: {fmt(height)},
   base: '{base}',
   accent: '{accent}',
-}} as const
-
-export const WORDMARK_WITH_TAGLINE = {{
-  width: {fmt(twidth)},
-  height: {fmt(theight)},
-  base: '{tbase}',
-  accent: '{taccent}',
 }} as const
 
 export const MARK = {{
@@ -201,7 +191,7 @@ export const MARK_ACCENT = '{HELLBLAU}'
 
 def homepage_wordmark(page: str) -> str:
     """Replaces the inline wordmark of the homepage navigation between its two markers."""
-    base, accent, width, height = wordmark(64, False)
+    base, accent, width, height = wordmark(64)
     start, end = "<!-- opaa-wortmarke -->", "<!-- /opaa-wortmarke -->"
     inline = (
         f'<svg class="wordmark" viewBox="0 0 {fmt(width)} {fmt(height)}" role="img" '
@@ -246,10 +236,8 @@ def check_tools() -> None:
 def main() -> int:
     check_tools()
     files = {
-        "opaa-logo.svg": logo_file(True, DUNKELBLAU),
-        "opaa-logo-hell.svg": logo_file(True, WHITE),
-        "opaa-wortmarke.svg": logo_file(False, DUNKELBLAU),
-        "opaa-wortmarke-hell.svg": logo_file(False, WHITE),
+        "opaa-wortmarke.svg": logo_file(DUNKELBLAU),
+        "opaa-wortmarke-hell.svg": logo_file(WHITE),
         "opaa-mark.svg": mark_file(DUNKELBLAU),
         "opaa-mark-hell.svg": mark_file(WHITE),
         "opaa-icon.svg": icon_file(DUNKELBLAU, WHITE),

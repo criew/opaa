@@ -293,7 +293,7 @@ components:
           example: OPAA
         claim:
           type: string
-          example: Fragen. Belegen. Entscheiden.
+          example: "opaa weiß, was war, und hilft bei dem, was kommt."
         aiNotice:
           type: string
           description: >
@@ -376,7 +376,7 @@ components:
           type: string
           description: Empty or omitted means the OPAA default applies again.
           maxLength: 120
-          example: Fragen. Belegen. Entscheiden.
+          example: "opaa weiß, was war, und hilft bei dem, was kommt."
         aiNotice:
           type: string
           description: >
