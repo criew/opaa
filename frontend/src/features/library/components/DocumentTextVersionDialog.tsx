@@ -20,7 +20,11 @@ import { getDocumentText } from '../api/libraryApi'
 import { downloadDocumentContent } from '../utils/documentContent'
 import type { TextVersionPreview } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
-import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import DocumentFrame from './docView/DocumentFrame'
+import { docViewVariant } from './docView/docViewVariant'
+import { labTargetSx } from './docView/textMarks'
+import FindingCard from './docView/FindingCard'
+import { anchorPlace, anchorQuote } from './docView/findingText'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import EmptyState from '@/shared/ui/states/EmptyState'
@@ -240,11 +244,11 @@ export default function DocumentTextVersionDialog({
     </Box>
   )
 
+  const variant = docViewVariant()
   return (
-    <ViewDialog
+    <DocumentFrame
       open={preview != null}
       onClose={onClose}
-      width="editor"
       tall
       titleId={TITLE_ID}
       title={preview?.fileName}
@@ -286,6 +290,22 @@ export default function DocumentTextVersionDialog({
         </Box>
       ) : (
         <>
+          {variant === 'c' && target != null && (
+            <FindingCard
+              place={anchorPlace(preview?.anchor)}
+              quote={anchorQuote(preview?.anchor)}
+              status={statusText(markState)}
+              warning={markState === 'changed' || markState === 'not-found'}
+              onJump={() => {
+                const block = scrollRef.current?.querySelector<HTMLElement>(
+                  `[data-chunk-index="${target}"]`,
+                )
+                if (!block) return goTo(target)
+                block.scrollIntoView?.({ block: 'center' })
+                block.focus({ preventScroll: true })
+              }}
+            />
+          )}
           {outlineOpen && (
             <Box
               id={OUTLINE_ID}
@@ -388,18 +408,20 @@ export default function DocumentTextVersionDialog({
                     fontSize: fontSize.title,
                     lineHeight: 1.6,
                     mb: 1.5,
-                    ...(passage.chunkIndex === target && {
-                      bgcolor: markHighlight,
-                      borderLeft: 3,
-                      borderColor: 'warning.main',
-                      pl: 1.5,
-                      py: 0.5,
-                      borderRadius: 1,
-                      '@media (forced-colors: active)': {
-                        backgroundColor: 'Mark',
-                        color: 'MarkText',
-                      },
-                    }),
+                    ...(passage.chunkIndex === target && variant && labTargetSx(variant)),
+                    ...(passage.chunkIndex === target &&
+                      !variant && {
+                        bgcolor: markHighlight,
+                        borderLeft: 3,
+                        borderColor: 'warning.main',
+                        pl: 1.5,
+                        py: 0.5,
+                        borderRadius: 1,
+                        '@media (forced-colors: active)': {
+                          backgroundColor: 'Mark',
+                          color: 'MarkText',
+                        },
+                      }),
                   }}
                 >
                   {passage.text}
@@ -421,7 +443,7 @@ export default function DocumentTextVersionDialog({
           </Box>
         </>
       )}
-    </ViewDialog>
+    </DocumentFrame>
   )
 }
 

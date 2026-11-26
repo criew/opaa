@@ -24,6 +24,9 @@ import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/
 import PdfOutline, { type OutlineNode } from './PdfOutline'
 import RecognizedTextPanel from './RecognizedTextPanel'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import { docViewVariant } from './docView/docViewVariant'
+import { drawPassageMarks } from './docView/passageMarks'
+import LabPdfLayout from './docView/LabPdfLayout'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
 const SEARCH_PAGE_LIMIT = 50
@@ -80,7 +83,12 @@ export default function PdfViewer({
   const viewerRef = useRef<PdfJsViewer | null>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [outline, setOutline] = useState<OutlineNode[]>([])
-  const [outlineOpen, setOutlineOpen] = useState(true)
+  const variant = docViewVariant()
+  const [outlineOpen, setOutlineOpen] = useState(
+    () => variant === null || (variant === 'a' && window.innerWidth >= 1200),
+  )
+  const [scale, setScale] = useState(1)
+  const firstMarkRef = useRef<HTMLElement | null>(null)
   const [page, setPage] = useState(1)
   const recognized = isRecognizedText(anchor)
   const [recognizedOpen, setRecognizedOpen] = useState(true)
@@ -147,6 +155,15 @@ export default function PdfViewer({
 
         eventBus.on('pagesinit', () => {
           viewer.currentScaleValue = 'auto'
+          // the lab variants leave a strip of desk beside the page
+          if (variant) {
+            viewer.currentScaleValue = 'page-width'
+            const width = container.clientWidth
+            viewer.currentScale = Math.min(
+              viewer.currentScale * Math.max(0.5, (width - 64) / width),
+              1.6,
+            )
+          }
           if (passage) viewer.scrollPageIntoView({ pageNumber: passage.from })
         })
         if (frames) {
@@ -154,6 +171,10 @@ export default function PdfViewer({
             'pagerendered',
             ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
               const first = drawRegions(source.div, regionsOnPage(anchor, pageNumber))
+              if (first && pageNumber === firstFramed) {
+                first.setAttribute('data-first', '')
+                firstMarkRef.current = first
+              }
               // drawn again after every zoom step, scrolled to only once
               if (first && pageNumber === firstFramed && !jumped) {
                 jumped = true
@@ -164,6 +185,7 @@ export default function PdfViewer({
           )
         }
         eventBus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => setPage(pageNumber))
+        eventBus.on('scalechanging', ({ scale: next }: { scale: number }) => setScale(next))
         eventBus.on(
           'textlayerrendered',
           ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
@@ -179,6 +201,14 @@ export default function PdfViewer({
             )
             if (range) {
               for (let i = range[0]; i <= range[1]; i++) spans[i].classList.add('passage')
+              if (variant) {
+                const mark = drawPassageMarks(
+                  source.div,
+                  spans.slice(range[0], range[1] + 1),
+                  variant,
+                )
+                if (startsHere) firstMarkRef.current = mark ?? spans[range[0]]
+              } else if (startsHere) firstMarkRef.current = spans[range[0]]
               // a text layer renders again on zoom and when its page scrolls back into view - the
               // passage stays marked, but the view jumps to it only once
               if (startsHere && !jumped) {
@@ -211,7 +241,7 @@ export default function PdfViewer({
       abort.abort()
       void task?.destroy()
     }
-  }, [data, anchor])
+  }, [data, anchor, variant])
 
   useEffect(() => {
     if (!contentSha256 || !anchor) return
@@ -248,6 +278,64 @@ export default function PdfViewer({
 
   const numPages = pdf?.numPages ?? 0
   const hasOutline = outline.length > 0
+  if (variant) {
+    const warning = changed || markState === 'not-found'
+    const status = recognized
+      ? scanStatusText(markState, changed, anchor)
+      : markState === 'marked' && !changed
+        ? ''
+        : statusText(markState, changed, anchor?.pageFrom != null, page)
+    const canJump = markState === 'marked' || markState === 'framed'
+    return (
+      <LabPdfLayout
+        variant={variant}
+        containerRef={containerRef}
+        loading={
+          !pdf && (
+            <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
+              <LoadingState shape="block" />
+            </Box>
+          )
+        }
+        page={page}
+        numPages={numPages}
+        scale={scale}
+        onPage={(next) => {
+          if (viewerRef.current) viewerRef.current.currentPageNumber = next
+        }}
+        onZoom={zoom}
+        onFit={fitWidth}
+        onJump={
+          canJump
+            ? () => firstMarkRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+            : undefined
+        }
+        outline={
+          hasOutline ? (
+            <PdfOutline nodes={outline} activeNode={activeNode(outline, page)} onSelect={goTo} />
+          ) : null
+        }
+        outlineOpen={outlineOpen}
+        onToggleOutline={() => setOutlineOpen((open) => !open)}
+        recognized={
+          recognized && anchor ? (
+            <RecognizedTextPanel
+              id={RECOGNIZED_TEXT_PANEL_ID}
+              anchor={anchor}
+              documentId={documentId}
+              chunkIndex={chunkIndex}
+            />
+          ) : null
+        }
+        recognizedOpen={recognizedOpen}
+        onToggleRecognized={() => setRecognizedOpen((open) => !open)}
+        status={status}
+        warning={warning}
+        anchor={anchor}
+        regionClass={REGION_CLASS}
+      />
+    )
+  }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }}>
       <Box

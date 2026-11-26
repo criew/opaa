@@ -11,6 +11,9 @@ import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 import { withTextFragment } from '../utils/textFragment'
+import { getDocumentContent } from '../api/libraryApi'
+import { docViewVariant } from '../components/docView/docViewVariant'
+import { officeFormat, type OfficeOriginal } from '../components/docView/officeFormats'
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
@@ -49,6 +52,7 @@ export function useDocumentPreview() {
   const [previewDocument, setPreviewDocument] = useState<TextPreviewResult | null>(null)
   const [pdfPreview, setPdfPreview] = useState<PdfPreviewResult | null>(null)
   const [textVersion, setTextVersion] = useState<TextVersionPreview | null>(null)
+  const [officeOriginal, setOfficeOriginal] = useState<OfficeOriginal | null>(null)
 
   async function openDocument(document: OpenableDocument) {
     // ADR-0023: a source whose original is the page at the source (Confluence) has no file of its
@@ -62,6 +66,23 @@ export function useDocumentPreview() {
         return
       }
       window.open(withTextFragment(target, document.anchor), '_blank', 'noopener,noreferrer')
+      return
+    }
+    // UI lab: DOCX, CSV and mail open as themselves rather than as their Textfassung
+    const format = docViewVariant() ? officeFormat(document.fileName) : null
+    if (format) {
+      try {
+        const { blob, fileName } = await getDocumentContent(document.id)
+        setOfficeOriginal({
+          format,
+          fileName: fileName ?? document.fileName,
+          blob,
+          text: format === 'docx' ? undefined : await blob.text(),
+          anchor: document.anchor,
+        })
+      } catch {
+        notify('Das Original konnte nicht geöffnet werden.', 'error')
+      }
       return
     }
     // a format the browser cannot show opens as its Textfassung; the original is not fetched
@@ -113,6 +134,8 @@ export function useDocumentPreview() {
     closePdfPreview: () => setPdfPreview(null),
     textVersion,
     closeTextVersion: () => setTextVersion(null),
+    officeOriginal,
+    closeOfficeOriginal: () => setOfficeOriginal(null),
     openDocument,
   }
 }

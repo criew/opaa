@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import GlobalStyles from '@mui/material/GlobalStyles'
 import Typography from '@mui/material/Typography'
+import type { SxProps, Theme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
@@ -9,7 +10,11 @@ import { fontFamily, fontSize, markHighlight } from '@/shared/theme/tokens'
 import { NO_ANCHOR_NOTICE, passageRange } from '../utils/textPassage'
 import { downloadBlob } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
-import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import DocumentFrame from './docView/DocumentFrame'
+import { docViewVariant } from './docView/docViewVariant'
+import FindingCard from './docView/FindingCard'
+import { anchorPlace, anchorQuote } from './docView/findingText'
+import { labHighlightStyles, labPaperSx, labDeskSx, markPassageBlocks } from './docView/textMarks'
 
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
@@ -53,6 +58,7 @@ export default function DocumentTextPreviewDialog({
   onClose,
 }: DocumentTextPreviewDialogProps) {
   const [mark, setMark] = useState<{ of: TextPreviewResult; state: MarkState } | null>(null)
+  const contentEl = useRef<HTMLElement | null>(null)
 
   // The cited passage is marked with the CSS Custom Highlight API, which paints a Range without
   // touching the rendered DOM. A ref callback, so it runs once the content is in the DOM and again
@@ -60,12 +66,14 @@ export default function DocumentTextPreviewDialog({
   // replace text nodes, so a mutation marks the passage anew - the view jumps to it only once.
   const markPassage = useCallback(
     (content: HTMLElement | null) => {
+      contentEl.current = content
       const anchor = previewDocument?.anchor
       if (!content || !previewDocument || !anchor?.quoteStart) return
       const highlights = typeof CSS !== 'undefined' ? CSS.highlights : undefined
       let jumped = false
       const apply = () => {
-        const range = passageRange(content, anchor)
+        // the document itself, not the finding card beside it
+        const range = passageRange(content.querySelector('[data-doc-body]') ?? content, anchor)
         let highlighted = false
         if (range && highlights && typeof Highlight !== 'undefined') {
           highlights.set(PASSAGE_HIGHLIGHT, new Highlight(range))
@@ -73,6 +81,7 @@ export default function DocumentTextPreviewDialog({
         } else {
           highlights?.delete(PASSAGE_HIGHLIGHT)
         }
+        if (range) markPassageBlocks(content, range)
         if (range && !jumped) {
           jumped = true
           scrollToPassage(content, range)
@@ -94,6 +103,7 @@ export default function DocumentTextPreviewDialog({
     [previewDocument],
   )
 
+  const variant = docViewVariant()
   const markState =
     previewDocument?.anchor === null
       ? 'no-anchor'
@@ -123,10 +133,9 @@ export default function DocumentTextPreviewDialog({
     </Typography>
   )
   return (
-    <ViewDialog
+    <DocumentFrame
       open={previewDocument != null}
       onClose={onClose}
-      width="editor"
       titleId={TITLE_ID}
       title={previewDocument?.fileName}
       titleActions={
@@ -138,32 +147,86 @@ export default function DocumentTextPreviewDialog({
       }
       contentRef={markPassage}
       toolbar={status}
+      contentSx={
+        variant === 'c'
+          ? ([
+              labDeskSx(variant),
+              { flexDirection: { xs: 'column', sm: 'row' }, gap: 3 },
+            ] as SxProps<Theme>)
+          : variant
+            ? labDeskSx(variant)
+            : undefined
+      }
     >
+      {variant === 'c' && previewDocument?.anchor && (
+        <Box sx={{ position: { sm: 'sticky' }, top: 0, alignSelf: 'flex-start', flex: 'none' }}>
+          <FindingCard
+            place={anchorPlace(previewDocument.anchor)}
+            quote={anchorQuote(previewDocument.anchor)}
+            status={
+              markState === 'marked'
+                ? 'Fundstelle markiert.'
+                : markState === 'not-found'
+                  ? 'Die Fundstelle wurde im Dokument nicht gefunden.'
+                  : ''
+            }
+            warning={markState === 'not-found'}
+            onJump={
+              markState === 'marked' || markState === 'scrolled'
+                ? () => {
+                    const content = contentEl.current
+                    const block = content?.querySelector<HTMLElement>('[data-passage]')
+                    if (!content || !block) return
+                    const top =
+                      block.getBoundingClientRect().top - content.getBoundingClientRect().top
+                    content.scrollTo({ top: content.scrollTop + top - content.clientHeight / 3 })
+                    block.focus({ preventScroll: true })
+                  }
+                : undefined
+            }
+          />
+        </Box>
+      )}
       <GlobalStyles
         styles={{
-          [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: markHighlight },
+          [`::highlight(${PASSAGE_HIGHLIGHT})`]: variant
+            ? labHighlightStyles(variant)
+            : { backgroundColor: markHighlight },
           '@media (forced-colors: active)': {
             [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: 'Mark', color: 'MarkText' },
           },
         }}
       />
-      {previewDocument?.contentType === 'text/markdown' ? (
-        <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />
-      ) : (
-        <Box
-          component="pre"
-          sx={{
-            m: 0,
-            fontFamily: fontFamily.mono,
-            fontSize: fontSize.text,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {previewDocument?.content}
-        </Box>
-      )}
-    </ViewDialog>
+      <Box
+        sx={
+          variant
+            ? ([
+                labPaperSx(variant),
+                { flex: 1, minWidth: 0, alignSelf: 'flex-start' },
+              ] as SxProps<Theme>)
+            : undefined
+        }
+
+        data-doc-body
+      >
+        {previewDocument?.contentType === 'text/markdown' ? (
+          <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />
+        ) : (
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              fontFamily: fontFamily.mono,
+              fontSize: fontSize.text,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {previewDocument?.content}
+          </Box>
+        )}
+      </Box>
+    </DocumentFrame>
   )
 }
 

@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import type { PdfPreviewResult } from '../utils/documentContent'
 import { downloadBlob, openInBrowserViewer } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
-import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import DocumentFrame from './docView/DocumentFrame'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 // pdf.js and the viewer load only when a PDF is opened, never with the page that offers it; a
@@ -59,10 +59,9 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
   const failed = preview != null && failedBlob === preview.blob
   const buffer = preview && data?.blob === preview.blob ? data.buffer : null
   return (
-    <ViewDialog
+    <DocumentFrame
       open={preview != null}
       onClose={onClose}
-      width="editor"
       tall
       titleId={TITLE_ID}
       title={preview?.fileName}
@@ -97,6 +96,6 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
       ) : (
         <LoadingState shape="block" />
       )}
-    </ViewDialog>
+    </DocumentFrame>
   )
 }
