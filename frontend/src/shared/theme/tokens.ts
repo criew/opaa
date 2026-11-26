@@ -85,6 +85,42 @@ const successDark: SignalTones = { main: '#16B77B', hover: '#38C18F', soft: '#5B
 export const markHighlight = 'rgba(245, 184, 61, 0.25)'
 
 /**
+ * Roles of the document view behind „Dokument öffnen“ (guidelines 2.3). The paper stays light in
+ * both schemes, so band, edge and label are the same in both: the band is an opaque marker that
+ * is multiplied onto the page (dark text stays dark on it), the Mittelblau edge carries the 3:1 of
+ * the mark against the paper, and white on it reaches 7.41:1 for the label „Fundstelle“.
+ */
+export interface DocumentViewRoles {
+  /** The surface the pages lie on: light in the light scheme, navy in the dark one. */
+  desk: string
+  /** The paper of a Markdown, text, mail or spreadsheet original, light in both schemes. */
+  paper: string
+  /** Band behind the cited passage, on the paper only. */
+  band: string
+  /** Edge stroke beside the passage and surface of its label. */
+  edge: string
+  /** Text of the label on {@link edge}. */
+  edgeFg: string
+  /** The finding card and the panels beside the paper, apart from the desk in both schemes. */
+  card: string
+}
+
+export const documentViewLight: DocumentViewRoles = {
+  desk: gray[100],
+  paper: white,
+  band: blue[100],
+  edge: blue[700],
+  edgeFg: white,
+  card: white,
+}
+
+export const documentViewDark: DocumentViewRoles = {
+  ...documentViewLight,
+  desk: navy[950],
+  card: navy[900],
+}
+
+/**
  * Semantic roles - the vocabulary every component uses (guidelines 2.2). One value set per
  * color scheme; both schemes are equally binding.
  */

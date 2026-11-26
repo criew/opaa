@@ -3,11 +3,13 @@ import type { Theme } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
 import { deriveAccentSurface, deriveAccentText } from '../utils/contrast'
 import { deDE } from '@mui/material/locale'
-import type { BrandingOverrides, SchemeRoles } from './tokens'
+import type { BrandingOverrides, DocumentViewRoles, SchemeRoles } from './tokens'
 import {
   blue,
   controlHeight,
   darkRoles,
+  documentViewDark,
+  documentViewLight,
   focusRingOffsetPx,
   focusRingWidthPx,
   fontFamily,
@@ -33,6 +35,13 @@ declare module '@mui/material/styles' {
      * cutout, reads it from here.
      */
     scrim: string
+  }
+  interface Palette {
+    /** Desk, paper and passage mark of the document view (guidelines 2.3). */
+    documentView: DocumentViewRoles
+  }
+  interface PaletteOptions {
+    documentView?: DocumentViewRoles
   }
 }
 
@@ -166,6 +175,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           scrim,
         },
         divider: roles.border,
+        documentView: isDark ? documentViewDark : documentViewLight,
         text: {
           primary: roles.fg1,
           secondary: roles.fg2,

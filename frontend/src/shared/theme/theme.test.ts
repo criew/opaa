@@ -180,6 +180,29 @@ describe('createAppTheme', () => {
     }
   })
 
+  test('the passage mark keeps its contrast on the paper, which stays light in both schemes', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const { documentView } = createAppTheme(mode).palette
+      expect(documentView.paper).toBe(lightRoles.bg1)
+      // text on the paper keeps the light roles, also on the band
+      expect(getContrastRatio(lightRoles.fg1, documentView.band)).toBeGreaterThanOrEqual(
+        TEXT_CONTRAST_MINIMUM,
+      )
+      // the label on the edge, and the edge as the mark's shape against the paper
+      expect(getContrastRatio(documentView.edgeFg, documentView.edge)).toBeGreaterThanOrEqual(
+        TEXT_CONTRAST_MINIMUM,
+      )
+      expect(getContrastRatio(documentView.edge, documentView.paper)).toBeGreaterThanOrEqual(3)
+      // the header of the reading mode stands on the desk: title and „Zurück zur Antwort“
+      const palette = createAppTheme(mode).palette
+      for (const text of [palette.text.primary, palette.text.secondary, palette.primary.main]) {
+        expect(getContrastRatio(text, documentView.desk), `${text} on desk`).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    }
+  })
+
   // regression guard for #2150: MUI paints the hover of contained buttons in `dark` with
   // `contrastText`, and filled alerts in `dark` with `getContrastText(main)`. With dark text the
   // hover tone has to get lighter, not darker.
