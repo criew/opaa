@@ -55,7 +55,10 @@ public final class CoreMetadataExtractor {
           "(?i)\\b(januar|februar|märz|maerz|april|mai|juni|juli|august|september|oktober"
               + "|november|dezember)\\s+((?:19|20)\\d{2})\\b");
 
-  /** The hyphen rule of {@link #ISO_MONTH}; a dot next to the year makes it part of a number. */
+  /**
+   * The hyphen rule of {@link #ISO_MONTH} without its four-letter condition - a year behind a
+   * Kürzel is still that year; a dot next to the year makes it part of a number.
+   */
   private static final Pattern BARE_YEAR =
       Pattern.compile("(?<![\\d.])(?<![\\d.]-)((?:19|20)\\d{2})(?![\\d.])(?!-[\\d.])");
 
