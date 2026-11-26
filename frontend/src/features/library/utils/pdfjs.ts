@@ -1,3 +1,6 @@
+// pdf.js comes from its legacy build throughout - main module, viewer and worker: the modern build
+// calls Map.getOrInsertComputed and Math.sumPrecise without a fallback, which Chromium before 145
+// lacks; the legacy build ships them as polyfills.
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist/legacy/build/pdf.mjs'
 
 /** Absolute URL of pdf.js's runtime files on the app's own origin (vite.config.ts, pdfjsAssets). */
@@ -15,10 +18,6 @@ function pdfjsAssetUrl(path: string): string {
 export function pdfLoadOptions() {
   return { enableXfa: false, useWasm: false, wasmUrl: pdfjsAssetUrl('wasm/') } as const
 }
-
-// pdf.js comes from its legacy build throughout - main module, viewer and worker: the modern build
-// calls Map.getOrInsertComputed and Math.sumPrecise without a fallback, which Chromium before 145
-// lacks; the legacy build ships them as polyfills.
 
 /**
  * Loads pdf.js on first use - it stays out of the main bundle - with its worker served from the

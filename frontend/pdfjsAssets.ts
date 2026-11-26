@@ -17,10 +17,10 @@ export const PDFJS_ASSET_DIR = `assets/pdfjs-${PDFJS_VERSION}`
 
 /**
  * The files pdf.js loads at runtime besides its bundled code: the worker of the legacy build
- * (src/features/library/utils/pdfjs.ts), emitted as `.js` so it is
- * served as JavaScript whatever nginx's mime table says about `.mjs`, and the JavaScript fallbacks
- * of the JBIG2/CCITT and JPEG 2000 decoders that run instead of WebAssembly (`useWasm: false`),
- * with their licenses. Keys are paths below {@link PDFJS_ASSET_DIR}.
+ * (src/features/library/utils/pdfjs.ts), emitted as `.js` so it is served as JavaScript whatever
+ * nginx's mime table says about `.mjs`, and the JavaScript fallbacks of the JBIG2/CCITT and
+ * JPEG 2000 decoders that run instead of WebAssembly (`useWasm: false`), with their licenses. Keys
+ * are paths below {@link PDFJS_ASSET_DIR}.
  */
 export function pdfjsFiles(): Record<string, string> {
   const files: Record<string, string> = {
