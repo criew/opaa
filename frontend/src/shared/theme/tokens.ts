@@ -189,9 +189,8 @@ export const darkRoles: SchemeRoles = {
 }
 
 /**
- * The Dunkelblau block the sidebar keeps in the light scheme. In the dark scheme the sidebar
- * follows {@link darkRoles} instead. Its accent is blue-300: Hellblau falls below 4.5:1 on the
- * lighter navy steps.
+ * The Dunkelblau block of the sign-in page's brand panel. Its accent is blue-300: Hellblau falls
+ * below 4.5:1 on the lighter navy steps.
  */
 export const navyRoles: SchemeRoles = {
   bg1: navy[800],
@@ -226,9 +225,7 @@ export const railRoles: SchemeRoles = {
   bg2: navy[800],
   bg3: navy[700],
   fg1: white,
-  // The design paints the muted labels as 60% white; roles are opaque values, so this is that
-  // tone composited over bg1.
-  fg2: '#A4A5B3',
+  fg2: '#C8C9D4',
   fg3: '#A3A5B8',
   accent: blue[300],
   accentFg: white,

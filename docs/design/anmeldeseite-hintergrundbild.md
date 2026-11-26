@@ -70,9 +70,9 @@ cd frontend && node scripts/measure-login-backdrop.mjs src/features/auth/assets/
 
 | Messwert | Wert |
 |---|---|
-| Hellstes Pixel (zugleich ungünstigstes für Name und Claim) | `#ADB295` |
-| Kontrast Produktname über diesem Pixel | 6,63:1 |
-| Kontrast Claim über diesem Pixel | 4,79:1 |
+| Ungünstigstes Pixel für Name und Claim | `#90B3BE` |
+| Kontrast Produktname über diesem Pixel | 6,61:1 |
+| Kontrast Claim über diesem Pixel | 4,77:1 |
 | SHA-256 der Datei | `c7b2110edaeaf0dcf6872af1f221374986366c4ca7050b92f4021ac8da180496` |
 
 `AuthLayout.contrast.test.ts` bindet Prüfsumme, Worst-Case-Pixel und die Konstanten des Skripts (Grundfarbe, Claim-Deckkraft) aneinander und rechnet den Kontrast nach, zusätzlich mit einer Toleranz von 3 % Aufhellung für Dekoder-Unterschiede. Wer das Bild ersetzt, führt das Skript erneut aus und zieht die Werte im Test nach; bis dahin schlägt der Test an der Prüfsumme fehl.

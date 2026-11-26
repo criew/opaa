@@ -120,12 +120,12 @@ Weiß/`#C8C9D4`/`#A3A5B8`) trägt seit #1922 nur noch **den Markenblock der Anme
 
 Die globale Leiste (Rail, #786) verwendet im hellen Schema das Rollenset `railRoles`
 (Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700 mit Navy-600-Rahmen, Text
-Weiß/`#A4A5B3`/`#A3A5B8`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
+Weiß/`#C8C9D4`/`#A3A5B8`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
 allem rechts davon ab. Im dunklen Schema folgt die Rail dem dunklen Schema; die Trennung übernimmt
 der Standardrahmen.
 
 Auf den helleren Navy-Stufen von `navyRoles` und `railRoles` fiele Hellblau unter 4,5:1 (auf
-Navy-700 3,68:1). Beide Rollensets führen deshalb Blau-300 `#66C4E9` als `accent`.
+Navy-700 3,90:1). Beide Rollensets führen deshalb Blau-300 `#66C4E9` als `accent`.
 
 `fg-3` (`#A3A5B8`) erreicht in `navyRoles` gegen `bg-1` 5,72:1, gegen `bg-2` 4,92:1 und gegen
 `bg-3` 3,94:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 6,61:1, gegen `bg-2`
@@ -976,7 +976,7 @@ Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und
 Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
 Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
 Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit weißer Ziffer (`accent`
-selbst trüge Weiß im Dunkelschema nur mit 3,3:1); die Ziffer der ruhenden Marke rückt, wo die
+selbst trüge Weiß im Dunkelschema nur mit 3,07:1); die Ziffer der ruhenden Marke rückt, wo die
 Tönung sie unter 4,5:1 drückt, wie jeder Akzenttext vom Grund weg, und ein Tooltip nennt je Fundstelle
 Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts
@@ -1524,7 +1524,7 @@ eigenes Logo konfiguriert.
 | Bestandteil | Farbe                                                                       |
 | ----------- | --------------------------------------------------------------------------- |
 | Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy                          |
-| Siegel      | Dateien: Blau-500; in der App die Akzentfläche (`accent-surface`)           |
+| Siegel      | Dateien: das frühere Blau-500 bis zur Logo-Umstellung; in der App die Akzentfläche (`accent-surface`) |
 | Haken       | Weiß                                                                        |
 | Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Sprechblase           |
 

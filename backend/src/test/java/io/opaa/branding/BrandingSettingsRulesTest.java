@@ -25,6 +25,17 @@ class BrandingSettingsRulesTest {
   }
 
   @Test
+  void theStandardColourFollowsTheDefault() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            "", null, null, null, " " + BrandingDefaults.PRIMARY_COLOR.toLowerCase() + " ");
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values())
+        .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null));
+  }
+
+  @Test
   void valuesAreTrimmedAndKept() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(

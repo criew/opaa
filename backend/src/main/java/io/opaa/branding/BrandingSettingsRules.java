@@ -167,6 +167,10 @@ public final class BrandingSettingsRules {
     return problems.isEmpty() ? text : null;
   }
 
+  /**
+   * A six-digit hex colour; the standard colour is stored as "not set" so the installation keeps
+   * following the standard when it changes.
+   */
   private static String color(List<FieldError> errors, String field, String value) {
     if (value == null) {
       return null;
@@ -179,7 +183,7 @@ public final class BrandingSettingsRules {
       errors.add(new FieldError(field, INVALID, COLOR_INVALID));
       return null;
     }
-    return trimmed;
+    return BrandingDefaults.PRIMARY_COLOR.equalsIgnoreCase(trimmed) ? null : trimmed;
   }
 
   /**

@@ -35,7 +35,7 @@ const DEFAULT_LOGIN_BACKDROP_URL = bundledBackdropUrl
 
 /**
  * Opacity of the scrim over the bundled backdrop. Unlike an uploaded image this one is known:
- * AuthLayout.contrast.test.ts proves the 4.5:1 of brand name and claim against the brightest
+ * AuthLayout.contrast.test.ts proves the 4.5:1 of brand name and claim against the least favourable
  * pixel the shipped file actually contains (measured by scripts/measure-login-backdrop.mjs and
  * pinned to the file's checksum) — which is what allows a lighter scrim than over uploads.
  */

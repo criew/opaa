@@ -336,7 +336,7 @@ describe('createAppTheme', () => {
 
   /**
    * The measured case from the demo installation. `#1153EE` reaches 6.0:1 on white, but only
-   * 3.3:1 in the dark scheme - every link, every „Passwort vergessen?" and every active
+   * 2.3:1 on the dark scheme's bg-3 - every link, every „Passwort vergessen?" and every active
    * tab fell below that, across the whole application.
    */
   test.each(['light', 'dark'] as const)(

@@ -19,7 +19,7 @@ export interface CitationMarkColors {
 /**
  * The mark's colours for one theme. The digit is small text, so both states hold 4.5:1: the
  * accent text role is only guaranteed on the plain grounds, not on its own tint, and the accent
- * as a surface carries white at 3.3:1 in the dark scheme - hence the derived text colour and the
+ * as a surface carries white at 3.07:1 in the dark scheme - hence the derived text colour and the
  * pressed surface.
  */
 export function citationMarkColors(theme: Theme): CitationMarkColors {
