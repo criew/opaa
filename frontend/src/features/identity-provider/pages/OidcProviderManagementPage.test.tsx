@@ -571,11 +571,11 @@ describe('OidcProviderManagementPage', () => {
     await findProviderTable()
     // the fixture's first provider manages roles in OPAA, the second reads them from the token
     const verzeichnis = rowOf('Verzeichnisdienst')
-    expect(within(verzeichnis).getByText('Rollen in OPAA verwaltet')).toBeInTheDocument()
+    expect(within(verzeichnis).getByText('Rollen in opaa verwaltet')).toBeInTheDocument()
     expect(within(verzeichnis).getByText('Keine Gruppen aus dem Token')).toBeInTheDocument()
 
     const partner = rowOf('Partnerportal')
-    expect(within(partner).queryByText('Rollen in OPAA verwaltet')).not.toBeInTheDocument()
+    expect(within(partner).queryByText('Rollen in opaa verwaltet')).not.toBeInTheDocument()
     expect(
       within(partner).getByText('Rollen aus dem Token: SYSTEM_ADMIN = opaa-admin'),
     ).toBeInTheDocument()

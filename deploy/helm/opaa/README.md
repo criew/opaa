@@ -1,6 +1,6 @@
-# OPAA Helm-Chart
+# opaa Helm-Chart
 
-Betrieb von OPAA unter Kubernetes: das Backend mit einer Instanz oder, unter den Voraussetzungen von
+Betrieb von opaa unter Kubernetes: das Backend mit einer Instanz oder, unter den Voraussetzungen von
 [ADR-0053](../../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), mit mehreren, und das
 Frontend. Grundlage ist [ADR-0042](../../../docs/decisions/0042-kubernetes-lieferung-mit-helm.md).
 
@@ -21,7 +21,7 @@ nicht mitgeliefert. Mitliefern kann der Chart auf Wunsch den Texterkennungsdiens
 
 ## Ausprobieren
 
-Wer OPAA unter Kubernetes erst einmal ausprobieren oder vorführen will, startet den
+Wer opaa unter Kubernetes erst einmal ausprobieren oder vorführen will, startet den
 [Erprobungsaufbau](../../../examples/kubernetes-trial/README.md): Ein Befehl bringt den Chart mit
 Keycloak, Ollama, RustFS, Mailpit und der Erprobungsdatenbank in einen leeren lokalen Cluster. Er ist
 nicht für den Betrieb gedacht.
@@ -102,7 +102,7 @@ legt das Datenbankschema an; erst danach meldet sich das Backend bereit.
 
 **7. Installation abschließen.** Mit `bootstrap.initialAdmin.email` rendert der Chart die
 Antwortdatei der Installation ([ADR-0060](../../../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md))
-aus `bootstrap`, und der erste Start richtet OPAA daraus ein. Ohne sie bleibt OPAA im
+aus `bootstrap`, und der erste Start richtet opaa daraus ein. Ohne sie bleibt opaa im
 Installationsmodus, bis die Installation im Browser abgeschlossen ist; das Token kommt aus
 `secrets.installationToken` oder steht einmalig im Protokoll. Die Ausgabe von `helm install` nennt
 den Weg.

@@ -17,12 +17,12 @@ und kein Secret. Sie liest nur: Sie legt nichts an, ändert nichts und löscht n
      setzt der Administrator der Organisation für genau dieses Projekt eine Ausnahme.
    - Die Datei **außerhalb des Repositorys** ablegen, etwa unter `~/.config/opaa/gdrive-it.json`.
      Der Test bricht ab, wenn die Datei im Repository liegt.
-5. **Testordner freigeben:** In Google Drive einen Ordner `OPAA-Test` anlegen und ihn für die
+5. **Testordner freigeben:** In Google Drive einen Ordner `opaa-Test` anlegen und ihn für die
    Adresse des Dienstkontos (`…@…iam.gserviceaccount.com`) als **Betrachter** freigeben. Für eine
    geteilte Ablage das Dienstkonto stattdessen als Mitglied mit der Rolle „Betrachter“ aufnehmen.
    Domänenweite Delegation ist nicht nötig.
 
-## Testdaten im Ordner `OPAA-Test`
+## Testdaten im Ordner `opaa-Test`
 
 Der Maintainer legt sie einmal von Hand an. Die Namen müssen genau so lauten:
 
@@ -40,7 +40,7 @@ Der Maintainer legt sie einmal von Hand an. Die Namen müssen genau so lauten:
 ```bash
 # aus backend/
 OPAA_GDRIVE_IT_KEY_FILE=~/.config/opaa/gdrive-it.json \
-OPAA_GDRIVE_IT_FOLDER_ID=<ID des Ordners OPAA-Test> \
+OPAA_GDRIVE_IT_FOLDER_ID=<ID des Ordners opaa-Test> \
 ./gradlew googleDriveIntegrationTest
 ```
 
@@ -53,7 +53,7 @@ OPAA_GDRIVE_IT_FOLDER_ID=<ID des Ordners OPAA-Test> \
 
 Schlüssel, Assertion und Zugriffstoken erscheinen weder in Logs noch in Reports oder
 Fehlermeldungen. Der Test prüft die mitgeschnittenen Logzeilen am Ende jeder Methode. Fällt Google
-aus, scheitert schon die Anmeldung. Das ist dann „nicht prüfbar“ und kein Befund über OPAA.
+aus, scheitert schon die Anmeldung. Das ist dann „nicht prüfbar“ und kein Befund über opaa.
 
 ## Was der Lauf zusätzlich belegen soll
 

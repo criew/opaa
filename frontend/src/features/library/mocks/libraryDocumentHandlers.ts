@@ -574,11 +574,11 @@ export const libraryDocumentHandlers = [
 
 /** The mocked „einfuehrung-opaa.pptx“, one passage per slide and two for the cited slide 3. */
 const INTRODUCTION_SLIDES: { slide: number; title: string; text: string }[] = [
-  { slide: 1, title: 'OPAA – Einführung', text: 'Open Project AI Assistant\nStand: Januar 2025' },
+  { slide: 1, title: 'opaa – Einführung', text: 'open project ai assistant\nStand: Januar 2025' },
   {
     slide: 2,
     title: 'Worum es geht',
-    text: 'OPAA beantwortet Fragen zu den Unterlagen eines Projekts und belegt jede Aussage mit der Fundstelle im Original.',
+    text: 'opaa beantwortet Fragen zu den Unterlagen eines Projekts und belegt jede Aussage mit der Fundstelle im Original.',
   },
   {
     slide: 3,
@@ -671,7 +671,7 @@ const ARCHITECTURE_OVERVIEW_MD = [
   '',
   '## Module',
   '',
-  'OPAA besteht aus drei Modulen: **api**, **indexing** und **query**.',
+  'opaa besteht aus drei Modulen: **api**, **indexing** und **query**.',
   '',
   ...Array.from({ length: 12 }, (_, i) => [
     `Absatz ${i + 1} zur Modulstruktur und ihren Grenzen.`,

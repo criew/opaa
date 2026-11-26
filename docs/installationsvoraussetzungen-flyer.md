@@ -1,6 +1,6 @@
-# OPAA installieren – Was Sie brauchen
+# opaa installieren – Was Sie brauchen
 
-**OPAA (Open Project AI Assistant)** läuft vollständig im eigenen Haus: als Container-Stack auf einem
+**opaa (open project ai assistant)** läuft vollständig im eigenen Haus: als Container-Stack auf einem
 Linux-Server, mit lokalen Sprachmodellen und ohne Abhängigkeit von externen Cloud-Diensten.
 Dieser Flyer fasst zusammen, was vor der Installation bereitstehen muss.
 
@@ -34,7 +34,7 @@ installiert und aktualisiert.
 
 ## 3. Sprachmodelle (Pflicht)
 
-OPAA braucht **zwei Modelle** über eine **OpenAI-kompatible Schnittstelle** (`/v1`):
+opaa braucht **zwei Modelle** über eine **OpenAI-kompatible Schnittstelle** (`/v1`):
 
 | Rolle | Zweck |
 |---|---|
@@ -51,7 +51,7 @@ OPAA braucht **zwei Modelle** über eine **OpenAI-kompatible Schnittstelle** (`/
   entsprechend mehr).
 - **Gehosteter OpenAI-kompatibler Anbieter** (z. B. Azure OpenAI, ein Rechenzentrums-Dienst,
   LiteLLM als Zwischenschicht), wenn keine eigene GPU-Infrastruktur vorhanden ist. Zieladresse
-  und Schlüssel werden eingetragen. *Hinweis:* Dann verlassen Anfragen das Haus; OPAA
+  und Schlüssel werden eingetragen. *Hinweis:* Dann verlassen Anfragen das Haus; opaa
   verhindert das nicht technisch — die Freigabe muss organisatorisch geklärt sein.
 
 **Embedding-Modell nach der Sprache der Dokumente wählen.** Das Embedding-Modell entscheidet
@@ -62,11 +62,11 @@ so lange wie das kleinere **nomic-embed-text**. Dieses bleibt die Wahl für klei
 Arbeitsspeicher, findet in deutschsprachigen Beständen aber deutlich schlechter.
 
 **Nur zum Ausprobieren: Ollama im Stack** (`--profile ollama`). Dieses Profil startet einen
-Ollama-Server auf CPU mit den Voreinstellungen `phi3:mini` (Chat) und `bge-m3` (Embedding). Es eignet sich, um OPAA ohne weitere Infrastruktur kennenzulernen — **nicht für den
+Ollama-Server auf CPU mit den Voreinstellungen `phi3:mini` (Chat) und `bge-m3` (Embedding). Es eignet sich, um opaa ohne weitere Infrastruktur kennenzulernen — **nicht für den
 Produktivbetrieb**: `phi3:mini` ist ein sehr kleines Modell mit entsprechend begrenzter
 Antwortqualität, und CPU-Inferenz ist für mehrere gleichzeitige Nutzer zu langsam.
 
-Voreingestellt ist immer der lokale Betrieb — ohne Konfiguration ruft OPAA kein externes Modell auf.
+Voreingestellt ist immer der lokale Betrieb — ohne Konfiguration ruft opaa kein externes Modell auf.
 
 **Optional:** ein **Reranking-Modell** (eigener Endpunkt) verbessert die Trefferqualität, ist aber
 standardmäßig abgeschaltet.
@@ -75,11 +75,11 @@ standardmäßig abgeschaltet.
 
 ## 4. Anmeldung (Pflicht: eine Entscheidung)
 
-OPAA läuft im Betrieb ausschließlich im Modus **`oidc`**. Darin stehen zwei Wege offen:
+opaa läuft im Betrieb ausschließlich im Modus **`oidc`**. Darin stehen zwei Wege offen:
 
 - **OIDC-Anbieter** (z. B. Keycloak, Entra ID, ein bestehendes SSO) — empfohlen, wenn ein
   Verzeichnisdienst vorhanden ist. Der gebündelte Keycloak dient als Einstieg.
-- **Lokale Benutzerverwaltung** — OPAA führt die Konten selbst, ohne externen Anbieter.
+- **Lokale Benutzerverwaltung** — opaa führt die Konten selbst, ohne externen Anbieter.
 
 Für den Erststart wird die **E-Mail-Adresse des ersten Systemverwalters** benötigt.
 

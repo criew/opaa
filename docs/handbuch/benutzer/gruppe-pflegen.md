@@ -17,4 +17,4 @@
 Gruppe nirgends mehr Rechte hat.
 
 **Gut zu wissen:** Gruppen aus dem Verzeichnis oder dem Identitätsanbieter pflegt deren Quelle,
-nicht OPAA.
+nicht opaa.

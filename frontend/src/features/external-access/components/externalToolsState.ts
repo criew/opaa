@@ -29,7 +29,7 @@ export function channelStateOf(settings: ExternalAccessSettingsResponse): Channe
     return {
       tone: 'neutral',
       headline: 'Ausgeschaltet',
-      detail: `Externe KI-Werkzeuge erreichen OPAA nicht. ${changedLine(settings)}`,
+      detail: `Externe KI-Werkzeuge erreichen opaa nicht. ${changedLine(settings)}`,
     }
   }
   if (settings.allowedCidrs.length === 0) {

@@ -100,7 +100,7 @@ describe('checkAccentContrast', () => {
    * The OPAA standard accent (blue-700) carries white text itself; the dark-scheme text check
    * evaluates its lightened derivation and passes as well.
    */
-  it('passes the button-label check for the OPAA standard accent via the derived surface', () => {
+  it('passes the button-label check for the opaa standard accent via the derived surface', () => {
     const checks = checkAccentContrast(OPAA_BRANDING.primaryColor)
 
     const buttonLabel = checks.find((c) => c.label.includes('Schaltflächen'))

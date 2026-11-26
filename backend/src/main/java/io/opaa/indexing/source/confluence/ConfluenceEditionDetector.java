@@ -114,7 +114,7 @@ public final class ConfluenceEditionDetector {
           .append(failed.failure.getMessage())
           .append(
               " Leitet ein vorgeschalteter Anmeldedienst (SSO) jede Anfrage auf eine Anmeldeseite"
-                  + " um, kann OPAA die REST-API nicht erreichen; die Instanz muss API-Zugriffe mit"
+                  + " um, kann opaa die REST-API nicht erreichen; die Instanz muss API-Zugriffe mit"
                   + " Token ohne Browser-Anmeldung zulassen.");
     }
     throw new ConfluenceAccessException.NoConfluence(message.toString());

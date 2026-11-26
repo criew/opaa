@@ -92,7 +92,7 @@ class LocalAccountMaintenanceIntegrationTest {
             "geheim",
             MailEncryption.NONE,
             "opaa@intern.example",
-            "OPAA"));
+            "opaa"));
   }
 
   @AfterEach

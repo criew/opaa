@@ -6,7 +6,7 @@ afterEach(() => {
 })
 
 describe('isDemoModeEnabled', () => {
-  it('is off when the flag is missing (default OPAA installation)', () => {
+  it('is off when the flag is missing (default opaa installation)', () => {
     expect(isDemoModeEnabled()).toBe(false)
   })
 

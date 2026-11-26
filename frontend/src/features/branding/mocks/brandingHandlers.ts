@@ -28,7 +28,7 @@ export const brandingHandlers = [
     }
     setMockBranding({
       ...mockBranding,
-      productName: body.productName?.trim() || 'OPAA',
+      productName: body.productName?.trim() || 'opaa',
       claim: body.claim?.trim() || 'opaa weiß, was war, und hilft bei dem, was kommt.',
       aiNotice: body.aiNotice?.trim() || OPAA_BRANDING.aiNotice,
       primaryColor: primaryColor || '#0055A4',

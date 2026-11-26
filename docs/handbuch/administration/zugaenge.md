@@ -6,7 +6,7 @@
 **Wer:** Systemverwaltung, „Administration → Anbindungen“
 {: .kopf }
 
-Ein **Zugang** legt einmal fest, wo eine Quelle liegt und wie OPAA sich dort anmeldet. Wer eine
+Ein **Zugang** legt einmal fest, wo eine Quelle liegt und wie opaa sich dort anmeldet. Wer eine
 Bibliothek anlegt, wählt ihn nur noch aus.
 
 > **Beispiel.** Das Haus hat zwei Confluence-Instanzen. Die Systemverwaltung legt „Confluence
@@ -64,9 +64,9 @@ weiter oder ruhen, bis sie einem Zugang zugeordnet sind.
 ## Verbundene Konten von Personen
 
 Die Systemverwaltung sieht **keine Liste der Personen**, nur je Zugang Zahlen, kleine nur als
-„weniger als N“. Inhalte privater Bibliotheken öffnet OPAA niemandem außer ihrer Besitzerin, auch
+„weniger als N“. Inhalte privater Bibliotheken öffnet opaa niemandem außer ihrer Besitzerin, auch
 nicht bei einem Vorfall; der wird in der Quelle untersucht. Ruht ein Konto lange, ruhen seine
-Verbindungen; wird es gesperrt oder läuft ab, enden sie, und nach einer Löschfrist löscht OPAA die
+Verbindungen; wird es gesperrt oder läuft ab, enden sie, und nach einer Löschfrist löscht opaa die
 privaten Bibliotheken. Einen Identitätsanbieter für eine Umstellung **deaktivieren**, nicht löschen:
 Löschen beendet die Verbindungen aller seiner Personen.
 

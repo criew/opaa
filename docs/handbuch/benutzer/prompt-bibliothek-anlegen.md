@@ -27,7 +27,7 @@ Datum und Ihren Namen ein. Die **Vorschau** zeigt, was beim Einsetzen herauskomm
 Vor dem Speichern prüft der Dialog alles auf einmal und nennt jeden Befund. Fest gelten: Befehl aus
 Kleinbuchstaben, Ziffern und einzelnen Bindestrichen, eindeutig in der Bibliothek, höchstens 64
 Zeichen; Titel 255, Beschreibung 2000, Text 8000 Zeichen; höchstens 20 Variablen, eine Auswahl mit
-1 bis 50 Werten. `{{ aktenzeichen }}` speichert OPAA als `{{aktenzeichen}}`; jede andere Folge in
+1 bis 50 Werten. `{{ aktenzeichen }}` speichert opaa als `{{aktenzeichen}}`; jede andere Folge in
 doppelten Klammern, etwa `{{akten zeichen}}`, lehnt es ab.
 
 **Damit andere den Prompt nutzen**, braucht es zwei Dinge: ein Leserecht an der Bibliothek (Reiter

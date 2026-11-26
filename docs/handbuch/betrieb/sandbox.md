@@ -5,7 +5,7 @@ für ein PDF, eine Tabelle oder ein Diagramm. Dieses Skript hat niemand geprüft
 im Backend, sondern in einer **Sandbox**: einem Wegwerf-Container ohne Netzausgang, der nur seinen
 eigenen Arbeitsordner sieht. Dort befüllt auch das Werkzeug `fill_template` eine
 [Dokumentvorlage](../benutzer/vorlage-anlegen.md) mit den Werten des Modells, über ein festes Skript
-des Images statt über Code des Modells. Ohne Sandbox bietet OPAA beide Werkzeuge nicht an.
+des Images statt über Code des Modells. Ohne Sandbox bietet opaa beide Werkzeuge nicht an.
 
 ```mermaid
 flowchart LR
@@ -19,22 +19,22 @@ flowchart LR
 
 - **Eine Sandbox je Agentenlauf.** Der erste Aufruf von `run_code` oder `fill_template` in einem
   Lauf startet sie, jeder weitere Aufruf desselben Laufs arbeitet im selben Ordner weiter. Am
-  Ende des Laufs nimmt OPAA die Dateien aus `/workspace/out` als Anhänge der fragenden Person an
+  Ende des Laufs nimmt opaa die Dateien aus `/workspace/out` als Anhänge der fragenden Person an
   die Antwort und löscht die Sandbox, auch nach einem Fehler. Der nächste Lauf beginnt leer.
 - **Eigenes Verzeichnis für Vorlagen:** `fill_template` schreibt in ein neues Verzeichnis mit
-  Zufallsnamen je Aufruf. OPAA liest dort direkt nach dem Befüllen nur die gemeldete Word-Datei
+  Zufallsnamen je Aufruf. opaa liest dort direkt nach dem Befüllen nur die gemeldete Word-Datei
   und das PDF; nur was gelesen und geprüft ist, meldet es dem Modell als angehängt.
 - **Nie geteilt:** Eine Sandbox gehört genau einem Lauf einer Person.
 - **Nur was das Skript enthält:** Die Sandbox sieht weder Wissensbasis noch Datenbank noch
   Dateiablage. Was sie verwenden soll, schreibt das Modell ins Skript.
-- **Ausgaben sind fremd:** Dateinamen, Größe und Dateityp prüft OPAA wie bei einem Upload. Je Lauf
+- **Ausgaben sind fremd:** Dateinamen, Größe und Dateityp prüft opaa wie bei einem Upload. Je Lauf
   werden höchstens fünf Dateien zu je 10 MB angehängt, nur in den Formaten, die auch ein Upload
   annimmt. Bilder gehören nicht dazu: Ein Diagramm kommt als PDF oder in einem Dokument. Jede
-  Word-Datei prüft OPAA wie eine hochgeladene Vorlage auf aktive Inhalte (Makros, eingebettete
+  Word-Datei prüft opaa wie eine hochgeladene Vorlage auf aktive Inhalte (Makros, eingebettete
   Objekte, Felder, die Inhalte nachladen); eine solche wird nicht angehängt. Lässt sich eine Datei
   nicht abholen oder scheitert das Befüllen, fehlt sie; die Antwort bleibt.
 - **Restrisiko:** Hat `run_code` im selben Lauf vorher Code ausgeführt, kann ein Prozess dieses
-  Codes eine Datei von `fill_template` verändern, bevor OPAA sie liest. Er kann damit nichts
+  Codes eine Datei von `fill_template` verändern, bevor opaa sie liest. Er kann damit nichts
   anhängen, was `run_code` nicht auch selbst hätte anhängen können; die Prüfungen gelten
   unverändert.
 - **Grenzen:** Ein Skript läuft höchstens `OPAA_SANDBOX_RUN_TIMEOUT` und nie über das Laufende
@@ -119,7 +119,7 @@ Ausführungsagenten, das Basis-Image von `opaa/sandbox-python` und dessen Python
 Version und Prüfsumme festgelegt; ein `docker compose pull` holt deshalb nie still einen anderen
 Stand. pip ist im fertigen Image nicht enthalten. Die Debian-Pakete des Images kommen aus dem
 Debian-Release des Basis-Images mit seinen Sicherheitsupdates zum Zeitpunkt des Baus. Neue
-Fassungen kommen mit einem OPAA-Update. Danach den
+Fassungen kommen mit einem opaa-Update. Danach den
 Stapel mit `up -d --build` neu starten, damit auch das Sandbox-Image neu gebaut wird, und `run_code`
 und `fill_template` einmal von einem Agenten ausführen lassen.
 
@@ -127,14 +127,14 @@ und `fill_template` einmal von einem Agenten ausführen lassen.
 
 OpenSandbox wird mit seinem eigenen Chart in eigene Namespaces installiert, etwa der Dienst in
 `opensandbox-system` und die Sandboxen in `opensandbox`. Den Schlüssel bekommt der Dienst als
-`OPENSANDBOX_SERVER_API_KEY`. Im OPAA-Chart:
+`OPENSANDBOX_SERVER_API_KEY`. Im opaa-Chart:
 
 | Wert | Bedeutung |
 |---|---|
 | `sandbox.enabled` | schaltet `run_code` und `fill_template` frei |
 | `sandbox.baseUrl` | Adresse des Sandbox-Dienstes |
 | `secrets.sandboxApiKey` | derselbe Schlüssel wie beim Dienst (Schlüssel `OPAA_SANDBOX_API_KEY` im Secret) |
-| `sandbox.namespace` | Namespace der Sandbox-Pods, nie der Namespace von OPAA |
+| `sandbox.namespace` | Namespace der Sandbox-Pods, nie der Namespace von opaa |
 | `sandbox.serverNamespaceSelector`, `sandbox.serverPodSelector` | wo der Dienst läuft |
 
 Das Chart legt im Namespace der Sandboxen eine NetworkPolicy an, die **jeden Ausgang** sperrt und
@@ -144,7 +144,7 @@ Recht, NetworkPolicies in diesem Namespace anzulegen. Das Backend bekommt mit
 NetworkPolicies durchsetzt; ohne es gilt keine der Sperren.
 
 **Isolationsstufe:** Wie stark eine Sandbox vom Knoten getrennt ist, legt der Sandbox-Dienst über
-seine Laufzeitklasse fest, nicht OPAA:
+seine Laufzeitklasse fest, nicht opaa:
 
 | Plattform | Empfehlung |
 |---|---|

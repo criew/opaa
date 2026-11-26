@@ -35,17 +35,17 @@ flowchart LR
 - **Dokument:** Der Pfad in Kleinbuchstaben ist die Identität, im Team-Ordner zusammen mit dessen
   Namespace-ID. Umbenennen und Verschieben machen ein
   neues Dokument. Einen Link in die Dropbox-Oberfläche gibt es nicht, weil Dropbox für einen Pfad keine
-  verlässliche Web-Adresse nennt; **„Original öffnen"** lädt die Datei durch OPAA, nur aus einem noch
+  verlässliche Web-Adresse nennt; **„Original öffnen"** lädt die Datei durch opaa, nur aus einem noch
   gewählten Ordner.
-- **Rechte** aus Dropbox übernimmt OPAA nicht: Wer die Bibliothek lesen darf, liest alles, was das
+- **Rechte** aus Dropbox übernimmt opaa nicht: Wer die Bibliothek lesen darf, liest alles, was das
   verbundene Konto in den Ordnern sieht, bei einer Team-App alles in den gewählten Team-Ordnern.
 
 ## 2. Einrichtung
 
 1. **App anlegen.** In der Dropbox App Console „Create app", „Scoped access", Zugriffsart „Full
    Dropbox" („App folder" sähe nur einen eigenen Ordner). Unter „Permissions" die drei
-   Berechtigungen oben setzen; schreibende braucht OPAA nicht. Unter „Settings" bei „Redirect URIs"
-   `<öffentliche Adresse von OPAA>/connections/callback` eintragen (`OPAA_PUBLIC_BASE_URL`,
+   Berechtigungen oben setzen; schreibende braucht opaa nicht. Unter „Settings" bei „Redirect URIs"
+   `<öffentliche Adresse von opaa>/connections/callback` eintragen (`OPAA_PUBLIC_BASE_URL`,
    [Konfiguration](../../referenz/konfiguration.md#alle-umgebungsvariablen)). „App key" und „App secret"
    notieren. Für mehr als wenige Konten gibt Dropbox die App nach einem Antrag für den
    Produktivbetrieb frei.
@@ -54,10 +54,10 @@ flowchart LR
    „Client-Secret", „Scopes" leer. Die Server-Adresse ist fest.
 3. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
    ([Berechtigungen](../../referenz/rechte-matrix.md), „Konnektor-Freigabe").
-4. Ein **eigenes Dropbox-Konto für OPAA** bereithalten. Mit ihm stimmt die verwaltende Person bei
+4. Ein **eigenes Dropbox-Konto für opaa** bereithalten. Mit ihm stimmt die verwaltende Person bei
    „Quelle verbinden" zu; die Verbindung bleibt, wenn sie ausscheidet.
 
-App key und Secret gehen nur an den Token-Endpunkt von Dropbox; OPAA fragt die Zustimmung mit
+App key und Secret gehen nur an den Token-Endpunkt von Dropbox; opaa fragt die Zustimmung mit
 `token_access_type=offline` an und hält das Refresh-Token verschlüsselt. Das Zugriffstoken geht nur an
 die beiden API-Hosts; Redirects folgt der Konnektor nicht. Trennen, ein Neuverbinden mit anderem
 Konto, die Notabschaltung und das Löschen des Zugangs widerrufen das Token bei Dropbox.
@@ -71,18 +71,18 @@ eine **Team-Administration** von Dropbox Business für das ganze Team.
    `team_info.read`, `team_data.member` und `files.team_metadata.read` setzen. Mit ihnen stimmen nur
    Team-Administrationen zu.
 2. **Zugang** wie oben anlegen und unter „Vorgaben" **„Team-App (Zustimmung einer
-   Team-Administration)"** einschalten; „Scopes" bleibt leer. OPAA fragt bei der Zustimmung dann die
+   Team-Administration)"** einschalten; „Scopes" bleibt leer. opaa fragt bei der Zustimmung dann die
    drei Berechtigungen der Mitglieds-App und die drei Team-Berechtigungen an. Wer „Scopes" doch
-   füllt, muss alle sechs nennen; fehlt eine, nimmt OPAA den Zugang nicht an.
-3. Bei „Quelle verbinden" stimmt ein Konto mit Team-Administration zu. OPAA nennt danach dieses Konto
+   füllt, muss alle sechs nennen; fehlt eine, nimmt opaa den Zugang nicht an.
+3. Bei „Quelle verbinden" stimmt ein Konto mit Team-Administration zu. opaa nennt danach dieses Konto
    („Verbunden als …").
 
 Die Vorgabe gilt für jede Bibliothek des Zugangs. Solange Bibliotheken auf dem Zugang liegen, lässt sie
 sich nicht umschalten: Ihre gespeicherte Auswahl, Ordnerpfade oder Team-Ordner, passte nicht mehr.
 Für die andere Art einen eigenen Zugang anlegen.
 
-Das Token einer Team-App reicht bei Dropbox weiter als das, was OPAA liest: Es könnte im Namen jedes
-Mitglieds lesen. OPAA liest damit nur die gewählten Team-Ordner, als die Team-Administration, die
+Das Token einer Team-App reicht bei Dropbox weiter als das, was opaa liest: Es könnte im Namen jedes
+Mitglieds lesen. opaa liest damit nur die gewählten Team-Ordner, als die Team-Administration, die
 zugestimmt hat.
 
 ## 3. Quellkonfiguration
@@ -91,7 +91,7 @@ Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab. „Eigene Adr
 
 1. **Zugang** wählen, wenn mehrere zur Wahl stehen.
 2. **„Quelle verbinden"** und bei Dropbox mit dem Funktionskonto zustimmen
-   ([Wissensbibliotheken](../../referenz/wie-indexierung-arbeitet.md), Abschnitt 3.3). OPAA nennt danach das Konto
+   ([Wissensbibliotheken](../../referenz/wie-indexierung-arbeitet.md), Abschnitt 3.3). opaa nennt danach das Konto
    („Verbunden als …"). Erst dann laden Ordnerauswahl und Test etwas.
 3. **„Teambereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **Umfang**: „Alle Ordner" oder „Nur ausgewählte Ordner", Pfade wie `/Projekte`; kein Ordner
@@ -122,7 +122,7 @@ Auswahl der Team-Ordner.
 Jeder Ordner hat einen eigenen Änderungsstrom. War ein Ordner beim Beginn eines Vollabgleichs nicht
 erreichbar, hat sein Strom keinen Stand, und der nächste Lauf ist wieder ein Vollabgleich.
 
-**Unverändertes erkennen.** Vor dem Download vergleicht OPAA die Inhaltsprüfsumme von Dropbox
+**Unverändertes erkennen.** Vor dem Download vergleicht opaa die Inhaltsprüfsumme von Dropbox
 (`content_hash`), bei Paper-Dokumenten die Revision. Verbindlich bleibt die eigene Prüfsumme.
 
 **Über mehrere Läufe.** Reicht das Budget nicht, listet der nächste Lauf zuerst die noch nicht
@@ -134,15 +134,15 @@ ganz gelistet.
 Weil der Pfad die Identität ist, entfernt ein Vollabgleich auch über mehrere Läufe, was keiner seiner
 Läufe gesehen hat ([Konnektoren](README.md#23-wann-eine-gelöschte-datei-als-nachgewiesen-gilt)).
 
-| Ereignis in Dropbox | Verhalten in OPAA |
+| Ereignis in Dropbox | Verhalten in opaa |
 |---|---|
 | Datei gelöscht | der nächste Änderungslauf entfernt das Dokument, sonst der nächste Vollabgleich |
 | Datei umbenannt oder verschoben | der nächste Änderungslauf entfernt das alte Dokument und nimmt die Datei unter dem neuen Pfad auf |
-| Ordner gelöscht | Dropbox meldet nur den Ordner; OPAA macht den nächsten Lauf zum Vollabgleich, der die Dateien entfernt |
+| Ordner gelöscht | Dropbox meldet nur den Ordner; opaa macht den nächsten Lauf zum Vollabgleich, der die Dateien entfernt |
 | Ordner umbenannt oder verschoben | die Dateien kommen unter dem neuen Pfad an; die alten entfernt der folgende Vollabgleich |
 | gewählter Ordner gelöscht oder nicht mehr geteilt | nicht erreichbar, nichts wird entfernt |
 
-Ob ein gemeldeter gelöschter Pfad Datei oder Ordner war, fragt OPAA bei Dropbox nach; bei unklarer
+Ob ein gemeldeter gelöschter Pfad Datei oder Ordner war, fragt opaa bei Dropbox nach; bei unklarer
 Antwort folgt ein Vollabgleich.
 
 ## 6. Ordner
@@ -162,7 +162,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 Parameter stehen unter `opaa.indexing.dropbox.*` (`OPAA_INDEXING_DROPBOX_*`), ihre Standardwerte in der
 [Konfigurationsreferenz](../../referenz/konfiguration.md#alle-umgebungsvariablen).
 
-- **Drosselung.** Bei `429` wartet OPAA die Zeit aus `Retry-After`, höchstens `max-retry-wait`, und
+- **Drosselung.** Bei `429` wartet opaa die Zeit aus `Retry-After`, höchstens `max-retry-wait`, und
   wiederholt bis zu `max-retries`-mal.
 - **Kosten eines Laufs.** Ein Änderungslauf ohne Änderungen kostet zwei Anfragen je Ordner, mit
   Team-Bereich eine weitere je Lauf, mit Team-App mindestens zwei weitere je Lauf (die
@@ -199,8 +199,8 @@ Parameter stehen unter `opaa.indexing.dropbox.*` (`OPAA_INDEXING_DROPBOX_*`), ih
 | „Der Ordner „…" ist für das Konto nicht sichtbar." | Pfad falsch, Ordner gelöscht oder nicht geteilt; der Bestand bleibt | Ordner prüfen |
 | „Das verbundene Dropbox-Konto gehört zu keinem Team mit Team-Bereich." | Team-Bereich gewählt, das Konto hat keinen | Schalter aus oder Teamkonto verbinden |
 | „Dropbox nimmt die Zustimmung nicht als Team-App an; die Quelle muss von einer Team-Administration neu verbunden werden." | Zugang mit Team-App, zugestimmt hat ein Konto ohne Team-Administration oder die App trägt keine Team-Berechtigungen | Berechtigungen prüfen, mit einer Team-Administration neu verbinden |
-| „„…" ist kein Team-Ordner des Teams. OPAA liest nur Team-Ordner." | der gewählte Team-Ordner ist gelöscht, archiviert oder kein Team-Ordner; der Bestand bleibt | Auswahl prüfen |
-| „„…" ist nicht auffindbar. OPAA liest nur Team-Ordner." | das Team hat mehr Namespaces, als ein Lauf listet, und der Team-Ordner kam darin nicht vor; der Bestand bleibt | Team-Ordner aufräumen |
+| „„…" ist kein Team-Ordner des Teams. opaa liest nur Team-Ordner." | der gewählte Team-Ordner ist gelöscht, archiviert oder kein Team-Ordner; der Bestand bleibt | Auswahl prüfen |
+| „„…" ist nicht auffindbar. opaa liest nur Team-Ordner." | das Team hat mehr Namespaces, als ein Lauf listet, und der Team-Ordner kam darin nicht vor; der Bestand bleibt | Team-Ordner aufräumen |
 | „Dropbox hat die Liste der Team-Ordner ohne Fortsetzungspunkt abgebrochen." | Dropbox meldete weitere Team-Ordner, nannte aber keinen Fortsetzungspunkt; Auswahl oder Lauf enden ohne Ergebnis | später erneut versuchen |
 | „… von … Team-Ordnern … nicht lesbar." | Ergebnis des Verbindungstests; die einzelnen stehen darunter | die genannten Team-Ordner prüfen |
 | „… Dateien übersprungen, die Dropbox weder herausgibt noch exportiert" | Sammelhinweis je Lauf | nichts |

@@ -36,6 +36,16 @@ class BrandingSettingsRulesTest {
   }
 
   @Test
+  void theStandardProductNameFollowsTheDefault() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            "", " " + BrandingDefaults.PRODUCT_NAME + " ", null, null, null);
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values().productName()).isNull();
+  }
+
+  @Test
   void theStandardClaimFollowsTheDefault() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check("", null, " " + BrandingDefaults.CLAIM + " ", null, null);
@@ -156,7 +166,7 @@ class BrandingSettingsRulesTest {
   void tagCharactersOutsideAFlagSequenceAreAFieldError() {
     for (String smuggling :
         new String[] {
-          "OPAA󠁉󠁇󠁎", "󠁉󠁇", "OPAA 🏴󠁧󠁢󠁳", "OPAA 🏴󠁉󠁇󠁎󠁏󠁒󠁅" + "󠀠󠁁󠁌󠁌󠁿", "OPAA 󠁿"
+          "opaa󠁉󠁇󠁎", "󠁉󠁇", "opaa 🏴󠁧󠁢󠁳", "opaa 🏴󠁉󠁇󠁎󠁏󠁒󠁅" + "󠀠󠁁󠁌󠁌󠁿", "opaa 󠁿"
         }) {
       BrandingSettingsRules.Checked checked =
           BrandingSettingsRules.check("", smuggling, smuggling, smuggling, null);
@@ -197,7 +207,7 @@ class BrandingSettingsRulesTest {
   @Test
   void unassignedNoncharactersLoneSurrogatesAndALeadingMarkAreAFieldError() {
     for (String broken :
-        new String[] {"OPAA͸", "͸", "OPAA￿", "OPAA\uD800", "\uDC00OPAA", "́OPAA", "́"}) {
+        new String[] {"opaa͸", "͸", "opaa￿", "opaa\uD800", "\uDC00OPAA", "́opaa", "́"}) {
       BrandingSettingsRules.Checked checked =
           BrandingSettingsRules.check("", broken, broken, broken, null);
 
@@ -245,10 +255,10 @@ class BrandingSettingsRulesTest {
   @Test
   void controlCharactersAtTheEdgesAreCutLikeBlanks() {
     BrandingSettingsRules.Checked checked =
-        BrandingSettingsRules.check("", "\nOPAA\n", "\tFragen.\r\n", null, null);
+        BrandingSettingsRules.check("", "\nAmt\n", "\tFragen.\r\n", null, null);
 
     assertThat(checked.errors()).isEmpty();
-    assertThat(checked.values().productName()).isEqualTo("OPAA");
+    assertThat(checked.values().productName()).isEqualTo("Amt");
     assertThat(checked.values().claim()).isEqualTo("Fragen.");
   }
 }

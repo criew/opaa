@@ -76,7 +76,7 @@ public class LocalAuthController {
   static final String NOT_CONFIRMED_CODE = "NOT_CONFIRMED";
 
   static final String NOT_LOCAL_REAUTHENTICATION =
-      "Die Anmeldung wird beim Anmeldedienst bestätigt, nicht mit einem Passwort in OPAA.";
+      "Die Anmeldung wird beim Anmeldedienst bestätigt, nicht mit einem Passwort in opaa.";
 
   private final LocalLoginService loginService;
   private final LocalAccessTokenService accessTokens;

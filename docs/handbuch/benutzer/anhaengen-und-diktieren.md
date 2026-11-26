@@ -13,7 +13,7 @@ Alle eigenen Anhänge stehen unter „Ihre Einstellungen“, Bereich „Meine Up
 sich auch in eine Bibliothek übernehmen.
 
 Anhänge belegen Speicherplatz, bis sie gelöscht sind. Je Konto gilt dafür ein Kontingent, für
-noch nicht gesendete Anhänge ein kleineres. Ist es erschöpft, nimmt OPAA keine weiteren Anhänge
+noch nicht gesendete Anhänge ein kleineres. Ist es erschöpft, nimmt opaa keine weiteren Anhänge
 an; Platz schafft, wer nicht mehr benötigte Anhänge oder Chats löscht oder wartende Anhänge mit
 einer Frage sendet.
 

@@ -114,7 +114,7 @@ public class McpServerDiscovery {
     }
     if (!contains(metadata.get("code_challenge_methods_supported"), "S256")) {
       throw new ValidationException(
-          "Der Autorisierungsserver bietet PKCE mit S256 nicht an; ohne PKCE verbindet OPAA"
+          "Der Autorisierungsserver bietet PKCE mit S256 nicht an; ohne PKCE verbindet opaa"
               + " nicht.");
     }
     String authorization = endpoint(metadata, "authorization_endpoint", true);
@@ -166,7 +166,7 @@ public class McpServerDiscovery {
       }
     }
     throw new ValidationException(
-        "OPAA hat " + what + " nicht gefunden (" + addresses.getFirst() + ").");
+        "opaa hat " + what + " nicht gefunden (" + addresses.getFirst() + ").");
   }
 
   /** The JSON object at {@code address}, {@code null} for a 404. */

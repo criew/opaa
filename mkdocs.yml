@@ -1,6 +1,6 @@
 # Site build of the product handbook; docs/handbuch/ is the only source. CI builds it strictly
 # to catch dead links and anchors.
-site_name: OPAA-Handbuch
+site_name: opaa-Handbuch
 docs_dir: docs/handbuch
 site_dir: build/handbuch-site
 use_directory_urls: false

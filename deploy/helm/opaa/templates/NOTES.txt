@@ -1,7 +1,7 @@
 {{ if .Release.IsUpgrade -}}
-OPAA ist aktualisiert auf Chart-Version {{ .Chart.Version }}: Release {{ .Release.Name }}, Namespace {{ .Release.Namespace }}, Revision {{ .Release.Revision }}.
+opaa ist aktualisiert auf Chart-Version {{ .Chart.Version }}: Release {{ .Release.Name }}, Namespace {{ .Release.Namespace }}, Revision {{ .Release.Revision }}.
 {{- else -}}
-OPAA ist installiert: Release {{ .Release.Name }}, Namespace {{ .Release.Namespace }}.
+opaa ist installiert: Release {{ .Release.Name }}, Namespace {{ .Release.Namespace }}.
 {{- end }}
 
 Erreichbar unter {{ .Values.publicBaseUrl }}
@@ -24,7 +24,7 @@ warten darauf und {{ if .Release.IsUpgrade }}werden danach ersetzt, die alten an
   kubectl -n {{ .Release.Namespace }} wait --for=condition=complete job/{{ include "opaa.migration.jobName" . }} --timeout=15m
 {{- else if .Release.IsUpgrade -}}
 Der Start migriert das Datenbankschema auf den Stand dieser Version; das Backend ist erst danach
-bereit, bis dahin antwortet OPAA nicht:
+bereit, bis dahin antwortet opaa nicht:
 {{- else -}}
 Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit:
 {{- end }}
@@ -38,24 +38,24 @@ installation-admin-password entfernen. Ein Update von v0.1.0-rc.4 setzt die Date
 erster Start installiert noch aus der Antwortdatei und braucht das Passwort.
 {{- else if include "opaa.installation.answerFileEnabled" . -}}
 INSTALLATION AUS DER ANTWORTDATEI
-  Der erste Start richtet OPAA aus bootstrap und embedding ein: erstes Konto {{ .Values.bootstrap.initialAdmin.email }},
+  Der erste Start richtet opaa aus bootstrap und embedding ein: erstes Konto {{ .Values.bootstrap.initialAdmin.email }},
   Anmeldeverfahren, Chat- und Embedding-Modell, das Passwort aus dem Secret. Scheitert eine
-  Prüfung, bleibt OPAA im Installationsmodus, und das Protokoll nennt Schritt und Grund:
+  Prüfung, bleibt opaa im Installationsmodus, und das Protokoll nennt Schritt und Grund:
     kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep "answer file"
 {{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.initialAdminPassword) }}
-  secrets.initialAdminPassword fehlt: Ohne Passwortdatei bleibt OPAA im Installationsmodus. Für eine
+  secrets.initialAdminPassword fehlt: Ohne Passwortdatei bleibt opaa im Installationsmodus. Für eine
   schon eingerichtete Installation bootstrap.initialAdmin.email entfernen.
 {{- end }}
 {{- if ne .Values.bootstrap.initialAdmin.requirePasswordChange false }}
   Die erste Anmeldung verlangt ein neues Passwort; danach gilt das aus dem Secret nicht mehr.
 {{- end }}
-  Nach dem Abschluss übergeht OPAA die Antwortdatei; eine geänderte values.yaml ändert an einer
+  Nach dem Abschluss übergeht opaa die Antwortdatei; eine geänderte values.yaml ändert an einer
   laufenden Installation nichts. Danach secrets.initialAdminPassword (bzw. den Schlüssel
   installation-admin-password) entfernen. Weitere Identitätsanbieter und Modelle werden in der
   Oberfläche eingerichtet{{ if not .Values.bootstrap.mail.host }}, ebenso der Mailserver{{ end }}.
 {{- else -}}
 INSTALLATIONSMODUS
-  Ohne bootstrap.initialAdmin.email bietet OPAA nach dem ersten Start nur die Installation an:
+  Ohne bootstrap.initialAdmin.email bietet opaa nach dem ersten Start nur die Installation an:
   erstes Konto, Anmeldeverfahren und Chat-Modell, im Browser unter {{ .Values.publicBaseUrl }}
   oder über die Installations-API, mit dem Installations-Token
 {{- if or .Values.secrets.existingSecret .Values.secrets.installationToken }} aus dem Secret
@@ -203,7 +203,7 @@ NETZPRÜFUNG OHNE CLIENT-ADRESSE
 {{- if $mixed }}
 
 ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
-  Der Issuer ist per http erreichbar, OPAA per https. Der Browser sperrt solche Aufrufe als
+  Der Issuer ist per http erreichbar, opaa per https. Der Browser sperrt solche Aufrufe als
   Mixed Content, unabhängig von frontend.cspConnectSrcExtra. Den Anbieter per https anbinden.
 {{- else if include "opaa.cspAdmits" (dict "url" (printf "%s/" $origin) "page" $.Values.publicBaseUrl "sources" $sources) }}
 

@@ -26,21 +26,21 @@ flowchart LR
   Ordnern **einer** Freigabe; die Anhänge von Mail-Dateien werden eigene Dokumente.
 - **Dokument:** Der Pfad `smb://server/freigabe/ordner/datei` ist die Identität. **Umbenennen oder
   Verschieben** entfernt das alte Dokument und legt ein neues an. Einen Beleg-Link gibt es nicht,
-  denn `smb://` öffnet kein Browser; **„Original öffnen"** lädt die Datei durch OPAA vom Pfad des
+  denn `smb://` öffnet kein Browser; **„Original öffnen"** lädt die Datei durch opaa vom Pfad des
   Dokuments, nur innerhalb der konfigurierten Ordner und nie über eine Verknüpfung.
-- **Rechte** aus der Freigabe übernimmt OPAA nicht: Was das Dienstkonto lesen kann, sehen alle
+- **Rechte** aus der Freigabe übernimmt opaa nicht: Was das Dienstkonto lesen kann, sehen alle
   Leseberechtigten der Bibliothek.
 
 ## 2. Einrichtung
 
 1. Dateiserver im privaten Netz: seinen Hostnamen für die
-   [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben. OPAA braucht Port 445 zum Server.
+   [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben. opaa braucht Port 445 zum Server.
 2. Ein **Dienstkonto** anlegen, kein persönliches. Es braucht nur Leserechte, auf der Freigabe und
    im Dateisystem darunter, und das Recht „Auf diesen Computer vom Netzwerk aus zugreifen". Sperrt
    die Domäne NTLM, muss das Konto auf die Ausnahmeliste.
 3. **Leserecht auf alles im Bereich.** Ist auf der Freigabe die zugriffsbasierte Aufzählung
    (Access-Based Enumeration) eingeschaltet, zeigt der Server einen Ordner ohne Leserecht gar nicht
-   an — für OPAA ist er dann verschwunden, und seine Dokumente werden **entfernt**. Ohne diese
+   an — für opaa ist er dann verschwunden, und seine Dokumente werden **entfernt**. Ohne diese
    Aufzählung meldet der Lauf den Ordner als nicht lesbar und entfernt nichts.
 4. Auf dem Server SMB 2 oder 3 mit Signatur einschalten.
 5. Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben; wer sonst Bibliotheken anlegen
@@ -70,7 +70,7 @@ nicht.
 Jeder Lauf ist ein **Vollabgleich**; SMB kennt kein Änderungsprotokoll. Er listet jeden Ordner
 unterhalb der konfigurierten Ordner, in Namensreihenfolge, und lädt Dateien schon, während die
 Auflistung weiterläuft. Eine Datei, deren **Änderungszeit und Größe** dem gespeicherten Stand
-entsprechen, wird nicht neu geladen. Ordner merkt sich OPAA nicht: Ihre Änderungszeit ändert sich nur,
+entsprechen, wird nicht neu geladen. Ordner merkt sich opaa nicht: Ihre Änderungszeit ändert sich nur,
 wenn darin direkt etwas angelegt, gelöscht oder umbenannt wird.
 
 ```mermaid
@@ -83,7 +83,7 @@ flowchart LR
 ```
 
 **Über mehrere Läufe.** Reicht das Budget nicht, endet der Lauf als „unvollständig, wird
-fortgesetzt", und OPAA merkt sich die Stelle samt nicht lesbaren und schon gesehenen Ordnern. Der
+fortgesetzt", und opaa merkt sich die Stelle samt nicht lesbaren und schon gesehenen Ordnern. Der
 nächste Lauf öffnet nur die Ordner auf dem Weg dorthin erneut und setzt fort
 ([Konnektoren](README.md#22-ein-vollabgleich-über-mehrere-läufe)). Ein Lauf, der an einem Fehler
 scheitert, ändert die Stelle nicht. Die Obergrenze `max-entries-per-run` gilt für den ganzen
@@ -146,7 +146,7 @@ Parameter stehen unter `opaa.indexing.smb.*` (`OPAA_INDEXING_SMB_*`), ihre Stand
   ist mit … Zeichen zu groß …"), und ein Lauf, der am Budget endet, kommt in diesem Bereich nicht
   weiter. Abhilfe: den Bereich aufteilen.
 - **Geteilte Datei-ID.** Teilen sich zwei Ordner eine Kennung, etwa bei Samba mit mehreren
-  Dateisystemen unter einer Freigabe, hält OPAA den zweiten für eine Verknüpfung; er fehlt ohne
+  Dateisystemen unter einer Freigabe, hält opaa den zweiten für eine Verknüpfung; er fehlt ohne
   Befund, und sein Bestand wird entfernt.
 
 ## 9. Protokoll und Fehlerbilder
@@ -155,7 +155,7 @@ Parameter stehen unter `opaa.indexing.smb.*` (`OPAA_INDEXING_SMB_*`), ihre Stand
 |---|---|---|
 | „Der Server „…" hat die Anmeldung von „…" abgelehnt." | Konto, Domäne oder Passwort falsch, Konto gesperrt oder abgelaufen; der Bestand bleibt | Konto prüfen, Passwort neu eintragen |
 | „… hat die Anmeldung von „…" verweigert (Zugriff verweigert)." | das Konto darf sich nicht über das Netzwerk anmelden | Recht „Auf diesen Computer vom Netzwerk aus zugreifen" |
-| „… lässt keine Anmeldung mit NTLM zu. OPAA unterstützt Kerberos noch nicht …" | NTLM gesperrt | Dienstkonto auf die NTLM-Ausnahmeliste |
+| „… lässt keine Anmeldung mit NTLM zu. opaa unterstützt Kerberos noch nicht …" | NTLM gesperrt | Dienstkonto auf die NTLM-Ausnahmeliste |
 | „… hat „…" nur als Gast angemeldet …" | der Server kennt das Konto nicht | Konto und Domäne prüfen |
 | „Die Freigabe „…" gibt es auf dem Server „…" nicht." / „Das Dienstkonto darf die Freigabe „…" nicht lesen …" | Name falsch / keine Freigabeberechtigung | Adresse prüfen / „Lesen" für das Konto |
 | „Geltungsbereich „/…": Diese Ordner konnte das Dienstkonto nicht lesen: …" | NTFS-Rechte fehlen; im Bereich wird nichts entfernt | Leserecht vererben oder Ordner herausnehmen |
@@ -166,4 +166,4 @@ Parameter stehen unter `opaa.indexing.smb.*` (`OPAA_INDEXING_SMB_*`), ihre Stand
 | „Der Server „…" hat nicht rechtzeitig geantwortet." | Netz oder Server überlastet; der Lauf endet | Erreichbarkeit prüfen, `request-timeout` anheben |
 | „Die Verbindung zum Server „…" ist gescheitert (SMB 2 oder 3 mit Signatur erforderlich)." | nur SMB 1 oder ohne Signatur | SMB 2/3 mit Signatur einschalten |
 | „unvollständig, wird fortgesetzt" / „Der Lauf hat keine Datei neu aufgenommen …" | Budget erschöpft / reicht nicht zum Weiterkommen | nichts / `request-budget-per-run` anheben |
-| „Geltungsbereich „/…": Der Fortsetzungspunkt … beginnt neu." | Stelle aus einer anderen Fassung von OPAA; nichts wird entfernt | nichts |
+| „Geltungsbereich „/…": Der Fortsetzungspunkt … beginnt neu." | Stelle aus einer anderen Fassung von opaa; nichts wird entfernt | nichts |

@@ -214,7 +214,7 @@ export default function LibraryConnectionDialog({
           {privateLibrary
             ? 'Angeboten werden nur Zugänge, auf denen Sie ein verbundenes Konto haben; über dieses meldet sich die Bibliothek an.'
             : 'Wechselt dabei der Server, werden die hinterlegten Zugangsdaten verworfen und müssen neu eingetragen werden.'}{' '}
-          Vor dem Speichern prüft OPAA die Verbindung über den gewählten Zugang.
+          Vor dem Speichern prüft opaa die Verbindung über den gewählten Zugang.
         </Typography>
         {error && <Alert severity="error">{error}</Alert>}
         <ConnectionProfileSelect

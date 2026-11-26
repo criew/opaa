@@ -305,7 +305,7 @@ describe('BrandingSettingsPage', () => {
     expect(alertTexts()).toMatch(/höchstens 2048 KiB/i)
   })
 
-  it('resets every field back to the OPAA standard', async () => {
+  it('resets every field back to the opaa standard', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     useBrandingStore.setState({
@@ -320,7 +320,7 @@ describe('BrandingSettingsPage', () => {
     })
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
-    await user.click(screen.getByRole('button', { name: /OPAA-Standard/i }))
+    await user.click(screen.getByRole('button', { name: /opaa-Standard/i }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => {

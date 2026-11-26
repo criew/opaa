@@ -5,15 +5,15 @@
 > Update-Paket der eingesetzten Version, siehe [Wo man die Vorlagen liest](#wo-man-die-vorlagen-liest).
 <!-- /nur-im-repository -->
 
-Dieser Ordner enthält Vorlagen für die Einführung und den Betrieb von OPAA in einer Behörde, geordnet
+Dieser Ordner enthält Vorlagen für die Einführung und den Betrieb von opaa in einer Behörde, geordnet
 nach dem Einführungsweg.
 
 ## Zweck
 
-Die Vorlagen sind eine Hilfe, kein Ersatz. Sie erklären kurz, worum es geht, was OPAA beisteuert und
+Die Vorlagen sind eine Hilfe, kein Ersatz. Sie erklären kurz, worum es geht, was opaa beisteuert und
 welche Aufgaben bei der Behörde liegen.
 
-OPAA liefert die Fakten, die Behörde bewertet sie. Die Vorlagen sind keine Rechtsberatung.
+opaa liefert die Fakten, die Behörde bewertet sie. Die Vorlagen sind keine Rechtsberatung.
 
 Das Produkt selbst beschreibt das [Handbuch](../handbuch/README.md).
 
@@ -42,7 +42,7 @@ Titel, für wen sie gilt. Bei Mischformen klärt das die Rechtsabteilung.
 | `08-nutzung/` | [Barrierefreiheit und Nutzungsrichtlinie](08-nutzung/README.md) |
 | `09-betrieb-update/` | [Notfall, Wiederherstellung und Updates](09-betrieb-update/README.md) |
 
-Jede Vorlage ist gleich aufgebaut: für wen sie gilt, worum es geht, was OPAA liefert,
+Jede Vorlage ist gleich aufgebaut: für wen sie gilt, worum es geht, was opaa liefert,
 welche Aufgaben bei der Behörde liegen und am Ende Arbeitshilfen und Rechtsgrundlagen zum Nachlesen. Oben in jeder
 Datei steht, wann sie zuletzt durchgesehen wurde, auf welchem Rechtsstand sie beruht und dass sie
 nicht rechtlich geprüft ist.

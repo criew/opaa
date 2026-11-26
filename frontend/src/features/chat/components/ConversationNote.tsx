@@ -161,7 +161,7 @@ export default function ConversationNote({
                 Gesprächsnotiz
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-                Diese Angaben hat OPAA aus Ihren Nachrichten in diesem Chat festgehalten. Sie
+                Diese Angaben hat opaa aus Ihren Nachrichten in diesem Chat festgehalten. Sie
                 fließen in die nächsten Antworten ein.
               </Typography>
               {/* Explicit roles: WebKit exposes a list without visible markers as a plain group,

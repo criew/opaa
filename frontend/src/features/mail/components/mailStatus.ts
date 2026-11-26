@@ -30,7 +30,7 @@ export function mailStatusOf(settings: MailSettingsResponse): MailStatus {
     return {
       kind: 'UNCONFIGURED',
       headline: 'Nicht konfiguriert',
-      detail: 'Ohne SMTP-Server versendet OPAA keine Einladungen und keine Rücksetzlinks.',
+      detail: 'Ohne SMTP-Server versendet opaa keine Einladungen und keine Rücksetzlinks.',
     }
   }
   if (!settings.enabled) {

@@ -157,7 +157,7 @@ export default function ConnectionProfilesTab() {
       const confirmed = await confirmAction({
         question: `Alle Verbindungen von „${profile.name}“ trennen?`,
         consequence: signsInItself(profile)
-          ? `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'Der Dienstkonto-Schlüssel' : 'Das Client-Secret'} des Zugangs wird unwiderruflich gelöscht. Die Bibliotheken laufen erst wieder, wenn die Systemverwaltung ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'einen Schlüssel' : 'ein Secret'} am Zugang neu hinterlegt. Beim Anbieter widerruft OPAA nichts; das geschieht dort.${personsNotice(profile)}`
+          ? `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'Der Dienstkonto-Schlüssel' : 'Das Client-Secret'} des Zugangs wird unwiderruflich gelöscht. Die Bibliotheken laufen erst wieder, wenn die Systemverwaltung ${profile.authMethod === 'SERVICE_ACCOUNT_KEY' ? 'einen Schlüssel' : 'ein Secret'} am Zugang neu hinterlegt. Beim Anbieter widerruft opaa nichts; das geschieht dort.${personsNotice(profile)}`
           : `Betroffen: ${connectionCount(impact.connections)}${accountsClause(profile, impact)}. Alle Zugangsdaten werden sofort verworfen. Der Zugang bleibt bestehen; die Bibliotheken laufen erst wieder, wenn ihre Zugangsdaten neu eingetragen sind.${personsNotice(profile)}`,
         confirmLabel: 'Trennen',
         tone: 'danger',
@@ -267,7 +267,7 @@ export default function ConnectionProfilesTab() {
             headline={summary.headline}
             detail={
               profiles.length === 0
-                ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
+                ? 'Mit einem Zugang meldet sich opaa bei einem anderen System an und liest dort Inhalte.'
                 : summary.detail
             }
           />
@@ -306,7 +306,7 @@ export default function ConnectionProfilesTab() {
       ) : profiles.length === 0 ? (
         <EmptyState
           framed
-          message="Noch keine Zugänge. Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
+          message="Noch keine Zugänge. Ein Zugang legt fest, wie opaa sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
           action={
             anyTypeAdmitsProfiles ? (
               <CreateButton

@@ -25,7 +25,7 @@ Hervorhebung „lange offen“ unter [Ausscheiden und Nachfolge](ausscheiden.md)
 
 ## Protokoll eines Agentenlaufs einsehen
 
-Für die Fehlersuche hält OPAA zu jedem Agentenlauf fest, welches Werkzeug ein Schritt mit welchem
+Für die Fehlersuche hält opaa zu jedem Agentenlauf fest, welches Werkzeug ein Schritt mit welchem
 Ergebnis und welcher Dauer lief, und je Sandbox die Zahl der Skripte, Dateien und Bytes. Konto,
 Suchtext, Skript und Dateiinhalt stehen nicht darin.
 

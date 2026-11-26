@@ -216,7 +216,7 @@ class MailSettingsServiceIntegrationTest {
                         MailSettingsService.PASSWORD_MASK,
                         MailEncryption.NONE,
                         "opaa@intern.example",
-                        "OPAA")))
+                        "opaa")))
         .isInstanceOfSatisfying(
             io.opaa.common.FieldValidationException.class,
             refused -> assertThat(refused.fieldErrors().getFirst().field()).isEqualTo("password"));
@@ -431,7 +431,7 @@ class MailSettingsServiceIntegrationTest {
         password,
         MailEncryption.NONE,
         "opaa@intern.example",
-        "OPAA");
+        "opaa");
   }
 
   /** A new server takes the password entered again: a stored one never follows a new target. */
@@ -444,7 +444,7 @@ class MailSettingsServiceIntegrationTest {
         "geheimesKennwort",
         MailEncryption.NONE,
         "opaa@intern.example",
-        "OPAA");
+        "opaa");
   }
 
   private long sessionsWaitingToUpdate(String table) {

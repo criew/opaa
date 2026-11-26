@@ -13,24 +13,24 @@ naechste-durchsicht: 2027-04-23
 
 **Gilt für:** alle Behörden; Form und Weg der Vorlage richten sich nach der eigenen Geschäftsordnung.
 
-Die Entscheidungsvorlage bereitet für die Hausleitung die Frage auf, ob die Behörde OPAA prüfen und
+Die Entscheidungsvorlage bereitet für die Hausleitung die Frage auf, ob die Behörde opaa prüfen und
 erproben lässt. Sie nennt Nutzen, Kosten, Risiken und die nächsten Schritte, bevor Geld für
 Markterkundung, Pilot oder Vergabe gebunden wird. Verantwortlich ist die Stelle, die das Vorhaben
 anstößt; die Wirtschaftlichkeit untersucht sie nach der WiBe-Methodik des Bundes, der
 standardisierten Wirtschaftlichkeitsbetrachtung für IT-Vorhaben.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Frage der Hausleitung | Quelle |
 |---|---|
-| Was leistet OPAA? | [Produktdatenblatt](../01-markterkundung/produktdatenblatt.md), [Was OPAA ist](../../handbuch/README.md#was-opaa-ist) |
+| Was leistet opaa? | [Produktdatenblatt](../01-markterkundung/produktdatenblatt.md), [Was opaa ist](../../handbuch/README.md#was-opaa-ist) |
 | Was braucht der Betrieb? | [Bausteine](../../handbuch/betrieb/README.md#bausteine), [Modelle](../../handbuch/betrieb/modell-endpunkte.md) |
 | Welche Daten verlassen das Haus? | {{faktenblatt:datenfluesse}} |
 | Wie lange gibt es Sicherheitsupdates? | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
 | Wer steht hinter dem Projekt? | [Projektstatus](../01-markterkundung/projektstatus.md) |
 | Was kostet die Lizenz? | nichts; [Lizenz](../01-markterkundung/lizenz.md) |
 
-OPAA nennt keine Preise und keine Aufwände. Die Kosten hängen am Betriebsweg und an den Modellen,
+opaa nennt keine Preise und keine Aufwände. Die Kosten hängen am Betriebsweg und an den Modellen,
 die die Behörde wählt.
 
 ## Aufgaben der Behörde
@@ -51,7 +51,7 @@ Größe der Bestände, Modellgröße, Tagessatz oder Abschreibungsdauer.
 
 | Kostenart | Bestandteile | Annahme | einmalig (von–bis) | laufend je Jahr (von–bis) |
 |---|---|---|---|---|
-| Hardware und GPU | Server für OPAA und Datenbank, Modellserver mit GPU, Speicher für Datenbank, Originale und Sicherungen | [ ] | [ ] | [ ] |
+| Hardware und GPU | Server für opaa und Datenbank, Modellserver mit GPU, Speicher für Datenbank, Originale und Sicherungen | [ ] | [ ] | [ ] |
 | Betrieb | Rechenzentrum, Strom, Sicherung, Überwachung, Netz; bei externem Modellanbieter dessen nutzungsabhängige Entgelte | [ ] | [ ] | [ ] |
 | Personal | Projektleitung, Betrieb und Updates, Pflege der Wissensbibliotheken, Schulung, Beteiligungsverfahren | [ ] | [ ] | [ ] |
 | Leistungen Dritter | Einführung, Betrieb, Pflege oder Support durch einen Dienstleister ([Auftragswertschätzung](../03-vergabe/auftragswertschaetzung.md)) | [ ] | [ ] | [ ] |

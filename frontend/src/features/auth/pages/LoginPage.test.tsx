@@ -70,8 +70,8 @@ describe('LoginPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Anmelden' })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     // The brand is a statement, not a heading level.
-    expect(screen.getByRole('img', { name: 'OPAA' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
+    expect(screen.getByRole('img', { name: 'opaa' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'opaa' })).toBeNull()
   })
 
   /**
@@ -100,10 +100,10 @@ describe('LoginPage', () => {
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
     expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
     expect(container.querySelector('img')).toHaveAttribute('src', '/api/v1/branding/logo?v=abc123')
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
   })
 
-  it('falls back to the OPAA standard when nothing is configured', () => {
+  it('falls back to the opaa standard when nothing is configured', () => {
     useAuthStore.setState({ mode: 'oidc' })
     useBrandingStore.setState({ branding: OPAA_BRANDING })
 
@@ -127,7 +127,7 @@ describe('LoginPage', () => {
     ).toBeInTheDocument()
     // the choice is one named group; the trust line explains where the password goes
     expect(screen.getByRole('group', { name: 'Identitätsanbieter' })).toBeInTheDocument()
-    expect(screen.getByText(/OPAA erhält kein Kennwort/)).toBeInTheDocument()
+    expect(screen.getByText(/opaa erhält kein Kennwort/)).toBeInTheDocument()
   })
 
   it('offers no credential form — there is no password-based mode', () => {
@@ -435,7 +435,7 @@ describe('LoginPage', () => {
       expect(
         screen.queryByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByText(/erhält OPAA kein Kennwort/)).toBeInTheDocument()
+      expect(screen.getByText(/erhält opaa kein Kennwort/)).toBeInTheDocument()
       expect(screen.getByText(/nicht umkehrbaren Prüfwert/)).toBeInTheDocument()
     })
 

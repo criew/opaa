@@ -41,9 +41,9 @@ class TextRecognitionClientTest {
   private static final Duration TIMEOUT = Duration.ofSeconds(5);
   private static final String DOCLING_SUCCESS =
       "{\"status\":\"success\",\"errors\":[],\"document\":{\"json_content\":{\"texts\":"
-          + "[{\"text\":\"OPAA Testseite\"}],\"tables\":[]}}}";
+          + "[{\"text\":\"opaa Testseite\"}],\"tables\":[]}}}";
   private static final String VISION_SUCCESS =
-      "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"# OPAA Testseite\"}}]}";
+      "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"# opaa Testseite\"}}]}";
 
   private HttpServer server;
   private String baseUrl;
@@ -140,7 +140,7 @@ class TextRecognitionClientTest {
 
     assertThat(conversion.partial()).isFalse();
     assertThat(TextRecognitionClient.doclingText(conversion.document()))
-        .isEqualTo("OPAA Testseite");
+        .isEqualTo("opaa Testseite");
     Captured request = captured.get();
     assertThat(request.method()).isEqualTo("POST");
     assertThat(request.body())
@@ -165,7 +165,7 @@ class TextRecognitionClientTest {
         client.recognizePageWithVision(
             vision("vision-key"), TIMEOUT, new byte[] {1, 2, 3}, "image/png");
 
-    assertThat(text).isEqualTo("# OPAA Testseite");
+    assertThat(text).isEqualTo("# opaa Testseite");
     Captured request = captured.get();
     assertThat(request.body())
         .contains("\"model\":\"paddle-vl\"")

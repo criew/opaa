@@ -200,7 +200,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
 
     await chooseTemplate(user, dialog, /^OpenAI/)
 
-    expect(dialog.getByText(/^API-Schlüssel eintragen; dann ruft OPAA/)).toBeInTheDocument()
+    expect(dialog.getByText(/^API-Schlüssel eintragen; dann ruft opaa/)).toBeInTheDocument()
     expect(discoveries).toHaveLength(0)
   })
 

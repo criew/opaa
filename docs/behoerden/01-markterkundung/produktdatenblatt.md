@@ -13,20 +13,20 @@ naechste-durchsicht: 2027-04-23
 
 **Gilt für:** Behörden, die vor einer Vergabe den Markt erkunden oder eine Entscheidung vorbereiten.
 
-Das Produktdatenblatt beschreibt OPAA auf einer Seite: was es tut, wie es betrieben wird und welche
+Das Produktdatenblatt beschreibt opaa auf einer Seite: was es tut, wie es betrieben wird und welche
 Nachweise es mitbringt. Es dient als Grundlage für Gespräche und Fragebögen in der Markterkundung.
 Jede Angabe verweist auf das Handbuch oder ein Faktenblatt der Version; maßgeblich ist immer die
 Version, die die Behörde prüft.
 
-## Was OPAA liefert
+## Was opaa liefert
 
-OPAA ist eine quelloffene KI-Plattform für die öffentliche Verwaltung. Sie beantwortet Fragen aus den
+opaa ist eine quelloffene KI-Plattform für die öffentliche Verwaltung. Sie beantwortet Fragen aus den
 Dokumenten der Behörde und belegt jede Antwort mit Fundstellen. Sie läuft im Rechenzentrum der
 Behörde oder eines Dienstleisters.
 
 | Merkmal | Angabe | Nachweis |
 |---|---|---|
-| Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was OPAA ist](../../handbuch/README.md#was-opaa-ist), [Belege](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) |
+| Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was opaa ist](../../handbuch/README.md#was-opaa-ist), [Belege](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) |
 | Wissensbestände | Wissensbibliotheken aus angebundenen Quellen oder Upload | [Konnektoren](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate) |
 | Rechte | je Bibliothek und Space vergeben, in jeder Suchabfrage geprüft, mit Historie | [Berechtigungen](../../handbuch/referenz/rechte-matrix.md), {{faktenblatt:rollensicht#matrix}} |
 | Weitere Arbeitsmittel | Prompt-Bibliotheken; Zugriff externer KI-Werkzeuge, abschaltbar | [Prompt-Bibliotheken](../../handbuch/benutzer/prompt-bibliothek-anlegen.md), [Externe KI-Werkzeuge](../../handbuch/administration/externe-ki-werkzeuge.md) |
@@ -39,8 +39,8 @@ Behörde oder eines Dienstleisters.
 | Lizenz | GNU Affero General Public License v3.0, kein Lizenzentgelt | [Lizenz](lizenz.md) |
 | Barrierefreiheit | Prüfstand und bekannte Einschränkungen | [Erklärung zur Barrierefreiheit](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand) |
 
-Nicht Teil von OPAA: ein Cloud-Dienst des Projekts, Support mit zugesagten Fristen und eine
-Zertifizierung. Für die eigene Prüfung des Betreibers liefert OPAA die
+Nicht Teil von opaa: ein Cloud-Dienst des Projekts, Support mit zugesagten Fristen und eine
+Zertifizierung. Für die eigene Prüfung des Betreibers liefert opaa die
 [Sicherheitsnachweise](../06-informationssicherheit/sicherheitsnachweise.md) und die Faktenblätter.
 
 ## Aufgaben der Behörde

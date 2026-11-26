@@ -40,7 +40,7 @@ spec:
             severity: critical
             component: platform
           annotations:
-            summary: Kein Pod des OPAA-Backends bereit
+            summary: Kein Pod des opaa-Backends bereit
             description: Das Backend {{ $deployment }} in {{ $ns }} hat seit zehn Minuten keinen bereiten Pod; Anmeldung und Fragen sind nicht möglich.
             runbook_url: "{{ $rb }}#OpaaBackendNotReady"
         # Some pods ready, fewer than wanted: users notice nothing yet, so a ticket.
@@ -53,7 +53,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Nicht alle Pods des OPAA-Backends bereit
+            summary: Nicht alle Pods des opaa-Backends bereit
             description: Das Backend {{ $deployment }} in {{ $ns }} hat seit 15 Minuten weniger bereite Pods als gewünscht.
             runbook_url: "{{ $rb }}#OpaaBackendNotReady"
         # Fewer pods scraped than the deployment wants, so a single silent pod of several alerts.
@@ -70,7 +70,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Keine Metriken vom OPAA-Backend
+            summary: Keine Metriken vom opaa-Backend
             description: Prometheus erreicht /actuator/prometheus von mindestens einem Pod des Backends {{ $deployment }} seit zehn Minuten nicht.
             runbook_url: "{{ $rb }}#OpaaBackendMetricsMissing"
         - alert: OpaaFrontendNotReady
@@ -82,7 +82,7 @@ spec:
             severity: critical
             component: platform
           annotations:
-            summary: Kein Pod des OPAA-Frontends bereit
+            summary: Kein Pod des opaa-Frontends bereit
             description: Das Frontend {{ $frontend }} in {{ $ns }} hat seit fünf Minuten keinen bereiten Pod; die Oberfläche ist nicht erreichbar.
             runbook_url: "{{ $rb }}#OpaaFrontendNotReady"
         - alert: OpaaFrontendNotReady
@@ -94,7 +94,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Nicht alle Pods des OPAA-Frontends bereit
+            summary: Nicht alle Pods des opaa-Frontends bereit
             description: Das Frontend {{ $frontend }} in {{ $ns }} hat seit fünf Minuten weniger bereite Pods als gewünscht.
             runbook_url: "{{ $rb }}#OpaaFrontendNotReady"
         # Per pod, live data after garbage collection: the heap before a collection is regularly
@@ -110,7 +110,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Heap des OPAA-Backends nach der Speicherbereinigung fast voll
+            summary: Heap des opaa-Backends nach der Speicherbereinigung fast voll
             description: Der Pod {{ $o }} $labels.pod {{ $c }} von {{ $deployment }} belegt seit 15 Minuten nach der Speicherbereinigung mehr als {{ printf "%g" (round (mulf $rule.heapUsageThreshold 100) 4) | replace "." "," }} % seines Heaps.
             runbook_url: "{{ $rb }}#OpaaHeapUsageHigh"
         - alert: OpaaDatabasePoolTimeouts
@@ -135,7 +135,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Herzschlag einer OPAA-Instanz veraltet
+            summary: Herzschlag einer opaa-Instanz veraltet
             description: Der Pod {{ $o }} $labels.pod {{ $c }} von {{ $deployment }} hat seinen Herzschlag seit mehr als {{ $rule.heartbeatMaxAgeSeconds }} Sekunden nicht geschrieben.
             runbook_url: "{{ $rb }}#OpaaInstanceHeartbeatStale"
         - alert: OpaaInvalidationBusDisconnected
@@ -147,7 +147,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: OPAA-Instanz hört keine Cache-Meldungen
+            summary: opaa-Instanz hört keine Cache-Meldungen
             description: Der Pod {{ $o }} $labels.pod {{ $c }} von {{ $deployment }} ist seit zehn Minuten nicht mit dem Kanal der Cache-Meldungen verbunden und liest an seinen Zwischenspeichern vorbei.
             runbook_url: "{{ $rb }}#OpaaInvalidationBusDisconnected"
         # Every pod reads the same value from the instance register, so the maximum is enough.
@@ -160,7 +160,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Mehrere OPAA-Versionen laufen nebeneinander
+            summary: Mehrere opaa-Versionen laufen nebeneinander
             description: Die Instanzen von {{ $deployment }} laufen seit 30 Minuten mit mehr als einer Version; ein Rolling Update hängt.
             runbook_url: "{{ $rb }}#OpaaVersionMix"
         # A gauge the instances read from the database reports NaN when the read fails; NaN on every
@@ -179,7 +179,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: OPAA kann einen Betriebswert nicht aus der Datenbank lesen
+            summary: opaa kann einen Betriebswert nicht aus der Datenbank lesen
             description: Kein Pod von {{ $deployment }} kann {{ $o }} $labels.metric {{ $c }} seit 30 Minuten lesen; Alarme auf diesen Wert schweigen so lange.
             runbook_url: "{{ $rb }}#OpaaMetricUnreadable"
         # Sign-in through the identity provider fails: most calls to it end in anything but success
@@ -222,7 +222,7 @@ spec:
             severity: warning
             component: platform
           annotations:
-            summary: Viele Fehlerantworten des OPAA-Backends
+            summary: Viele Fehlerantworten des opaa-Backends
             description: Mehr als {{ printf "%g" (round (mulf $rule.errorRateThreshold 100) 4) | replace "." "," }} % der Anfragen an {{ $deployment }} enden seit zehn Minuten mit einem Status 5xx.
             runbook_url: "{{ $rb }}#OpaaHighErrorRate"
         - alert: OpaaHighErrorRate
@@ -239,7 +239,7 @@ spec:
             severity: critical
             component: platform
           annotations:
-            summary: Sehr viele Fehlerantworten des OPAA-Backends
+            summary: Sehr viele Fehlerantworten des opaa-Backends
             description: Mehr als {{ printf "%g" (round (mulf $rule.errorRateCriticalThreshold 100) 4) | replace "." "," }} % der Anfragen an {{ $deployment }} enden seit zehn Minuten mit einem Status 5xx.
             runbook_url: "{{ $rb }}#OpaaHighErrorRate"
         # Burn rate of the error budget of chat questions, success / (success + error); rejected

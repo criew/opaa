@@ -49,7 +49,7 @@ data:
     evaluations: >-
       Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen
       lokaler Konten (90-Tage-Fenster), keine Zeitreihe. Der Merker zum Rundgang-Hinweis ist ein
-      reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; OPAA wertet ihn nicht aus, und
+      reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; opaa wertet ihn nicht aus, und
       sein Setzen erzeugt keinen Revisionseintrag, keine Zeile im Anfrageprotokoll des Backends oder
       im Zugriffslog des Frontend-Containers, keine Metrik und keinen Trace; Spuren bleiben nur in einem
       vorgelagerten Proxy, im Fehlerlog des Frontend-Containers bei unerreichbarem Backend, im
@@ -449,18 +449,18 @@ data:
     purpose: Betrieb und Fehlersuche; enthält u. a. einzelne fehlgeschlagene Anmeldungen
     personalReference: IDENTIFIABLE
     tables: []
-    personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
+    personExcluded: Liegt beim Betrieb, nicht in opaa; Auskunft darüber gibt die Behörde
     storage: >-
       Standardausgabe des Prozesses, abgelegt durch den Betrieb (Container-Log); ebenso das
       Zugriffslog des Frontend-Containers mit Client-Adresse
     retention:
-      rule: Legt der Betrieb fest; OPAA speichert das Log nicht selbst
+      rule: Legt der Betrieb fest; opaa speichert das Log nicht selbst
       settings: []
     visibility: [Betrieb der Installation]
     accessPaths: [STORAGE]
     deletion: Durch den Betrieb
     evaluations: >-
-      Keine Auswertungsoberfläche in OPAA. Jede Zeile einer Anfrage trägt deren Request-ID, eine
+      Keine Auswertungsoberfläche in opaa. Jede Zeile einer Anfrage trägt deren Request-ID, eine
       technische Kennung ohne eigenen Personenbezug, die aber personenbeziehbar über Verknüpfung
       ist: Über sie lassen sich die Zeile im Zugriffslog des Frontend-Containers (Client-Adresse),
       die Zeilen des Anwendungslogs (teils mit Konto-Kennung), der Revisionseintrag derselben Anfrage
@@ -478,10 +478,10 @@ data:
       Tracing und nur für die Stichprobe
     personalReference: IDENTIFIABLE
     tables: []
-    personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
+    personExcluded: Liegt beim Betrieb, nicht in opaa; Auskunft darüber gibt die Behörde
     storage: Der Trace-Collector und sein Speicher beim Betrieb
     retention:
-      rule: Legt der Betrieb fest; OPAA speichert Traces nicht selbst
+      rule: Legt der Betrieb fest; opaa speichert Traces nicht selbst
       settings: []
     visibility: [Betrieb der Installation]
     accessPaths: [STORAGE]
@@ -506,14 +506,14 @@ data:
     personalReference: NONE
     tables: []
     personExcluded: >-
-      Liegt beim Betrieb, nicht in OPAA; die Reihen tragen keine Kennung einer Person, eines Chats
+      Liegt beim Betrieb, nicht in opaa; die Reihen tragen keine Kennung einer Person, eines Chats
       oder eines Dokuments, die sich einer Person zuordnen ließe
     storage: >-
       Der Prometheus des Betriebs, der den Endpunkt abfragt; im mitgelieferten Monitoring-Overlay
       für Docker Compose ein eigener Prometheus-Container
     retention:
       rule: >-
-        Legt der Betrieb fest; OPAA speichert keine Metriken über den laufenden Prozess hinaus. Das
+        Legt der Betrieb fest; opaa speichert keine Metriken über den laufenden Prozess hinaus. Das
         mitgelieferte Monitoring-Overlay für Docker Compose hält die Reihen 30 Tage, änderbar über
         OPAA_PROMETHEUS_RETENTION
       settings: []

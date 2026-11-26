@@ -251,7 +251,7 @@ public class SettingsTransferService {
     List<FieldError> errors = new ArrayList<>();
     if (!FORMAT.equals(document.format())) {
       errors.add(
-          new FieldError("format", INVALID, "Die Datei ist kein Einstellungsdokument von OPAA."));
+          new FieldError("format", INVALID, "Die Datei ist kein Einstellungsdokument von opaa."));
     }
     if (!Integer.valueOf(FORMAT_VERSION).equals(document.formatVersion())) {
       errors.add(

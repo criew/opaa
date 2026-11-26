@@ -1,6 +1,6 @@
 # UI-Design
 
-Quelle der Wahrheit für das OPAA-UI-Design sind die **Design-Guidelines**. Die Token-Ebene
+Quelle der Wahrheit für das opaa-UI-Design sind die **Design-Guidelines**. Die Token-Ebene
 (`frontend/src/shared/theme/tokens.ts`) setzt sie um.
 
 | Dokument                                   | Inhalt                                                                                                                       |

@@ -556,7 +556,7 @@ final class SmbFileStore implements FileStore {
     if (item.offline()) {
       exclusion =
           new Exclusion.Unavailable(
-              "„" + item.name() + "“ ist ausgelagert (offline); OPAA holt die Datei nicht zurück.");
+              "„" + item.name() + "“ ist ausgelagert (offline); opaa holt die Datei nicht zurück.");
     }
     return new FileEntry(
         container,

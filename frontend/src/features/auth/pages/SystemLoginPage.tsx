@@ -80,7 +80,7 @@ export default function SystemLoginPage() {
           sx={{ fontSize: iconSize.sm, mt: '1px', flex: 'none' }}
         />
         <Typography sx={{ fontSize: fontSize.meta, lineHeight: 1.5 }}>
-          Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren
+          Das Passwort eines Kontos dieser Installation speichert opaa nur als nicht umkehrbaren
           Prüfwert.
         </Typography>
       </Stack>

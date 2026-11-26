@@ -27,21 +27,21 @@ flowchart LR
 - **Dokument:** Die Datei-ID der Nextcloud ist die Identität. **Umbenennen und Verschieben** behalten
   das Dokument; die Datei wird einmal neu geladen, aber bei gleichem Inhalt nicht neu verarbeitet.
   Der **Beleg-Link** `<Nextcloud>/index.php/f/<Datei-ID>` öffnet die Datei in der Weboberfläche nach
-  deren eigener Anmeldung. **„Original öffnen"** lädt sie durch OPAA, von dem Ort, den der letzte
+  deren eigener Anmeldung. **„Original öffnen"** lädt sie durch opaa, von dem Ort, den der letzte
   Lauf gespeichert hat; eine seither verschobene Datei liefert bis zum nächsten Lauf kein Original.
-- **Rechte** aus der Nextcloud übernimmt OPAA nicht: Was das Konto in den Ordnern lesen kann, sehen
+- **Rechte** aus der Nextcloud übernimmt opaa nicht: Was das Konto in den Ordnern lesen kann, sehen
   alle Leseberechtigten der Bibliothek.
 
 ## 2. Einrichtung
 
 1. Nextcloud im privaten Netz: ihren Hostnamen für die
    [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben.
-2. Einen **technischen Nutzer** anlegen, kein persönliches Konto. Er braucht nur Leserechte; OPAA
+2. Einen **technischen Nutzer** anlegen, kein persönliches Konto. Er braucht nur Leserechte; opaa
    schreibt nie. Ordner kommen über **Freigaben** (Lesen genügt) oder als **Gruppenordner** zu ihm.
-   Eine Freigabe mit gesperrtem Herunterladen hält OPAA nicht zuverlässig ab.
+   Eine Freigabe mit gesperrtem Herunterladen hält opaa nicht zuverlässig ab.
 3. Für ihn ein **App-Passwort** erzeugen: *Persönliche Einstellungen › Sicherheit › Geräte &
    Sitzungen* oder `occ user:auth-tokens:add <nutzer>`. Es lässt sich einzeln widerrufen. Unter LDAP
-   dürfen Anmeldename und Nutzer-ID abweichen; OPAA fragt die ID bei der Anmeldung ab.
+   dürfen Anmeldename und Nutzer-ID abweichen; opaa fragt die ID bei der Anmeldung ab.
 4. Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben. Wer sonst Bibliotheken anlegen
    soll, bekommt „Konnektorbibliotheken anlegen" für die Quellart oder einen Zugang
    ([Berechtigungen](../../referenz/rechte-matrix.md), „Konnektor-Freigabe").
@@ -71,10 +71,10 @@ Vorgaben für weitere Einstellungen gibt es nicht.
 technischen Nutzer, und speist daraus eine [private Bibliothek](../../benutzer/private-bibliothek.md).
 
 1. In der eigenen Nextcloud unter *Persönliche Einstellungen › Sicherheit › Geräte & Sitzungen* ein
-   App-Passwort mit einem Namen wie „OPAA" erstellen; es wird nur einmal angezeigt. Das Kontopasswort
-   gehört nicht in OPAA.
-2. In OPAA unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden" wählen und Benutzername
-   und App-Passwort eintragen. OPAA speichert sie nur, wenn die Anmeldung gelingt
+   App-Passwort mit einem Namen wie „opaa" erstellen; es wird nur einmal angezeigt. Das Kontopasswort
+   gehört nicht in opaa.
+2. In opaa unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden" wählen und Benutzername
+   und App-Passwort eintragen. opaa speichert sie nur, wenn die Anmeldung gelingt
    ([Benutzerverwaltung](../../administration/konten.md), „Verbundene Konten").
 3. Im Assistenten im Schritt „Quelle" in der Zeile „Verbindung" den Zugang mit dem Zusatz
    **„privat"** wählen, dann die Ordner.
@@ -100,11 +100,11 @@ flowchart LR
 ```
 
 **Unveränderte Ordner.** Nextcloud ändert die Prüfsumme (ETag) eines Ordners, sobald sich darin oder
-darunter etwas ändert, bis zur Wurzel, auch bei Freigaben und Gruppenordnern. OPAA merkt sich nach
+darunter etwas ändert, bis zur Wurzel, auch bei Freigaben und Gruppenordnern. opaa merkt sich nach
 jedem vollständigen Lauf die Prüfsumme jedes Ordners; ein Ordner mit gleicher Prüfsumme wird nicht
 gelistet. Ein unveränderter Ordner kostet so eine Anfrage, dazu eine für die Anmeldung. Wieder
 gelistet wird ein Ordner, der sich geändert hat, umbenannt oder verschoben wurde oder in dem beim
-letzten Lauf etwas nicht geladen oder aufgenommen werden konnte oder in OPAA gelöscht wurde. Den
+letzten Lauf etwas nicht geladen oder aufgenommen werden konnte oder in opaa gelöscht wurde. Den
 ganzen Baum listet ein Lauf nach einer Änderung von Größengrenze, Formaten, Adresse oder Ordnern,
 einmal nach einem Update, das die Grundlage ändert, und spätestens nach dem
 [Vollabgleich-Rhythmus](README.md#14-vollabgleich-rhythmus) von Nextcloud — das fängt Änderungen ab,
@@ -146,8 +146,8 @@ Parameter stehen unter `opaa.indexing.nextcloud.*` (`OPAA_INDEXING_NEXTCLOUD_*`)
 [Konfigurationsreferenz](../../referenz/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** ([Konnektoren](README.md#12-zieladressprüfung)). Nennt die Nextcloud eine
-  Adresse außerhalb ihrer eigenen Dateien, schickt OPAA dorthin keine Zugangsdaten.
-- Eine Ratenbegrenzung (`429`) wartet OPAA ab und wiederholt.
+  Adresse außerhalb ihrer eigenen Dateien, schickt opaa dorthin keine Zugangsdaten.
+- Eine Ratenbegrenzung (`429`) wartet opaa ab und wiederholt.
 - Ein Ordner mit sehr vielen Einträgen kann die Grenze einer Auflistungsantwort
   (`max-response-bytes`) überschreiten und gilt dann als nicht auflistbar.
 - **ownCloud 10** spricht dasselbe WebDAV; von Hand geprüft mit 10.15 (Anmeldung, Datei-ID,

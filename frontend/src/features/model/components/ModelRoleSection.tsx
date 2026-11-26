@@ -71,7 +71,7 @@ interface RoleTexts {
 const TEXTS: Record<ModelRoleKind, RoleTexts> = {
   rerank: {
     switchLabel: 'Reranking einschalten',
-    intro: `${MODEL_ROLE_TEXTS.rerank.purpose} Ab Werk ist es aus; ohne Rerank-Modell sucht OPAA ohne diese Stufe weiter.`,
+    intro: `${MODEL_ROLE_TEXTS.rerank.purpose} Ab Werk ist es aus; ohne Rerank-Modell sucht opaa ohne diese Stufe weiter.`,
   },
   transcription: {
     switchLabel: 'Spracheingabe einschalten',

@@ -292,6 +292,6 @@ u. a.).
   bringt die Spring-Boot-BOM mit (`spring-boot-starter-flyway`).
 - **Keine Verbindung zum Hersteller:** Die Community-Ausgabe enthält nur einen leeren
   Telemetrie-Dienst (`NullFlywayTelemetryManager`); anders als bei Liquibase ist nichts abzuschalten.
-- **Funktionsumfang:** OPAA nutzt nur versionierte SQL-Migrationen, Platzhalter, `out-of-order` und
+- **Funktionsumfang:** opaa nutzt nur versionierte SQL-Migrationen, Platzhalter, `out-of-order` und
   `validate`. Undo-Migrationen, Dry-Run und Skript-Konfigurationsdateien der kostenpflichtigen
   Ausgaben braucht es nicht; `clean` ist in Spring Boot abgeschaltet (`spring.flyway.clean-disabled`).

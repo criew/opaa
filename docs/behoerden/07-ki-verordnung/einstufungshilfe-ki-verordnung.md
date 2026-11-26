@@ -11,13 +11,13 @@ naechste-durchsicht: 2027-04-24
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die OPAA einsetzen.
+**Gilt für:** alle Behörden, die opaa einsetzen.
 
 Die KI-Verordnung der EU legt fest, welche Pflichten beim Einsatz eines KI-Systems gelten. Das hängt
 von der Rolle der Behörde und vom Einsatzzweck ab, nicht von der Software allein. Die Einstufung
 trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **KI-Funktionen und Modelle** der Version: {{faktenblatt:voreinstellungen#ki-funktionen}}; Daten an
   Modellanbieter: {{faktenblatt:datenfluesse}}.
@@ -27,7 +27,7 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
   (Feld „Hinweis zur KI-Nutzung“ im Branding) kann die Behörde ändern, nicht abschalten. Der
   Kopierknopf hängt ihn mit Produktname und Datum an, ohne Modellname; von Hand markierter Text bleibt
   unverändert. Die API kennzeichnet Antworten maschinenlesbar.
-- **Nicht geliefert:** Wasserzeichen im Text, signiertes Manifest, Erkennung, ob ein Text aus OPAA
+- **Nicht geliefert:** Wasserzeichen im Text, signiertes Manifest, Erkennung, ob ein Text aus opaa
   stammt. Markieren kann nur das Modell
   ([Handbuch, Modelle](../../handbuch/betrieb/modell-endpunkte.md#kennzeichnung-erzeugter-texte)).
 - **Texterkennung:** Gescannte PDF-Seiten kann ein Texterkennungsdienst oder ein Vision-Modell
@@ -49,8 +49,8 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
 1. **Einsatzzweck schriftlich festlegen:** wofür, für wen, mit welchen Bibliotheken und Spaces, etwa in
    der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md).
 2. **Rolle klären:** Betreiber ist, wer ein KI-System in eigener Verantwortung verwendet; Anbieter, wer
-   es unter eigenem Namen in Betrieb nimmt. Wer OPAA unter eigenem Namen betreibt, kann selbst
-   Anbieter werden; ob schon der unveränderte Name „OPAA“ genügt, ist offen. Die Ausnahme für
+   es unter eigenem Namen in Betrieb nimmt. Wer opaa unter eigenem Namen betreibt, kann selbst
+   Anbieter werden; ob schon der unveränderte Name „opaa“ genügt, ist offen. Die Ausnahme für
    quelloffene Software hilft nicht.
 3. **Hochrisiko prüfen:** etwa Personal, Leistungsansprüche, Strafverfolgung, Migration, Rechtspflege.
    Ein Wissensassistent mit Belegen ist in der Regel nicht hochriskant; trifft ein Bereich zu, reicht
@@ -70,7 +70,7 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
 ## Ergebnis festhalten
 
 ```text
-Einstufung KI-Verordnung für: [Behörde], OPAA-Version [Version]
+Einstufung KI-Verordnung für: [Behörde], opaa-Version [Version]
 Name im Haus:          [ ]
 Einsatzzweck:          [ ]
 Agenten:               [aus / an], je Agent Zweck und Hochrisiko-Prüfung [ ]
@@ -85,7 +85,7 @@ Geprüft am:            [ ]        durch: [ ]
 
 ## Restrisiko bei lokalen Modellen
 
-Ein lokales Modell ohne Wasserzeichen markiert keinen Text. OPAA holt das nicht nach; ändern lässt es
+Ein lokales Modell ohne Wasserzeichen markiert keinen Text. opaa holt das nicht nach; ändern lässt es
 sich nur durch die Wahl eines Modells, das markiert. Sonst bleibt das Argument „technisch nicht
 machbar“ mit Lückenanalyse; ob die Aufsicht es genügen lässt, ist offen.
 

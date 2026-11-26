@@ -1,6 +1,6 @@
-# OPAA Dokumentations-Index
+# opaa Dokumentations-Index
 
-OPAA ist die souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung. Dieser Index führt durch
+opaa ist die souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung. Dieser Index führt durch
 die vollständige Dokumentation.
 
 Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu genau einer:
@@ -15,7 +15,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 ## Hier anfangen
 
-1. **[README](../README.md)** — was OPAA ist und für wen
+1. **[README](../README.md)** — was opaa ist und für wen
 2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien, die elf Themenbereiche, die vier
    Phasen
 3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
@@ -146,7 +146,7 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ### Handbuch — das gebaute Produkt benutzen
 
-- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, was OPAA ist, Aufbau
+- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, was opaa ist, Aufbau
   und Lesewege. Die Ordner folgen den Kapiteln:
   - Benutzer ([`benutzer/`](handbuch/benutzer/README.md)): eine Seite je Aufgabe für jedes Konto,
     von der ersten Frage bis zu Spaces, Bibliotheken und Gruppen, dazu
@@ -280,7 +280,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
 → [Berechtigungen](handbuch/referenz/rechte-matrix.md)
 
-**Läuft OPAA ohne Internetverbindung?**
+**Läuft opaa ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
 [Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md)
 

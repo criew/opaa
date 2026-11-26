@@ -47,7 +47,7 @@ public class DevSecurityConfig {
         """
 
         ============================================================
-        OPAA is running with the "dev" authentication profile.
+        opaa is running with the "dev" authentication profile.
         Every request is authenticated as a configured user without
         any credential check. Never use this profile for a deployment
         that is reachable by anyone but the developer running it.

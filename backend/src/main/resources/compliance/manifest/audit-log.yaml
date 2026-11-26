@@ -233,7 +233,7 @@ data:
         Nach Löschung eines Kontos führt die Klärung keinen Personenfilter mehr aus; das Pseudonym
         im Nachweis wird nicht als Filter verwendet
       - >-
-        Für den Bericht an die Personalvertretung zählt OPAA jeden Antrag bei seiner Stellung, jede
+        Für den Bericht an die Personalvertretung zählt opaa jeden Antrag bei seiner Stellung, jede
         Freigabe bei ihrer Erteilung und das Ende ihrer Nutzbarkeit je Kalendermonat und Zweck in
         einer eigenen Tabelle ohne Person und ohne Verweis auf den Antrag; die Zahlen bleiben nach
         Löschung der Anträge und Freigaben unbefristet erhalten. Eine Ablehnung gibt es nicht. In

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages the OPAA chart for a release tag, run by .github/workflows/publish-images.yml and, as a
+# Packages the opaa chart for a release tag, run by .github/workflows/publish-images.yml and, as a
 # dry run, by static-check.sh. Tag vX.Y.Z[-<pre>] becomes chart version and appVersion X.Y.Z[-<pre>]
 # (ADR-0042, Entscheidung 7). Given the index digests of the three images, the packaged values set
 # backend.image.digest, frontend.image.digest and ocr.service.image.digest and must render exactly

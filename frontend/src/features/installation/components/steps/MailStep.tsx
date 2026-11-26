@@ -121,7 +121,7 @@ export default function MailStep({
       title={STEP_INFO.MAIL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.MAIL.laterUnder}
-      description="Der Mailserver, über den OPAA Einladungen, Rücksetzlinks und Hinweise versendet. Übersprungen versendet OPAA nichts, bis die Systemverwaltung ihn unter „Administration → E-Mail“ einträgt."
+      description="Der Mailserver, über den opaa Einladungen, Rücksetzlinks und Hinweise versendet. Übersprungen versendet opaa nichts, bis die Systemverwaltung ihn unter „Administration → E-Mail“ einträgt."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Verbindung zum Mailserver wird geprüft"

@@ -3,7 +3,7 @@
 Renovate liefert Updates; ob eine Abhängigkeit dazwischen eine bekannte Schwachstelle hat, meldet
 [`docs/cve-scanning.md`](./cve-scanning.md) (Dependabot-Alerts, Trivy-Image-Scan).
 
-OPAA nutzt [Renovate](https://docs.renovatebot.com/) für automatisierte Update-PRs — **selbst
+opaa nutzt [Renovate](https://docs.renovatebot.com/) für automatisierte Update-PRs — **selbst
 betrieben, ohne den Mend-Cloud-Service** (Issue #751): Es ist keine GitHub-App installiert,
 kein externer Dienst hat Zugriff auf das Repository. Der Lauf erfolgt **täglich als
 GitHub-Actions-Workflow** (`.github/workflows/renovate.yml`, 06:23 MESZ, zusätzlich manuell

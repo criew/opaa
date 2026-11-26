@@ -45,7 +45,7 @@ class TextRecognitionModelAdministrationIntegrationTest {
   private static final JsonMapper JSON = JsonMapper.builder().build();
   private static final String DOCLING_SUCCESS =
       "{\"status\":\"success\",\"errors\":[],\"document\":{\"json_content\":{\"texts\":"
-          + "[{\"text\":\"OPAA Testseite\"}],\"tables\":[]}}}";
+          + "[{\"text\":\"opaa Testseite\"}],\"tables\":[]}}}";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;

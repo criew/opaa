@@ -375,7 +375,7 @@ final class SmbShareClient implements AutoCloseable {
       return new SmbAccessException.Authentication(
           "Der Server „"
               + address.host()
-              + "“ lässt keine Anmeldung mit NTLM zu. OPAA unterstützt Kerberos noch nicht; der"
+              + "“ lässt keine Anmeldung mit NTLM zu. opaa unterstützt Kerberos noch nicht; der"
               + " Server bzw. die Domäne muss NTLM für das Dienstkonto erlauben.");
     }
     SmbAccessException translated = translate(e, "die Anmeldung");
@@ -532,7 +532,7 @@ final class SmbShareClient implements AutoCloseable {
     closeQuietly(entry);
     if (isLinkTag(tag)) {
       throw new SmbAccessException.Link(
-          capitalize(what) + " ist eine Verknüpfung; OPAA folgt Verknüpfungen nicht.");
+          capitalize(what) + " ist eine Verknüpfung; opaa folgt Verknüpfungen nicht.");
     }
     return open(path, directory, false, what);
   }
@@ -780,7 +780,7 @@ final class SmbShareClient implements AutoCloseable {
           || status == NtStatus.STATUS_DFS_UNAVAILABLE.getValue()) {
         return new SmbAccessException.Link(
             capitalize(what)
-                + " liegt hinter einem DFS-Verweis. OPAA folgt DFS-Verweisen nicht; ist die Freigabe"
+                + " liegt hinter einem DFS-Verweis. opaa folgt DFS-Verweisen nicht; ist die Freigabe"
                 + " ein DFS-Namensraum, bitte die Zielfreigabe direkt angeben.");
       }
       if (status == NtStatus.STATUS_SHARING_VIOLATION.getValue()

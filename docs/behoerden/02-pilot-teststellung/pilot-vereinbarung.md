@@ -15,11 +15,11 @@ naechste-durchsicht: 2027-04-23
 sonst das Personalvertretungsgesetz des Landes.
 
 Die Pilot-Vereinbarung legt zwischen Dienststelle und Personalvertretung fest, unter welchen Regeln
-ein begrenzter Kreis von Beschäftigten OPAA erprobt. Sie gilt nur für den Pilot und ersetzt nicht die
-Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Version von OPAA, nicht
+ein begrenzter Kreis von Beschäftigten opaa erprobt. Sie gilt nur für den Pilot und ersetzt nicht die
+Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Version von opaa, nicht
 „die jeweils gültige Fassung“.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Anlagen der Version:** die Faktenblätter {{faktenblatt:datenkatalog}},
   {{faktenblatt:protokollereignisse}}, {{faktenblatt:rollensicht}}, {{faktenblatt:datenfluesse}},
@@ -44,11 +44,11 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 
 | Regelung | Eintrag |
 |---|---|
-| Zweck | Erprobung von OPAA für [Aufgabe, Bestände]; Ergebnis ist eine Empfehlung für oder gegen den Regelbetrieb |
+| Zweck | Erprobung von opaa für [Aufgabe, Bestände]; Ergebnis ist eine Empfehlung für oder gegen den Regelbetrieb |
 | Dauer | von [TT.MM.JJJJ] bis [TT.MM.JJJJ]; Verlängerung nur schriftlich mit Zustimmung der Personalvertretung |
 | Teilnehmerkreis | [Organisationseinheiten, Höchstzahl]; Liste bei der Projektleitung |
 | Freiwilligkeit | Teilnahme freiwillig; wer nicht teilnimmt oder aussteigt, hat keine Nachteile |
-| Eingesetzte Version | OPAA [X.Y.Z], Commit [ ], Anlagen 1 bis 6 dieser Version |
+| Eingesetzte Version | opaa [X.Y.Z], Commit [ ], Anlagen 1 bis 6 dieser Version |
 | Angebundene Bestände | [Wissensbibliotheken]; keine Personalakten, keine Verschlusssachen |
 | Modelle | [im eigenen Haus / externer Anbieter: Name, Vertrag] |
 | Ausgeschlossene Auswertungen | keine Kontrolle von Leistung und Verhalten; keine Auswertung von Fragen, Chats oder Protokoll zu einzelnen Personen; keine Ranglisten |
@@ -74,7 +74,7 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 **Arbeitshilfen** für Projektleitung und Personalvertretung:
 
 - [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll):
-  wie OPAA Personen im Protokoll schützt.
+  wie opaa Personen im Protokoll schützt.
 
 **Rechtsgrundlagen** für Dienststelle und Personalvertretung:
 

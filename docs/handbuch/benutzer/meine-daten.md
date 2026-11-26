@@ -1,6 +1,6 @@
 # Passwort ändern und Daten herunterladen
 
-**Ziel:** Eine ZIP-Datei mit allem, was OPAA über Sie gespeichert hat, oder ein neues Passwort.
+**Ziel:** Eine ZIP-Datei mit allem, was opaa über Sie gespeichert hat, oder ein neues Passwort.
 {: .kopf }
 
 ## Passwort ändern
@@ -34,4 +34,4 @@ Mitgliedschaften stehen immer mit Namen da.
 
 - Die Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen.
 - Niemand sonst kann Ihre Auskunft auslösen, auch die Systemverwaltung nicht.
-- Jeden Start meldet OPAA Ihnen, damit ein Start auffällt, den Sie nicht selbst ausgelöst haben.
+- Jeden Start meldet opaa Ihnen, damit ein Start auffällt, den Sie nicht selbst ausgelöst haben.

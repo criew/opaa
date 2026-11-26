@@ -28,8 +28,8 @@ flowchart LR
   `pubDate` gilt als fehlend.
 - **Dokument:** Der Eintrag ist ein Dokument, jede Anlage ein eigenes mit dem Eintrag als
   Elterndokument. Im Chat öffnet „Dokument öffnen" an einer Fundstelle daraus das Dokument durch
-  OPAA; die Adresse des Eintrags zeigt das Belegfenster nicht.
-- **Rechte** der Website übernimmt OPAA nicht.
+  opaa; die Adresse des Eintrags zeigt das Belegfenster nicht.
+- **Rechte** der Website übernimmt opaa nicht.
 
 ## 2. Einrichtung
 
@@ -41,7 +41,7 @@ flowchart LR
    Hängen die Anlagen ohne Dateiendung an der Seite, wie beim Government Site Builder, braucht
    sie das **Anlagenprofil** `GSB` (Abschnitt „Anhänge“).
 3. Optional einen Zugang anlegen. Die Profilpflicht „Nur über Zugänge" legt nur die Feed-Adresse
-   fest; Detailseiten auf anderen Servern bestimmt der Betreiber des Feeds. Das sagt OPAA, bevor die
+   fest; Detailseiten auf anderen Servern bestimmt der Betreiber des Feeds. Das sagt opaa, bevor die
    Pflicht eingeschaltet wird.
 
 ## 3. Quellkonfiguration
@@ -49,18 +49,18 @@ flowchart LR
 Die Angaben sind dieselben wie beim [Webverzeichnis](http-directory.md#3-quellkonfiguration):
 „Adresse (URL)" des Feeds und optionale Anmeldedaten `benutzer:passwort`. Dort steht auch, wann
 gespeicherte Zugangsdaten beim Bearbeiten erhalten bleiben. Die
-Oberfläche weist beim Anlegen darauf hin, dass OPAA auch die verlinkten Detailseiten abruft.
+Oberfläche weist beim Anlegen darauf hin, dass opaa auch die verlinkten Detailseiten abruft.
 
 **Über einen Zugang:** wie beim Webverzeichnis; die Feed-Adresse liegt unter der Server-Adresse des
-Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne
+Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft opaa weiter ab, aber ohne
 Zugangsdaten.
 
-**Umfang:** wie OPAA die Detailseiten dieses Feeds liest. Beide Angaben sind optional; leer gilt
+**Umfang:** wie opaa die Detailseiten dieses Feeds liest. Beide Angaben sind optional; leer gilt
 die Werkseinstellung: Inhaltsselektor `main, article, [role=main]`, Anlagenprofil `GENERIC`. Die Zeile sehen auch Lesende der Bibliothek.
 
 - „Inhaltsselektor“: ein CSS-Selektor in Jsoup-Syntax, etwa `#inhalt` oder `.artikel-text`. Jeder
   Treffer ist ein Inhaltsbereich; trifft er nichts, nimmt der Lauf die ganze Seite. Einen Selektor,
-  der nicht gelesen werden kann oder zu aufwendig wäre, lehnt OPAA beim Speichern ab (Abschnitt
+  der nicht gelesen werden kann oder zu aufwendig wäre, lehnt opaa beim Speichern ab (Abschnitt
   „Grenzen und Schutzmechanismen“).
 - „Anlagenprofil“: welche Links als Anlagen gelten (Abschnitt „Anhänge“).
 
@@ -95,7 +95,7 @@ flowchart LR
 
 Unverändertes erkennt er in drei Stufen:
 
-1. **Feed, bedingter GET.** OPAA merkt sich ETag und Last-Modified. Antwortet der Server mit 304,
+1. **Feed, bedingter GET.** opaa merkt sich ETag und Last-Modified. Antwortet der Server mit 304,
    endet der Lauf nach einer Anfrage mit null Elementen — der Normalfall bei stündlichem Zeitplan.
 2. **Eintrag, Veröffentlichungsdatum.** Ein Eintrag mit gleichem `pubDate`, der zuletzt erfolgreich
    indiziert wurde, wird übersprungen; ein fehlendes Datum gilt als geändert.
@@ -106,7 +106,7 @@ Ein unveränderter Eintrag ohne Anlagen-Dokumente lädt seine Detailseite einmal
 finden; der Text wird dabei nicht neu verarbeitet.
 
 Nach einer Änderung von Inhaltsselektor oder Anlagenprofil entfallen die Stufen 1 und 2, bis ein
-Lauf jeden Eintrag des Feeds einmal unter den neuen Angaben gelesen hat: OPAA merkt sich mit dem
+Lauf jeden Eintrag des Feeds einmal unter den neuen Angaben gelesen hat: opaa merkt sich mit dem
 Feed-Zustand, unter welchen Angaben das geschah.
 
 **Zurückstellen.** Den Feed-Zustand aus Stufe 1 speichert ein Lauf nur, wenn er vollständig war:
@@ -157,13 +157,13 @@ Parameter stehen unter `opaa.indexing.rss.*` (`OPAA_INDEXING_RSS_*`), ihre Stand
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).
-- **Fremde Server:** Eine Detailseite auf einem anderen Server holt OPAA ohne Zugangsdaten. Ein
+- **Fremde Server:** Eine Detailseite auf einem anderen Server holt opaa ohne Zugangsdaten. Ein
   Redirect, der den Ursprung der Detailseite oder Anlage verlässt, wird
   abgelehnt, bevor das fremde Ziel kontaktiert wird. Anlagen zählen nur auf dem Ursprung der
   Detailseite (Abschnitt 6). Beim Feed selbst werden bis zu fünf Redirects gefolgt, auf einen
   fremden Ursprung ohne Zugangsdaten.
 - **„Original öffnen"** holt einen Eintrag oder eine Anlage mit den Zugangsdaten nur, wenn die
-  Adresse auf dem Ursprung des Feeds liegt; eine Adresse auf einem anderen Server ruft OPAA ohne
+  Adresse auf dem Ursprung des Feeds liegt; eine Adresse auf einem anderen Server ruft opaa ohne
   Zugangsdaten ab.
 - **Prüfung je Eintrag**, bevor etwas geladen wird: Ein Link mit anderem Schema als `http`/`https`
   oder kaputter Adresse wird abgewiesen.

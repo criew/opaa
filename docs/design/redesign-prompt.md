@@ -1,4 +1,4 @@
-# Zielbild der OPAA-Weboberfläche
+# Zielbild der opaa-Weboberfläche
 
 > Briefing für einen Design-Entwurf. Beschreibt den **angestrebten Endzustand**, nicht den heutigen
 > Stand — vieles davon ist noch nicht gebaut. Der Entwurf soll zeigen, wohin die Oberfläche geht,
@@ -8,7 +8,7 @@
 
 ## 1 · Das Produkt
 
-OPAA ist eine quelloffene KI-Plattform für die **öffentliche Verwaltung**, betrieben im eigenen
+opaa ist eine quelloffene KI-Plattform für die **öffentliche Verwaltung**, betrieben im eigenen
 Rechenzentrum. Beschäftigte befragen das Wissen ihres Hauses — Akten, Erlasse, Arbeitsanweisungen,
 Intranet — und bekommen Antworten, **die ihre Fundstelle mitnennen**.
 
@@ -92,7 +92,7 @@ der Chat das und führt mit einem Klick dorthin, wo man zuordnet.
 ## 3 · Grundriss
 
 **Der Chat ist der Mittelpunkt.** Alles andere ist Zulieferung — Räume einrichten, Bestände pflegen,
-Rechte vergeben. Wer OPAA öffnet, landet in einem Gespräch, nicht in einer Verwaltungsmaske.
+Rechte vergeben. Wer opaa öffnet, landet in einem Gespräch, nicht in einer Verwaltungsmaske.
 
 ```
 ┌──────────────┬──────────────────────────────────┐
@@ -176,7 +176,7 @@ freiwilliger freier Hinweis. Zurückhaltend gestaltet — es ist ein Angebot, ke
 Jeder Beleg wird gegen die Fundstellen geprüft, die für diese Antwort abgerufen wurden. Besteht er die
 Prüfung nicht, bleibt er im Antworttext stehen und die zugehörige Fundstelle wird als **nicht
 bestätigt** ausgewiesen — sie verschwindet nicht stillschweigend und geht nicht als gültig durch. Das
-ist das Stück, das OPAA von einem Chatbot unterscheidet.
+ist das Stück, das opaa von einem Chatbot unterscheidet.
 
 **Es sieht aus wie jede andere Fundstelle.** Gleiche Form, gleicher Ort, gleiche Ruhe. Kein Warnton,
 keine Signalfarbe, kein Fehlerbanner — ein dezenter Hinweis an der Fundstelle genügt. Auch die Aussage

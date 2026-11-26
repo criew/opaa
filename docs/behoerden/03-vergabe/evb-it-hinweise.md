@@ -20,9 +20,9 @@ Open Source als Regelfall behandelt und Regeln zu Software-Stücklisten (SBOM, e
 enthaltenen Softwarebestandteile) und zu Programmständen enthält. Die Behörde verwendet die amtlichen
 Muster in der aktuellen Fassung und füllt sie selbst aus.
 
-## Was OPAA liefert
+## Was opaa liefert
 
-OPAA steht unter der GNU Affero General Public License v3.0 ohne Lizenzentgelt; eine Überlassung der
+opaa steht unter der GNU Affero General Public License v3.0 ohne Lizenzentgelt; eine Überlassung der
 Software ist deshalb meist unnötig. Zu jeder Version gibt es unveränderliche Images, SBOMs und eine
 Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 
@@ -48,7 +48,7 @@ Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 
 ## Programmstände, SBOM und Supportzeiträume
 
-| Thema | Was OPAA liefert | Fundstelle |
+| Thema | Was opaa liefert | Fundstelle |
 |---|---|---|
 | Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen) |
 | SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Release eine CycloneDX-SBOM für Backend und Frontend am GitHub-Release und im Update-Paket | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) |

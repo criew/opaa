@@ -88,7 +88,7 @@ export function InstructionArea({
           </Typography>
         ) : (
           <Typography sx={{ fontSize: fontSize.text, ...muted }}>
-            Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von OPAA.
+            Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von opaa.
           </Typography>
         )
       }

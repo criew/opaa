@@ -97,7 +97,7 @@ export default function ConnectAccountDialog({
       <Stack spacing={2}>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
           Geben Sie Ihre eigenen Zugangsdaten für diesen Zugang ein (
-          {secretFormLabel(target.secretForm)}). OPAA prüft die Anmeldung beim Anbieter, bevor es
+          {secretFormLabel(target.secretForm)}). opaa prüft die Anmeldung beim Anbieter, bevor es
           sie verschlüsselt speichert.
         </Typography>
         <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>

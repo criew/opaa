@@ -20,7 +20,7 @@ describe('PageHeading', () => {
   it('renders the single h1 and sets the document title', () => {
     renderWithProviders(<PageHeading title="Einstellungen" />)
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
-    expect(document.title).toBe('Einstellungen · OPAA')
+    expect(document.title).toBe('Einstellungen · opaa')
   })
 
   it('keeps the heading for assistive technology when visually hidden', () => {
@@ -54,6 +54,6 @@ describe('PageHeading', () => {
   it('lets the document title be more specific than the heading', () => {
     renderWithProviders(<PageHeading title="Chat" documentTitle="Architektur des Projekts" />)
     expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toBeInTheDocument()
-    expect(document.title).toBe('Architektur des Projekts · OPAA')
+    expect(document.title).toBe('Architektur des Projekts · opaa')
   })
 })

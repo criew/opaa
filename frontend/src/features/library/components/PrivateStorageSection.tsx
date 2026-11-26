@@ -258,7 +258,7 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
 
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
         Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine Zahl
-        auf einzelne Personen schließen lässt. Den Verbrauch einer einzelnen Person zeigt OPAA der
+        auf einzelne Personen schließen lässt. Den Verbrauch einer einzelnen Person zeigt opaa der
         Verwaltung nicht.
       </Typography>
     </Box>

@@ -17,7 +17,7 @@ löscht nichts.
    für die App mit der Rolle `read` freigeben, etwa per Graph Explorer mit einem
    Administratorkonto: `POST https://graph.microsoft.com/v1.0/sites/{site-id}/permissions` mit
    `{"roles": ["read"], "grantedToIdentities": [{"application": {"id": "<Client-ID>",
-   "displayName": "OPAA-Test"}}]}`.
+   "displayName": "opaa-Test"}}]}`.
 5. **Zugangsdatei außerhalb des Repositorys anlegen**, etwa `C:\opaa-local\sharepoint.env`. Der Test
    bricht ab, wenn die Datei im Repository liegt:
 

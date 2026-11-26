@@ -48,7 +48,7 @@ const STORED_SMTP: StoredSmtp = {
   username: 'opaa',
   encryption: 'STARTTLS',
   fromAddress: 'opaa@stadt.example',
-  fromName: 'OPAA',
+  fromName: 'opaa',
   passwordSet: true,
 }
 

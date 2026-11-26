@@ -1,7 +1,7 @@
 # ZAP-Baseline-Scan
 
 Der ZAP-Baseline-Scan prüft nächtlich, was ein anonymer Aufrufer von einer laufenden
-OPAA-Installation zu sehen bekommt: Sicherheits-Header, Cookies, Inhaltstypen, preisgegebene
+opaa-Installation zu sehen bekommt: Sicherheits-Header, Cookies, Inhaltstypen, preisgegebene
 Informationen. Er ergänzt die Prüfungen aus [`docs/cve-scanning.md`](../cve-scanning.md), die
 Abhängigkeiten, Images und Quelltext untersuchen, um den Blick auf die laufende Anwendung (Issue
 #3384).

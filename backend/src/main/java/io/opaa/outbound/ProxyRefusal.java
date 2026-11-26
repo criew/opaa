@@ -92,7 +92,7 @@ public final class ProxyRefusal {
   private static String message(int status) {
     if (status == PROXY_AUTHENTICATION_REQUIRED) {
       return "Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 407): Er verlangt eine"
-          + " Anmeldung, die OPAA nicht unterstützt. Der Proxy muss OPAA über die Adresse des"
+          + " Anmeldung, die opaa nicht unterstützt. Der Proxy muss opaa über die Adresse des"
           + " Servers zulassen.";
     }
     if (status == 502 || status == 503 || status == 504) {

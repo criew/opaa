@@ -11,14 +11,14 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die in der Markterkundung einschätzen, wie weit OPAA für den eigenen
+**Gilt für:** alle Behörden, die in der Markterkundung einschätzen, wie weit opaa für den eigenen
 Einsatz ist.
 
 Reifegrad meint hier, wie belastbar die Software für einen Einsatz ist: welche Versionen es gibt,
 was laufend geprüft wird und was noch fehlt. Diese Seite nennt nur, was sich im Projekt belegen
 lässt. Wie die Behörde den Reifegrad für ihr Vorhaben bewertet, entscheidet sie selbst.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Merkmal | Beleg |
 |---|---|
@@ -31,7 +31,7 @@ lässt. Wie die Behörde den Reifegrad für ihr Vorhaben bewertet, entscheidet s
 | Lücken | die [Roadmap](../../ROADMAP.md) nennt die offenen Ziele je Phase; das Handbuch beschreibt nur Gebautes |
 | Eindruck ohne eigene Daten | Demo-Instanz „Stadt Rheinfurt“ mit fiktivem Verwaltungsbestand, lokal installierbar ([Demo](../../../demo/README.md)) |
 
-**Referenzen:** Das Projekt nennt keine Behörden oder Unternehmen, die OPAA einsetzen, und keine
+**Referenzen:** Das Projekt nennt keine Behörden oder Unternehmen, die opaa einsetzen, und keine
 Zitate von Anwenderinnen und Anwendern.
 
 ## Aufgaben der Behörde
@@ -40,7 +40,7 @@ Zitate von Anwenderinnen und Anwendern.
    Handbuch beschreibt nur Gebautes.
 2. **Reifegrad selbst prüfen** in einer Teststellung mit eigenen Dokumenten und vorab festgelegten
    Kriterien.
-3. **Referenzen bei Dienstleistern erfragen,** die OPAA anbieten, und im Austausch mit anderen
+3. **Referenzen bei Dienstleistern erfragen,** die opaa anbieten, und im Austausch mit anderen
    Behörden.
 4. **Version festhalten,** auf die sich die Einschätzung bezieht.
 
@@ -54,6 +54,6 @@ Zitate von Anwenderinnen und Anwendern.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Erfüllungsmatrix](../03-vergabe/erfuellungsmatrix.md): wo OPAA eine Anforderung nur teilweise
+- [Erfüllungsmatrix](../03-vergabe/erfuellungsmatrix.md): wo opaa eine Anforderung nur teilweise
   erfüllt.
 - [Handbuch](../../handbuch/README.md): Ist-Stand der Software, je Kapitel mit den Lücken.

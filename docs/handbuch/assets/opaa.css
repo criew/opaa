@@ -1,4 +1,4 @@
-/* OPAA color scheme for the handbook: token values from docs/design/guidelines.md (light and dark).
+/* opaa color scheme for the handbook: token values from docs/design/guidelines.md (light and dark).
    Fonts per guidelines 3.1 (Quicksand, JetBrains Mono) are served from assets/fonts/ (OFL, licence
    files beside them), so the site makes no request to third-party hosts. */
 @font-face{font-family:"Quicksand";font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format("woff2")}

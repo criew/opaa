@@ -205,7 +205,7 @@ dataFlows:
     target: Die Dropbox-API (api.dropboxapi.com, content.dropboxapi.com)
     data: >-
       API-Anfragen mit dem Token des Zugangs; bei einer Team-App ein Token des ganzen Teams, mit
-      dem OPAA als zustimmende Team-Administration Team-Ordner liest und die Namespaces des Teams
+      dem opaa als zustimmende Team-Administration Team-Ordner liest und die Namespaces des Teams
       auflistet; Inhalte gehen nicht hinaus
     trigger: Indizierungslauf, Verbindungstest, Ordnerauswahl, Original öffnen
     switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
@@ -217,10 +217,10 @@ dataFlows:
       - >-
         Über eine Team-App liest eine Bibliothek Team-Ordner, auch solche, die kein einzelnes
         Mitgliedskonto sieht; wer die Bibliothek lesen darf, liest deren Inhalt. Mitgliederordner,
-        geteilte Ordner und App-Ordner liest OPAA nicht und bietet sie nicht zur Auswahl an
+        geteilte Ordner und App-Ordner liest opaa nicht und bietet sie nicht zur Auswahl an
       - >-
-        Das Token einer Team-App erlaubt Dropbox-seitig mehr, als OPAA nutzt: Es könnte im Namen
-        jedes Mitglieds dessen Ordner lesen. OPAA hält es verschlüsselt, schickt es nur an die
+        Das Token einer Team-App erlaubt Dropbox-seitig mehr, als opaa nutzt: Es könnte im Namen
+        jedes Mitglieds dessen Ordner lesen. opaa hält es verschlüsselt, schickt es nur an die
         Dropbox-API und widerruft es beim Trennen
   - id: source-google-drive
     group: CONNECTOR
@@ -456,7 +456,7 @@ dataFlows:
       und ein mitgeschickter traceparent eines Aufrufers wird verworfen
     trigger: >-
       Jede Anfrage und Hintergrundaufgabe, die die Stichprobe trifft (Voreinstellung 5 Prozent),
-      gezogen über eine Trace-ID, die OPAA selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
+      gezogen über eine Trace-ID, die opaa selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
     switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse bricht der Start ab
     settings:
       - management.tracing.export.enabled

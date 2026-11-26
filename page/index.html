@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OPAA – souveräner KI-Assistent für die öffentliche Verwaltung</title>
-<meta name="description" content="OPAA durchsucht die Bestände Ihres Hauses und antwortet mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung. Quelloffen unter AGPL-3.0.">
+<title>opaa – souveräner KI-Assistent für die öffentliche Verwaltung</title>
+<meta name="description" content="opaa durchsucht die Bestände Ihres Hauses und antwortet mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung. Quelloffen unter AGPL-3.0.">
 <link rel="canonical" href="https://opaa.io/">
 <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -15,7 +15,7 @@
 /* Fonts are served from this origin (OFL, licence files in fonts/): no request leaves the page except to opaa.io. */
 @font-face{font-family:'Quicksand';font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format('woff2')}
 @font-face{font-family:'Source Sans 3';font-style:normal;font-weight:200 900;font-display:swap;src:url(fonts/source-sans-3-latin.woff2) format('woff2')}
-/* Layout: schmale Lesespalte (1120px), helle Fläche mit feinem Raster, schwebende Pill-Navigation, Produkt-Screenshots als große Karten. Farben aus den OPAA-Gestaltungsleitlinien (Dunkelblau, Mittelblau, Hellblau, Off-White). */
+/* Layout: schmale Lesespalte (1120px), helle Fläche mit feinem Raster, schwebende Pill-Navigation, Produkt-Screenshots als große Karten. Farben aus den opaa-Gestaltungsleitlinien (Dunkelblau, Mittelblau, Hellblau, Off-White). */
 :root{
   --bg:#FFFFFF; --bg-2:#F6F8FB; --bg-3:#EEF3FB; --grid:rgba(36,40,85,.055);
   --fg:#242855; --fg-2:#3F4468; --fg-3:#555A78; --line:#CFD1D9;
@@ -131,7 +131,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
 <div class="beta">
   <div class="wrap">
     <span class="tag">BETA</span>
-    <span>OPAA ist im Aufbau und noch nicht final freigegeben. Fragen und Pilotinteresse: <a href="mailto:info@opaa.io">info@opaa.io</a></span>
+    <span>opaa ist im Aufbau und noch nicht final freigegeben. Fragen und Pilotinteresse: <a href="mailto:info@opaa.io">info@opaa.io</a></span>
   </div>
 </div>
 
@@ -150,7 +150,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
 <header class="hero"><div class="wrap inner">
   <span class="eyebrow">Quelloffen · AGPL-3.0 · für die öffentliche Verwaltung</span>
   <h1>Fragen. Belegen. <span>Entscheiden.</span></h1>
-  <p class="lead">OPAA ist der souveräne KI-Assistent für die öffentliche Verwaltung. Durchsuchen Sie die Bestände Ihres Hauses, mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung.</p>
+  <p class="lead">opaa ist der souveräne KI-Assistent für die öffentliche Verwaltung. Durchsuchen Sie die Bestände Ihres Hauses, mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung.</p>
   <div class="ctas">
     <a class="btn btn-primary" href="https://demo.opaa.io">Demo ansehen</a>
     <a class="btn btn-ghost" href="https://opaa.io/handbuch/betrieb/schnellstart.html">Getting Started</a>
@@ -158,7 +158,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
   <div class="facts"><span>Lokale Modelle</span><span>Rechte in der Suche</span><span>Jeder Beleg geprüft</span><span>Betrieb auch air-gapped</span></div>
   <figure class="shot" style="margin-bottom:0">
     <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">demo.opaa.io · Space „Meldewesen &amp; Ausweise“</span></div>
-    <img src="img/antwort.png" fetchpriority="high" width="2880" height="1800" alt="OPAA-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet OPAA mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
+    <img src="img/antwort.png" fetchpriority="high" width="2880" height="1800" alt="opaa-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet opaa mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
   </figure>
   <div class="callouts">
     <span class="callout"><b>Frage</b> in Umgangssprache</span>
@@ -176,7 +176,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
     <article class="card">
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
       <h3>Souverän, bis hin zu air-gapped</h3>
-      <p>Daten verlassen das Haus nicht. Modelle laufen auf eigener Hardware, ein Offline-Bündel bringt OPAA in Netze ohne Internet.</p>
+      <p>Daten verlassen das Haus nicht. Modelle laufen auf eigener Hardware, ein Offline-Bündel bringt opaa in Netze ohne Internet.</p>
       <span class="k">Docker Compose · Kubernetes · Offline-Bündel</span>
     </article>
     <article class="card">
@@ -204,11 +204,11 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
   <div class="head">
     <span class="eyebrow">Wissensquellen</span>
     <h2>Eine Frage, alle Bestände</h2>
-    <p class="lead">OPAA sucht in den Bibliotheken, die dem Space zugeordnet und für die fragende Person lesbar sind.</p>
+    <p class="lead">opaa sucht in den Bibliotheken, die dem Space zugeordnet und für die fragende Person lesbar sind.</p>
   </div>
   <div class="diagram">
   <svg viewBox="0 0 1100 520" role="img" aria-labelledby="dg-title">
-    <title id="dg-title">Diagramm: Browser mit Chat, verbunden über OPAA mit fünf Quellarten</title>
+    <title id="dg-title">Diagramm: Browser mit Chat, verbunden über opaa mit fünf Quellarten</title>
     <defs>
       <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#0055A4"/></marker>
     </defs>
@@ -231,16 +231,16 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
     </g>
     <text x="185" y="110" font-size="13" font-weight="700" fill="#242855" text-anchor="middle" font-family="Quicksand, sans-serif">Sachbearbeiterin Meldewesen</text>
 
-    <!-- OPAA -->
+    <!-- opaa -->
     <g transform="translate(470 195)">
       <rect x="0" y="0" width="160" height="120" rx="16" fill="#242855"/>
       <rect x="56" y="18" width="48" height="48" rx="12" fill="#fff" opacity=".12"/>
       <path d="M68 30h24v16H76l-6 6z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
       <path d="M73 36h12M73 41h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-      <text x="80" y="90" font-size="16" font-weight="700" fill="#fff" text-anchor="middle" font-family="Quicksand, sans-serif">OPAA</text>
+      <text x="80" y="90" font-size="16" font-weight="700" fill="#fff" text-anchor="middle" font-family="Quicksand, sans-serif">opaa</text>
       <text x="80" y="107" font-size="11" fill="#99D8F1" text-anchor="middle">Suche · Rechte · Belegprüfung</text>
     </g>
-    <!-- Pfeile Browser <-> OPAA -->
+    <!-- Pfeile Browser <-> opaa -->
     <path d="M350 245 H468" stroke="#0055A4" stroke-width="2" fill="none" marker-end="url(#arr)"/>
     <path d="M468 268 H352" stroke="#0055A4" stroke-width="2" fill="none" marker-end="url(#arr)"/>
     <text x="409" y="236" font-size="11" fill="#555A78" text-anchor="middle">Frage</text>
@@ -284,7 +284,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
         <text x="68" y="54">Einzelne Dokumente: PDF, DOCX,</text><text x="68" y="69">XLSX, PPTX, Markdown</text>
       </g>
     </g>
-    <!-- Verbindungen OPAA -> Quellen -->
+    <!-- Verbindungen opaa -> Quellen -->
     <g stroke="#0055A4" stroke-width="1.6" fill="none" opacity=".75">
       <path d="M630 255 C690 255 690 59 738 59"/>
       <path d="M630 255 C690 255 690 157 738 157"/>
@@ -343,7 +343,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
 <section id="anders"><div class="wrap">
   <div class="head">
     <span class="eyebrow">Abgrenzung</span>
-    <h2>Was OPAA anders macht</h2>
+    <h2>Was opaa anders macht</h2>
   </div>
   <div class="diff">
     <div><h3>Rechte, Protokoll, Mandanten im Kern</h3><p>Quelloffen, an keine Bezahlstufe gebunden.</p></div>
@@ -379,7 +379,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offse
 
 <footer><div class="wrap">
   <div><a href="https://opaa.io/handbuch/">Handbuch</a><a href="https://demo.opaa.io">Demo</a><a href="https://github.com/criew/opaa">GitHub</a><a href="https://github.com/criew/opaa/blob/main/LICENSE">Lizenz AGPL-3.0</a><a href="mailto:info@opaa.io">Kontakt: info@opaa.io</a></div>
-  <div>OPAA · Open Project AI Assistant · Entwicklung im Offenen</div>
+  <div>opaa · open project ai assistant · Entwicklung im Offenen</div>
 </div></footer>
 </body>
 </html>

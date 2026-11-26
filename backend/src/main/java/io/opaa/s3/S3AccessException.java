@@ -144,7 +144,7 @@ public class S3AccessException extends IOException {
     public ClockSkew() {
       super(
           "Der Objektspeicher lehnt die Anfrage wegen Zeitabweichung ab (RequestTimeTooSkewed):"
-              + " Die Uhr des OPAA-Servers weicht zu weit von der des Speichers ab.");
+              + " Die Uhr des opaa-Servers weicht zu weit von der des Speichers ab.");
     }
   }
 

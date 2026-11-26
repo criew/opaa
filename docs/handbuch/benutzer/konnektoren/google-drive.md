@@ -39,12 +39,12 @@ flowchart LR
 - **Dokument:** Die Datei-ID ist die Identität; Umbenennen und Verschieben innerhalb der Bereiche
   behalten das Dokument. **„Original öffnen"** führt zu `https://drive.google.com/open?id=<Datei-ID>`;
   wer die Datei dort nicht sehen darf, sieht eine Zugriffsanfrage.
-- **Rechte** aus Drive übernimmt OPAA nicht: Wer die Bibliothek lesen darf, liest alles aus allen
+- **Rechte** aus Drive übernimmt opaa nicht: Wer die Bibliothek lesen darf, liest alles aus allen
   Bereichen.
 
 ## 2. Einrichtung
 
-Jede Installation nutzt ihr **eigenes GCP-Projekt**; eine zentrale OPAA-App gibt es nicht. Ein
+Jede Installation nutzt ihr **eigenes GCP-Projekt**; eine zentrale opaa-App gibt es nicht. Ein
 Dienstkonto, das nur ihm freigegebene Daten liest, braucht keine Verifizierung durch Google.
 
 1. In der Google Cloud Console ein Projekt anlegen und unter „APIs & Dienste" → „Bibliothek" die
@@ -64,10 +64,10 @@ Dienstkonto, das nur ihm freigegebene Daten liest, braucht keine Verifizierung d
    Systemverwaltung das Konto festlegt.
 5. Unter **Administration → Anbindungen → Zugänge** einen Zugang für Google Drive mit der Anmeldeart
    Dienstkonto-Schlüssel anlegen, die JSON-Datei hochladen und mit „Anmeldung testen" prüfen; die
-   Client-ID übernimmt OPAA aus der Datei. Die Quellart und jeder neue Zugang sind ab Werk nur für die
+   Client-ID übernimmt opaa aus der Datei. Die Quellart und jeder neue Zugang sind ab Werk nur für die
    Systemverwaltung freigegeben ([Berechtigungen](../../referenz/rechte-matrix.md), „Konnektor-Freigabe").
 
-OPAA speichert aus der Datei nur Adresse, Kennung und privaten Schlüssel, verschlüsselt; die Anmeldung
+opaa speichert aus der Datei nur Adresse, Kennung und privaten Schlüssel, verschlüsselt; die Anmeldung
 geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.googleapis.com`.
 
 ## 3. Quellkonfiguration
@@ -90,14 +90,14 @@ ein Lauf jetzt fände. Eine geänderte Bereichsliste oder ein anderes
 imitiertes Konto lassen den nächsten Lauf vollständig abgleichen.
 
 **Über einen Zugang** trägt die Bibliothek nur ihre Bereiche; ein imitiertes Konto an der Bibliothek
-weist OPAA ab. Ändert die Systemverwaltung das imitierte Konto am Zugang, nennt OPAA vorher die Zahl
+weist opaa ab. Ändert die Systemverwaltung das imitierte Konto am Zugang, nennt opaa vorher die Zahl
 der betroffenen Bibliotheken; danach ist der nächste Lauf jeder Bibliothek ein Vollabgleich, und ihre
-Verwaltenden werden benachrichtigt. Läuft gerade eine Bibliothek des Zugangs, lehnt OPAA die Änderung
+Verwaltenden werden benachrichtigt. Läuft gerade eine Bibliothek des Zugangs, lehnt opaa die Änderung
 ab; bei langen Läufen den Zugang vorher sperren. Ein neuer Schlüssel desselben Dienstkontos ändert
 nichts an den Bibliotheken. Weist Google den Schlüssel ab, zeigen alle Bibliotheken „Abgelaufen" mit
 der Systemverwaltung als zuständig; eine falsch gehende Serveruhr meldet Google wie einen ungültigen
-Schlüssel, und OPAA verweist dann auf die Uhrzeit. „Alle Verbindungen trennen" löscht den Schlüssel
-in OPAA; bei Google widerruft ihn die Verwaltung in der Cloud Console.
+Schlüssel, und opaa verweist dann auf die Uhrzeit. „Alle Verbindungen trennen" löscht den Schlüssel
+in opaa; bei Google widerruft ihn die Verwaltung in der Cloud Console.
 
 ## 4. Betriebsarten und Änderungserkennung
 
@@ -112,7 +112,7 @@ Unter „Alle Ablagen" stellt jeder Lauf die Ablagen zuerst neu fest; eine neue 
 Wird ein Ordner umbenannt, verschoben oder gelöscht, ist der nächste Lauf ein Vollabgleich, auch wenn
 der Ordner außerhalb der Bereiche liegt.
 
-**Unverändertes erkennen.** Vor dem Download vergleicht OPAA bei hochgeladenen Dateien MD5-Prüfsumme
+**Unverändertes erkennen.** Vor dem Download vergleicht opaa bei hochgeladenen Dateien MD5-Prüfsumme
 und Größe, bei Google-Formaten Änderungszeit und Zielformat. Verbindlich bleibt die eigene Prüfsumme.
 
 ## 5. Löscherkennung
@@ -140,8 +140,8 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 Parameter stehen unter `opaa.indexing.google-drive.*` (`OPAA_INDEXING_GOOGLE_DRIVE_*`), ihre Standardwerte in der
 [Konfigurationsreferenz](../../referenz/konfiguration.md#alle-umgebungsvariablen).
 
-- **Kontingente.** Google zählt Einheiten je Projekt und Nutzer, OPAA Anfragen je Lauf. Bei `429`
-  oder `403 rateLimitExceeded`/`userRateLimitExceeded` wartet OPAA mit wachsendem Abstand und
+- **Kontingente.** Google zählt Einheiten je Projekt und Nutzer, opaa Anfragen je Lauf. Bei `429`
+  oder `403 rateLimitExceeded`/`userRateLimitExceeded` wartet opaa mit wachsendem Abstand und
   wiederholt; bei `403 dailyLimitExceeded` endet der Lauf, und der nächste geplante setzt an. Vor
   stündlichen Zeitplänen über sehr große Ablagen die Kontingentseite des Projekts prüfen.
 - **Kosten eines Laufs.** Ein Änderungslauf ohne Änderungen kostet eine Anfrage je Strom und Bereich,
@@ -157,7 +157,7 @@ Parameter stehen unter `opaa.indexing.google-drive.*` (`OPAA_INDEXING_GOOGLE_DRI
 - **Lange Downloads.** Eine Datei, die `download-timeout` dauerhaft reißt, gilt in jedem Lauf als
   vorübergehend fehlgeschlagen und hält den Änderungsstrom an; dann die Frist erhöhen.
 - **Nicht an einem echten Workspace bestätigt**, sondern auf die Dokumentation von Google gestützt.
-  Trifft eine Annahme nicht zu, zeigt OPAA das so, ohne Dokumente fälschlich zu entfernen:
+  Trifft eine Annahme nicht zu, zeigt opaa das so, ohne Dokumente fälschlich zu entfernen:
   - Ein Dienstkonto kann Mitglied einer geteilten Ablage werden, auch wenn die Organisation externe
     Freigaben einschränkt. Sonst meldet der Verbindungstest die Ablage als nicht sichtbar; dann einen
     Ordner freigeben oder Delegation nutzen.
@@ -166,7 +166,7 @@ Parameter stehen unter `opaa.indexing.google-drive.*` (`OPAA_INDEXING_GOOGLE_DRI
     Text. Antwortet Google stattdessen mit einem anderen Fehlerstatus, gilt die Datei in jedem Lauf
     als vorübergehend fehlgeschlagen und hält den Änderungsstrom an, wie bei langen Downloads.
   - Google beantwortet Abrufe von `www.googleapis.com` selbst. Leitete Google auf eine andere
-    Adresse weiter, folgt OPAA nicht, und das Zugriffstoken geht nirgendwo anders hin: Ein Download
+    Adresse weiter, folgt opaa nicht, und das Zugriffstoken geht nirgendwo anders hin: Ein Download
     erscheint als „nicht lesbar", bei einer Nachfrage im Änderungslauf bleibt der Änderungsstrom
     angehalten, bis der nächste Vollabgleich ihn neu aufsetzt. Entfernt wird dabei nichts.
   - Der Strom des Kontos meldet auch Änderungen in nur per Ordnerfreigabe sichtbaren Ordnern
@@ -190,7 +190,7 @@ Parameter stehen unter `opaa.indexing.google-drive.*` (`OPAA_INDEXING_GOOGLE_DRI
 | „Das Konto sieht keine geteilte Ablage …" | unter „Alle Ablagen" scheitert der Lauf, der Bestand bleibt | Konto als Mitglied aufnehmen oder Bereiche auswählen |
 | „Als Text exportiert …" / „Tabelle übersprungen …" | über der Exportgrenze | Datei verkleinern oder hinnehmen |
 | „Die Datei überschreitet die Exportgrenze von Google Drive …" | auch der Textexport ist zu groß; der indizierte Stand bleibt | Datei verkleinern oder aufteilen |
-| „Google Drive hat auf eine fremde Adresse weitergeleitet …" | Download nicht gesendet; der indizierte Stand bleibt | trifft es viele Dateien, als Fehler von OPAA melden: Google liefert dann anders aus als angenommen |
+| „Google Drive hat auf eine fremde Adresse weitergeleitet …" | Download nicht gesendet; der indizierte Stand bleibt | trifft es viele Dateien, als Fehler von opaa melden: Google liefert dann anders aus als angenommen |
 | „… Verknüpfungen übersprungen" / „… Google-Dateien ohne Exportformat … übersprungen" | Sammelhinweise je Lauf | nichts |
 | „Der Download dieser Datei ist in Google Drive gesperrt" | Datei übersprungen | Download freigeben |
 | „Google Drive drosselt die Anfragen weiterhin" | nach allen Wiederholungen; der Strom wird erneut gelesen | Zeitplan entzerren |

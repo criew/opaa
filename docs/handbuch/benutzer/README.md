@@ -1,6 +1,6 @@
 # Benutzer
 
-Alles, was ein Konto in OPAA tut: fragen, Belege prüfen, Chats führen, und für andere Spaces,
+Alles, was ein Konto in opaa tut: fragen, Belege prüfen, Chats führen, und für andere Spaces,
 Bibliotheken und Gruppen einrichten. Ab Werk darf jedes Konto Spaces und Bibliotheken anlegen. Wo
 eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 

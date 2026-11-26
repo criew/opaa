@@ -130,7 +130,7 @@ describe('ConversationNote (#1488)', () => {
       'true',
     )
     expect(panel).toHaveTextContent(
-      'Diese Angaben hat OPAA aus Ihren Nachrichten in diesem Chat festgehalten. Sie fließen in die nächsten Antworten ein.',
+      'Diese Angaben hat opaa aus Ihren Nachrichten in diesem Chat festgehalten. Sie fließen in die nächsten Antworten ein.',
     )
     expect(screen.getByText('Arbeitet im Bürgerbüro Nebenstelle 3')).toBeVisible()
     expect(screen.getByText('Möchte knappe Antworten')).toBeVisible()

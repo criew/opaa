@@ -15,12 +15,12 @@ naechste-durchsicht: 2027-04-23
 oder das eigene Haus den IT-Grundschutz vorgibt oder sie ihn freiwillig anwenden.
 
 Der IT-Grundschutz ist die Methode des BSI, mit der eine Behörde ihr Sicherheitskonzept aufstellt.
-Die oder der Informationssicherheitsbeauftragte (ISB) nimmt OPAA darin auf und *modelliert* die
+Die oder der Informationssicherheitsbeauftragte (ISB) nimmt opaa darin auf und *modelliert* die
 Installation, ordnet also jedem ihrer Teile die passenden *Bausteine* zu – Kapitel des
 IT-Grundschutz-Kompendiums mit Anforderungen zu einem Thema wie Datenbanken oder Protokollierung.
-Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt.
+Verantwortlich ist die Behörde; opaa beschreibt, was das Produkt dazu beiträgt.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Teile einer Installation** (Zielobjekte): Anwendung, Datenbank, Originalablage, Modelldienste,
   auf Wunsch der mitgelieferte Texterkennungsdienst, Container-Plattform, dazu Identitätsanbieter
@@ -34,7 +34,7 @@ Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt
 
 Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums (Edition 2023):
 
-| Schicht | Baustein | Beitrag von OPAA |
+| Schicht | Baustein | Beitrag von opaa |
 |---|---|---|
 | ORP – Organisation und Personal | ORP.4 Identitäts- und Berechtigungsmanagement | [Berechtigungen](../../handbuch/referenz/rechte-matrix.md), {{faktenblatt:rollensicht}}, Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/administration/externe-ki-werkzeuge.md)), [Dienstkonten](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten) mit verantwortlicher Person |
 | CON – Konzepte und Vorgehensweisen | CON.1 Kryptokonzept | [Schlüssel und Geheimnisse](../../handbuch/betrieb/netz-und-sicherheit.md#schlüssel-und-geheimnisse) |
@@ -68,7 +68,7 @@ angebundenen Quellen (APP.3.3, APP.3.4), DNS (APP.3.6), Netzbausteine (NET.1.2, 
 Räume (INF). Die Originalablage ist eine Kopie der Quellen, kein Archiv; OPS.1.2.2 Archivierung passt
 nicht.
 
-Ein Baustein ist nicht erfüllt, nur weil OPAA seinen Anteil liefert; der Grundschutz-Check bewertet
+Ein Baustein ist nicht erfüllt, nur weil opaa seinen Anteil liefert; der Grundschutz-Check bewertet
 das laufende System.
 
 ## Vorschlag zum Schutzbedarf
@@ -80,7 +80,7 @@ typischen Einsatz als Wissensassistent:
 |---|---|---|
 | Vertraulichkeit | hoch | folgt den sensibelsten angebundenen Dokumenten; Chats zeigen, wer was gefragt hat |
 | Integrität | normal bis hoch | falsche oder veränderte Antworten können in Entscheidungen einfließen |
-| Verfügbarkeit | normal | Hilfsmittel, kein zeitkritisches Fachverfahren; die Arbeit geht ohne OPAA weiter |
+| Verfügbarkeit | normal | Hilfsmittel, kein zeitkritisches Fachverfahren; die Arbeit geht ohne opaa weiter |
 
 Ab „hoch“ verlangt der IT-Grundschutz zusätzlich eine Risikoanalyse.
 
@@ -88,7 +88,7 @@ Ab „hoch“ verlangt der IT-Grundschutz zusätzlich eine Risikoanalyse.
 
 Für KI-Risiken gibt es keinen Baustein; sie gehören in die Risikoanalyse.
 
-| Risiko | Was OPAA mitbringt | Was die Behörde festlegt |
+| Risiko | Was opaa mitbringt | Was die Behörde festlegt |
 |---|---|---|
 | Falsche oder erfundene Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen)) | Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
 | Prompt-Injection: in Dokumenten versteckte Anweisungen an das Modell | Unabhängig vom Modell wirksam: Links in Antworten nur zu erlaubten Zielen, keine Bilder, Suche nur in lesbaren Dokumenten, Belege zeigen auf das präparierte Dokument. Als Hilfe für das Modell, ohne gemessene Senkung der Angriffsrate: Fundstellen im Prompt als Daten gekennzeichnet, unsichtbare Steuerzeichen beim Aufnehmen entfernt und auffällige Muster gemeldet, Treffer für externe KI-Werkzeuge als Fremdinhalt gekennzeichnet. Dazu ein Testsatz zum Messen des eigenen Modells ([Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection)). Grenzen: keine vollständige Erkennung, versteckter Text wie weiße Schrift oder verborgener Text wird nicht erkannt, eine falsche Angabe im sichtbaren Text hält keine Kennzeichnung auf | nur geprüfte Quellen anbinden, Schreibrechte an Quellen begrenzen, [erlaubte Linkziele](../../handbuch/betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) pflegen, Modell anhand der [Messung](../../handbuch/betrieb/modell-endpunkte.md#modell-gegen-prompt-injection-messen) wählen, Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
@@ -107,7 +107,7 @@ Für KI-Risiken gibt es keinen Baustein; sie gehören in die Risikoanalyse.
 ## Ergebnis festhalten
 
 ```text
-Anwendung:           [Name der Installation], OPAA-Version [X.Y.Z], eingespielt am [Datum]
+Anwendung:           [Name der Installation], opaa-Version [X.Y.Z], eingespielt am [Datum]
 Betrieb:             [Docker Compose / Kubernetes], durch [Stelle oder Dienstleister]
 Modelldienste:       [im Haus / extern bei Anbieter]
 Schutzbedarf:        [normal / hoch / sehr hoch], begründet mit [ ]
@@ -118,10 +118,10 @@ Nächste Fortschreibung: mit dem nächsten Update, spätestens [Datum]
 
 ## Gut zu wissen
 
-- OPAA hat keine Zulassung für Verschlusssachen, auch nicht für VS-NfD.
+- opaa hat keine Zulassung für Verschlusssachen, auch nicht für VS-NfD.
 - Die Bausteinnamen folgen dem Kompendium, Edition 2023, der aktuellen Fassung. Das BSI führt
   schrittweise den Nachfolger Grundschutz++ ein; die Behörde gleicht ab, welche Fassung sie anwendet.
-- Wer OPAA in einer Cloud betreiben lässt, braucht zusätzlich [C5](c5-cloud-betrieb.md).
+- Wer opaa in einer Cloud betreiben lässt, braucht zusätzlich [C5](c5-cloud-betrieb.md).
 
 ## Zum Nachlesen
 
@@ -133,11 +133,11 @@ Nächste Fortschreibung: mit dem nächsten Update, spätestens [Datum]
   Vorgehen bei der Modellierung (200-2), Risikoanalyse für Themen ohne Baustein (200-3) und
   Notfallmanagement (200-4).
 - [AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html):
-  Prüfkatalog des BSI für KI-Cloud-Dienste, als Ideengeber für die KI-Risikoanalyse; OPAA ist danach
+  Prüfkatalog des BSI für KI-Cloud-Dienste, als Ideengeber für die KI-Risikoanalyse; opaa ist danach
   nicht geprüft, ebenso wenig nach dem neueren Prüfkatalog A5.
 - [Basisschutz gegen Indirect Prompt Injections in dokumentbasierten LLM-Chats](https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/KI/Basisschutz_Indirect-Prompt-Injections_LLM.pdf?__blob=publicationFile&v=6):
   die fünf Basismaßnahmen des BSI, als Gliederung für die Zeile „Prompt-Injection“ der
-  Risikoanalyse. OPAA setzt um: Eingabe-Bereinigung (2.1) ohne Erkennung versteckten Texts,
+  Risikoanalyse. opaa setzt um: Eingabe-Bereinigung (2.1) ohne Erkennung versteckten Texts,
   Kennzeichnung der Dokumentinhalte im Prompt und gehärteter System-Prompt (2.2, 2.3), ein Testsatz für die
   Modellauswahl (2.4) und den Egress-Filter für Links und Bilder (2.5, Schritt 4).
 - [Releases und Nachweise](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert): wie Release-Notizen

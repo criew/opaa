@@ -14,11 +14,11 @@ naechste-durchsicht: 2027-04-23
 **Gilt für:** alle Behörden; ob die Personalvertretung zu beteiligen ist, prüft jede Behörde nach
 ihrem Personalvertretungsrecht.
 
-Die Nutzungsrichtlinie sagt den Beschäftigten in einfachen Worten, wie sie OPAA nutzen dürfen: was
+Die Nutzungsrichtlinie sagt den Beschäftigten in einfachen Worten, wie sie opaa nutzen dürfen: was
 nicht hineingehört, wie sie Antworten prüfen und wohin Ergebnisse gehören. Die Behörde erlässt sie
 vor der ersten Nutzung; sie dient zugleich als Hinweis, dass die Antworten von einer KI stammen.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - Welche Daten bei der Nutzung entstehen und wer sie sieht: {{faktenblatt:datenkatalog}},
   {{faktenblatt:rollensicht}}; wohin Daten fließen: {{faktenblatt:datenfluesse}}; wie lange Chats und
@@ -106,7 +106,7 @@ falsche Fundstellen und technische Fehler: [Stelle].
 [Fachliche Ansprechperson] · [Datenschutzbeauftragte] · [Informationssicherheitsbeauftragte] ·
 [Personalvertretung]
 
-Stand: [Datum] · eingesetzte Version: [OPAA-Version]
+Stand: [Datum] · eingesetzte Version: [opaa-Version]
 
 ---
 

@@ -1,6 +1,6 @@
 # Wie die Suche arbeitet
 
-Eine Frage geht nicht einfach „an das Sprachmodell“. OPAA sucht zuerst im Index, und nur die
+Eine Frage geht nicht einfach „an das Sprachmodell“. opaa sucht zuerst im Index, und nur die
 gefundenen Textstücke (Chunks) gehen mit der Frage an das Chat-Modell. Das Modell formuliert, die
 Suche entscheidet: **Was nicht gefunden wurde, kann in keiner Antwort stehen.**
 
@@ -41,13 +41,13 @@ nicht enthalten“ benennen und jede Quelle mit einer Zitiermarke belegen. Der T
 steht als Material, nicht als Anweisung im Prompt; ganz verhindern lässt sich eine untergeschobene
 Anweisung nicht, das hängt am Modell.
 
-Je Frage ruft OPAA nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
+Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
 je Teilfrage, Rerank-Modell, falls an. Titel und Gesprächsnotiz eines Chats kosten je einen
 weiteren Chat-Aufruf, ohne die Antwort zu verzögern.
 
 ## Belege prüfen
 
-Den Zitiermarken glaubt OPAA nicht, es prüft sie ohne weiteren Modellaufruf:
+Den Zitiermarken glaubt opaa nicht, es prüft sie ohne weiteren Modellaufruf:
 
 1. **Herkunft:** Zeigt die Marke auf einen Chunk, den die Antwort wirklich gelesen hat?
 2. **Fakt:** Steht ein Betrag, Datum oder Paragraf im Satz vor der Marke so auch im Dokument? Nur

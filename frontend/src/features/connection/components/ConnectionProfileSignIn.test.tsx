@@ -154,7 +154,7 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
     expect(question).toHaveTextContent(
       'wenn die Systemverwaltung einen Schlüssel am Zugang neu hinterlegt',
     )
-    expect(question).toHaveTextContent('Beim Anbieter widerruft OPAA nichts')
+    expect(question).toHaveTextContent('Beim Anbieter widerruft opaa nichts')
     expect(question).not.toHaveTextContent('wenn ihre Zugangsdaten neu eingetragen sind')
     await answerConfirm(user, /Alle Verbindungen von/, 'Abbrechen')
   })

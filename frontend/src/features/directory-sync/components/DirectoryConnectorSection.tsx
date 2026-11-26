@@ -212,7 +212,7 @@ export default function DirectoryConnectorSection({
             fullWidth
             label="Adresse der Admin-API"
             optional
-            helperText="Leer lassen, wenn OPAA sie unter der Adresse des Anbieters erreicht."
+            helperText="Leer lassen, wenn opaa sie unter der Adresse des Anbieters erreicht."
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
           />

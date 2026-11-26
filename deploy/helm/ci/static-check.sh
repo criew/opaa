@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Static check of the OPAA chart, run by .github/workflows/helm-chart.yml and locally from the
+# Static check of the opaa chart, run by .github/workflows/helm-chart.yml and locally from the
 # repository root. Lints and renders the chart with every value set in <chart>/ci/, validates the
 # rendered manifests against each supported Kubernetes version and asserts that the chart's guards
 # still refuse the misconfigurations they exist for, and dry-runs the release scripts of
@@ -686,9 +686,9 @@ notes_case() {
   fi
   echo "notes as expected: $kind"
 }
-notes_case "an installation" "OPAA ist installiert" "OPAA ist aktualisiert"
+notes_case "an installation" "opaa ist installiert" "opaa ist aktualisiert"
 notes_case "an installation" "Der erste Start migriert" "Der Start migriert"
-notes_case "an upgrade" "OPAA ist aktualisiert" "OPAA ist installiert" --is-upgrade
+notes_case "an upgrade" "opaa ist aktualisiert" "opaa ist installiert" --is-upgrade
 notes_case "an upgrade" "Der Start migriert" "Der erste Start migriert" --is-upgrade
 notes_case "one pod" "GENAU EINE BACKEND-INSTANZ" "POD FÜR POD"
 notes_case "two pods" "2 BACKEND-PODS, AKTUALISIERUNG POD FÜR POD" "GENAU EINE BACKEND-INSTANZ" \

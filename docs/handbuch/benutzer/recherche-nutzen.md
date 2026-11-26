@@ -3,7 +3,7 @@
 **Ziel:** Sie lassen den Agenten „Recherche“ eine Frage aus Ihrem Wissen in mehreren Schritten untersuchen und erhalten einen gegliederten Bericht mit Fundstellen als Entwurf.
 {: .kopf }
 
-„Recherche“ ist ein Agent, der mit OPAA mitgeliefert wird, sobald die Systemverwaltung Agenten einschaltet. Er liest nur, was Sie selbst lesen dürfen, und schreibt nichts nach außen. Ein Lauf dauert eine Anfrage lang und ist begrenzt: Er ersetzt keine mehrstündige Recherche, sondern trägt in einigen Minuten zusammen, was die Bibliotheken zu Ihrer Frage hergeben. Hat die Systemverwaltung ihn gesperrt, erscheint er nicht in der Auswahl.
+„Recherche“ ist ein Agent, der mit opaa mitgeliefert wird, sobald die Systemverwaltung Agenten einschaltet. Er liest nur, was Sie selbst lesen dürfen, und schreibt nichts nach außen. Ein Lauf dauert eine Anfrage lang und ist begrenzt: Er ersetzt keine mehrstündige Recherche, sondern trägt in einigen Minuten zusammen, was die Bibliotheken zu Ihrer Frage hergeben. Hat die Systemverwaltung ihn gesperrt, erscheint er nicht in der Auswahl.
 
 ## Recherche starten
 
@@ -25,7 +25,7 @@ Ist die Frage unklar, fragt „Recherche“ nach, bevor er sucht. Der Lauf endet
 
 ## Bericht lesen
 
-Der Bericht beginnt mit einer kurzen Zusammenfassung, dann folgen die Teilfragen mit ihren Ergebnissen, jede Aussage mit ihrer Fundstelle. Widersprechen sich Fundstellen, nennt der Agent beide, statt sich für eine zu entscheiden; was er nicht gefunden hat, steht als Lücke im Bericht. Eine Fundstelle, die OPAA beim Prüfen nicht in den gelesenen Stellen findet, ist gekennzeichnet ([Belege prüfen](belege-pruefen.md)).
+Der Bericht beginnt mit einer kurzen Zusammenfassung, dann folgen die Teilfragen mit ihren Ergebnissen, jede Aussage mit ihrer Fundstelle. Widersprechen sich Fundstellen, nennt der Agent beide, statt sich für eine zu entscheiden; was er nicht gefunden hat, steht als Lücke im Bericht. Eine Fundstelle, die opaa beim Prüfen nicht in den gelesenen Stellen findet, ist gekennzeichnet ([Belege prüfen](belege-pruefen.md)).
 
 ## Grenzen und Entwurf
 

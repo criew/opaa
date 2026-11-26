@@ -213,7 +213,7 @@ export default function App() {
               <Route path={REGISTER_ROUTE} element={<RegisterPage />} />
               {/* ADR-0033, Entscheidung 12: the handover link and, after the provider redirect, the
                 page that redeems it - public like the other link targets, because the person has
-                no OPAA session at that moment and must not get one before the redemption. */}
+                no opaa session at that moment and must not get one before the redemption. */}
               <Route path={HANDOVER_ROUTE} element={<HandoverPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               {/* ADR-0025: the provider of an OAuth consent returns here. Outside the protected

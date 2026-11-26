@@ -14,10 +14,10 @@ naechste-durchsicht: 2027-04-23
 **Gilt für:** alle Behörden.
 
 Für ihr Sicherheitskonzept, eine Prüfung der Lieferkette oder eine Vergabe braucht eine Behörde
-Belege, wie das Projekt OPAA absichert. Diese Seite sagt, wo sie stehen; gepflegt werden sie mit dem
+Belege, wie das Projekt opaa absichert. Diese Seite sagt, wo sie stehen; gepflegt werden sie mit dem
 Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizierung und kein Testat.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Nachweis | Was er belegt | Wo er steht |
 |---|---|---|
@@ -35,7 +35,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 1. **Härtungstabelle abarbeiten:** jede Zeile umgesetzt oder begründet als nicht zutreffend
    vermerkt; das Ergebnis gehört zum [IT-Grundschutz](grundschutz-modellierung.md)-Check.
-2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Log auf die
+2. **Protokolle einsammeln und aufbewahren.** opaa schreibt das Log auf die
    Standardausgabe; ein Log-Sammler des Betriebs nimmt es dort ab.
 3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md).
 4. **Updates zeitnah einspielen** und vor dem Supportende der eingesetzten Linie wechseln.
