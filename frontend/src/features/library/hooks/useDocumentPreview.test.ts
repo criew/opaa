@@ -3,14 +3,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentPreview } from './useDocumentPreview'
 import { openDocumentContent } from '../utils/documentContent'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
+import { getDocumentContent } from '../api/libraryApi'
+import { ORIGINAL_VIEW_MAX_BYTES } from '../utils/officeOriginal'
 
-vi.mock('../utils/documentContent', async (importOriginal) => ({
-  opensAsTextVersion: (await importOriginal<typeof import('../utils/documentContent')>())
-    .opensAsTextVersion,
-  openDocumentContent: vi.fn(),
+vi.mock('../utils/documentContent', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/documentContent')>()
+  return {
+    opensAsTextVersion: actual.opensAsTextVersion,
+    TEXT_PREVIEW_MAX_BYTES: actual.TEXT_PREVIEW_MAX_BYTES,
+    openDocumentContent: vi.fn(),
+  }
+})
+
+vi.mock('../api/libraryApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../api/libraryApi')>()),
+  getDocumentContent: vi.fn(),
 }))
 
 const mockOpenDocumentContent = vi.mocked(openDocumentContent)
+const mockGetDocumentContent = vi.mocked(getDocumentContent)
+
+/** A Blob whose text and bytes jsdom reads synchronously enough for the hook. */
+function original(content: string, type: string, size?: number): Blob {
+  const blob = new Blob([content], { type })
+  if (size != null) Object.defineProperty(blob, 'size', { value: size })
+  return blob
+}
 
 /** The queued global popup notifications (guidelines 5.9) - download notices and failures land
  *  here instead of in hook-local state. */
@@ -176,6 +194,139 @@ describe('useDocumentPreview', () => {
     })
     act(() => result.current.closeTextVersion())
     expect(result.current.textVersion).toBeNull()
+  })
+
+  describe('Word, CSV and mail as originals', () => {
+    it('opens a CSV file as a table from the content endpoint, with the anchor', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: original('A;B\r\n1;2\r\n', 'text/csv'),
+        fileName: 'liste.csv',
+      })
+      const anchor = { rowFrom: 2, rowTo: 2 }
+      const { result } = renderHook(() => useDocumentPreview())
+
+      await act(async () => {
+        await result.current.openDocument({ id: 'doc-csv', fileName: 'x.csv', anchor })
+      })
+
+      expect(mockGetDocumentContent).toHaveBeenCalledWith('doc-csv')
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+      expect(result.current.textVersion).toBeNull()
+      const opened = result.current.officeOriginal
+      expect(opened?.format).toBe('csv')
+      expect(opened?.fileName).toBe('liste.csv')
+      expect(opened?.anchor).toBe(anchor)
+      expect(opened?.format === 'csv' && opened.table.rows).toEqual([
+        { number: 2, cells: ['1', '2'] },
+      ])
+      act(() => result.current.closeOfficeOriginal())
+      expect(result.current.officeOriginal).toBeNull()
+    })
+
+    it('opens a mail with its plain text', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: original('Subject: Hallo\r\n\r\nText.\r\n', 'message/rfc822'),
+        fileName: null,
+      })
+      const { result } = renderHook(() => useDocumentPreview())
+
+      await act(async () => {
+        await result.current.openDocument({ id: 'doc-mail', fileName: 'frage.EML' })
+      })
+
+      const opened = result.current.officeOriginal
+      expect(opened?.fileName).toBe('frage.EML')
+      expect(opened?.format === 'mail' && opened.mail).toMatchObject({
+        subject: 'Hallo',
+        paragraphs: ['Text.'],
+      })
+    })
+
+    it('opens a Word file for docx-preview without reading it', async () => {
+      const blob = original('PK', 'application/octet-stream')
+      mockGetDocumentContent.mockResolvedValueOnce({ blob, fileName: 'a.docx' })
+      const { result } = renderHook(() => useDocumentPreview())
+
+      await act(async () => {
+        await result.current.openDocument({ id: 'doc-docx', fileName: 'a.docx', chunkIndex: 2 })
+      })
+
+      expect(result.current.officeOriginal).toMatchObject({
+        format: 'docx',
+        documentId: 'doc-docx',
+        blob,
+        chunkIndex: 2,
+      })
+    })
+
+    it.each([
+      [
+        'an original above the size bound',
+        'a.docx',
+        () => original('PK', 'x', ORIGINAL_VIEW_MAX_BYTES.docx + 1),
+      ],
+      [
+        'a mail without a plain text part',
+        'b.eml',
+        () => original('Content-Type: text/html\r\n\r\n<p>Hi</p>', 'message/rfc822'),
+      ],
+    ])('opens the Textfassung for %s', async (_case, fileName, blob) => {
+      mockGetDocumentContent.mockResolvedValueOnce({ blob: blob(), fileName })
+      const anchor = { quoteStart: 'Hi' }
+      const { result } = renderHook(() => useDocumentPreview())
+
+      await act(async () => {
+        await result.current.openDocument({ id: 'doc-1', fileName, chunkIndex: 1, anchor })
+      })
+
+      expect(result.current.officeOriginal).toBeNull()
+      expect(result.current.textVersion).toEqual({
+        documentId: 'doc-1',
+        fileName,
+        chunkIndex: 1,
+        anchor,
+      })
+    })
+
+    it('opens the Textfassung when the original cannot be fetched', async () => {
+      mockGetDocumentContent.mockRejectedValueOnce(new Error('Das Original fehlt.'))
+      const { result } = renderHook(() => useDocumentPreview())
+
+      await act(async () => {
+        await result.current.openDocument({ id: 'doc-1', fileName: 'a.csv' })
+      })
+
+      expect(result.current.officeOriginal).toBeNull()
+      expect(result.current.textVersion?.documentId).toBe('doc-1')
+      expect(queuedMessages()).toEqual([])
+    })
+
+    it('replaces an original it cannot render by its Textfassung', async () => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: original('PK', 'x'),
+        fileName: 'a.docx',
+      })
+      const anchor = { quoteStart: 'Frist' }
+      const { result } = renderHook(() => useDocumentPreview())
+      await act(async () => {
+        await result.current.openDocument({
+          id: 'doc-1',
+          fileName: 'a.docx',
+          chunkIndex: 3,
+          anchor,
+        })
+      })
+
+      act(() => result.current.replaceOriginalByTextVersion(result.current.officeOriginal!))
+
+      expect(result.current.officeOriginal).toBeNull()
+      expect(result.current.textVersion).toEqual({
+        documentId: 'doc-1',
+        fileName: 'a.docx',
+        chunkIndex: 3,
+        anchor,
+      })
+    })
   })
 
   it('does not preview or notify for a blob-preview result (PDF/image unchanged)', async () => {

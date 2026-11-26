@@ -176,6 +176,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   as a monospace block — the same case as `GeneratedPasswordDialog`.
  * - `IssueServiceAccountTokenDialog`: the token value of a service account shown once as a
  *   monospace block — the same case as `ExternalAccessTokenValueDialog`.
+ * - `PdfTools`: the PDF view's tools float over the pages as a pill — a level-2 layer with frame
+ *   and shadow (4.3), like the input row of the chat.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -199,6 +201,7 @@ const AUSNAHMEN = [
   'HandoverScopeSummary.tsx',
   'ExternalAccessTokenValueDialog.tsx',
   'IssueServiceAccountTokenDialog.tsx',
+  'PdfTools.tsx',
 ]
 
 /**

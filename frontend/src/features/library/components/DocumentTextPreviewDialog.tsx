@@ -1,15 +1,20 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import GlobalStyles from '@mui/material/GlobalStyles'
-import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
+import ReadingModeDialog from '@/shared/ui/dialog/ReadingModeDialog'
 import type { TextPreviewResult } from '../utils/documentContent'
-import { fontFamily, fontSize, markHighlight } from '@/shared/theme/tokens'
+import { fontFamily, fontSize } from '@/shared/theme/tokens'
 import { NO_ANCHOR_NOTICE, passageRange } from '../utils/textPassage'
 import { downloadBlob } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
-import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import ReadingLayout from './documentView/ReadingLayout'
+import DocumentPaper from './documentView/DocumentPaper'
+import { deskScrollSx } from './documentView/styles'
+import PassageLabel from './documentView/PassageLabel'
+import { anchorPlace, anchorQuote } from './documentView/findingText'
+import { highlightStyles, markPassageBlocks, passageBlockSx } from './documentView/textMarks'
+import { backLabel } from './documentView/backLabel'
 
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
@@ -52,12 +57,19 @@ export default function DocumentTextPreviewDialog({
   previewDocument,
   onClose,
 }: DocumentTextPreviewDialogProps) {
-  const [mark, setMark] = useState<{ of: TextPreviewResult; state: MarkState } | null>(null)
+  const [mark, setMark] = useState<{
+    of: TextPreviewResult
+    state: MarkState
+    block: HTMLElement | null
+  } | null>(null)
+  const [paper, setPaper] = useState<HTMLDivElement | null>(null)
+  const scroller = useRef<{ content: HTMLElement; range: Range } | null>(null)
 
   // The cited passage is marked with the CSS Custom Highlight API, which paints a Range without
-  // touching the rendered DOM. A ref callback, so it runs once the content is in the DOM and again
-  // for each newly previewed document; later re-renders of the Markdown (link targets loading)
-  // replace text nodes, so a mutation marks the passage anew - the view jumps to it only once.
+  // touching the rendered DOM; the blocks it runs through get the edge stroke by attribute. A ref
+  // callback, so it runs once the content is in the DOM and again for each newly previewed
+  // document; later re-renders of the Markdown (link targets loading) replace text nodes, so a
+  // mutation marks the passage anew - the view jumps to it only once.
   const markPassage = useCallback(
     (content: HTMLElement | null) => {
       const anchor = previewDocument?.anchor
@@ -65,7 +77,9 @@ export default function DocumentTextPreviewDialog({
       const highlights = typeof CSS !== 'undefined' ? CSS.highlights : undefined
       let jumped = false
       const apply = () => {
-        const range = passageRange(content, anchor)
+        observer?.disconnect()
+        const body = content.querySelector<HTMLElement>('[data-document-body]') ?? content
+        const range = passageRange(body, anchor)
         let highlighted = false
         if (range && highlights && typeof Highlight !== 'undefined') {
           highlights.set(PASSAGE_HIGHLIGHT, new Highlight(range))
@@ -73,6 +87,8 @@ export default function DocumentTextPreviewDialog({
         } else {
           highlights?.delete(PASSAGE_HIGHLIGHT)
         }
+        const block = range ? markPassageBlocks(body, range) : null
+        scroller.current = range ? { content, range } : null
         if (range && !jumped) {
           jumped = true
           scrollToPassage(content, range)
@@ -80,38 +96,28 @@ export default function DocumentTextPreviewDialog({
         setMark({
           of: previewDocument,
           state: !range ? 'not-found' : highlighted ? 'marked' : 'scrolled',
+          block,
         })
+        observer?.observe(content, OBSERVED)
       }
-      apply()
       const observer =
         typeof MutationObserver !== 'undefined' ? new MutationObserver(apply) : undefined
-      observer?.observe(content, { childList: true, subtree: true, characterData: true })
+      apply()
       return () => {
         observer?.disconnect()
         highlights?.delete(PASSAGE_HIGHLIGHT)
+        scroller.current = null
       }
     },
     [previewDocument],
   )
 
-  const markState =
-    previewDocument?.anchor === null
-      ? 'no-anchor'
-      : mark?.of === previewDocument
-        ? mark.state
-        : 'none'
-  const status = (
-    <Typography
-      role="status"
-      sx={
-        markState === 'not-found'
-          ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
-          : markState === 'no-anchor'
-            ? { px: 3, pb: 1, fontSize: fontSize.text, color: 'text.secondary' }
-            : visuallyHidden
-      }
-    >
-      {markState === 'not-found'
+  const anchor = previewDocument?.anchor
+  const current = mark?.of === previewDocument ? mark : null
+  const markState = anchor === null ? 'no-anchor' : (current?.state ?? 'none')
+  const status = {
+    text:
+      markState === 'not-found'
         ? 'Die Fundstelle wurde im Dokument nicht gefunden.'
         : markState === 'no-anchor'
           ? NO_ANCHOR_NOTICE
@@ -119,14 +125,15 @@ export default function DocumentTextPreviewDialog({
             ? 'Fundstelle markiert.'
             : markState === 'scrolled'
               ? 'Zur Fundstelle gescrollt.'
-              : ''}
-    </Typography>
-  )
+              : '',
+    warning: markState === 'not-found',
+  }
+  const canJump = markState === 'marked' || markState === 'scrolled'
   return (
-    <ViewDialog
+    <ReadingModeDialog
       open={previewDocument != null}
       onClose={onClose}
-      width="editor"
+      backLabel={backLabel(anchor)}
       titleId={TITLE_ID}
       title={previewDocument?.fileName}
       titleActions={
@@ -136,36 +143,58 @@ export default function DocumentTextPreviewDialog({
           />
         )
       }
-      contentRef={markPassage}
-      toolbar={status}
     >
-      <GlobalStyles
-        styles={{
-          [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: markHighlight },
-          '@media (forced-colors: active)': {
-            [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: 'Mark', color: 'MarkText' },
-          },
-        }}
-      />
-      {previewDocument?.contentType === 'text/markdown' ? (
-        <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />
-      ) : (
+      <GlobalStyles styles={(theme) => highlightStyles(PASSAGE_HIGHLIGHT, theme)} />
+      <ReadingLayout
+        finding={
+          anchor !== undefined ? { place: anchorPlace(anchor), quote: anchorQuote(anchor) } : null
+        }
+        status={status}
+        onJump={
+          canJump
+            ? () => {
+                if (scroller.current)
+                  scrollToPassage(scroller.current.content, scroller.current.range)
+              }
+            : undefined
+        }
+      >
         <Box
-          component="pre"
-          sx={{
-            m: 0,
-            fontFamily: fontFamily.mono,
-            fontSize: fontSize.text,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
+          ref={markPassage}
+          data-testid="document-text-content"
+          role="region"
+          aria-label="Dokument"
+          tabIndex={0}
+          sx={deskScrollSx}
         >
-          {previewDocument?.content}
+          <DocumentPaper paperRef={setPaper} sx={passageBlockSx}>
+            <PassageLabel block={current?.block ?? null} container={paper} />
+            <Box data-document-body="">
+              {previewDocument?.contentType === 'text/markdown' ? (
+                <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />
+              ) : (
+                <Box
+                  component="pre"
+                  sx={{
+                    m: 0,
+                    fontFamily: fontFamily.mono,
+                    fontSize: fontSize.text,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {previewDocument?.content}
+                </Box>
+              )}
+            </Box>
+          </DocumentPaper>
         </Box>
-      )}
-    </ViewDialog>
+      </ReadingLayout>
+    </ReadingModeDialog>
   )
 }
+
+const OBSERVED: MutationObserverInit = { childList: true, subtree: true, characterData: true }
 
 /**
  * Scrolls `content` so the passage starts in the middle of the view - by the range's own position,

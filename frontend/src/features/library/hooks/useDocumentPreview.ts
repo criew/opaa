@@ -11,6 +11,7 @@ import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 import { withTextFragment } from '../utils/textFragment'
+import { loadOfficeOriginal, originalFormat, type OfficeOriginal } from '../utils/officeOriginal'
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
@@ -49,6 +50,16 @@ export function useDocumentPreview() {
   const [previewDocument, setPreviewDocument] = useState<TextPreviewResult | null>(null)
   const [pdfPreview, setPdfPreview] = useState<PdfPreviewResult | null>(null)
   const [textVersion, setTextVersion] = useState<TextVersionPreview | null>(null)
+  const [officeOriginal, setOfficeOriginal] = useState<OfficeOriginal | null>(null)
+
+  function openTextVersion(document: OpenableDocument) {
+    setTextVersion({
+      documentId: document.id,
+      fileName: document.fileName,
+      chunkIndex: document.chunkIndex,
+      anchor: document.anchor,
+    })
+  }
 
   async function openDocument(document: OpenableDocument) {
     // ADR-0023: a source whose original is the page at the source (Confluence) has no file of its
@@ -64,14 +75,23 @@ export function useDocumentPreview() {
       window.open(withTextFragment(target, document.anchor), '_blank', 'noopener,noreferrer')
       return
     }
-    // a format the browser cannot show opens as its Textfassung; the original is not fetched
-    if (opensAsTextVersion(document.fileName)) {
-      setTextVersion({
+    // Word, CSV and mail open as themselves; one too large to show, a mail without plain text or
+    // an original that cannot be fetched opens as its Textfassung, which the index still holds
+    const format = originalFormat(document.fileName)
+    if (format) {
+      const original = await loadOfficeOriginal(format, {
         documentId: document.id,
         fileName: document.fileName,
-        chunkIndex: document.chunkIndex,
         anchor: document.anchor,
-      })
+        chunkIndex: document.chunkIndex,
+      }).catch(() => null)
+      if (original) setOfficeOriginal(original)
+      else openTextVersion(document)
+      return
+    }
+    // a format the browser cannot show opens as its Textfassung; the original is not fetched
+    if (opensAsTextVersion(document.fileName)) {
+      openTextVersion(document)
       return
     }
     try {
@@ -87,7 +107,7 @@ export function useDocumentPreview() {
           chunkIndex: document.chunkIndex,
         })
       } else if (result.kind === 'download') {
-        // Every format without a preview (DOCX among them) must give visible feedback - a click
+        // Every format without a preview must give visible feedback - a click
         // that only starts a silent download otherwise looks like it did nothing. A Markdown/plain
         // text original that only fell back to
         // a download because it exceeded the size cap gets its own, more informative message.
@@ -113,6 +133,18 @@ export function useDocumentPreview() {
     closePdfPreview: () => setPdfPreview(null),
     textVersion,
     closeTextVersion: () => setTextVersion(null),
+    officeOriginal,
+    closeOfficeOriginal: () => setOfficeOriginal(null),
+    /** The original view could not render its file: the Textfassung takes its place. */
+    replaceOriginalByTextVersion: (original: OfficeOriginal) => {
+      setOfficeOriginal(null)
+      openTextVersion({
+        id: original.documentId,
+        fileName: original.fileName,
+        anchor: original.anchor,
+        chunkIndex: original.chunkIndex,
+      })
+    },
     openDocument,
   }
 }

@@ -6,7 +6,8 @@ import Typography from '@mui/material/Typography'
 import type { PdfPreviewResult } from '../utils/documentContent'
 import { downloadBlob, openInBrowserViewer } from '../utils/documentContent'
 import DownloadOriginalButton from './DownloadOriginalButton'
-import ViewDialog from '@/shared/ui/dialog/ViewDialog'
+import ReadingModeDialog from '@/shared/ui/dialog/ReadingModeDialog'
+import { backLabel } from './documentView/backLabel'
 import LoadingState from '@/shared/ui/states/LoadingState'
 
 // pdf.js and the viewer load only when a PDF is opened, never with the page that offers it; a
@@ -59,11 +60,10 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
   const failed = preview != null && failedBlob === preview.blob
   const buffer = preview && data?.blob === preview.blob ? data.buffer : null
   return (
-    <ViewDialog
+    <ReadingModeDialog
       open={preview != null}
       onClose={onClose}
-      width="editor"
-      tall
+      backLabel={backLabel(preview?.anchor)}
       titleId={TITLE_ID}
       title={preview?.fileName}
       titleActions={
@@ -71,12 +71,11 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
           <DownloadOriginalButton onDownload={() => downloadBlob(preview.blob, preview.fileName)} />
         )
       }
-      contentSx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
     >
       {failed ? (
         <Box
           role="alert"
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start', p: 3 }}
         >
           <Typography>Dieses PDF kann hier nicht angezeigt werden.</Typography>
           <Button variant="contained" onClick={openInBrowser}>
@@ -84,7 +83,13 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
           </Button>
         </Box>
       ) : buffer ? (
-        <Suspense fallback={<LoadingState shape="block" />}>
+        <Suspense
+          fallback={
+            <Box sx={{ p: 3 }}>
+              <LoadingState shape="block" />
+            </Box>
+          }
+        >
           <PdfViewer
             data={buffer}
             anchor={preview?.anchor}
@@ -95,8 +100,10 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
           />
         </Suspense>
       ) : (
-        <LoadingState shape="block" />
+        <Box sx={{ p: 3 }}>
+          <LoadingState shape="block" />
+        </Box>
       )}
-    </ViewDialog>
+    </ReadingModeDialog>
   )
 }

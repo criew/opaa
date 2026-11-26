@@ -247,7 +247,7 @@ describe('DocumentTextPreviewDialog', () => {
       renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
 
       await screen.findByText(/Fundstelle markiert/)
-      const content = document.querySelector('pre')!.parentElement!
+      const content = screen.getByTestId('document-text-content')
       expect(content.scrollTop).toBe(900)
       expect(document.activeElement).toBe(document.querySelector('pre'))
     })
