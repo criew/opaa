@@ -96,8 +96,8 @@ und damit in der Volltextsuche.
 
 **Dokumenteigenschaften:** Betreff als Titel, der `Date`-Kopf als Dokumentdatum mit höchstem
 Rang für das Metadatenschema. Der Dateiname einer Mail liefert **keine Dokumentart**: Er entsteht
-meist aus dem Betreff und nennt, worum es geht („Entwurf Vertrag“), nicht was die Mail ist. Weil der Betreff zugleich der Titel ist, führt die Fundstelle ihn
-nur einmal.
+meist aus dem Betreff und nennt, worum es geht („Entwurf Vertrag“), nicht was die Mail ist. Weil der
+Betreff zugleich der Titel ist, führt die Fundstelle ihn nur einmal.
 
 **Altbestand.** Eine mit einer Pipeline-Version unter 5 indizierte Mail trägt die Kopfdaten noch
 nicht als Schemafelder. Sie kommen mit dem nächsten Lauf über das Dokument: Pipeline-Reindex oder

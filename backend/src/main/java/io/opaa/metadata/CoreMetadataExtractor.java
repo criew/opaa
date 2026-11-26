@@ -43,10 +43,12 @@ public final class CoreMetadataExtractor {
   /**
    * A hyphen separates a month or a year from a word ("stand-2026-11", "plan-2024-entwurf"), never
    * from another number: next to a digit it makes the date part of an Aktenzeichen ("AA-2024-017"),
-   * a version ("1.2-2024") or a range ("2020-2026"), and that yields no date.
+   * a version ("1.2-2024") or a range ("2020-2026"), and that yields no date. Before a month the
+   * word needs four letters at least: a short prefix ("AA-2024-12", "KW-2024-07") is the Kürzel of
+   * an Aktenzeichen or a counter, and its number no month.
    */
   private static final Pattern ISO_MONTH =
-      Pattern.compile("(?<!\\d)(?<!\\d-)(\\d{4})-(\\d{2})(?!\\d)(?!-\\d)");
+      Pattern.compile("(?:(?<![\\d-])|(?<=\\p{L}{4}-))(\\d{4})-(\\d{2})(?!\\d)(?!-\\d)");
 
   private static final Pattern GERMAN_MONTH_NAME =
       Pattern.compile(

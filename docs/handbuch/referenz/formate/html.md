@@ -69,8 +69,9 @@ Der Abschnittspfad steht zusätzlich als erste Zeile im Chunk-Text.
 **Dokumenteigenschaften:** `<title>`, die erste `<h1>` und bei Dateien die erste Textzeile des
 Inhalts als Titelzeile. Ein `<meta name="dcterms.date">`, `DC.date` oder `date` mit einem vollen
 Tag (`2025-06-30`, auch mit Uhrzeit) ist das Dokumentdatum der Seite; es geht Überschrift, Text und
-Dateiname vor. Ein Wert ohne Tag („2025“, „Juni 2025“) wird nicht gelesen. Bei einer Feed-Detailseite wird keine Titelzeile gelesen: Eine Meldung
-benennt andere Dokumente als sich selbst und würde sonst deren Dokumentart erben.
+Dateiname vor. Ein Wert ohne Tag („2025“, „Juni 2025“) wird nicht gelesen. Bei einer
+Feed-Detailseite wird keine Titelzeile gelesen: Eine Meldung benennt andere Dokumente als sich
+selbst und würde sonst deren Dokumentart erben.
 
 ## 5. Fehler
 

@@ -94,6 +94,10 @@ class CoreMetadataExtractorTest {
       for (String fileName :
           List.of(
               "AA-2024-017.pdf",
+              "AA-2024-12.pdf",
+              "KW-2024-07.pdf",
+              "TOP-2024-10.pdf",
+              "Az_2024-123.pdf",
               "Az-12-2024.pdf",
               "konzept-1.2-2024.pdf",
               "release-2.2024.pdf",

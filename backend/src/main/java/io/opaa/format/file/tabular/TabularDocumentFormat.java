@@ -37,11 +37,14 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.ooxml.POIXMLProperties;
+import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.xmlbeans.XmlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -202,8 +205,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       return DocumentProperties.EMPTY;
     }
     try {
-      return OoxmlPackages.read(
-          source.file(), limits, pkg -> coreProperties(new XSSFWorkbook(pkg)));
+      return OoxmlPackages.read(source.file(), limits, TabularDocumentFormat::readCoreProperties);
     } catch (IOException | RuntimeException e) {
       log.warn(
           "Could not read properties of {} via pipeline {}",
@@ -374,15 +376,24 @@ public class TabularDocumentFormat implements DocumentFormat {
           for (Sheet sheet : workbook) {
             chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName(), characters));
           }
-          return new XlsxContent(chunks, coreProperties(workbook));
+          return new XlsxContent(
+              chunks, coreProperties(workbook.getProperties().getCoreProperties()));
         });
   }
 
   /** One workbook's reading: its chunks and what its core properties declare (ADR-0024). */
   private record XlsxContent(List<Document> chunks, DocumentProperties properties) {}
 
-  private static DocumentProperties coreProperties(XSSFWorkbook workbook) {
-    POIXMLProperties.CoreProperties core = workbook.getProperties().getCoreProperties();
+  /** Only {@code docProps/core.xml}, never the sheets - what the Bestandslauf reads. */
+  private static DocumentProperties readCoreProperties(OPCPackage pkg) throws IOException {
+    try {
+      return coreProperties(new POIXMLProperties(pkg).getCoreProperties());
+    } catch (OpenXML4JException | XmlException e) {
+      throw new IOException("Could not read the core properties of an XLSX workbook", e);
+    }
+  }
+
+  private static DocumentProperties coreProperties(POIXMLProperties.CoreProperties core) {
     return DocumentProperties.builder()
         .title(core.getTitle())
         .createdAt(DocumentProperties.toLocalDate(core.getCreated()))

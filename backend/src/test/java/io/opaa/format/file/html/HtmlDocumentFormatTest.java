@@ -58,16 +58,14 @@ class HtmlDocumentFormatTest {
         .isNull();
   }
 
-  /**
-   * the Dokumentart is read from the title line, and an HTML page has no line breaks of its own -
-   * the first text block is that line, the label paragraph below it is not part of it.
-   */
   // regression guard: a page's declared date meta is its document date, the first full day wins
   @Test
   void readsTheDeclaredDateMetaAsTheDocumentDate() throws IOException {
     assertThat(declaredDate("<meta name=\"date\" content=\"2025-06-30\">"))
         .isEqualTo(LocalDate.of(2025, 6, 30));
     assertThat(declaredDate("<meta name=\"DC.date\" content=\"2025-06-30T10:15:00+02:00\">"))
+        .isEqualTo(LocalDate.of(2025, 6, 30));
+    assertThat(declaredDate("<meta name=\"date\" content=\"2025-06-30 10:15:00\">"))
         .isEqualTo(LocalDate.of(2025, 6, 30));
     assertThat(
             declaredDate(
@@ -110,6 +108,10 @@ class HtmlDocumentFormatTest {
         .documentDate();
   }
 
+  /**
+   * the Dokumentart is read from the title line, and an HTML page has no line breaks of its own -
+   * the first text block is that line, the label paragraph below it is not part of it.
+   */
   @Test
   void readsTheFirstTextBlockAsTheTitleLine() throws IOException {
     assertThat(pipeline.readProperties(sourceFor(REALISTIC_PAGE)).titleLine())

@@ -58,8 +58,12 @@ public class HtmlDocumentFormat implements DocumentFormat {
    */
   private static final List<String> DATE_META_NAMES = List.of("dcterms.date", "dc.date", "date");
 
-  /** A W3CDTF day ({@code 2026-03-12}, optionally followed by a time) - the notation meta uses. */
-  private static final Pattern W3CDTF_DAY = Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2})(?:$|T)");
+  /**
+   * A W3CDTF day ({@code 2026-03-12}, optionally followed by a time after T or a space) - the
+   * notation meta uses.
+   */
+  private static final Pattern W3CDTF_DAY =
+      Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2})(?:$|[T ])");
 
   public HtmlDocumentFormat(HeadingSectionSplitter splitter) {
     this(splitter, ParserLimitProperties.DEFAULTS);
