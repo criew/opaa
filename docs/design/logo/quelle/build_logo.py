@@ -3,12 +3,15 @@
 
 The wordmark "opaa" and the mark (an underlined "o") are converted to outlines, so no file needs the
 font at display time. The second "a" and the underline are Hellblau; the rest is Dunkelblau, or white
-on dark surfaces. Run from the repository root after changing anything here:
+on dark surfaces. Needs `pnpm install` in frontend/ and e2e/ plus `pnpm run install:browsers` in e2e/
+(Prettier, Playwright's Chromium; CHROMIUM_PATH names another Chromium binary).
+Run from the repository root after changing anything here:
 
-    pip install fonttools==4.* brotli && python3 docs/design/logo/quelle/build_logo.py
+    pip install fonttools==4.69.1 brotli==1.2.1 && python3 docs/design/logo/quelle/build_logo.py
 
 It rewrites the SVGs in docs/design/logo/, the copies used by app, handbook and homepage, the path
-data of frontend/src/shared/ui/brandMarkPaths.ts, the homepage's inline wordmark and, with Playwright's Chromium, the PNG icons.
+data of frontend/src/shared/ui/brandMarkPaths.ts (formatted with Prettier), the homepage's inline
+wordmark and the PNG icons.
 Temporary until the vector artwork of the brand concept replaces it.
 """
 
@@ -217,9 +220,9 @@ def write(path: Path, content: str) -> None:
 
 def render_png(svg_path: Path, size: int, target: Path) -> None:
     script = f"""
-const {{ chromium }} = require('playwright');
+const {{ chromium }} = require('@playwright/test');
 (async () => {{
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({{ executablePath: process.env.CHROMIUM_PATH || undefined }});
   const page = await browser.newPage({{ viewport: {{ width: {size}, height: {size} }} }});
   const svg = require('fs').readFileSync({str(svg_path)!r}, 'utf8')
     .replace('rx="14"', 'rx="0"');
@@ -228,11 +231,20 @@ const {{ chromium }} = require('playwright');
   await browser.close();
 }})();
 """
-    subprocess.run(["node", "-e", script], check=True)
+    subprocess.run(["node", "-e", script], check=True, cwd=ROOT / "e2e")
     print(f"wrote {target.relative_to(ROOT)}")
 
 
+def check_tools() -> None:
+    """Fails before anything is written, so a missing tool never leaves half the files rebuilt."""
+    subprocess.run(
+        ["node", "-e", "require.resolve('@playwright/test')"], check=True, cwd=ROOT / "e2e"
+    )
+    subprocess.run(["pnpm", "exec", "prettier", "--version"], check=True, cwd=ROOT / "frontend")
+
+
 def main() -> int:
+    check_tools()
     files = {
         "opaa-logo.svg": logo_file(True, DUNKELBLAU),
         "opaa-logo-hell.svg": logo_file(True, WHITE),
@@ -253,7 +265,11 @@ def main() -> int:
     }
     for target, name in copies.items():
         write(ROOT / target, files[name])
-    write(ROOT / "frontend/src/shared/ui/brandMarkPaths.ts", brand_mark_ts())
+    paths_ts = ROOT / "frontend/src/shared/ui/brandMarkPaths.ts"
+    write(paths_ts, brand_mark_ts())
+    subprocess.run(
+        ["pnpm", "exec", "prettier", "--write", str(paths_ts)], check=True, cwd=ROOT / "frontend"
+    )
     homepage = ROOT / "page/index.html"
     write(homepage, homepage_wordmark(homepage.read_text(encoding="utf-8")))
     for size in (32, 180, 192, 512):
