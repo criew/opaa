@@ -15,11 +15,11 @@ naechste-durchsicht: 2027-04-23
 Landesdatenschutzbeauftragten sind.
 
 Das VVT ist die Liste aller Verfahren einer Behörde, in denen personenbezogene Daten verarbeitet
-werden, jeweils mit Zweck, Datenarten, Empfängern und Löschfristen. OPAA wird darin als neues Verfahren
+werden, jeweils mit Zweck, Datenarten, Empfängern und Löschfristen. opaa wird darin als neues Verfahren
 eingetragen. Verantwortlich ist die Behörde; die Vorlage ersetzt nicht ihr Formular, sondern sagt je
 Angabe, woher sie kommt.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Angabe im VVT | Woher |
 |---|---|
@@ -39,7 +39,7 @@ im VVT gilt der Wert der Installation.
 
 ## Aufgaben der Behörde
 
-1. **Zuschnitt wählen:** eine Tätigkeit für ganz OPAA oder je Bereich des Datenkatalogs eine, etwa
+1. **Zuschnitt wählen:** eine Tätigkeit für ganz opaa oder je Bereich des Datenkatalogs eine, etwa
    Konten ({{faktenblatt:datenkatalog#bereich-accounts}}), Protokoll
    ({{faktenblatt:datenkatalog#bereich-audit-log}}), Chats ({{faktenblatt:datenkatalog#bereich-chats}})
    und Wissensbibliotheken ({{faktenblatt:datenkatalog#bereich-libraries}}). Mehrere Tätigkeiten
@@ -55,11 +55,11 @@ im VVT gilt der Wert der Installation.
 
 ```text
 Verarbeitungstätigkeit:  [Name der Installation], KI-gestützter Wissensassistent
-Eingesetzte Version:     [OPAA-Version, aus „Info zu …“]
-Faktenblätter:           Faktenblätter der Version [OPAA-Version], abgelegt unter [Ablageort]
+Eingesetzte Version:     [opaa-Version, aus „Info zu …“]
+Faktenblätter:           Faktenblätter der Version [opaa-Version], abgelegt unter [Ablageort]
 Zweck:                   [Einsatzzweck]; je Datum: Datenkatalog, Zeile „Zweck“
 Rechtsgrundlage:         [für Beschäftigtendaten § 26 BDSG bzw. Landesrecht prüfen]
-Betroffene Personen:     [Beschäftigte, die OPAA nutzen; Personen in Dokumenten; weitere]
+Betroffene Personen:     [Beschäftigte, die opaa nutzen; Personen in Dokumenten; weitere]
 Datenkategorien:         Datenkatalog der Version, Übersicht
 Empfänger:               intern: Rollensicht; extern: Datenflüsse; Auftragsverarbeiter: [Liste]
 Drittlandübermittlung:   [keine / Angaben]
@@ -72,7 +72,7 @@ Stand:                   [Datum]        geprüft durch: [Name]
 ## Gut zu wissen
 
 - Dokumente in Wissensbibliotheken enthalten oft Daten Dritter, etwa aus Akten. Sie gehören in der
-  Regel zu dem Verfahren, aus dem die Dokumente stammen. Ob OPAA dort als weiterer Zweck oder als
+  Regel zu dem Verfahren, aus dem die Dokumente stammen. Ob opaa dort als weiterer Zweck oder als
   eigene Tätigkeit einzutragen ist, klärt die Behörde mit der oder dem Datenschutzbeauftragten.
 - Ein Fachverfahren, das über ein [Dienstkonto](../../handbuch/administration/externe-ki-werkzeuge.md#dienstkonten) sucht, ist ein weiterer
   Empfänger: Es erhält Fundstellen aus den Bibliotheken, deren Verwaltung ihm zugestimmt hat, und
@@ -82,7 +82,7 @@ Stand:                   [Datum]        geprüft durch: [Name]
   gescannter Dokumente ({{faktenblatt:datenfluesse#text-recognition-model}}). Läuft er im Haus,
   etwa als mitgelieferter OCR-Container, bleibt er Teil des Betriebs; ein externer Anbieter gehört
   als Auftragsverarbeiter in den Eintrag.
-- Arbeiten Agenten, hält OPAA je Lauf ein Schritt- und ein Sandboxprotokoll für die Fehlersuche
+- Arbeiten Agenten, hält opaa je Lauf ein Schritt- und ein Sandboxprotokoll für die Fehlersuche
   ({{faktenblatt:datenkatalog#agent-run-logs}}): ohne Konto und ohne Inhalte, nur über die
   Laufkennung im Chat einer Person zuzuordnen und nach wenigen Tagen gelöscht. Es gehört zum Zweck
   des Betriebs und ist kein Mittel der Leistungs- oder Verhaltenskontrolle. Die Antwort eines

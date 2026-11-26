@@ -32,15 +32,15 @@ des Antrags.
 
 - **Die erste Person der Revision** ist ein lokales Konto unter der Adresse, die der Betrieb als
   `OPAA_AUTH_FIRST_AUDITOR_EMAIL` setzt. Die Systemverwaltung legt es an und wählt die Rolle; den
-  Link zum Passwort schreibt OPAA ins Server-Log, der Betrieb übergibt ihn.
+  Link zum Passwort schreibt opaa ins Server-Log, der Betrieb übergibt ihn.
 - **Zugangsdaten** eines Revisionskontos laufen nie über die Systemverwaltung: Den Link zum Passwort
-  zeigt OPAA der bestätigenden Person, die ihn persönlich übergibt. Passwort erzeugen, Rücksetzlink,
+  zeigt opaa der bestätigenden Person, die ihn persönlich übergibt. Passwort erzeugen, Rücksetzlink,
   neue Adresse und Übergabe an einen Anbieter sind an solchen Konten gesperrt.
 - **Passwort vergessen?** Die Systemverwaltung entzieht die Rolle und beantragt sie neu; eine andere
   Person der Revision bestätigt.
 
 Jede Vergabe und jeder Entzug der Revision, jede Änderung an Mailversand, Mailvorlagen oder den
-Anmeldedaten eines Identitätsanbieters meldet OPAA allen Personen der Revision.
+Anmeldedaten eines Identitätsanbieters meldet opaa allen Personen der Revision.
 
 **Gut zu wissen:**
 

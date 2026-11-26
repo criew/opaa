@@ -69,7 +69,7 @@ function AgentDetail({ agent }: { agent: AgentDirectoryEntry }) {
         <Field label="Verantwortliche Stelle">{responsibilityLabel(agent.responsibility)}</Field>
         <Field label="Fassung">{formatNumber(agent.revision)}</Field>
         <Field label="Sperre">{lockText(agent.locked, agent.lockedSince)}</Field>
-        {agent.delivered && <Field label="Herkunft">Mit OPAA ausgeliefert</Field>}
+        {agent.delivered && <Field label="Herkunft">Mit opaa ausgeliefert</Field>}
       </DetailSection>
     </>
   )

@@ -51,7 +51,7 @@ public final class InstanceDisclosureRenderer {
   public static String render(InstanceDisclosure disclosure) {
     StringBuilder out = new StringBuilder();
     out.append("# Auskunft über die Datenerhebung\n\n");
-    out.append("- OPAA-Version: ").append(shown(disclosure.opaaVersion())).append('\n');
+    out.append("- opaa-Version: ").append(shown(disclosure.opaaVersion())).append('\n');
     out.append("- Commit: ").append(shown(disclosure.commit())).append('\n');
     out.append("- Stand: ").append(disclosure.generatedAt()).append("\n\n");
     out.append(FactSheetRenderer.NOTICE).append("\n\n");

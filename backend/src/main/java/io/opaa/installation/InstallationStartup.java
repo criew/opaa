@@ -112,7 +112,7 @@ class InstallationStartup implements SmartLifecycle {
     providerRegistry.refresh();
     if (!completed) {
       log.warn(
-          "OPAA is in installation mode: every API outside the installation answers 503 until"
+          "opaa is in installation mode: every API outside the installation answers 503 until"
               + " the installation is completed");
       if (!properties.allowedCidrs().isEmpty() && trustedProxyCidrs.isEmpty()) {
         log.warn(

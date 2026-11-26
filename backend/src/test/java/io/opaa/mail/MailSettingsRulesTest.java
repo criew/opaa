@@ -60,7 +60,7 @@ class MailSettingsRulesTest {
   void anAddressIsOneMailboxWithoutListOrDisplayName() {
     for (String address :
         new String[] {
-          "a@b.c,d@e.f", "a@b.c,d.e.f", "a@b.c;d@e.f", "OPAA <a@b.c>", "\"a\"@b.c", "a@b.c>"
+          "a@b.c,d@e.f", "a@b.c,d.e.f", "a@b.c;d@e.f", "opaa <a@b.c>", "\"a\"@b.c", "a@b.c>"
         }) {
       assertThat(MailSettingsRules.isMailAddress(address)).as(address).isFalse();
       assertThat(MailSettingsRules.fromAddressProblem(address)).as(address).isPresent();

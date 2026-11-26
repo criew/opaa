@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the temporary OPAA logo files from the free font Saira (SIL OFL, files beside this script).
+"""Builds the temporary opaa logo files from the free font Saira (SIL OFL, files beside this script).
 
 The wordmark "opaa" and the mark (an underlined "o") are converted to outlines, so no file needs the
 font at display time. The first "a" and its underline are Hellblau, as in the concept's artwork; the

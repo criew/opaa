@@ -2,13 +2,13 @@
 
 PostgreSQL ist die einzige Wahrheit einer Installation: Dokumente, Chunks samt Vektoren, Volltext,
 Metadaten, Konten, Rechte, Chats und Protokolle liegen in einer Datenbank. Daneben steht nur die
-[Originalablage](originalablage.md). Dieses Kapitel beschreibt, was eine Datenbank für OPAA mitbringen
+[Originalablage](originalablage.md). Dieses Kapitel beschreibt, was eine Datenbank für opaa mitbringen
 muss; wie sie im Compose-Stapel läuft, steht unter [Docker Compose](docker-compose.md#datenbank-im-stapel),
 wie sie gesichert wird, unter [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md).
 
 ## Vektorspeicher: pgvector
 
-OPAA speichert Vektoren in PostgreSQL mit der Erweiterung pgvector; das ist der einzige unterstützte
+opaa speichert Vektoren in PostgreSQL mit der Erweiterung pgvector; das ist der einzige unterstützte
 Vektorspeicher, ein Wechsel ist nicht vorgesehen. Metadaten und Vektorindex liegen damit in derselben
 Datenbank: ein Sicherungslauf, eine Wiederherstellung, ein Nachweispfad. Bekannte Grenze: pgvector
 stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen.
@@ -57,14 +57,14 @@ CREATE INDEX CONCURRENTLY <index> ON <schema>.vector_store USING hnsw (embedding
 ## Voraussetzungen einer eigenen PostgreSQL
 
 Der mitgelieferte Compose-Stapel startet PostgreSQL mit einem Superuser-Konto; dort ist nichts
-vorzubereiten. Eine Datenbank des Rechenzentrums stellt OPAA dagegen meist ein Konto ohne
+vorzubereiten. Eine Datenbank des Rechenzentrums stellt opaa dagegen meist ein Konto ohne
 Superuser-Rechte zur Verfügung. Die Schemamigration braucht dann zwei Dinge, die ein
 Datenbankverwalter **vor dem ersten Start** einmalig anlegt:
 
 ```sql
--- in der Datenbank von OPAA, als Superuser:
+-- in der Datenbank von opaa, als Superuser:
 CREATE EXTENSION vector;
--- nur, wenn das Konto von OPAA nicht CREATEROLE hat:
+-- nur, wenn das Konto von opaa nicht CREATEROLE hat:
 CREATE ROLE opaa_audit_owner NOLOGIN;
 GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION;
 ```
@@ -73,7 +73,7 @@ GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION;
   sein, etwa über das Image `pgvector/pgvector` oder das Paket `postgresql-<Version>-pgvector`.
   Anlegen darf sie ein Superuser; verwaltete Dienste (etwa Amazon RDS, Azure Database for
   PostgreSQL, Google Cloud SQL) erlauben es auch ihrer eigenen Verwaltungsrolle.
-- **Rolle `opaa_audit_owner`.** Ihr gehören die Protokolltabellen, damit das Konto von OPAA sie
+- **Rolle `opaa_audit_owner`.** Ihr gehören die Protokolltabellen, damit das Konto von opaa sie
   nicht löschen kann. Hat das Konto `CREATEROLE`, legt die Migration die Rolle selbst an. Eine
   vorab angelegte Rolle braucht `WITH ADMIN OPTION`, sonst scheitert die Migration mit
   `permission denied to grant role`.
@@ -85,29 +85,29 @@ Neben dem Connection Pool hält jede Instanz eine weitere, dauerhafte Verbindung
 `opaa-invalidation-bus`). Über sie erfährt sie Änderungen an Rechten, Anmeldeanbietern und
 Einstellungen sofort, auch wenn eine andere Instanz sie vorgenommen hat. Sie braucht eine direkte
 Verbindung oder einen Verbindungs-Proxy im Sitzungsmodus; im Transaktionsmodus (etwa PgBouncer mit
-`pool_mode = transaction`) kommt sie nicht zustande. OPAA liest Rechte und Einstellungen dann bei
+`pool_mode = transaction`) kommt sie nicht zustande. opaa liest Rechte und Einstellungen dann bei
 jeder Anfrage aus der Datenbank und meldet im Protokoll `The invalidation bus does not listen`. Die
 Verbindung zählt bei `max_connections` mit.
 
 Fehlt ein Recht, bricht die Migration mit der Meldung von PostgreSQL ab, etwa
 `permission denied to create extension "vector"`. Ist pgvector auf dem Server gar nicht installiert,
-prüft OPAA das vor der Migration und bricht mit einem eigenen Bericht ab, weil die Meldung von
+prüft opaa das vor der Migration und bricht mit einem eigenen Bericht ab, weil die Meldung von
 PostgreSQL in diesem Fall verloren ginge:
 
 ```text
     APPLICATION FAILED TO START
 
     Description:
-    The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
+    The PostgreSQL server has the pgvector extension not installed; the schema migration of opaa needs it (CREATE EXTENSION vector).
 
     Action:
-    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
+    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start opaa again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
 ```
 
 ## Eigenes Datenbankschema
 
-Ohne weitere Angabe legt OPAA alles im Schema `public` an. Mit `OPAA_DB_SCHEMA` lässt sich ein
-anderes Schema wählen, etwa um OPAA neben anderen Anwendungen in einer gemeinsam genutzten Datenbank
+Ohne weitere Angabe legt opaa alles im Schema `public` an. Mit `OPAA_DB_SCHEMA` lässt sich ein
+anderes Schema wählen, etwa um opaa neben anderen Anwendungen in einer gemeinsam genutzten Datenbank
 zu betreiben. Das Backend setzt dann den `search_path` jeder Verbindung auf `<schema>, public`;
 Migrationen, Tabellen der Anwendung, die Vektortabelle und die Verwaltungstabelle der Migrationen landen
 im gewählten Schema. `public` bleibt nur als Rückfall im Suchpfad, damit eine dort bereits
@@ -117,7 +117,7 @@ Voraussetzungen:
 
 - Das Schema **muss vor dem ersten Start existieren**. Fehlt es, bricht die Migration beim Start
   ab, statt stillschweigend in `public` anzulegen.
-- Empfohlen: Das Schema gehört einer Verwaltungsrolle, und das Konto von OPAA erhält nur `USAGE`
+- Empfohlen: Das Schema gehört einer Verwaltungsrolle, und das Konto von opaa erhält nur `USAGE`
   und `CREATE`, und zwar mit Weitergaberecht. Die Migration braucht dieses Recht, um es an die
   Eigentümerrolle der Protokolltabellen (`opaa_audit_owner`) weiterzugeben:
 
@@ -126,7 +126,7 @@ Voraussetzungen:
   GRANT USAGE, CREATE ON SCHEMA opaa TO opaa WITH GRANT OPTION;
   ```
 
-  Gehört das Schema stattdessen dem Konto von OPAA (`CREATE SCHEMA opaa AUTHORIZATION opaa`),
+  Gehört das Schema stattdessen dem Konto von opaa (`CREATE SCHEMA opaa AUTHORIZATION opaa`),
   läuft die Anwendung ebenso. Das Konto darf dann aber als Schema-Eigentümer auch die Tabellen von
   `opaa_audit_owner` löschen, und der Löschschutz des Protokolls entfällt. Dasselbe gilt in `public`,
   wenn das Konto Eigentümer der Datenbank ist.
@@ -134,7 +134,7 @@ Voraussetzungen:
 - Das Schema wird **vor der Erstinstallation** festgelegt. Ein späterer Wechsel verschiebt keine
   Daten; die Installation im neuen Schema beginnt leer.
 - Die Rolle `opaa_audit_owner` (Eigentümerin der Protokolltabellen) gilt für die ganze
-  PostgreSQL-Instanz. Eine zweite OPAA-Installation in derselben Instanz, aber mit anderem Konto,
+  PostgreSQL-Instanz. Eine zweite opaa-Installation in derselben Instanz, aber mit anderem Konto,
   startet nicht: Ihre Migration darf die bestehende Rolle nicht vergeben
   (`permission denied to grant role`). Mit demselben Konto startet sie, kann dann aber das
   Protokoll der anderen Installation verändern. Getrennte Installationen gehören deshalb in

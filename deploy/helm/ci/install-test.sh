@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installation test of the OPAA chart, run by .github/workflows/helm-chart.yml and locally from the
+# Installation test of the opaa chart, run by .github/workflows/helm-chart.yml and locally from the
 # repository root. Expects the current kubectl context to point at a kind cluster that already holds
 # the images named in install-values.yaml. Lets chart-testing install the chart with its evaluation
 # database into a namespace enforcing the Pod Security Standard "restricted", wait until database,

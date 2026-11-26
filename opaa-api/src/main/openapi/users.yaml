@@ -246,7 +246,7 @@ paths:
             then the accounts whose issuer has no provider row; "role" sorts by privilege (USER,
             AUDITOR, SYSTEM_ADMIN - the order the German labels read in); "status" by what needs
             attention first (LOCKED, EXPIRED, INVITED, ACTIVE), with the provider accounts last
-            because they carry no state of OPAA's making. Accounts without an expiry date sort
+            because they carry no state of opaa's making. Accounts without an expiry date sort
             last under expiresAt.
         - name: direction
           in: query
@@ -340,7 +340,7 @@ components:
             True when the directory synchronisation locked this account because the directory
             reports it as disabled or no longer reports it at all. The account keeps its
             memberships and its content; the lock is taken back by the next run once the
-            directory reports the account as enabled again - never here, since OPAA never writes
+            directory reports the account as enabled again - never here, since opaa never writes
             to the directory.
         pendingSystemRole:
           allOf:
@@ -394,7 +394,7 @@ components:
           nullable: true
           description: >
             The display name of the sign-in the account comes from (an identity provider or the
-            local accounts). Name and email are claims of that sign-in, not checked by OPAA, so two
+            local accounts). Name and email are claims of that sign-in, not checked by opaa, so two
             accounts with the same name are told apart by it. Null when no configured sign-in
             matches the account's issuer any more.
           example: Landesverwaltung

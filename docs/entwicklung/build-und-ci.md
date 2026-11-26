@@ -175,7 +175,7 @@ deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert di
 
 ```bash
 # Kubernetes-Erprobungsaufbau (aus dem Wurzelverzeichnis, siehe examples/kubernetes-trial/README.md):
-# OPAA-Chart mit Keycloak, Ollama, RustFS, Mailpit und Erprobungsdatenbank im aktuellen
+# opaa-Chart mit Keycloak, Ollama, RustFS, Mailpit und Erprobungsdatenbank im aktuellen
 # kubectl-Kontext; nicht für den Betrieb, nicht Teil der CI
 k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
 examples/kubernetes-trial/trial.sh up   # installieren oder aktualisieren, danach http://opaa.localhost:8088
@@ -279,7 +279,7 @@ Installation ohne Internetzugang arbeitet. Der Stack aus `docker-compose.yml` l�
 `e2e/docker-compose.offline.yml` in einem Compose-Netz mit `internal: true`: ohne Gateway, jede
 Verbindung an eine Adresse außerhalb des Subnetzes scheitert sofort.
 
-- **Vorab bereitgestellt:** OPAA-Images werden gebaut (oder mit `E2E_SKIP_BUILD=true` übernommen),
+- **Vorab bereitgestellt:** opaa-Images werden gebaut (oder mit `E2E_SKIP_BUILD=true` übernommen),
   Drittimages gezogen; danach startet der Stack mit `--pull never`. Das Modell ist `ai-stub` im
   selben Netz.
 - **Ablauf:** Anmeldung des lokalen Notanker-Kontos, Bibliothek über den Assistenten, Upload,
@@ -287,7 +287,7 @@ Verbindung an eine Adresse außerhalb des Subnetzes scheitert sofort.
   Belegfenster; danach eine zweite Bibliothek ohne Space mit `formatdokument.xlsx`, `.html` und
   `.eml`, damit die Parser dieser Formate im abgeschotteten Netz laufen. Der Lauf ist der einzige
   Nachweis für Abrufe eingebundener Bibliotheken; der Strukturtest des Backends sieht nur die
-  Clients im Code von OPAA (ADR-0052, Entscheidung 8).
+  Clients im Code von opaa (ADR-0052, Entscheidung 8).
 - **Erkennung:** Jeder Container der Installation löst Namen über `egress-dns` auf
   (`e2e/offline/egress-dns.mjs`). Dockers eingebautes DNS beantwortet die Dienstnamen selbst und
   reicht nur fremde Namen weiter; der Wächter zeichnet sie auf und antwortet mit NXDOMAIN. Der

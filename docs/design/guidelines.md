@@ -1,6 +1,6 @@
 # Design-Guidelines
 
-Verbindliche Gestaltungsregeln der OPAA-Weboberfläche. Sie gelten für jedes UI-Issue und jeden
+Verbindliche Gestaltungsregeln der opaa-Weboberfläche. Sie gelten für jedes UI-Issue und jeden
 Frontend-PR; Abweichungen werden im PR begründet. Dieses Dokument ist die Quelle der Werte;
 die Zielbild-Beschreibung ([redesign-prompt.md](./redesign-prompt.md)) liefert den Hintergrund. Die technische Umsetzung als Token-Ebene und
 MUI-Theme ist Gegenstand von Issue #581; die Barrierefreiheits-Richtlinie
@@ -529,7 +529,7 @@ Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
 **Linktexte** nennen das Ziel oder was dort zu tun ist, ohne Pfeil am Ende („Verbindung ändern",
 nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
-Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
+Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in opaa wird als
 Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
 
 **Seiten vor der Anmeldung** (Anmelden, Systemanmeldung, Registrieren, Passwort vergessen,
@@ -1144,7 +1144,7 @@ Quellart nur für Personen (OneDrive) ist schon die Wahl der Quellart diese ausd
 einziger Zugang steht als Zeile da, mit dem Hinweis „nur für Sie, später nicht änderbar“.
 
 **Fremde Objekte aus einer Quelle** erscheinen als Liste oder Baum, nie als Kacheln — ihre Zahl und
-Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:
+Benennung bestimmt das fremde System, nicht opaa. Die Schwelle:
 
 - **Bis sieben Einträge der obersten Ebene** stehen als Checkboxen direkt in der Zeile, ohne
   Suche — auch bei hierarchischen Quellen wie Nextcloud, SMB, Dropbox oder S3.
@@ -1463,7 +1463,7 @@ Verbindliche Begriffe:
 | **Reranking**             | Name von Schritt und Reiter für das Neuordnen der Suchkandidaten. Nicht „Rerank-Modell" als Name der Einstellung |
 | **Spracheingabe**         | Name von Schritt und Reiter für Diktat und Live-Transkript. Nicht „Transkriptionsmodell" als Name der Einstellung |
 | **Texterkennung**         | Name von Schritt und Reiter für das Lesen gescannter PDFs (OCR)                              |
-| **API-Schlüssel**         | das Geheimnis, mit dem sich OPAA an einem Modell-Endpunkt ausweist. Nicht „Zugangsschlüssel" |
+| **API-Schlüssel**         | das Geheimnis, mit dem sich opaa an einem Modell-Endpunkt ausweist. Nicht „Zugangsschlüssel" |
 | **Testnachricht**         | die E-Mail, die den Versand prüft. Nicht „Testmail"                                          |
 | **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
 | **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
@@ -1475,6 +1475,7 @@ Verbindliche Begriffe:
 | **Kontozustand**          | Eingeladen · Aktiv · Gesperrt · Abgelaufen — als Punkt **und** Wort, nie als farbiger Chip; die Sperre nennt ihren Grund in Klammern (Verwalter · Fehlversuche · Inaktivität) |
 | **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
 | **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
+| **opaa**                  | der Produktname, immer klein, auch am Satzanfang (holpert es, den Satz umstellen). Nie „OPAA" oder „Opaa"; technische Bezeichner wie `OPAA_*`, `io.opaa` und Metriknamen bleiben |
 | Claim                     | „opaa weiß, was war, und hilft bei dem, was kommt." (Standard aus dem Markenkonzept)                           |
 
 **Verben für Handlungen.** Für diese Handlungen gelten in Schaltflächen und Bestätigungen (5.10)
@@ -1505,7 +1506,7 @@ Von Anfang an gilt: **Produktname, Claim, Logo und Akzentfarbe sind
 Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponente:
 
 - Name, Claim und Logo werden nie hart eingebettet, sondern aus der Branding-Quelle bezogen
-  (mit OPAA-Standard als Fallback).
+  (mit opaa-Standard als Fallback).
 - Akzentfarbe nur über die Rollen `accent`/`accent-surface`; die Fläche gefüllter Aktionen wird
   aus der konfigurierten Farbe abgeleitet (#634): unverändert, wenn Weiß darauf 4,5:1 erreicht,
   sonst in −8-%-Schritten abgedunkelt (höchstens sechs Schritte). Hover (−8 %), Aktiv (−16 %)
@@ -1514,7 +1515,7 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
-### 7.1 Das OPAA-Standardlogo (temporäre Fassung)
+### 7.1 Das opaa-Standardlogo (temporäre Fassung)
 
 > **Temporär.** Die Fassung setzt das Markenkonzept um, bis dessen Reinzeichnung als Vektordatei
 > vorliegt. Die Wortmarke ist aus der freien Schrift Saira (SIL OFL) in Pfade gewandelt, das
@@ -1539,7 +1540,7 @@ Betreiber kein eigenes Logo konfiguriert.
   „o“ mit hellblauem Unterstrich, der wie im Logo mit Abstand unter der Grundlinie steht. Die
   Icon-Fassung steht auf einer Kachel in Dunkelblau (Favicon, Touch-Icon) oder Weiß, Radius 14/64;
   die Raster-PNGs sind vollflächig ohne Rundung, weil Betriebssysteme Icons selbst maskieren.
-- **In der App** zeigt `BrandMark` mit dem Standardnamen „OPAA“ die Wortmarke statt Name und Marke
+- **In der App** zeigt `BrandMark` mit dem Standardnamen „opaa“ die Wortmarke statt Name und Marke
   und gibt den Namen als zugänglichen Namen mit. Trägt die Installation einen eigenen Namen, aber
   kein Logo, steht das Bildzeichen neben dem Namen. Ein konfiguriertes Logo ersetzt beides.
 - Schutzraum mindestens so hoch wie das hellblaue a. Nicht verzerren, nicht drehen, keine Schatten

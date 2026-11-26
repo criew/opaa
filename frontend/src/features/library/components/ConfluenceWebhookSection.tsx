@@ -80,7 +80,7 @@ export default function ConfluenceWebhookSection({
     const ok = await confirmAction({
       question: 'Webhook entfernen?',
       consequence:
-        'Confluence kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Geheimnis werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.',
+        'Confluence kann opaa danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Geheimnis werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.',
       confirmLabel: 'Entfernen',
       tone: 'danger',
     })
@@ -94,7 +94,7 @@ export default function ConfluenceWebhookSection({
         {secretSet ? 'eingerichtet — Änderungen werden sofort aufgenommen' : 'nicht eingerichtet'}
       </Typography>
       <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
-        Confluence meldet geänderte Seiten, OPAA holt sie gezielt neu; Löschungen übernimmt
+        Confluence meldet geänderte Seiten, opaa holt sie gezielt neu; Löschungen übernimmt
         weiterhin der Vollabgleich. Das Geheimnis wird nur einmal angezeigt.
       </Typography>
       <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} useFlexGap>

@@ -75,7 +75,7 @@ settings:
       - >-
         Werkseinstellung im Code; die Systemverwaltung schaltet unter Administration →
         Virenprüfung, oder der Abschluss der Installation mit einem geprüften Schritt Virenprüfung.
-        OPAA liefert keinen Virenscanner mit, der Betrieb stellt den clamd-Dienst
+        opaa liefert keinen Virenscanner mit, der Betrieb stellt den clamd-Dienst
   - key: malware_scan_settings.host
     source: DATABASE
     defaultValue: ""

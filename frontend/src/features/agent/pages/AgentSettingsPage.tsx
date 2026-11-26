@@ -116,7 +116,7 @@ export default function AgentSettingsPage() {
                 sx={{ fontSize: fontSize.meta, mt: 0.5, maxWidth: readingWidth, ...muted }}
               >
                 Ohne Haken sind Agenten, ihr Anlegerecht und ihre Seiten nirgends sichtbar und über
-                die Schnittstelle nicht erreichbar. Beim ersten Einschalten legt OPAA den Agenten
+                die Schnittstelle nicht erreichbar. Beim ersten Einschalten legt opaa den Agenten
                 „Recherche“ an, sichtbar für alle Konten und danach frei änderbar. Wer Agenten
                 anlegen darf, regelt das Anlegerecht „Agenten anlegen“; ab Werk niemand.
               </Typography>

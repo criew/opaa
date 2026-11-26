@@ -14,12 +14,12 @@ naechste-durchsicht: 2027-04-23
 **Gilt für:** Behörden mit Personalrat, als Grundlage für die Beratung der
 [Dienstvereinbarung](dienstvereinbarung.md).
 
-Die Mappe erklärt dem Personalrat in Alltagssprache, was OPAA über Beschäftigte speichert, wer es
+Die Mappe erklärt dem Personalrat in Alltagssprache, was opaa über Beschäftigte speichert, wer es
 sieht und was sich damit auswerten lässt und was nicht. Die Dienststelle stellt sie zusammen und
 übergibt sie mit den Faktenblättern der eingesetzten Version, bevor über die Dienstvereinbarung
 verhandelt wird.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - Die Faktenblätter der eingesetzten Version im Update-Paket am GitHub-Release; jede Frage unten
   verweist auf das passende Blatt.
@@ -50,7 +50,7 @@ verhandelt wird.
 
 ## 2. Was wer über mich sieht
 
-Jede Person sieht ihre eigenen Daten. Was andere sehen, hängt an ihrer Rolle in OPAA. Die vollständige
+Jede Person sieht ihre eigenen Daten. Was andere sehen, hängt an ihrer Rolle in opaa. Die vollständige
 Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle hilft beim Durchgehen.
 
 | Wer | Worauf achten | Nachschlagen |
@@ -59,7 +59,7 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 | Verwaltung einer Bibliothek, Gruppe oder eines Space | Mitglieder und Rechte am eigenen Objekt | {{faktenblatt:rollensicht#faehigkeiten}}, [Wer welche Gruppe sieht](../../handbuch/administration/gruppen.md#wer-eine-gruppe-sieht) |
 | Systemverwaltung | verwaltet Konten und Rechte; sieht, welche lokalen Konten länger nicht genutzt wurden; liest fremde Inhalte nur, wenn sie sich selbst ein Recht gibt, das für alle nachlesbar gespeichert wird; kann mit „Sicht als“ befristet und begründet prüfen, was eine Person sehen würde; liest für die Fehlersuche das Schritt- und Sandboxprotokoll eines einzelnen Agentenlaufs nur mit dessen Laufkennung und Begründung, ohne Konto und Inhalte, ohne Liste oder Suche nach Personen, jeder Abruf im Protokoll | {{faktenblatt:rollensicht#system-admin}}, {{faktenblatt:datenkatalog#agent-run-logs}}, [Systemrollen und Vollmachten](../../handbuch/administration/systemrollen.md) |
 | Revision | liest Revisions- und Verbindungsprotokoll ohne Namen und ohne Kennungen von Personen, sieht dort nur, dass eine Person gehandelt hat, und kann darin nicht nach Personen suchen. Ausnahmen: Die Stichtagsauskunft zu einem Objekt nennt, wer es zu einem Zeitpunkt lesen durfte, mit Namen; das Diagnoseprotokoll nennt bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym, weil es gerade deren Handeln kontrolliert; die offenen Anträge auf die Rolle Revision nennen Name und Adresse des Kontos und die beantragende Person, weil die Revision die Person vor der Bestätigung prüft | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
-| Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in OPAA (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
+| Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in opaa (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
 | Betrieb von Datenbank, Sicherungen und Logs | technisch alles; das Produkt kann es nicht verhindern | Dienstvereinbarung, Nummer 7 |
 | Ich selbst | meine Daten über die Selbstauskunft, im Umfang der Kategorien, die die eingesetzte Version ausgibt; die Übersicht der Auskunft nennt die fehlenden | {{faktenblatt:datenkatalog#self-disclosure}} |
 
@@ -80,7 +80,7 @@ Dienstvereinbarung. Ebenfalls nicht technisch verhindern kann es, dass die Syste
 Signaturschlüssel eines externen Identitätsanbieters (die JWK-Set-URI; bei einem Anbieter ohne
 Konten auch den Issuer) auf einen eigenen Server umstellt und sich so als
 ein bestehendes Revisionskonto dieses Anbieters anmeldet. Eine solche Änderung erfahren aber alle
-Personen der Revision sofort, und sie steht im Protokoll; Revisionskonten, die sich lokal bei OPAA
+Personen der Revision sofort, und sie steht im Protokoll; Revisionskonten, die sich lokal bei opaa
 anmelden, sind davon nicht betroffen.
 
 ## 3. Beispiele möglicher und ausgeschlossener Auswertungen
@@ -96,7 +96,7 @@ anmelden, sind davon nicht betroffen.
   ({{faktenblatt:protokollereignisse#incident-scope-requested}},
   {{faktenblatt:protokollereignisse#incident-scope-approved}}).
 - Die Systemverwaltung findet lokale Konten, mit denen sich lange niemand angemeldet hat, um sie zu
-  sperren oder zu löschen; nach einer Frist sperrt OPAA sie selbst
+  sperren oder zu löschen; nach einer Frist sperrt opaa sie selbst
   ({{faktenblatt:voreinstellungen#local-auth-settings-inactive-days}}).
 - Der Personalrat erhält jährlich die Zahl der anlassbezogenen Klärungen nach Zweck und die Zahl
   der angehaltenen Chat-Löschungen gesperrter Konten, diese ebenfalls nach Zweck mit Anträgen,
@@ -131,14 +131,14 @@ Erlaubt ist nur, was die Dienstvereinbarung vereinbart.
 
 ## 4. Was zum Modellanbieter geht
 
-Für jede Antwort schickt OPAA die Frage mit dem bisherigen Gesprächsverlauf, den gefundenen
+Für jede Antwort schickt opaa die Frage mit dem bisherigen Gesprächsverlauf, den gefundenen
 Textstellen samt Titeln und dem System-Prompt an das Sprachmodell; für Chattitel und Notizen auch
 Chatinhalte. Die Frage geht außerdem als Suchanfrage an das Einbettungsmodell. Wer Namen oder
 Personendaten in den Chat schreibt, schickt sie mit. Vollständig steht das je Modell in
 {{faktenblatt:datenfluesse#chat-model}}, {{faktenblatt:datenfluesse#embedding-model}} und den
 übrigen Einträgen der {{faktenblatt:datenfluesse}}.
 
-**Texterkennung gescannter Dokumente.** Hat ein PDF keine Textebene, kann OPAA es beim Indizieren
+**Texterkennung gescannter Dokumente.** Hat ein PDF keine Textebene, kann opaa es beim Indizieren
 von einem Texterkennungsdienst lesen lassen und damit durchsuchbar machen. Das ist ab Werk zweifach
 ausgeschaltet ({{faktenblatt:voreinstellungen#opaa-ocr-enabled}}). Der Dienst bekommt ganze Seiten
 mit allem, was darauf steht ({{faktenblatt:datenfluesse#text-recognition-model}}). Nach dem Einschalten werden
@@ -171,13 +171,13 @@ eingestellt hat, in der Auskunft über die Datenerhebung.
 
 ## 7. Testinstanz
 
-Der Personalrat kann OPAA in einer Testinstanz der eingesetzten Version selbst ausprobieren, mit
+Der Personalrat kann opaa in einer Testinstanz der eingesetzten Version selbst ausprobieren, mit
 Testkonten je Rolle und ohne echte Daten. So lässt sich etwa prüfen, was die Revision im Protokoll
 sieht. Vor dem Wechsel auf eine neue Linie läuft dort deren Release-Kandidat.
 
 ## 8. Das Stufenmodell in Alltagssprache
 
-Jedes Update kommt mit einer Liste seiner Änderungen. Für jede schlägt OPAA eine Stufe vor:
+Jedes Update kommt mit einer Liste seiner Änderungen. Für jede schlägt opaa eine Stufe vor:
 
 - **Bagatelle:** nur Kleinigkeiten ohne Bezug zu Personen; der Personalrat erfährt davon.
 - **Anzeige:** Beschäftigte merken etwas, es wird aber nicht mehr über sie gespeichert oder gezeigt,
@@ -200,7 +200,7 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   außer ihr ({{faktenblatt:rollensicht#create-agent}}, {{faktenblatt:rollensicht#create-template}}).
   Anlegen, Ändern und Löschen eines Agenten stehen im Protokoll, ohne seinen Auftrag
   ({{faktenblatt:protokollereignisse#agent-changed}}).
-- **Mitgelieferter Agent „Recherche“:** Beim ersten Einschalten legt OPAA ihn einmal je
+- **Mitgelieferter Agent „Recherche“:** Beim ersten Einschalten legt opaa ihn einmal je
   Organisation an ({{faktenblatt:voreinstellungen#prompt-agent-research}}). Ab dann ist er für
   alle Konten nutzbar und kann alle eingeschalteten Werkzeuge verwenden. Er gehört der Person
   aus der Systemverwaltung, die die Agenten eingeschaltet hat, und lässt sich wie jeder Agent
@@ -234,7 +234,7 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
   Sandboxen erreichen sich gegenseitig, auch die anderer Personen
   ({{faktenblatt:datenfluesse#code-sandbox}}).
 
-- **Agentenverzeichnis:** Welche Agenten und Vorlagen es gibt und was sie tun, zeigt OPAA selbst:
+- **Agentenverzeichnis:** Welche Agenten und Vorlagen es gibt und was sie tun, zeigt opaa selbst:
   je Agent Zweck, Anweisung, die Namen seiner Bibliotheken, Werkzeuge, Grenzen, Vorlagen,
   verantwortliche Stelle, Fassung und ob er gesperrt ist, ohne Inhalte der Bibliotheken, ohne
   Eigentümer und ohne Angaben zur Nutzung. Die Systemverwaltung gibt das Recht dazu einer Person
@@ -255,9 +255,9 @@ steht im Protokoll ({{faktenblatt:protokollereignisse#agent-settings-changed}}).
 | Linie, LTS | Versionen einer Reihe, die Sicherheitsupdates ohne neue Funktionen bekommen sollen; LTS ist die Linie mit dem längsten Support |
 | Release-Kandidat | Vorabfassung einer Version, an der die Beteiligung beginnen kann |
 | Space | Arbeitsbereich mit Chats und den ihm zugeordneten Bibliotheken |
-| System-Prompt | feste Anweisung von OPAA an das Sprachmodell, die bei jeder Frage mitgeht |
-| Standardmodell | das Sprachmodell, das OPAA ohne andere Einstellung verwendet |
-| Protokoll | Nachweis über Handlungen in OPAA, etwa vergebene Rechte, geänderte Einstellungen oder den Abruf einer Selbstauskunft; nicht über Fragen und Antworten |
+| System-Prompt | feste Anweisung von opaa an das Sprachmodell, die bei jeder Frage mitgeht |
+| Standardmodell | das Sprachmodell, das opaa ohne andere Einstellung verwendet |
+| Protokoll | Nachweis über Handlungen in opaa, etwa vergebene Rechte, geänderte Einstellungen oder den Abruf einer Selbstauskunft; nicht über Fragen und Antworten |
 | Pseudonym | Kennung statt Name im Protokoll |
 | Rechtehistorie | gespeicherter Verlauf, wer wann welches Recht hatte |
 | Anlassbezogene Klärung | einziger Weg, das Protokoll nach einer Person zu durchsuchen; nur mit Freigabe durch eine zweite Person |

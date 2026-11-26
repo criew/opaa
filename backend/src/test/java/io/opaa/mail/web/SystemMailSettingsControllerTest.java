@@ -243,7 +243,7 @@ class SystemMailSettingsControllerTest {
     set(settings, "passwordCiphertext", passwordCiphertext);
     set(settings, "encryption", MailEncryption.STARTTLS);
     set(settings, "fromAddress", "opaa@intern.example");
-    set(settings, "fromName", "OPAA");
+    set(settings, "fromName", "opaa");
     set(settings, "lastFailureReason", "Connection refused");
     set(settings, "updatedAt", Instant.parse("2026-09-11T08:00:00Z"));
     return settings;

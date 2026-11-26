@@ -191,7 +191,7 @@ export default function PromptEditorDialog({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Entwirf ein Anhörungsschreiben zum Aktenzeichen {{aktenzeichen}}, Stand {{CURRENT_DATE}}."
-            helperText={`Platzhalter schreiben Sie als {{name}}. {{CURRENT_DATE}} und {{USER_NAME}} füllt OPAA beim Einsetzen selbst. ${text.length} von ${PROMPT_TEXT_MAX_LENGTH} Zeichen.`}
+            helperText={`Platzhalter schreiben Sie als {{name}}. {{CURRENT_DATE}} und {{USER_NAME}} füllt opaa beim Einsetzen selbst. ${text.length} von ${PROMPT_TEXT_MAX_LENGTH} Zeichen.`}
             slotProps={{ htmlInput: { maxLength: PROMPT_TEXT_MAX_LENGTH } }}
           />
           {hasPlaceholders && (

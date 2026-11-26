@@ -76,6 +76,10 @@ public final class BrandingSettingsRules {
             productName,
             BrandingDefaults.MAX_PRODUCT_NAME_LENGTH,
             "Der Produktname");
+    // The standard name is stored as "not set", so the installation follows a later standard.
+    if (BrandingDefaults.PRODUCT_NAME.equals(name)) {
+      name = null;
+    }
     String validClaim =
         text(errors, prefix + "claim", claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
     // The standard claim is stored as "not set", so the installation follows a later standard.

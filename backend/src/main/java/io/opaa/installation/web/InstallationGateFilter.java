@@ -29,7 +29,7 @@ public class InstallationGateFilter extends OncePerRequestFilter {
 
   static final String PENDING_CODE = "INSTALLATION_PENDING";
   static final String PENDING_MESSAGE =
-      "OPAA ist noch nicht eingerichtet. Bitte die Installation abschließen.";
+      "opaa ist noch nicht eingerichtet. Bitte die Installation abschließen.";
   static final String NOT_FOUND_MESSAGE = "Die angeforderte Ressource wurde nicht gefunden";
   static final String INSTALLATION_PATH = "/api/v1/installation";
 

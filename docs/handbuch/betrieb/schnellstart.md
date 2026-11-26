@@ -1,6 +1,6 @@
 # Schnellstart
 
-**Ziel:** Eine laufende OPAA-Instanz auf einem Rechner, mit einem Sprachmodell über einen API-Schlüssel, in etwa einer Viertelstunde.
+**Ziel:** Eine laufende opaa-Instanz auf einem Rechner, mit einem Sprachmodell über einen API-Schlüssel, in etwa einer Viertelstunde.
 {: .kopf }
 
 **Sie brauchen:** Docker mit Compose, Git und einen API-Schlüssel eines Modellanbieters, etwa

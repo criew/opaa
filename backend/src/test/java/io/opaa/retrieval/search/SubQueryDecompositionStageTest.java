@@ -179,7 +179,7 @@ class SubQueryDecompositionStageTest {
             });
     assertThat(context.contextTexts()).contains("Bezugsjahr 2024");
     assertThat(context.contextTexts())
-        .as("the block's heading is OPAA's own wording and anchors nothing")
+        .as("the block's heading is opaa's own wording and anchors nothing")
         .noneSatisfy(text -> assertThat(text).contains("Gesprächsnotiz"));
   }
 

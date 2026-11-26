@@ -76,7 +76,7 @@ class ManifestDeltaGeneratorTest {
         "v3");
 
     String markdown = Files.readString(out.resolve(ManifestDeltaGenerator.MARKDOWN_FILE));
-    assertThat(markdown).contains("OPAA v1 hat noch kein Fakten-Manifest");
+    assertThat(markdown).contains("opaa v1 hat noch kein Fakten-Manifest");
     assertThat(markdown).contains("Nicht abgefragt");
     assertThat(markdown).doesNotContain("Entfällt");
   }
@@ -103,7 +103,7 @@ class ManifestDeltaGeneratorTest {
     assertThat(title).isEqualTo("# Änderungen der Fakten von " + readable + " bis v3");
     assertThat(markdown)
         .contains("> **Hinweis:** Der Stand (Commit `" + root.substring(0, 7) + "`) hat noch kein")
-        .doesNotContain("OPAA " + root);
+        .doesNotContain("opaa " + root);
   }
 
   @Test

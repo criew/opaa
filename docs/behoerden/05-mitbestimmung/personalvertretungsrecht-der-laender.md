@@ -18,7 +18,7 @@ Jedes Land hat ein eigenes Personalvertretungsgesetz mit eigenem Wortlaut, eigen
 eigener Zählung. Diese Übersicht nennt je Land das Gesetz und die amtliche Fundstelle, ohne Volltext
 und ohne Bewertung. Die Anpassung verantwortet die Dienststelle, in der Regel mit dem Justiziariat.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - Den Mustertext der [Dienstvereinbarung](dienstvereinbarung.md); seine Rechtsgrundlagen sind für
   das Bundespersonalvertretungsgesetz geschrieben.

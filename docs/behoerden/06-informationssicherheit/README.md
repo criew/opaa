@@ -1,7 +1,7 @@
 # Informationssicherheit
 
 Vorlagen für das Sicherheitskonzept und für Fragen zur Sicherheit der Software. Welche davon passen,
-hängt davon ab, ob die Behörde zur Bundesverwaltung gehört und ob OPAA im eigenen Haus oder in einer
+hängt davon ab, ob die Behörde zur Bundesverwaltung gehört und ob opaa im eigenen Haus oder in einer
 Cloud läuft.
 
 | Dokument | Worum es geht | Gilt für |

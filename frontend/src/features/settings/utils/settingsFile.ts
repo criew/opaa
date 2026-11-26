@@ -44,14 +44,14 @@ export function parseSettingsFile(
   try {
     parsed = JSON.parse(text)
   } catch {
-    return { error: 'Die Datei ist kein JSON. Wählen Sie eine Datei aus dem Export von OPAA.' }
+    return { error: 'Die Datei ist kein JSON. Wählen Sie eine Datei aus dem Export von opaa.' }
   }
   if (
     typeof parsed !== 'object' ||
     parsed === null ||
     (parsed as { format?: unknown }).format !== SETTINGS_FORMAT
   ) {
-    return { error: 'Die Datei ist kein Einstellungsexport von OPAA.' }
+    return { error: 'Die Datei ist kein Einstellungsexport von opaa.' }
   }
   return { document: parsed as SettingsDocument }
 }

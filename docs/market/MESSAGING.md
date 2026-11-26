@@ -1,6 +1,6 @@
 # Messaging — die Quelle der Wahrheit
 
-Dieses Dokument legt fest, wie über OPAA gesprochen wird. Jedes nach außen gerichtete Material leitet
+Dieses Dokument legt fest, wie über opaa gesprochen wird. Jedes nach außen gerichtete Material leitet
 sich daraus ab: die Landing-Page in `page/`, die Pitch-Unterlagen und der One-Pager in `docs/`, der
 Einstieg in `README.md`. Weicht ein Asset von hier ab, ist das Asset falsch, nicht dieses Dokument.
 
@@ -12,7 +12,7 @@ erfindet nichts hinzu — es entscheidet nur, was davon zuerst gesagt wird und i
 
 ## Positionierung in einem Satz
 
-> OPAA ist der souveräne, quelloffene KI-Assistent für die öffentliche Verwaltung: Er durchsucht die
+> opaa ist der souveräne, quelloffene KI-Assistent für die öffentliche Verwaltung: Er durchsucht die
 > Bestände eines Hauses und antwortet mit geprüften Fundstellen — im eigenen Rechenzentrum, auch ohne
 > Netzanbindung.
 
@@ -30,7 +30,7 @@ nicht ins Material.
 ### Belegbarkeit — „Sie können der Antwort trauen, weil Sie sie nachprüfen können."
 
 Eine Auskunft in der Verwaltung ist keine Meinung. Jemand steht mit seinem Namen dafür gerade, und Jahre
-später muss nachvollziehbar sein, worauf sie sich stützte. OPAA bindet jede Aussage an ihre Fundstelle und
+später muss nachvollziehbar sein, worauf sie sich stützte. opaa bindet jede Aussage an ihre Fundstelle und
 lässt sich für haftungskritische Zusammenhänge so schalten, dass ohne Beleg keine Antwort ergeht.
 
 **Formulierungen, die tragen:** „jede Aussage mit Fundstelle", „lieber ‚nicht feststellbar' als plausibel
@@ -39,7 +39,7 @@ klingend", „nachvollziehbar auch in drei Jahren".
 ### Verteilbarkeit — „KI kommt bei allen an, nicht nur bei den paar Leuten, die es können."
 
 Das reale Problem ist nicht, ob es ein gutes Modell gibt, sondern wie das Können von wenigen zu allen
-kommt. Ohne Antwort darauf entsteht Schatten-KI. OPAA macht Agenten, Prompts und Wissensbestände zu
+kommt. Ohne Antwort darauf entsteht Schatten-KI. opaa macht Agenten, Prompts und Wissensbestände zu
 benannten, teilbaren, versionierbaren Objekten, die über Freigabestufen von einer Person bis in die ganze
 Organisation wandern — auffindbar in einem Katalog.
 
@@ -76,7 +76,7 @@ Diese Sorge wird zuerst adressiert, nicht die Funktionsliste.
   aus der Beschreibung der Situation, nicht aus dem Adjektiv davor.
 - **Konkret statt abstrakt.** Nicht „steigert die Effizienz", sondern „die Fundstelle steht in der
   Antwort, statt zwanzig Minuten gesucht zu werden".
-- **Ehrlich über den Stand.** OPAA ist im Aufbau. Was noch nicht gebaut ist, wird nicht so beschrieben,
+- **Ehrlich über den Stand.** opaa ist im Aufbau. Was noch nicht gebaut ist, wird nicht so beschrieben,
   als wäre es fertig. Ein Zielbild darf ein Zielbild heißen.
 
 ### Begriffe
@@ -86,7 +86,7 @@ Diese Begriffe werden einheitlich verwendet; sie stammen aus dem [Glossar](../ha
 
 | Wir sagen | Nicht |
 |---|---|
-| OPAA | opaa, OPAA-System |
+| opaa | opaa, opaa-System |
 | Behörde, Haus, Verwaltung | Unternehmen, Firma, Kunde |
 | Beschäftigte, Sachbearbeitung, Fachbereich | Mitarbeiter, User, Endanwender |
 | Wissensbibliothek | Wissensbereich, Ordner, Datenraum |
@@ -109,9 +109,9 @@ des Musters „anders als X" oder „statt X". Eine Abgrenzung wird mit dem Sach
 in einer Behörde nicht taugt, nicht wer es sonst anbietet. Ein generischer Vergleich mit einer
 Produktkategorie („gehostete Dienste") ist zulässig, solange er keine Firma erkennbar macht.
 
-Unzulässig ist damit die Nennung **zur Positionierung**: ein Name, der OPAA einordnet, besser aussehen
+Unzulässig ist damit die Nennung **zur Positionierung**: ein Name, der opaa einordnet, besser aussehen
 lässt, eine Marktlage beschreibt oder einen Kaufgrund liefert. Das gilt für jedes Material, das jemand
-liest, um sich ein Bild von OPAA zu machen — Landing-Page, Pitch, One-Pager, Einstieg im Repository,
+liest, um sich ein Bild von opaa zu machen — Landing-Page, Pitch, One-Pager, Einstieg im Repository,
 Vision.
 
 Zulässig ist die Nennung als **nachprüfbarer Sachbeleg**. Stellt ein Dokument eine technische Behauptung
@@ -121,21 +121,21 @@ die Aussage nicht mehr nachprüfbar und damit wertlos. So belegt die Vorbild-Ana
 dass die gewählte Rechtekonstruktion in keinem der untersuchten Systeme ein Vorbild hat — genau das
 verhindert, dass ein entschiedener Punkt in einem halben Jahr als neue Idee wiederkommt. Ebenfalls
 zulässig sind Namen als **Arbeitsanweisung an eine interne Rolle**, etwa als Startpunkt einer Recherche
-in `agents/roles/`; das ist kein Text über OPAA. Namen von Bausteinen des eigenen Stacks, von Modellen
-und von Quellsystemen, die OPAA anbindet, sind keine Mitbewerbernennung und von dieser Regel nicht
+in `agents/roles/`; das ist kein Text über opaa. Namen von Bausteinen des eigenen Stacks, von Modellen
+und von Quellsystemen, die opaa anbindet, sind keine Mitbewerbernennung und von dieser Regel nicht
 berührt.
 
 Drei Fragen entscheiden den Einzelfall. Nur wenn alle drei zugunsten des Namens ausfallen, bleibt er:
 
-1. **Wozu steht der Name da?** Um OPAA einzuordnen oder zu empfehlen — dann streichen. Um eine konkrete
+1. **Wozu steht der Name da?** Um opaa einzuordnen oder zu empfehlen — dann streichen. Um eine konkrete
    Behauptung über ein fremdes System nachprüfbar zu machen — dann bleibt er.
 2. **Was passiert, wenn man ihn entfernt?** Bleibt die Aussage richtig und nachprüfbar, war der Name
    entbehrlich. Verliert sie ihre Nachprüfbarkeit, ist er Teil des Belegs.
-3. **Wer liest die Stelle?** Steht sie in einem Dokument, das jemand liest, um OPAA zu bewerten oder zu
+3. **Wer liest die Stelle?** Steht sie in einem Dokument, das jemand liest, um opaa zu bewerten oder zu
    beschaffen, ist der Name unzulässig — auch dann, wenn er sachlich zuträfe.
 
 **Keine Beteiligten.** Keine Namen von Personen, Unternehmen, Beratungen oder Partnern; keine Aussagen
-darüber, wer an OPAA mitarbeitet, es finanziert oder vertreibt.
+darüber, wer an opaa mitarbeitet, es finanziert oder vertreibt.
 
 **Keine Referenzen.** Keine Kundennamen, keine Pilotbehörden, keine Zitate von Anwendern, keine
 Logo-Leisten — auch nicht anonymisiert in einer Form, die Rückschlüsse zulässt.
@@ -143,8 +143,8 @@ Logo-Leisten — auch nicht anonymisiert in einer Form, die Rückschlüsse zulä
 **Keine Zahlen zu Geld und Aufwand.** Keine Preise, keine Preisbänder, keine Lizenzmodelle, keine
 Aufwands- oder Kostenschätzungen, keine Angaben zu Personentagen oder Projektdauern.
 
-**Keine Zertifizierungsbehauptung.** OPAA ist nicht zertifiziert und wird es als Software auch nicht
-werden. Gesagt wird, dass OPAA darauf ausgelegt ist, dass ein Betreiber die Prüfung mit OPAA im
+**Keine Zertifizierungsbehauptung.** opaa ist nicht zertifiziert und wird es als Software auch nicht
+werden. Gesagt wird, dass opaa darauf ausgelegt ist, dass ein Betreiber die Prüfung mit opaa im
 Prüfumfang besteht. Formulierungen wie „C5-zertifiziert" oder „BSI-konform" sind falsch und werden nicht
 verwendet.
 

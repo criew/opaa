@@ -164,6 +164,6 @@ class MailSenderProviderTest {
         username == null ? null : "geheim",
         encryption,
         "opaa@intern.example",
-        "OPAA");
+        "opaa");
   }
 }

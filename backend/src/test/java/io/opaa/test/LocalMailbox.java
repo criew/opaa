@@ -132,7 +132,7 @@ public final class LocalMailbox {
                 "geheim",
                 MailEncryption.NONE,
                 "opaa@intern.example",
-                "OPAA")
+                "opaa")
             : new MailSettingsUpdate(
                 false, null, null, null, "", MailEncryption.STARTTLS, null, null));
   }

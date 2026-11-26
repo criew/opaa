@@ -1,6 +1,6 @@
 # E2E-Suite
 
-Browserbasierte End-to-End-Tests für OPAA mit [Playwright](https://playwright.dev/).
+Browserbasierte End-to-End-Tests für opaa mit [Playwright](https://playwright.dev/).
 
 Architektur- und Modellentscheidungen für diese Suite sind in
 [`docs/decisions/0009-e2e-teststrategie.md`](../docs/decisions/0009-e2e-teststrategie.md)
@@ -190,7 +190,7 @@ Firefox-Build (aktueller Stand), kein echtes ESR.
 
 ## Warum der `dev`-Auth-Modus?
 
-OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
+opaa kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
 [ADR-0005](../docs/decisions/0005-authentication-strategy.md)). Die Suite läuft auf **`dev`**:
 
 - `dev` authentifiziert jede Anfrage als einen der unter `opaa.auth.dev.users` konfigurierten
@@ -1080,7 +1080,7 @@ Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zw
 einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` bleibt bei lokalen Konten,
 überspringt die optionalen Schritte Chat-Modell, Einbettung, Reranking, Spracheingabe,
 Texterkennung, Virenprüfung, E-Mail und Branding und endet mit der Anmeldung des ersten Kontos auf
-der regulären Anmeldeseite unter dem OPAA-Standard. `@mail-filled` trägt `oidc-stub` als
+der regulären Anmeldeseite unter dem opaa-Standard. `@mail-filled` trägt `oidc-stub` als
 Identitätsanbieter ein (Issuer `http://localhost:18095` für den Browser, JWK-Set unter
 `http://oidc-stub:8095/jwks` für das Backend), wählt das Rerank-Modell aus der Liste des
 Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`; `POST …/rerank` bewertet jede Probe) und

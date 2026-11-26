@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the Grafana dashboards of OPAA: the start page with one traffic light per building block,
+"""Builds the Grafana dashboards of opaa: the start page with one traffic light per building block,
 the indexing drill-down and the four areas Betrieb, Wissensbestand, Modelle and Sicherheit.
 
 A tile of the start page that stands for alerts reads their state from ALERTS, so a threshold
@@ -340,7 +340,7 @@ class Builder:
                                     "deployment", "container", "endpoint", "instance", "service", "prometheus")}
         return self.table(
             "Was feuert gerade?",
-            "Aktive OPAA-Alarme mit Schweregrad und Zuständigkeit (component). Ein Klick auf den Namen öffnet das "
+            "Aktive opaa-Alarme mit Schweregrad und Zuständigkeit (component). Ein Klick auf den Namen öffnet das "
             "Runbook im Handbuch.",
             [(joined, "")], pos,
             [{"id": "labelsToFields", "options": {"mode": "columns"}}, {"id": "merge", "options": {}},
@@ -449,7 +449,7 @@ class Builder:
                      "step": "60s", "titleFormat": "Version {{version}}",
                      "textFormat": "Die erste Instanz dieser Version ist gestartet",
                      "tagKeys": "version", "useValueForTime": False}]},
-                "links": [{"title": "OPAA", "type": "dashboards", "tags": ["opaa"], "asDropdown": False,
+                "links": [{"title": "opaa", "type": "dashboards", "tags": ["opaa"], "asDropdown": False,
                            "includeVars": True, "keepTime": True, "targetBlank": False, "icon": "external link"}],
                 "templating": {"list": variables}, "panels": panels, "version": 1}
 
@@ -486,9 +486,9 @@ class Builder:
              "Prüfsummenkette, Monatssiegel, Rückstand der Ausleitung, Löschlauf und Protokollhorizont. Grün nur, wenn "
              "alles grün ist."),
             ("Alarme", s["alerts"], "start",
-             "Schwerster aktiver OPAA-Alarm: rot bei critical, gelb bei warning. Info-Alarme färben nicht."),
+             "Schwerster aktiver opaa-Alarm: rot bei critical, gelb bei warning. Info-Alarme färben nicht."),
         ]
-        panels = [self.banner("OPAA · Lage", legend, self.gp(0, 0, 24, 2))]
+        panels = [self.banner("opaa · Lage", legend, self.gp(0, 0, 24, 2))]
         for i, (name, expr, target, desc) in enumerate(tiles):
             panels.append(self.status(name, desc, [(expr, name)], self.gp(i * 3, 2, 3, 5),
                                       links=self.link(f"Details: {name}", target), text_mode="value",
@@ -513,7 +513,7 @@ class Builder:
                       overrides=[self.ov("ältester Eintrag", unit=MIN, decimals=0, thresholds=self.thr(
                           OK, (WARN, min(r["queueMaxAgeMinutes"].values()))))]),
         ]
-        return self.dashboard("start", "OPAA · Lage", panels, self.variables("connector-hidden"),
+        return self.dashboard("start", "opaa · Lage", panels, self.variables("connector-hidden"),
                               "Startseite: eine Ampel je Baustein, darunter wenige Kernkurven; jede Kachel öffnet ihren Bereich.")
 
     def indexing(self):
@@ -603,7 +603,7 @@ class Builder:
                     self.gp(16, 25, 8, 7), interval="1h",
                     overrides=[self.ov("Neueinbettung offen", custom__axisPlacement="right")]),
         ]
-        return self.dashboard("indexing", "OPAA · Indexierung & Konnektoren", panels, self.variables("connector"),
+        return self.dashboard("indexing", "opaa · Indexierung & Konnektoren", panels, self.variables("connector"),
                               "Drilldown der Kachel Indexierung: Läufe, Rückstände und Schritte je Konnektortyp.")
 
     def operations(self):
@@ -694,7 +694,7 @@ class Builder:
                      (f'sum(increase(opaa_transcription_live_sessions_total{{{SEL}, end="installation_busy"}}[$__interval]))', "Live-Diktat belegt")],
                     self.gp(12, 28, 12, 7), bars=True, stack=True, interval="1h", decimals=0),
         ]
-        return self.dashboard("operations", "OPAA · Betrieb & Bereitschaft", panels, self.variables("connector-hidden"),
+        return self.dashboard("operations", "opaa · Betrieb & Bereitschaft", panels, self.variables("connector-hidden"),
                               "Bereich Betrieb: Bausteine, Nutzerseite, Hintergrund und Plattform.")
 
     def knowledge(self):
@@ -746,7 +746,7 @@ class Builder:
                     self.gp(12, 20, 12, 7), unit=H, decimals=1,
                     thresholds=self.thr("transparent", ("orange", r["directorySyncPlanPendingHours"])), thr_style="dashed"),
         ]
-        return self.dashboard("knowledge", "OPAA · Wissensbestand & Bibliotheken", panels, self.variables("connector"),
+        return self.dashboard("knowledge", "opaa · Wissensbestand & Bibliotheken", panels, self.variables("connector"),
                               "Bereich Wissensbestand: Bestand, Aktualität, Suche und Verzeichnisabgleich.")
 
     def models(self):
@@ -764,7 +764,7 @@ class Builder:
                         font={"titleSize": 13, "valueSize": 16}),
             self.stat("Steuerung (gewählter Zeitraum)",
                       "Tokens des Chat-Modells und daraus berechnete Kosten. Die Kosten rechnet Grafana aus den Preisen "
-                      "oben (Euro je eine Million Tokens); OPAA speichert keine Kosten.",
+                      "oben (Euro je eine Million Tokens); opaa speichert keine Kosten.",
                       [(f"(({tokens_in}) + ({tokens_out})) / 1e6", "Tokens"), (cost, "Kosten"),
                        (f"{cost} / ($__range_s / 86400) * 30", "Hochrechnung 30 Tage"),
                        (f'sum(increase(opaa_outbound_throttled_total{{{SEL}}}[$__range]))', "gedrosselt")],
@@ -822,7 +822,7 @@ class Builder:
                           "schickt der Browser die Aufnahme als Ganzes.",
                           f"opaa_transcription_live_sessions_total{{{SEL}}}", "end", "{{end}}", self.gp(0, 41, 24, 7)),
         ]
-        return self.dashboard("models", "OPAA · KI-Modelle & Kosten", panels, self.variables("model"),
+        return self.dashboard("models", "opaa · KI-Modelle & Kosten", panels, self.variables("model"),
                               "Bereich Modelle: Erreichbarkeit, Antwortzeit, Drosselung, Tokens und Kosten. Kosten nur hier.")
 
     def security(self):
@@ -848,7 +848,7 @@ class Builder:
                                  self.ov("Virenfunde", thresholds=self.thr(OK, (GREY, 1))),
                                  self.ov("Kontosperren", thresholds=self.thr(OK, (GREY, 1)))]),
             self.ts("Abgewiesene Anmeldungen", "Abgewiesene Anmeldungen pro Stunde nach Methode und Grund. Erfolgreiche "
-                    "Anmeldungen zählt OPAA nicht.",
+                    "Anmeldungen zählt opaa nicht.",
                     [(f"sum by (method, result) (increase(opaa_auth_logins_total{{{SEL}}}[$__interval]))", "{{method}} {{result}}")],
                     self.gp(0, 8, 12, 7), bars=True, stack=True, interval="1h"),
             self.ts("Abgewiesen an einer Grenze", "Abweisungen je Grenze und Geltungsbereich pro Stunde.",
@@ -868,7 +868,7 @@ class Builder:
                     self.gp(16, 15, 8, 7),
                     overrides=[self.ov("Größe", unit="bytes"), self.ov("Horizont (Tage)", custom__axisPlacement="right")]),
         ]
-        return self.dashboard("security", "OPAA · Sicherheit & Nachweis", panels, self.variables(),
+        return self.dashboard("security", "opaa · Sicherheit & Nachweis", panels, self.variables(),
                               "Bereich Informationssicherheit und Revision: Schutzfunktionen und Nachweispflichten.")
 
 

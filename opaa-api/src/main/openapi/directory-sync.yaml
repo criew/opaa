@@ -468,7 +468,7 @@ components:
           description: >
             How many direct members the group has (ADR-0036, Entscheidung 3). For a group the run
             would create, the number the directory reports - a Keycloak department that only has
-            subgroups is an empty group in OPAA, and this is where the operator sees it before
+            subgroups is an empty group in opaa, and this is where the operator sees it before
             applying. For a renamed, dissolved or no-longer-maintained group, the number of
             memberships it currently holds.
           example: 12
@@ -478,7 +478,7 @@ components:
       description: >
         Which kind of directory a provider's group synchronisation reads (ADR-0036, Entscheidung
         3). Keycloak is the first connector: its user id is the token's sub, so a member's
-        identity coincides with the OPAA account without a mapping rule. LDAP and Microsoft Graph
+        identity coincides with the opaa account without a mapping rule. LDAP and Microsoft Graph
         follow as their own connectors.
       enum: [KEYCLOAK]
       example: KEYCLOAK

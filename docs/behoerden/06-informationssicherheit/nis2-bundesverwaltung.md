@@ -21,9 +21,9 @@ Ihre Mindestanforderungen ergeben sich aus dem IT-Grundschutz und den *Mindestst
 verbindlichen Vorgaben zu einzelnen Themen wie Protokollierung. Ob und mit welchen Pflichten sie
 erfasst ist, stellt jede Einrichtung selbst fest.
 
-## Was OPAA liefert
+## Was opaa liefert
 
-| Vorgabe | Beitrag von OPAA |
+| Vorgabe | Beitrag von opaa |
 |---|---|
 | IT-Grundschutz | Bausteinzuordnung: [IT-Grundschutz](grundschutz-modellierung.md) |
 | Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); zuschaltbare Ausleitung des Nachweisprotokolls an das zentrale Sicherheitsmonitoring als Syslog mit CEF über TLS, ohne Pseudonyme, ohne stillen Verlust (auch nicht bei lang offenen Vorgängen), mindestens einmal zugestellt und mit gekennzeichneten Lücken ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring), {{faktenblatt:datenfluesse#siem-export}}); Sicherheitsereignisse des Anwendungslogs holt die Log-Sammlung der Behörde ab |
@@ -32,7 +32,7 @@ erfasst ist, stellt jede Einrichtung selbst fest.
 
 Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 
-- OPAA ist quelloffen, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit; Zusagen gibt
+- opaa ist quelloffen, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit; Zusagen gibt
   nur ein Dienstleister ([Gewährleistung und Haftung](../03-vergabe/gewaehrleistung-haftung.md)).
 - Bestandteile, Provenance der Images und der Umgang mit Schwachstellen stehen in den
   [Sicherheitsnachweisen](sicherheitsnachweise.md), Pflichten des Projekts in der
@@ -45,7 +45,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 
 1. **Betroffenheit und Pflichten feststellen.**
 2. **Vorgaben zuordnen:** IT-Grundschutz und die geltenden Mindeststandards, mit der Tabelle oben.
-3. **Lieferkette bewerten:** OPAA und, falls vorhanden, Dienstleister und Modellanbieter.
+3. **Lieferkette bewerten:** opaa und, falls vorhanden, Dienstleister und Modellanbieter.
 4. **Erhebliche Sicherheitsvorfälle an das BSI melden.** Die Protokolle liefern Anhaltspunkte; die
    Bewertung trifft die Einrichtung.
 5. **Updates zeitnah einspielen**, vor dem Supportende der eingesetzten Linie auf die nächste

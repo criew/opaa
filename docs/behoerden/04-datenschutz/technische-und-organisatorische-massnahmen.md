@@ -16,16 +16,16 @@ Landesdatenschutzbeauftragten sind.
 
 TOM sind die Vorkehrungen, mit denen personenbezogene Daten gegen Verlust, Missbrauch und unbefugten
 Zugriff geschützt werden. Verantwortlich ist die Behörde, bei Auftragsverarbeitung auch ihr
-Dienstleister. Ein Teil der Maßnahmen steckt im Produkt; diese Vorlage trennt, was OPAA mitbringt und
+Dienstleister. Ein Teil der Maßnahmen steckt im Produkt; diese Vorlage trennt, was opaa mitbringt und
 was der Betrieb selbst leisten muss.
 
 Neben Vertraulichkeit zählen Verfügbarkeit und Wiederherstellung ausdrücklich dazu: Gehen Daten
 verloren oder lassen sie sich nach einem Ausfall nicht zurückholen, ist auch das eine
 Datenschutzverletzung.
 
-## Was OPAA liefert
+## Was opaa liefert
 
-| Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |
+| Schutzziel | opaa bringt mit | Betrieb leistet, etwa |
 |---|---|---|
 | **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)) | Datenbankzugriff beschränken, damit die Trennung hält |
 | **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/betrieb/netz-und-sicherheit.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert | TLS am Eingang ([Netzwerkzugang](../../handbuch/betrieb/netz-und-sicherheit.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |

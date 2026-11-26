@@ -117,19 +117,19 @@ const ENDPOINT_FIELDS = [
     key: 'authorizationEndpoint',
     flag: 'authorization',
     label: 'Autorisierungs-Endpunkt',
-    hint: 'Wohin OPAA die Person zur Zustimmung schickt.',
+    hint: 'Wohin opaa die Person zur Zustimmung schickt.',
   },
   {
     key: 'tokenEndpoint',
     flag: 'token',
     label: 'Token-Endpunkt',
-    hint: 'Wo OPAA Code und Refresh-Token gegen ein Zugriffstoken tauscht.',
+    hint: 'Wo opaa Code und Refresh-Token gegen ein Zugriffstoken tauscht.',
   },
   {
     key: 'revocationEndpoint',
     flag: 'revocation',
     label: 'Widerrufs-Endpunkt',
-    hint: 'Wo OPAA ein Token beim Trennen widerruft (RFC 7009).',
+    hint: 'Wo opaa ein Token beim Trennen widerruft (RFC 7009).',
   },
 ] as const
 
@@ -563,7 +563,7 @@ export default function ConnectionProfileFormDialog({
                   size="small"
                   value={draft.clientSecretExpiresOn}
                   onChange={(e) => setDraft({ ...draft, clientSecretExpiresOn: e.target.value })}
-                  helperText="OPAA warnt 14 Tage vorher."
+                  helperText="opaa warnt 14 Tage vorher."
                 />
                 <FormField
                   label="Mandant"
@@ -625,7 +625,7 @@ export default function ConnectionProfileFormDialog({
                   </Typography>
                 ) : (
                   <Alert severity="warning" data-testid="connection-profile-redirect-uri">
-                    Die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL) ist nicht gesetzt. Ohne
+                    Die öffentliche Adresse von opaa (OPAA_PUBLIC_BASE_URL) ist nicht gesetzt. Ohne
                     sie gibt es keine Rücksprungadresse, und über diesen Zugang lässt sich kein
                     Konto beim Anbieter verbinden. Zuständig ist der Betrieb der Installation.
                   </Alert>

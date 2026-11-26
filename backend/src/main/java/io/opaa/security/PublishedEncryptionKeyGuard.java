@@ -41,7 +41,7 @@ public class PublishedEncryptionKeyGuard {
     if (!refused.isEmpty()) {
       throw new IllegalStateException(
           String.join(" and ", refused)
-              + " holds a key published in the OPAA repository (a development default or a CI"
+              + " holds a key published in the opaa repository (a development default or a CI"
               + " value, marked "
               + SecretValidator.NON_PRODUCTION_MARKER
               + "). The \"oidc\" profile refuses to start with it. Generate a key of your own with:"

@@ -13,7 +13,7 @@ paths:
         is configured - the path the logo is served from. Readable without authentication: the sign-in page renders before there is a session and still
         has to carry the operator's own name and logo. What that exposes is bounded to exactly
         these fields - which Behörde runs the deployment, which anyone reaching its sign-in page
-        can already tell. Never fails for want of configuration - a deployment that has never configured anything gets the OPAA
+        can already tell. Never fails for want of configuration - a deployment that has never configured anything gets the opaa
         defaults, each field resolved individually, so an operator who only sets a logo keeps the
         standard product name.
       responses:
@@ -106,7 +106,7 @@ paths:
       tags: [branding]
       summary: >
         Replace the branding configuration (SYSTEM_ADMIN only). A full replacement, as PUT
-        implies: an omitted or null field is not "leave as is" but "back to the OPAA default", so
+        implies: an omitted or null field is not "leave as is" but "back to the opaa default", so
         an operator can undo a customisation without a dedicated reset endpoint. The logo is not
         part of this request - it has its own endpoints below, because a binary upload and a JSON
         settings edit have nothing to gain from being welded into one multipart request.
@@ -166,7 +166,7 @@ paths:
       operationId: deleteBrandingLogo
       tags: [branding]
       summary: >
-        Remove the configured logo (SYSTEM_ADMIN only) - the app falls back to the OPAA
+        Remove the configured logo (SYSTEM_ADMIN only) - the app falls back to the opaa
         standard logo. Idempotent: removing a logo that is not there succeeds.
       responses:
         "200":
@@ -215,7 +215,7 @@ paths:
       tags: [branding]
       summary: >
         Remove the sign-in page's own logo (SYSTEM_ADMIN only) - the page falls back to the
-        app logo, and to the OPAA standard mark where none is configured either. Idempotent.
+        app logo, and to the opaa standard mark where none is configured either. Idempotent.
       responses:
         "200":
           description: Login logo removed; the effective configuration afterwards
@@ -282,15 +282,15 @@ components:
       type: object
       description: >
         The branding in effect - never a partially filled object. Every field carries either the
-        operator's configured value or the OPAA default, resolved per field, so a client can
+        operator's configured value or the opaa default, resolved per field, so a client can
         render from this response alone without knowing what a default even is. logoUrl is the
         one exception: it is absent while no logo is configured, and the client falls back to the
-        bundled OPAA logo.
+        bundled opaa logo.
       required: [productName, claim, aiNotice, aiNoticeDefault, primaryColor]
       properties:
         productName:
           type: string
-          example: OPAA
+          example: opaa
         claim:
           type: string
           example: "opaa weiß, was war, und hilft bei dem, was kommt."
@@ -299,13 +299,13 @@ components:
           description: >
             The authority's notice on the use of AI (Art. 50 AI Act), shown in the chat before the
             first question and used as the note when an answer is copied. Always present: while
-            nothing is configured it is the OPAA standard text. It can be replaced but not switched
+            nothing is configured it is the opaa standard text. It can be replaced but not switched
             off.
           example: Antworten werden von einer KI erzeugt und können Fehler enthalten.
         aiNoticeDefault:
           type: string
           description: >
-            The OPAA standard text of the notice. A form compares against this value, not against
+            The opaa standard text of the notice. A form compares against this value, not against
             a copy of its own, to tell "the standard" from a customised text.
         primaryColor:
           type: string
@@ -362,25 +362,25 @@ components:
       type: object
       description: >
         A full replacement of the non-binary branding fields. Every field is optional, and an
-        omitted or null one means "the OPAA default applies again" rather than "keep the current
+        omitted or null one means "the opaa default applies again" rather than "keep the current
         value" - see the endpoint's own summary.
       properties:
         productName:
           type: string
           description: >
-            Empty or omitted means the OPAA default applies again - which is why there is no
+            Empty or omitted means the opaa default applies again - which is why there is no
             minLength here: a cleared form field is how an operator undoes a customisation.
           maxLength: 60
           example: Landesamt-Assistent
         claim:
           type: string
-          description: Empty or omitted means the OPAA default applies again.
+          description: Empty or omitted means the opaa default applies again.
           maxLength: 120
           example: "opaa weiß, was war, und hilft bei dem, was kommt."
         aiNotice:
           type: string
           description: >
-            Empty or omitted means the OPAA standard text applies again - the notice can be
+            Empty or omitted means the opaa standard text applies again - the notice can be
             replaced but never switched off, so a cleared field - or one without a visible
             character - restores the standard rather than removing the notice. Longer than 500
             characters or containing a control character or line break is rejected with 400.
@@ -389,6 +389,6 @@ components:
           type: string
           description: >
             Six-digit hex triplet with a leading '#'. The empty string is accepted alongside it and
-            means the OPAA default applies again; anything else is rejected with 400.
+            means the opaa default applies again; anything else is rejected with 400.
           pattern: "^$|^#[0-9A-Fa-f]{6}$"
           example: "#0055A4"

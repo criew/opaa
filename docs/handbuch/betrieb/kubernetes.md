@@ -1,6 +1,6 @@
 # Kubernetes
 
-OPAA lässt sich unter Kubernetes mit dem Helm-Chart des Projekts betreiben. Der Chart startet
+opaa lässt sich unter Kubernetes mit dem Helm-Chart des Projekts betreiben. Der Chart startet
 dieselben Images wie der Compose-Stapel ([Docker Compose](docker-compose.md)): ein Backend und
 ein Frontend. Datenbank, Modelle, Objektspeicher und Identitätsanbieter betreibt das Haus selbst; der
 Chart bindet sie an.
@@ -140,13 +140,13 @@ an; alle Pods erreicht `-l app.kubernetes.io/component=backend`, für Protokolle
 
 | Was | Anforderung |
 |---|---|
-| Kubernetes | eine der drei jüngsten Minor-Versionen, die das Kubernetes-Projekt zum Zeitpunkt des OPAA-Releases pflegt; ältere können funktionieren, werden aber nicht geprüft |
+| Kubernetes | eine der drei jüngsten Minor-Versionen, die das Kubernetes-Projekt zum Zeitpunkt des opaa-Releases pflegt; ältere können funktionieren, werden aber nicht geprüft |
 | Knoten | `linux/amd64` oder `linux/arm64`; Releases und `main` gibt es für beide Architekturen, der Knoten zieht die passende (ältere `sha-<commit>`-Stände nur für `linux/amd64`) |
 | Helm | Helm 4, oder Helm 3 ab 3.8 |
 | Namespace | Pod Security Admission auf `restricted` ist möglich und empfohlen; der Chart braucht keine Ausnahme |
 | Netzwerkschicht | setzt NetworkPolicies durch, sobald `trustedProxyCidrs` gesetzt wird (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)) |
 | Eingang | ein Ingress-Controller oder eine Gateway-API-Implementierung mit einem Gateway; ein DNS-Name und ein Zertifikat, etwa über cert-manager |
-| Datenbank | PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für OPAA; Vorbereitung siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
+| Datenbank | PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für opaa; Vorbereitung siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
 | Originalablage | ein vorher angelegter Bucket in einem S3-kompatiblen Objektspeicher mit Zugangs- und Geheimschlüssel, oder eine StorageClass für ein Volume mit `ReadWriteOnce` |
 | Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](modell-endpunkte.md#llm-anbieter)) |
 | Identitätsanbieter | optional ein OIDC-Anbieter mit einem öffentlichen Client; ohne ihn melden sich Personen mit lokalen Konten an |
@@ -173,9 +173,9 @@ braucht dann kein `--create-namespace`.
 ### 2. Datenbank vorbereiten
 
 Ein Datenbankverwalter legt die Erweiterung `vector` und gegebenenfalls die Rolle
-`opaa_audit_owner` an, bevor OPAA zum ersten Mal startet. Die Befehle stehen unter
+`opaa_audit_owner` an, bevor opaa zum ersten Mal startet. Die Befehle stehen unter
 [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql).
-Soll OPAA in einem eigenen Schema liegen, muss es ebenfalls vorher existieren
+Soll opaa in einem eigenen Schema liegen, muss es ebenfalls vorher existieren
 ([Eigenes Datenbankschema](datenbank.md#eigenes-datenbankschema)).
 
 Mit der [Erprobungsdatenbank](#datenbank) entfällt dieser Schritt: Ihr Konto ist Superuser und legt
@@ -276,8 +276,8 @@ ingress:
   Geheimnisse und beim Objektspeicher `uploads.s3.endpoint` und `uploads.s3.bucket`; mit Antwortdatei
   zusätzlich `bootstrap.chatModel.*` und `embedding.baseUrl` und `embedding.model`. Fehlt einer, lehnt
   der Chart die Installation mit einer Meldung ab, die den Wert nennt.
-- `publicBaseUrl` ist die Adresse, unter der Personen OPAA aufrufen: mit Schema, ohne Pfad und ohne
-  Schrägstrich am Ende. OPAA läuft immer an der Wurzel seines Hostnamens; ein Unterpfad ist mit dem
+- `publicBaseUrl` ist die Adresse, unter der Personen opaa aufrufen: mit Schema, ohne Pfad und ohne
+  Schrägstrich am Ende. opaa läuft immer an der Wurzel seines Hostnamens; ein Unterpfad ist mit dem
   Chart nicht möglich.
 - Die Dimension des Embedding-Modells ermittelt die Probeeinbettung der Installation; einstellen
   muss sie niemand. `embedding.dimensions` ist ohne Wirkung und wird nur noch angenommen, damit
@@ -290,12 +290,12 @@ ingress:
   Nötig ist ein Eintrag für Modelle auf anderen Hosts, die die Verwaltung später anlegt, etwa Rerank-
   und Transkriptionsmodell ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)).
 - `bootstrap.*` ist die **Antwortdatei** der [Installation](installation.md): Mit
-  `bootstrap.initialAdmin.email` rendert der Chart sie, und der erste Start richtet OPAA daraus ein
+  `bootstrap.initialAdmin.email` rendert der Chart sie, und der erste Start richtet opaa daraus ein
   (siehe [7. Installation und erste Anmeldung](#7-installation-und-erste-anmeldung)). Ohne die
-  Adresse bleibt OPAA im Installationsmodus, bis die Installation im Browser abgeschlossen ist.
+  Adresse bleibt opaa im Installationsmodus, bis die Installation im Browser abgeschlossen ist.
 - **Modelle vorher prüfen.** Das Modell aus `bootstrap.chatModel.model` und das aus `embedding.model`
   müssen im jeweiligen Endpunkt vorhanden sein. Fehlt das Chat-Modell, scheitert schon der
-  Verbindungstest der Installation, und OPAA bleibt im Installationsmodus. Ein OpenAI-kompatibler
+  Verbindungstest der Installation, und opaa bleibt im Installationsmodus. Ein OpenAI-kompatibler
   Endpunkt nennt seine Modelle unter `<baseUrl>/models`, etwa mit
   `curl -s https://modelle.example.org/v1/models`; verlangt der Endpunkt einen Schlüssel, kommt
   `-H "Authorization: Bearer <Schlüssel>"` dazu.
@@ -328,7 +328,7 @@ helm show values oci://ghcr.io/criew/charts/opaa --version <x.y.z>
 
 ### 5. Installieren
 
-Jedes Release von OPAA veröffentlicht den Chart neben den Images in der GitHub Container Registry.
+Jedes Release von opaa veröffentlicht den Chart neben den Images in der GitHub Container Registry.
 Chart und Images tragen dieselbe Versionsnummer; ohne eigene Angabe startet der Chart genau die Images
 seiner Version:
 
@@ -390,7 +390,7 @@ dabei `UP`. Zwei Wege führen hinaus:
   wie Quellen: Ein Modell im Cluster, etwa Ollama, braucht seinen Host in
   `targetValidation.indexingAllowlist`. Die erste Anmeldung verlangt ein neues Passwort, damit das im
   Secret danach nicht mehr gilt (`bootstrap.initialAdmin.requirePasswordChange`, Vorgabe `true`).
-  Fehlt das Passwort im Secret, startet der Pod trotzdem; OPAA bleibt dann im Installationsmodus, und
+  Fehlt das Passwort im Secret, startet der Pod trotzdem; opaa bleibt dann im Installationsmodus, und
   das Protokoll nennt die fehlende Datei. Mit `bootstrap.mail.host` enthält die Antwortdatei auch den
   Mailserver; der erste Start prüft Verbindung und Anmeldung, ohne eine Nachricht zu senden. Host und
   Port trägt der Chart in `installationMailTargetAllowlist` ein, damit ein Server im eigenen Netz die
@@ -493,7 +493,7 @@ Hauptversionen von PostgreSQL. Wer aus der Erprobung einen Betrieb macht, setzt 
 
 ## Erprobung mit dem Beispiel-Setup
 
-Wer OPAA unter Kubernetes vorführen oder einen ersten Eindruck gewinnen will, braucht neben dem Chart
+Wer opaa unter Kubernetes vorführen oder einen ersten Eindruck gewinnen will, braucht neben dem Chart
 alle Dienste, die der Chart nur anbindet. Das Beispiel-Setup im Repository unter
 `examples/kubernetes-trial/` baut sie mit einem Befehl in einem leeren lokalen Cluster auf und
 installiert den Chart mit passenden Werten. Ablauf, Einstellungen und Fehlersuche stehen in der
@@ -529,7 +529,7 @@ Der Port ist nur auf dem eigenen Rechner erreichbar (`127.0.0.1`), weil Mailpit 
 Rücksetzlinks zeigt und die Testkonten bekannt sind. Das Skript arbeitet im aktuellen kubectl-Kontext
 und nennt ihn zuerst. Einen Kontext, der nicht nach einem lokalen Cluster aussieht, lehnt es ab, und
 es ändert keinen gleichnamigen Namespace, den es nicht selbst angelegt hat. Es legt die Namespaces
-`opaa-trial` (OPAA, Pod Security Standard `restricted`) und `opaa-trial-services` (die Dienste) an
+`opaa-trial` (opaa, Pod Security Standard `restricted`) und `opaa-trial-services` (die Dienste) an
 und wartet, bis alles bereit ist. Am Ende nennt es die Adressen und die Befehle, mit denen die
 erzeugten Verwaltungspasswörter aus den Secrets gelesen werden. Angemeldet wird über Keycloak oder
 als erster Systemverwalter über `/login/system`.
@@ -543,8 +543,8 @@ examples/kubernetes-trial/trial.sh down
 | Umgebungsvariable | Vorgabe | Wirkung |
 |---|---|---|
 | `TRIAL_PORT` | `8088` | Port, unter dem der Ingress-Controller auf dem Rechner erreichbar ist; nach dem ersten Start nicht mehr ändern, weil die Installation den Issuer festhält |
-| `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und OPAA beim ersten Start übernimmt |
-| `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images |
+| `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und opaa beim ersten Start übernimmt |
+| `OPAA_IMAGE_TAG` | `main` | Tag der opaa-Images |
 | `KUBE_CONTEXT` | aktueller Kontext | kubectl-Kontext des Zielclusters |
 | `TRIAL_ALLOW_CONTEXT` | leer | Name eines Kontexts, der nicht nach einem lokalen Cluster aussieht (`k3d-*`, `kind-*`, `docker-desktop`, `rancher-desktop`, `orbstack`, `minikube`) und trotzdem gemeint ist |
 
@@ -553,12 +553,12 @@ examples/kubernetes-trial/trial.sh down
 - **Issuer und Signaturschlüssel.** Der Browser erreicht Keycloak unter einer Adresse, die im Cluster
   nicht auflöst. Das Backend vergleicht den Issuer nur mit dem Token und holt die Schlüssel über
   `bootstrap.oidc.jwkSetUri` unter der internen Adresse (siehe [Identitätsanbieter](#identitätsanbieter)).
-- **Content-Security-Policy.** Keycloak liegt auf einem anderen Origin als OPAA; sein Origin steht
+- **Content-Security-Policy.** Keycloak liegt auf einem anderen Origin als opaa; sein Origin steht
   deshalb in `frontend.cspConnectSrcExtra`, und die Ausgabe von `helm install` bestätigt ihn.
 - **Modelle vor dem ersten Start.** Das Chat-Modell aus `bootstrap.chatModel` muss im Endpunkt
   vorhanden sein, sonst scheitert der Verbindungstest der Installation; ein späterer Wechsel geht über
   die Modellverwaltung.
-- **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.
+- **Bucket vorab.** opaa legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.
 - **Mailserver in der Oberfläche.** Das Beispiel-Setup setzt `bootstrap.mail` nicht und trägt ihn
   über die Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
   ([E-Mail-Versand](../administration/e-mail.md)).
@@ -597,7 +597,7 @@ Installation ab. Bei einem vorhandenen Secret sieht der Chart nur den Namen; feh
 Pflichtschlüssel, startet der Pod nicht (`CreateContainerConfigError`), und `kubectl describe pod`
 nennt den Schlüssel. Ein optionaler Schlüssel darf fehlen, ebenso die Dateien der Antwortdatei
 (`installation-*`), die der Pod nur einhängt, wenn es sie gibt. `OPAA_INITIAL_ADMIN_PASSWORD` und
-`OPAA_OPENAI_EMBEDDING_API_KEY` aus einem Secret bis `v0.1.0-rc.4` liest OPAA nicht mehr; sie gehören
+`OPAA_OPENAI_EMBEDDING_API_KEY` aus einem Secret bis `v0.1.0-rc.4` liest opaa nicht mehr; sie gehören
 entfernt.
 
 **Der Chart erzeugt keine Schlüssel.** Ein bei der Installation zufällig erzeugter Schlüssel ginge mit
@@ -623,7 +623,7 @@ Ablauf eines Wechsels der Verschlüsselungsschlüssel beschreibt
 
 ## Wertereferenz
 
-OPAA kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich:
+opaa kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich:
 
 | Art | Gelesen | Im Chart |
 |---|---|---|
@@ -655,7 +655,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `database.host` | leer, Pflicht ohne Erprobungsdatenbank | `OPAA_DB_URL` | Hostname der PostgreSQL |
 | `database.port` | `5432` | `OPAA_DB_URL` | Port |
 | `database.name` | `opaa` | `OPAA_DB_URL` | Name der Datenbank |
-| `database.username` | `opaa` | `OPAA_DB_USERNAME` | Konto von OPAA; das Passwort kommt aus dem Secret |
+| `database.username` | `opaa` | `OPAA_DB_USERNAME` | Konto von opaa; das Passwort kommt aus dem Secret |
 | `database.schema` | leer (`public`) | `OPAA_DB_SCHEMA` | eigenes Schema; muss vor dem ersten Start existieren |
 | `database.sslMode` | leer (Vorgabe des Treibers, `prefer`) | `OPAA_DB_URL` | `disable`, `allow`, `prefer`, `require`, `verify-ca` oder `verify-full`; die beiden `verify-*` prüfen das Serverzertifikat gegen die öffentlichen CAs und `extraCACertificates` |
 | `evaluationDatabase.enabled` | `false` | — | PostgreSQL mit pgvector im Release, nur zur Erprobung; schließt `database.host` aus |
@@ -855,7 +855,7 @@ Die Werte unter `metrics` beschreibt der Abschnitt [Betriebsüberwachung](#betri
 
 ### Datenbank
 
-OPAA braucht genau eine PostgreSQL-Datenbank mit pgvector. Für den Betrieb ist das die Datenbank des
+opaa braucht genau eine PostgreSQL-Datenbank mit pgvector. Für den Betrieb ist das die Datenbank des
 Rechenzentrums oder ein Operator im Cluster, etwa CloudNativePG. Die Vorbereitung durch den
 Datenbankverwalter und die Wahl eines eigenen Schemas stehen im Kapitel
 [Datenbank](datenbank.md).
@@ -884,7 +884,7 @@ die Originalablage ist und wie sich beide Wege unterscheiden, steht unter
 
 **Objektspeicher** (`uploads.store: s3`, Vorgabe). Der Bucket muss vorher existieren. Der konfigurierte
 Endpunkt passiert die Adressprüfung immer, auch mit einer internen Adresse. Ist der Speicher nicht
-erreichbar, läuft OPAA weiter; der Zustand steht in der Health Group `upload-store`. Jeder Upload
+erreichbar, läuft opaa weiter; der Zustand steht in der Health Group `upload-store`. Jeder Upload
 legt zunächst eine Arbeitsdatei unter `/tmp` an; `backend.tmp.sizeLimit` muss mehrere gleichzeitige
 Uploads fassen.
 
@@ -903,11 +903,11 @@ Ein vom Chart angelegter Claim trägt `helm.sh/resource-policy: keep` und **blei
 das Volume auf der Platte eines einzelnen Knotens an, etwa `local-path` von k3s, lokale
 PersistentVolumes oder `hostPath`. Der Backend-Pod kann dann nur auf diesem Knoten laufen. Wird der
 Knoten gewartet (`kubectl cordon` und `kubectl drain`) oder fällt er aus, bleibt der neue Pod im
-Zustand `Pending`, und OPAA antwortet nicht, bis der Knoten zurück ist. Soll das Backend den Knoten
+Zustand `Pending`, und opaa antwortet nicht, bis der Knoten zurück ist. Soll das Backend den Knoten
 wechseln können, gehört die Originalablage auf eine StorageClass mit Netzspeicher oder in den
 Objektspeicher. Dasselbe gilt für das Volume der Erprobungsdatenbank.
 
-Auch mit Netzspeicher unterbricht eine Knotenwartung OPAA mit einer Backend-Instanz so lange, bis
+Auch mit Netzspeicher unterbricht eine Knotenwartung opaa mit einer Backend-Instanz so lange, bis
 der Pod auf einem anderen Knoten bereit ist (siehe [Kubernetes oder Compose](#kubernetes-oder-compose)).
 Mit mehreren Pods auf verschiedenen Knoten antworten die übrigen weiter
 ([Mehrere Backend-Instanzen](#mehrere-backend-instanzen)).
@@ -940,7 +940,7 @@ muss die Dateien unter seiner Kennung lesen dürfen. Einhängepfade unter `/tmp`
 
 ### Eigene Zertifizierungsstelle
 
-Spricht OPAA mit einem Dienst, dessen Zertifikat eine hauseigene CA ausgestellt hat, gehört diese CA
+Spricht opaa mit einem Dienst, dessen Zertifikat eine hauseigene CA ausgestellt hat, gehört diese CA
 in eine ConfigMap oder ein Secret:
 
 ```bash
@@ -1294,7 +1294,7 @@ Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kub
    Verschlüsselungsschlüssel aus den Wertesätzen der CI, den Testläufen des Repositorys oder dem
    Profil `dev`, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und den bisherigen als
    abgelösten Schlüssel eintragen (`secrets.credentialsEncryptionPreviousKeys` bzw.
-   `secrets.settingsEncryptionPreviousKeys`); OPAA verschlüsselt den Bestand dann selbst neu
+   `secrets.settingsEncryptionPreviousKeys`); opaa verschlüsselt den Bestand dann selbst neu
    ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)). Dasselbe gilt für ein
    `secrets.jwtSecret` aus diesen Dateien; ein neues Signaturgeheimnis (`openssl rand -base64 48`)
    beendet alle lokalen Sitzungen ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
@@ -1312,14 +1312,14 @@ Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kub
    helm test opaa -n opaa
    ```
 
-   Die Hinweise, die `helm upgrade` ausgibt, beginnen mit „OPAA ist aktualisiert auf
+   Die Hinweise, die `helm upgrade` ausgibt, beginnen mit „opaa ist aktualisiert auf
    Chart-Version …“ und nennen die neue Revision; der [Rückweg](#rückweg) führt auf die Revision
    davor.
 
 Mit einem Backend-Pod und der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
 Start als abgebrochen erkannt (siehe [Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)).
-Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
+Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet opaa nicht.
 
 Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hundert MB. Der Knoten lädt
 es erst, wenn der alte Pod beendet ist, und je nach Anbindung an die Registry ist der Download der
@@ -1353,7 +1353,7 @@ Hinweise zum Aufruf:
   `bootstrap.initialAdmin.email` aus der Antwortdatei, dafür gehören das Passwort als
   `installation-admin-password` und gegebenenfalls die Modellschlüssel als `installation-*-api-key`
   ins Secret; ohne die Adresse im Browser. `embedding.dimensions` und die Schlüssel
-  `OPAA_INITIAL_ADMIN_PASSWORD` und `OPAA_OPENAI_EMBEDDING_API_KEY` liest OPAA nicht mehr. Interne
+  `OPAA_INITIAL_ADMIN_PASSWORD` und `OPAA_OPENAI_EMBEDDING_API_KEY` liest opaa nicht mehr. Interne
   Identitätsanbieter brauchen ihren Host mit Port in der Allowlist der Adressprüfung; den Anbieter aus
   `bootstrap.oidc` trägt der Chart selbst ein.
 - **Werte-Datei statt `--reuse-values`.** `--reuse-values` übernimmt die Werte der alten Fassung und
@@ -1430,7 +1430,7 @@ von vor dem Upgrade. Wer sich den Rückweg offenhalten will, setzt beim Upgrade
 `OPAA_ENCRYPTION_KEYED_FORMAT=false` über `backend.extraEnv` und entfernt den Eintrag, wenn der
 Rückweg nicht mehr gebraucht wird
 ([Kein Rückweg nach der Umstellung der Geheimnisse](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)).
-Solange der Eintrag gesetzt ist, lehnt OPAA alte Formate und Klartext nicht ab; nach dem Entfernen
+Solange der Eintrag gesetzt ist, lehnt opaa alte Formate und Klartext nicht ab; nach dem Entfernen
 schließt der Hintergrundlauf die Umstellung von selbst erneut ab.
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `flyway_schema_history`.
@@ -1710,7 +1710,7 @@ curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health
 
 ## Betriebsüberwachung
 
-OPAA bindet sich an die Überwachung des Clusters an und bringt keine eigene mit. Das Backend liefert
+opaa bindet sich an die Überwachung des Clusters an und bringt keine eigene mit. Das Backend liefert
 Metriken im Prometheus-Format, der Chart beschreibt sie für den Prometheus Operator und bringt Alarme
 und Grafana-Dashboards mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.
 
@@ -1798,7 +1798,7 @@ Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen `OpaaBac
 | `metrics.runbookBaseUrl` | die Alarmseite dieses Handbuchs im Netz | Adresse der Alarmseite für `runbook_url` und die Links der Dashboards |
 | `metrics.grafanaDashboards.enabled` | `false` | legt je Dashboard eine ConfigMap für den Sidecar eines vorhandenen Grafana an; verlangt `metrics.prometheusRule.enabled` |
 | `metrics.grafanaDashboards.label`, `labelValue` | `grafana_dashboard`, `"1"` | Label, nach dem der Sidecar ConfigMaps auswählt |
-| `metrics.grafanaDashboards.folder` | `OPAA` | Ordner im Grafana (Annotation `grafana_folder`); leer: der Ordner des Sidecars |
+| `metrics.grafanaDashboards.folder` | `opaa` | Ordner im Grafana (Annotation `grafana_folder`); leer: der Ordner des Sidecars |
 | `metrics.grafanaDashboards.labels`, `annotations` | leer | weitere Labels und Annotationen der ConfigMaps |
 
 Die Schwellen unter `metrics.prometheusRule`; Anteile sind Zahlen zwischen 0 und 1:
@@ -1900,12 +1900,12 @@ curl -s http://localhost:8081/actuator/health/readiness
 
 | Bild | Wahrscheinliche Ursache |
 |---|---|
-| OPAA bleibt im Installationsmodus, obwohl `bootstrap.initialAdmin.email` gesetzt ist | Eine Prüfung der Antwortdatei ist gescheitert, etwa der Verbindungstest des Chat-Modells oder des Anbieters, oder das Passwort verletzt die Passwortregel. Das Protokoll nennt Schritt und Grund (`grep "answer file"`); Werte korrigieren und mit `helm upgrade` neu starten |
+| opaa bleibt im Installationsmodus, obwohl `bootstrap.initialAdmin.email` gesetzt ist | Eine Prüfung der Antwortdatei ist gescheitert, etwa der Verbindungstest des Chat-Modells oder des Anbieters, oder das Passwort verletzt die Passwortregel. Das Protokoll nennt Schritt und Grund (`grep "answer file"`); Werte korrigieren und mit `helm upgrade` neu starten |
 | Kein Installations-Token im Protokoll | `OPAA_INSTALLATION_TOKEN` steht im Secret, oder der Pod ist seit dem ersten Start mehrmals neu gestartet und das Protokoll ist weg. Ein neues Token setzt `secrets.installationToken` bzw. der Schlüssel `OPAA_INSTALLATION_TOKEN` ([Installations-Token](installation.md#installations-token)) |
 | Pod startet nicht, `kubectl describe pod` nennt `installation-admin-password` | Mit `bootstrap.initialAdmin.email` und `secrets.existingSecret` fehlt der Schlüssel im Secret |
 | „Die Anmeldung bei … konnte nicht gestartet werden“, oder nach der Anmeldung beim Anbieter eine technische Fehlermeldung auf `/auth/callback` | Die Content-Security-Policy blockiert den Issuer oder den `token_endpoint`; der Origin fehlt in `frontend.cspConnectSrcExtra`. Die Browser-Konsole nennt die blockierte Adresse, siehe [Identitätsanbieter](#identitätsanbieter) |
 | Anmeldeschleife oder Fehler beim Anbieter nach der Rückkehr | Die Weiterleitungs-URI beim Anbieter ist nicht `<publicBaseUrl>/auth/callback`, oder `publicBaseUrl` stimmt nicht mit der Adresse im Browser überein |
-| Anmeldung gelingt beim Anbieter, OPAA antwortet `401` | Der Issuer im Token ist nicht `bootstrap.oidc.issuerUri`, das Backend erreicht die Signaturschlüssel nicht (dann `bootstrap.oidc.jwkSetUri` setzen oder die Egress-Regel ergänzen), oder die Client-ID passt nicht. Den Grund nennt der Header `WWW-Authenticate` |
+| Anmeldung gelingt beim Anbieter, opaa antwortet `401` | Der Issuer im Token ist nicht `bootstrap.oidc.issuerUri`, das Backend erreicht die Signaturschlüssel nicht (dann `bootstrap.oidc.jwkSetUri` setzen oder die Egress-Regel ergänzen), oder die Client-ID passt nicht. Den Grund nennt der Header `WWW-Authenticate` |
 | `POST`-Anfragen antworten `403` | Die Adresse im Browser ist nicht `publicBaseUrl`, und die Origin-Prüfung lehnt ab |
 | Eine geänderte Werte-Datei ändert Anbieter, Chat-Modell oder ersten Systemverwalter nicht | So gebaut: Die Antwortdatei wirkt nur bis zum Abschluss der Installation; Änderungen laufen über die Oberfläche |
 | Ein lokaler Systemverwalter wird aus einem bestimmten Netz abgewiesen | `localAdminAllowedCidrs` schließt das Netz aus, oder die Client-Adresse ist falsch aufgelöst (siehe unten) |
@@ -1916,7 +1916,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 |---|---|
 | Uploads größerer Dateien antworten `413` | Die Größengrenze des Controllers ist kleiner als die des Frontend-nginx; ingress-nginx braucht dafür `nginx.ingress.kubernetes.io/proxy-body-size` |
 | Verbindungen von MCP-Werkzeugen brechen ab oder liefern nichts | Der Controller puffert die Antwort oder bricht sie zu früh ab, siehe [Eingang](#eingang) |
-| Während einer Aktualisierung antwortet OPAA mit `502` oder `503` | Mit der Strategie `Recreate` erwartet: Es gibt kurz keinen bereiten Backend-Pod. Mit `RollingUpdate` nicht erwartet; dann prüfen, ob der Controller davor die Verbindung früher abbricht als `frontend.backendReadTimeout` oder ob `backend.preStopSleepSeconds` auf `0` steht |
+| Während einer Aktualisierung antwortet opaa mit `502` oder `503` | Mit der Strategie `Recreate` erwartet: Es gibt kurz keinen bereiten Backend-Pod. Mit `RollingUpdate` nicht erwartet; dann prüfen, ob der Controller davor die Verbindung früher abbricht als `frontend.backendReadTimeout` oder ob `backend.preStopSleepSeconds` auf `0` steht |
 | Die Anmeldegrenze trifft das ganze Haus, `429` mit `Retry-After` | `trustedProxyCidrs` ist leer oder enthält die Adresse des Controllers nicht; alle teilen sich einen Zähler |
 | Der Diagnose-Endpunkt zeigt als `clientAddress` die Adresse des Controllers oder eines Knotens | Der Controller sieht die Adresse des Clients nicht, etwa ohne `externalTrafficPolicy: Local`, oder seine Adresse fehlt in `trustedProxyCidrs` |
 

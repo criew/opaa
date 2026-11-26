@@ -6,7 +6,7 @@
 **Wer:** Systemverwaltung, „Administration → Virenprüfung“
 {: .kopf }
 
-OPAA bringt keinen Virenscanner mit. Es bindet einen clamd-Dienst (ClamAV) an, den der Betrieb
+opaa bringt keinen Virenscanner mit. Es bindet einen clamd-Dienst (ClamAV) an, den der Betrieb
 bereitstellt, so wie ein Modell oder die Texterkennung.
 
 1. Unter „Host des Virenscanners“ den Namen oder die Adresse des Dienstes eintragen, ohne Schema,

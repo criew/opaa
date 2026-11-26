@@ -86,7 +86,7 @@ export const NAME_PLACEHOLDER = 'z. B. Vergabeprüfung'
 export const PURPOSE_HELP = 'Steht in der Auswahl im Chat unter dem Namen.'
 export const INSTRUCTION_PLACEHOLDER =
   'z. B. Prüfe Vergabeunterlagen gegen UVgO und Dienstanweisung. Nenne jede Abweichung mit Fundstelle.'
-export const INSTRUCTION_HELP = 'Ergänzt die festen Regeln von OPAA, ersetzt sie nicht.'
+export const INSTRUCTION_HELP = 'Ergänzt die festen Regeln von opaa, ersetzt sie nicht.'
 export const NAME_MAX = 255
 export const PURPOSE_MAX = 2000
 export const INSTRUCTION_MAX = 8000

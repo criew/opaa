@@ -2,7 +2,7 @@
 
 Dieses Kapitel beschreibt, wie Anfragen eine Installation erreichen, was eine erreichbare
 Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was ein Betrieb ohne
-Internet voraussetzt, wie aufgenommene Dateien auf Schadprogramme geprüft werden und wie OPAA
+Internet voraussetzt, wie aufgenommene Dateien auf Schadprogramme geprüft werden und wie opaa
 Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
 und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
 beschreibt die [Betriebsübersicht](README.md).
@@ -25,7 +25,7 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   die Pause zwischen zwei Ereignissen.
 - **Lange Läufe eines Agenten durchlassen:** Ein Agent arbeitet in mehreren Schritten und meldet
   jeden im selben Antwortstrom, oft über Minuten. Solange Modell oder Werkzeug arbeiten, sendet
-  OPAA mindestens alle 10 Sekunden ein Lebenszeichen. Der Proxy darf deshalb nicht puffern, damit
+  opaa mindestens alle 10 Sekunden ein Lebenszeichen. Der Proxy darf deshalb nicht puffern, damit
   die Schritte erscheinen, wenn sie geschehen; ein Lese-Timeout ab etwa 30 Sekunden genügt, auch
   für Läufe über Minuten. Bricht die Person ab, schickt der Browser zusätzlich
   `POST /api/v1/query/stream/cancel`; der Stopp liegt in der Datenbank und wirkt, gleich welche
@@ -38,7 +38,7 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   setzt der Proxy kein eigenes `X-Frame-Options` und keine eigene `Content-Security-Policy` mit
   `frame-ancestors` und überschreibt die des Frontends nicht. Die Seite lädt den Download in einen
   eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
-  OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
+  opaa ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
   und Mail aus, bis die Starts des Tages erschöpft sind.
 - **Das WebSocket-Upgrade der Spracheingabe weiterreichen** (`/api/v1/transcriptions/stream`),
   siehe [WebSocket der Spracheingabe](#websocket-der-spracheingabe).
@@ -46,7 +46,7 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
   weder protokollieren noch verändern.
-- OPAA läuft nur im Wurzelpfad. Eine öffentliche Adresse mit Nicht-Standardport gehört in
+- opaa läuft nur im Wurzelpfad. Eine öffentliche Adresse mit Nicht-Standardport gehört in
   `OPAA_CORS_ALLOWED_ORIGINS`.
 - **`Strict-Transport-Security` setzt der äußere Proxy**, wo TLS endet.
 
@@ -74,8 +74,8 @@ die Person sieht keine Fehlermeldung, nur keinen Text beim Sprechen.
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
 `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
 Kamera und Standort gesperrt) sowie `Cross-Origin-Opener-Policy` und `Cross-Origin-Resource-Policy`
-(beide `same-origin`): Fremde Seiten erhalten keinen Zugriff auf ein geöffnetes OPAA-Fenster und
-können Antworten von OPAA nicht einbinden. Anmeldungen und Freigaben laufen als Weiterleitung im
+(beide `same-origin`): Fremde Seiten erhalten keinen Zugriff auf ein geöffnetes opaa-Fenster und
+können Antworten von opaa nicht einbinden. Anmeldungen und Freigaben laufen als Weiterleitung im
 selben Fenster und sind davon nicht betroffen. Die CSP lässt keine fremden Skripte oder CDNs zu und
 Verbindungen nur zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit
 einer Ausnahme: Den Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
@@ -179,7 +179,7 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   - **Vor jeder Verbindung** prüfen Quellen, Zugänge und die Originalablage: jeden Redirect, jede
     Anfrage an einen Objektspeicher, jeden Abruf eines Crawls oder Feeds. Sie binden nur für die
     Verbindung, denn jede weitere Verbindung wird neu geprüft.
-  - **Gespeicherte Ziele**, mit denen OPAA später ohne eigene Prüfung verbindet — Modell-Endpunkte,
+  - **Gespeicherte Ziele**, mit denen opaa später ohne eigene Prüfung verbindet — Modell-Endpunkte,
     Identitätsanbieter, der Mailserver —, bleiben darüber hinaus bis zum Neustart bewacht: Jede
     Auflösung ihres Namens verliert jede Adresse in einem gesperrten Bereich, auch Tage später.
     Bleibt keine übrig, scheitert die Verbindung wie bei einem unbekannten Host, und das Log warnt.
@@ -190,11 +190,11 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   (5 Sekunden), nach einer Bindung spätestens nach ihren 60 Sekunden.
 - **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse und ohne
   Bewachung. Nur Namen aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen
-  prüft OPAA beim Speichern, Testen, Abfragen und nach dem Start, nicht bei jedem Aufruf; die
+  prüft opaa beim Speichern, Testen, Abfragen und nach dem Start, nicht bei jedem Aufruf; die
   Bewachung schützt die Aufrufe danach.
 - **Wechselt ein gespeichertes Ziel ins eigene Netz,** etwa beim Umzug eines Dienstes, ist sein Name
   bis zum Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen
-  und das Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name
+  und das Backend neu starten; die Listen liest opaa nur beim Start. Ohne Eintrag bleibt der Name
   auch nach dem Neustart gesperrt.
 - **Gesperrt und unbekannt klingen gleich:** Ein Ziel in einem gesperrten Bereich und ein Name, der
   sich nicht auflösen lässt, ergeben dieselbe Meldung, damit niemand über Quellen oder Zugänge
@@ -206,22 +206,22 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   fremden Host folgen nur das Webverzeichnis, der RSS-Feed selbst und Confluence-Anhänge, dann ohne
   Zugangsdaten, sowie Downloads aus Microsoft Graph auf das von Graph genannte `https`-Ziel; alle
   anderen Abrufe bleiben auf ihrem Origin. Zertifikate werden immer geprüft.
-- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; OPAA bindet
+- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; opaa bindet
   und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
   Egress auf Netzebene bleibt die zweite Linie.
-- **Start:** OPAA startet nur, wenn sein Resolver die Namensauflösung der JVM übernommen hat. Löst
+- **Start:** opaa startet nur, wenn sein Resolver die Namensauflösung der JVM übernommen hat. Löst
   eine Startoption vor der Anwendung einen Namen auf, bricht der Start mit dieser Ursache ab
   ([Images und Laufzeit](images-und-laufzeit.md)).
 
 Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine Prüfung die letzte
 Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
 einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
-noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
+noch gültig, lehnt opaa die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
 `opaa_target_validation_refused_connection_checks_total`. Ein einzelner Lauf des RSS-Feed-,
 Webverzeichnis- und Confluence-Konnektors fragt höchstens `OPAA_INDEXING_HTTP_MAX_HOSTS_PER_RUN`
 verschiedene Hosts an, Redirects eingeschlossen; Redirects auf ständig neue Namen füllen die
 Bindungen deshalb nicht. Ist die
-Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
+Tabelle der bewachten Ziele voll, lehnt opaa die Prüfung jedes neuen gespeicherten Ziels mit eigener
 Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
 zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart
 leert die Tabelle.
@@ -230,7 +230,7 @@ leert die Tabelle.
 
 Verlangt das Haus einen Proxy, trägt die Systemverwaltung ihn unter **Administration → Anbindungen →
 Einstellungen**, Abschnitt **Ausgangsproxy** ein. Es gibt genau einen; `HTTP_PROXY`/`HTTPS_PROXY`
-und `http.proxyHost` wertet OPAA nicht aus.
+und `http.proxyHost` wertet opaa nicht aus.
 
 - **Über den Proxy:** jede HTTP(S)-Verbindung des Backends — Quellen, Zugänge, Modelldienste,
   Identitätsanbieter, Verzeichnisabgleich.
@@ -257,7 +257,7 @@ und `http.proxyHost` wertet OPAA nicht aus.
 
 ## Betrieb ohne Internet
 
-OPAA ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
+opaa ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
 Haus steht: Anmeldung, Aufnahme von Dokumenten, Fragen mit Antwort und Fundstelle. Die Oberfläche
 lädt Schriften, Skripte und Bilder von der eigenen Installation. Die eingebaute Bibliothek für
 Datenbankmigrationen (Flyway) sendet nichts an ihren Hersteller. Einzig das „?“ der Oberfläche
@@ -303,17 +303,17 @@ Laufs.
 
 ## Virenprüfung der aufgenommenen Dateien
 
-OPAA kann jede Datei, die eine Bibliothek aufnehmen soll, vorher an einen Virenscanner geben: einen
+opaa kann jede Datei, die eine Bibliothek aufnehmen soll, vorher an einen Virenscanner geben: einen
 Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber“ wird sie gelesen,
 geschnitten und, beim Upload, in der Originalablage abgelegt.
 
 > **Beispiel.** Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
 > Die Systemverwaltung trägt dessen Adresse unter „Administration → Virenprüfung“ ein und schaltet
 > die Prüfung ein. Lädt eine Sachbearbeiterin eine
-> befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
+> befallene Datei hoch, lehnt opaa den Upload mit dem Namen der Signatur ab; die Datei landet weder in
 > der Originalablage noch im Index.
 
-- **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. OPAA
+- **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. opaa
   bringt keinen Scanner mit, weder als Image noch als Zusatzdatei für Compose oder Helm; der Dienst
   der Behörde wird angebunden wie ein Modell oder die Texterkennung. Die Verbindung geht direkt, nie
   über den Ausgangsproxy, und trägt nur den Inhalt der Datei, weder Namen noch Bibliothek noch
@@ -321,7 +321,7 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
 - **Einrichten:** ab Werk aus. Eingerichtet wird der Scanner im optionalen Schritt „Virenprüfung“
   der [Installation](installation.md#schritte) oder danach unter „Administration → Virenprüfung“
   ([Virenprüfung einrichten](../administration/virenpruefung.md)), mit Host, Port, Zeitlimit und
-  dem Verhalten bei Ausfall. OPAA liest die Einstellung für jede Datei neu; eine Änderung wirkt ohne
+  dem Verhalten bei Ausfall. opaa liest die Einstellung für jede Datei neu; eine Änderung wirkt ohne
   Neustart auf allen Instanzen. Umgebungsvariablen gibt es dafür nicht mehr; setzt ein Start noch
   eine der früheren `OPAA_MALWARE_SCAN_*`, nennt das Log sie als wirkungslos.
 - **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
@@ -342,7 +342,7 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
   unter „Ohne Virenprüfung aufgenommen“.
 - **Frist:** Das Zeitlimit begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur Antwort;
   danach gilt die Datei als nicht geprüft.
-- **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
+- **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die opaa
   annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
   Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
   sie dennoch als sauber, solange `AlertExceedsMax` aus ist; verschlüsselte Archive meldet er nur
@@ -355,7 +355,7 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
   - „Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
     seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim
     nächsten Lauf. Gesperrt ist nur ein Original, für das ein Befund vorliegt.
-  - Bei Dateisystem-Bibliotheken liest OPAA die Datei zweimal von der Freigabe, einmal zum Prüfen
+  - Bei Dateisystem-Bibliotheken liest opaa die Datei zweimal von der Freigabe, einmal zum Prüfen
     und einmal zum Verarbeiten. Wer auf die Freigabe schreiben darf, kann sie dazwischen austauschen.
   - Wird eine früher saubere Mail nach einer Änderung als befallen erkannt, bleiben ihre bisherigen
     Anhänge als eigene Dokumente im Index. Ihr Abruf ist gesperrt, weil er über die Mail geht.
@@ -396,9 +396,9 @@ enthält sie.
 - Ohne Schlüssel scheitert nur das Speichern von Zugangsdaten (`503`).
 - Ist ein Wert nicht entschlüsselbar, zeigt die Oberfläche „nicht gesetzt“, das Log eine Warnung;
   andere Änderungen an der Bibliothek lassen den Geheimtext stehen.
-- Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft OPAA die gespeicherten
+- Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft opaa die gespeicherten
   Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
-- Zugangsdaten, die keiner der eingetragenen Schlüssel entschlüsselt, übernimmt OPAA nicht in einen
+- Zugangsdaten, die keiner der eingetragenen Schlüssel entschlüsselt, übernimmt opaa nicht in einen
   anderen Datensatz, etwa beim Umstellen einer Bibliothek auf ein Verbindungsprofil oder beim Wechsel
   des Embedding-Modells. Die Änderung wird mit einer Meldung abgelehnt, bis der fehlende Schlüssel
   ergänzt oder der Wert neu eingetragen ist.
@@ -406,19 +406,19 @@ enthält sie.
 - Ein Wert im aktuellen Format `enc:v2` trägt die Kennung seines Schlüssels und ist an seinen
   Datensatz gebunden. Ein solcher Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert
   wird, ist dort unlesbar. Werte im älteren Format `enc:v1` und Klartext aus der Zeit vor der
-  Verschlüsselung sind nicht gebunden; OPAA liest sie nur, bis der Hintergrundlauf den Bestand
+  Verschlüsselung sind nicht gebunden; opaa liest sie nur, bis der Hintergrundlauf den Bestand
   umgestellt hat. Er verschlüsselt dabei auch den Klartext. Findet er zweimal im Abstand von
   mindestens fünf Minuten und zwei Heartbeat-Intervallen keinen solchen Wert mehr, meldet das Log
-  „No stored … secret is in the format enc:v1 or in cleartext any more“. Ab dann lehnt OPAA solche
+  „No stored … secret is in the format enc:v1 or in cleartext any more“. Ab dann lehnt opaa solche
   Werte als unlesbar ab, auf allen Instanzen spätestens nach einem Heartbeat-Intervall; ein abgelehnter Wert wird neu eingetragen.
   Ein `enc:v1`-Wert, den kein eingetragener Schlüssel liest, hält den Abschluss auf, bis er neu
-  eingetragen oder sein Schlüssel ergänzt ist. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt OPAA
+  eingetragen oder sein Schlüssel ergänzt ist. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt opaa
   nichts ab, und der Start hebt einen Abschluss wieder auf.
 
 ### Schlüsselwechsel
 
 Ein Schlüssel wird gewechselt, wenn er bekannt geworden sein kann, etwa nach dem Ausscheiden einer
-Person mit Zugriff auf die Geheimnisse, oder turnusmäßig nach den Regeln des Hauses. OPAA arbeitet
+Person mit Zugriff auf die Geheimnisse, oder turnusmäßig nach den Regeln des Hauses. opaa arbeitet
 während des Wechsels weiter: Der alte Schlüssel entschlüsselt nur noch, alles Neue verschlüsselt der
 neue, und ein Hintergrundlauf stellt den Bestand um. Der Ablauf gilt für
 `OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY` gleichermaßen, einzeln oder
@@ -454,7 +454,7 @@ previous keys“, sobald sich ihre Zahl ändert. Solche Werte verbrauchen nichts
 eines Laufs. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergänzen oder den Wert in der
 Oberfläche neu eintragen.
 
-Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt OPAA neue Werte im
+Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt opaa neue Werte im
 bisherigen Format, das die Vorversion lesen kann; der Hintergrundlauf bringt Werte nur unter den
 aktuellen Schlüssel und behält ihr Format. Erst wenn alle Instanzen die neue Version fahren, stellt
 er den Bestand auf das neue Format um, auch Werte im älteren Format ohne Schlüsselkennung, ohne dass
@@ -464,7 +464,7 @@ Eine Version vor dieser liest das neue Format nicht. Ist der Bestand umgestellt,
 zurück auf sie nur über eine Rücksicherung von vor dem Update (siehe
 [Aktualisierung](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)). Wer sich den
 Rückweg ohne Rücksicherung offenhalten will, setzt beim Update `OPAA_ENCRYPTION_KEYED_FORMAT=false`:
-OPAA schreibt dann weiter das bisherige Format und stellt den Bestand nicht darauf um; ein
+opaa schreibt dann weiter das bisherige Format und stellt den Bestand nicht darauf um; ein
 Schlüsselwechsel läuft trotzdem vollständig ab. Sobald der Rückweg
 nicht mehr gebraucht wird, die Variable entfernen oder auf `true` setzen und alle Instanzen gemeinsam
 neu starten; die Variable gehört zum

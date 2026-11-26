@@ -5,9 +5,9 @@
 # document (#/components/...). Which fragment a change belongs to: AGENTS.md, "API & DTO-Konvention".
 openapi: 3.0.3
 info:
-  title: OPAA API
+  title: opaa API
   description: |
-    Open Project AI Assistant REST API.
+    open project ai assistant REST API.
 
     # Status codes
 

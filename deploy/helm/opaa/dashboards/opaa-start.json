@@ -1,6 +1,6 @@
 {
   "uid": "opaa-start",
-  "title": "OPAA · Lage",
+  "title": "opaa · Lage",
   "description": "Startseite: eine Ampel je Baustein, darunter wenige Kernkurven; jede Kachel öffnet ihren Bereich.",
   "tags": [
     "opaa"
@@ -63,7 +63,7 @@
   },
   "links": [
     {
-      "title": "OPAA",
+      "title": "opaa",
       "type": "dashboards",
       "tags": [
         "opaa"
@@ -187,7 +187,7 @@
       "transparent": true,
       "options": {
         "mode": "html",
-        "content": "<div style=\"background:#242855;color:#fff;padding:10px 18px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:16px;height:100%;box-sizing:border-box\"><span style=\"font-size:20px;font-weight:600\">OPAA · Lage</span><span style=\"font-size:13px\">Grün: nichts zu tun · Gelb: Ticket, nächster Arbeitstag · Rot: sofort handeln · Grau: nicht eingerichtet oder wenig Verkehr</span></div>"
+        "content": "<div style=\"background:#242855;color:#fff;padding:10px 18px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:16px;height:100%;box-sizing:border-box\"><span style=\"font-size:20px;font-weight:600\">opaa · Lage</span><span style=\"font-size:13px\">Grün: nichts zu tun · Gelb: Ticket, nächster Arbeitstag · Rot: sofort handeln · Grau: nicht eingerichtet oder wenig Verkehr</span></div>"
       }
     },
     {
@@ -1013,7 +1013,7 @@
       "id": 9,
       "type": "stat",
       "title": "Alarme",
-      "description": "Schwerster aktiver OPAA-Alarm: rot bei critical, gelb bei warning. Info-Alarme färben nicht.",
+      "description": "Schwerster aktiver opaa-Alarm: rot bei critical, gelb bei warning. Info-Alarme färben nicht.",
       "gridPos": {
         "x": 21,
         "y": 2,
@@ -1256,7 +1256,7 @@
       "id": 11,
       "type": "table",
       "title": "Was feuert gerade?",
-      "description": "Aktive OPAA-Alarme mit Schweregrad und Zuständigkeit (component). Ein Klick auf den Namen öffnet das Runbook im Handbuch.",
+      "description": "Aktive opaa-Alarme mit Schweregrad und Zuständigkeit (component). Ein Klick auf den Namen öffnet das Runbook im Handbuch.",
       "gridPos": {
         "x": 12,
         "y": 7,

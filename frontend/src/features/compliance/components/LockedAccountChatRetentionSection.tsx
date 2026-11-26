@@ -98,7 +98,7 @@ export default function LockedAccountChatRetentionSection() {
   return (
     <PageSection
       title="Chats gesperrter Konten"
-      description="Sperrt die Verwaltung ein lokales Konto, löscht OPAA dessen Chats nach so vielen Tagen. Eine Sperre wegen Inaktivität oder Fehlversuchen löst nichts aus; angehalten wird die Löschung je Konto in der Benutzerverwaltung."
+      description="Sperrt die Verwaltung ein lokales Konto, löscht opaa dessen Chats nach so vielen Tagen. Eine Sperre wegen Inaktivität oder Fehlversuchen löst nichts aus; angehalten wird die Löschung je Konto in der Benutzerverwaltung."
     >
       {current === null ? (
         <RetentionLoadState loadError={loadError} onRetry={reload} />

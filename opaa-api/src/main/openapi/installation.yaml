@@ -159,7 +159,7 @@ paths:
         EMBEDDING_MODEL, no model is set up, for RERANK_MODEL, reranking stays off, for
         TRANSCRIPTION_MODEL, speech input stays off, for TEXT_RECOGNITION_MODEL, text recognition
         stays off, for MALWARE_SCAN, the malware scan stays off, for MAIL,
-        sending stays off, for BRANDING, the OPAA
+        sending stays off, for BRANDING, the opaa
         default stays. A skipped step does not
         hold up the completion; a saved optional step does until its check succeeded or it is
         skipped. Recorded in the audit log, also when nothing was saved. Same token and network
@@ -846,7 +846,7 @@ components:
         OPAA_FEATURES_SPEECH_INPUT_ENABLED is off), without textRecognitionModel text recognition
         stays off (accepted but ignored while OPAA_OCR_ENABLED is off), without malwareScan the
         malware scan stays off, without mail sending stays off,
-        without branding the OPAA default stays. Parts of later steps (outboundProxy) are not
+        without branding the opaa default stays. Parts of later steps (outboundProxy) are not
         evaluated by this version.
       required: [firstAdmin, signIn]
       properties:
@@ -875,7 +875,7 @@ components:
       type: object
       description: >
         The clamd daemon of the operator every file a library or a chat takes in is scanned with
-        (Entscheidung 19). OPAA ships no scanner. The check connects and asks for the daemon's
+        (Entscheidung 19). opaa ships no scanner. The check connects and asks for the daemon's
         version, without sending a file; the completion stores the values in the administration's
         settings of the malware scan and switches the scan on. Unlike there, the assistant takes
         only port 3310, the clamd default: another port is set in the administration after the
@@ -907,7 +907,7 @@ components:
     InstallationMail:
       type: object
       description: >
-        The mail server OPAA sends through (ADR-0033, Entscheidung 10), with the rules of the mail
+        The mail server opaa sends through (ADR-0033, Entscheidung 10), with the rules of the mail
         settings of the administration. Unlike there, the host must pass the target address check
         of the installation: an internal mail server needs its host or host:port on
         OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST, and a port other than 25, 465, 587 and 2525 an
@@ -946,7 +946,7 @@ components:
           type: string
           nullable: true
           maxLength: 120
-          example: OPAA
+          example: opaa
 
     InstallationMailView:
       type: object
@@ -973,7 +973,7 @@ components:
       type: object
       description: >
         The texts and accent colour of the branding, with the rules of
-        updateBranding: every field is optional, and an omitted, null or empty one means the OPAA
+        updateBranding: every field is optional, and an omitted, null or empty one means the opaa
         default applies; the AI notice can be replaced but never switched off. The same object is
         returned as the saved values, null for the default. The images are uploaded in the
         branding administration after the installation; this step takes none.
@@ -999,7 +999,7 @@ components:
           type: string
           nullable: true
           description: >
-            Six-digit hex triplet with a leading '#'; empty or absent means the OPAA default,
+            Six-digit hex triplet with a leading '#'; empty or absent means the opaa default,
             anything else is a field error.
           pattern: "^$|^#[0-9A-Fa-f]{6}$"
           example: "#0055A4"

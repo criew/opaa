@@ -94,7 +94,7 @@ Einzelne Abfragen stehen in keinem Log; die Ursache steht in der Antwort, beim M
 | `401 token_expired` | Token abgelaufen | neues Token anlegen |
 | `401 token_revoked` | widerrufen, gesperrt oder Passwort gewechselt | neues Token anlegen |
 | `401 account_not_active` | Konto gesperrt, abgelaufen oder übergeben | Konto klären |
-| `401 sign_in_required` | letzte Anmeldung über den Identitätsanbieter zu lange her | einmal in OPAA anmelden |
+| `401 sign_in_required` | letzte Anmeldung über den Identitätsanbieter zu lange her | einmal in opaa anmelden |
 | `401 invalid_token` | Wert unvollständig kopiert oder unbekannt | neues Token anlegen |
 | `401 network_not_allowed` | Aufruf außerhalb der Netzbereiche, oder Proxy ohne Eintrag | Netz oder vertraute Proxys prüfen |
 | `503` oder `401 channel_closed` | Kanal ausgeschaltet | einschalten |
@@ -103,13 +103,13 @@ Einzelne Abfragen stehen in keinem Log; die Ursache steht in der Antwort, beim M
 | Bibliothek fehlt in den Treffern | Leserecht, Freigabe oder Token-Auswahl fehlt | Freigabe erneuern, neues Token |
 | HTML statt JSON | Reverse Proxy reicht `/mcp` nicht durch | Proxy-Regel |
 
-**Fallen alle Werkzeuge des Hauses zugleich aus**, spricht ein Client eine MCP-Fassung, die OPAA
+**Fallen alle Werkzeuge des Hauses zugleich aus**, spricht ein Client eine MCP-Fassung, die opaa
 nicht bedient (Antwort `400` mit der Liste der bedienten Fassungen), meist nach einem Update von
-Client oder OPAA. Abhilfe ist ein abgestimmter Client-Stand, kein Eingriff am Arbeitsplatz.
+Client oder opaa. Abhilfe ist ein abgestimmter Client-Stand, kein Eingriff am Arbeitsplatz.
 
 **Gut zu wissen:**
 
-- Einzelne Abfragen protokolliert OPAA nicht, weder Frage noch Treffer. Ins Nachweisprotokoll kommt,
+- Einzelne Abfragen protokolliert opaa nicht, weder Frage noch Treffer. Ins Nachweisprotokoll kommt,
   was die Reichweite ändert: Tokens, Freigaben, Einstellungen.
 - Hinter einem Reverse Proxy braucht die Netzbeschränkung die vertrauten Proxys des Betriebs
   ([Vertraute Proxys](../betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).

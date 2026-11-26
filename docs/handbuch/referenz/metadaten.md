@@ -37,7 +37,7 @@ je Installation in der Datenbank erweitern; ein Wert außerhalb der Liste lässt
 - „Kein Wert ermittelbar“ setzt nur eine Person; es zählt nicht mehr als offen.
 - **Modellgestützte Ermittlung** und **freie Schlagworte** sind je Bibliothek ab Werk aus. Ist das
   Chat-Modell extern betrieben, verlässt damit der Inhalt jedes aufgenommenen Dokuments das Haus;
-  OPAA fragt vorher. Übernommen wird nur ein Wert aus der Liste mit Konfidenz ab 0,80. Auf einem
+  opaa fragt vorher. Übernommen wird nur ein Wert aus der Liste mit Konfidenz ab 0,80. Auf einem
   Bestand, für den das Vokabular nicht passt, rät das Modell oft falsch: dort ausgeschaltet lassen.
 - Freie Schlagworte (bis zu fünf je Dokument) helfen nur beim Finden; sie filtern nie.
 
@@ -49,7 +49,7 @@ je Installation in der Datenbank erweitern; ein Wert außerhalb der Liste lässt
 | Kontextpräfix | Titel immer, andere Felder je Bibliothek zuschaltbar: steht beim Einbetten vor jedem Abschnitt, der gespeicherte Text bleibt unverändert |
 | externe KI-Werkzeuge | bekommen zu jeder Fundstelle alle gesetzten Felder |
 
-Ändert sich, was im Kontextpräfix steht, nennt OPAA vor dem Speichern, wie viel neu einzubetten ist.
+Ändert sich, was im Kontextpräfix steht, nennt opaa vor dem Speichern, wie viel neu einzubetten ist.
 Neu eingebettet wird erst, wenn die Systemverwaltung den Nachlauf startet
 ([Suche und Indexierung überwachen](../administration/suche-und-indexierung.md)).
 

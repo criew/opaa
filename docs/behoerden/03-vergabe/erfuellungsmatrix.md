@@ -15,11 +15,11 @@ naechste-durchsicht: 2027-04-23
 ausschreiben müssen, oberhalb und unterhalb der EU-Schwellenwerte.
 
 Die Matrix ordnet jedem Baustein des [Anforderungskatalogs](anforderungskatalog.md) den Nachweis zu,
-mit dem OPAA ihn erfüllt. Sie gehört **nicht** in die Leistungsbeschreibung, die produktneutral
-bleiben muss, sondern in Markterkundung, Teststellung und die Prüfung eines Angebots, das OPAA
+mit dem opaa ihn erfüllt. Sie gehört **nicht** in die Leistungsbeschreibung, die produktneutral
+bleiben muss, sondern in Markterkundung, Teststellung und die Prüfung eines Angebots, das opaa
 anbietet.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Je Baustein einen Nachweis: Handbuch, Projektunterlage, eine Prüfung in der CI des Projekts oder ein
 Faktenblatt.
@@ -33,10 +33,10 @@ Faktenblatt.
 
 ## F · Fachliche Funktion
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) | Handbuch |
-| F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/referenz/glossar.md), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
+| F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in opaa vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/referenz/glossar.md), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
 | F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 | F-04 | ja; gescannte PDF ohne Textebene über eine Texterkennung im Haus (docling-serve oder Vision-Modell), ab Werk aus | [Zugelassene Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate), [Texterkennung einschalten](../../handbuch/betrieb/modell-endpunkte.md#texterkennung-einschalten), {{faktenblatt:voreinstellungen#ki-funktion-text-recognition}} | Handbuch, Konfiguration, Faktenblatt |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/benutzer/ki-werkzeug-einrichten.md) | Handbuch |
@@ -48,17 +48,17 @@ Faktenblatt.
 
 ## M · Modelle und Datenflüsse
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | M-01 | ja | [LLM-Anbieter](../../handbuch/betrieb/modell-endpunkte.md#llm-anbieter), [OpenAI-kompatible Server](../../handbuch/betrieb/modell-endpunkte.md#vllm--openai-kompatible-server), {{faktenblatt:voreinstellungen#ki-funktionen}} | Handbuch, Konfiguration, Faktenblatt |
-| M-02 | teilweise; vollständig erzwungen für die ausgehenden Clients im Code von OPAA, deren Eintrag der Wächter im Build verlangt; Abrufe, die eingebundene Bibliotheken von sich aus aufbauen, belegt nur der nächtliche Lauf ohne Internetzugang, im Umfang dessen, was er durchläuft, und Verbindungen an feste IP-Adressen nur über das Log; bekannte Abrufe eingebundener Bibliotheken sind abgeschaltet | {{faktenblatt:datenfluesse}}, [Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird), [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet) | Faktenblatt, Test |
+| M-02 | teilweise; vollständig erzwungen für die ausgehenden Clients im Code von opaa, deren Eintrag der Wächter im Build verlangt; Abrufe, die eingebundene Bibliotheken von sich aus aufbauen, belegt nur der nächtliche Lauf ohne Internetzugang, im Umfang dessen, was er durchläuft, und Verbindungen an feste IP-Adressen nur über das Log; bekannte Abrufe eingebundener Bibliotheken sind abgeschaltet | {{faktenblatt:datenfluesse}}, [Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird), [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet) | Faktenblatt, Test |
 | M-03 | ja; ein nächtlicher Lauf in der CI des Projekts belegt Anmeldung, Aufnahme von Dokumenten in mehreren Formaten und Antwort mit Fundstelle in einem Netz ohne Weg nach außen und scheitert an jeder Namensauflösung außerhalb der Installation und jedem fremden Abruf des Browsers; Verbindungen an feste IP-Adressen erkennt er nur über das Log; Images und Modelle stellt die Behörde vorab im Haus bereit | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betrieb/modell-endpunkte.md#vllm--openai-kompatible-server) | Handbuch, Test, Faktenblatt |
 | M-04 | ja | [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy) | Handbuch, Konfiguration |
-| M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/betrieb/modell-endpunkte.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
+| M-05 | ja; opaa ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/betrieb/modell-endpunkte.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 
 ## D · Datenschutz und Nachvollziehbarkeit
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | D-01 | ja | {{faktenblatt:datenkatalog}} | Faktenblatt |
 | D-02 | ja | {{faktenblatt:fristen}} | Faktenblatt, Konfiguration |
@@ -68,7 +68,7 @@ Faktenblatt.
 
 ## S · Sicherheit und Lieferkette
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | S-01 | ja | [Anmeldewege im Betriebsmodus OIDC](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) | Handbuch, Konfiguration |
 | S-02 | ja | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) | Handbuch |
@@ -81,7 +81,7 @@ Faktenblatt.
 
 ## B · Betrieb
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | B-01 | ja | [Bausteine](../../handbuch/betrieb/README.md#bausteine) | Handbuch |
 | B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/betrieb/kubernetes.md#installation), [Docker Compose](../../handbuch/betrieb/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md) | Handbuch |
@@ -91,7 +91,7 @@ Faktenblatt.
 
 ## O · Offenheit und Souveränität
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | O-01 | ja; GNU Affero General Public License v3.0 | [Lizenz](../../../LICENSE), [Lizenzprüfung der Abhängigkeiten](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) | Projektunterlage, Test |
 | O-02 | ja | Speicherorte in {{faktenblatt:datenkatalog}}, [Originalablage](../../handbuch/betrieb/originalablage.md#die-drei-wege), [eigene Datenbank](../../handbuch/betrieb/datenbank.md#voraussetzungen-einer-eigenen-postgresql) | Faktenblatt, Handbuch |
@@ -99,7 +99,7 @@ Faktenblatt.
 
 ## N · Nutzung
 
-| Nr. | Erfüllung | Nachweis bei OPAA | Art |
+| Nr. | Erfüllung | Nachweis bei opaa | Art |
 |---|---|---|---|
 | N-01 | teilweise; das letzte Audit prüfte einen Entwicklungsstand, nicht eine Version | [Prüfstand der Barrierefreiheit](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand) | Projektunterlage, Test |
 

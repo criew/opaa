@@ -281,7 +281,7 @@ components:
         fromName:
           type: string
           nullable: true
-          example: OPAA
+          example: opaa
         lastSuccessAt:
           type: string
           format: date-time

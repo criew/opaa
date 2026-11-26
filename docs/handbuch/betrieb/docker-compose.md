@@ -1,6 +1,6 @@
 # Docker Compose
 
-Der Compose-Stapel des Repositorys (`docker-compose.yml`) startet OPAA auf einem einzelnen Rechner:
+Der Compose-Stapel des Repositorys (`docker-compose.yml`) startet opaa auf einem einzelnen Rechner:
 Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
 und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen
 gedacht; seine Vorgaben sind bequem und **nicht** gehärtet. Was für jeden Betriebsweg gilt — Images,
@@ -44,7 +44,7 @@ docker compose --profile ollama up --build       # danach den vollständigen Sta
 
 Nur auf diesem Weg beim Embedding-Modell der Installation die Eingabegrenze 8192 eintragen (in der
 Antwortdatei `"maxInputTokens": 8192`): `ollama-pull` legt `bge-m3` mit dieser Grenze an. Ohne die
-Angabe gilt die Vorgabe 2.048, und OPAA teilt längere Chunks.
+Angabe gilt die Vorgabe 2.048, und opaa teilt längere Chunks.
 
 Wer nicht warten muss, startet gleich mit `docker compose --profile ollama up --build`; `ollama-pull`
 lädt dann im Hintergrund.
@@ -199,7 +199,7 @@ nicht in der Liste der Quellen.
 Das Passwort steht nie in der JSON-Datei, sondern nur in der
 Datei, auf die `passwordFile` zeigt; API-Schlüssel der Modelle ebenso über `apiKeyFile`. Das
 erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange `requirePasswordChange`
-nicht `false` ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
+nicht `false` ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht opaa die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
 `docker compose logs backend | grep "answer file"` nennt Schritt und Grund.
 
@@ -381,7 +381,7 @@ weitere Befehl für diesen Stapel nennt beide Dateien.
 
 Das Overlay `docker-compose.monitoring.yml` startet Prometheus mit den Alarmen und Grafana mit den
 Dashboards auf einem eigenen Port an `127.0.0.1`, für eine eigene Subdomain hinter dem
-Reverse-Proxy, nie unter dem Hostnamen von OPAA, auch nicht mit anderem Port. Das Admin-Passwort `OPAA_GRAFANA_ADMIN_PASSWORD` ist
+Reverse-Proxy, nie unter dem Hostnamen von opaa, auch nicht mit anderem Port. Das Admin-Passwort `OPAA_GRAFANA_ADMIN_PASSWORD` ist
 Pflicht und kommt wie der Schlüssel der Texterkennung aus Shell oder `.env`. Einrichtung und
 Grenzen, auch dass ohne Alertmanager niemand benachrichtigt wird:
 [Dashboards und Alarme](dashboards-und-alarme.md#compose).
@@ -636,7 +636,7 @@ gehören nicht dazu.
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.
-- **Keine festen Geheimnisse von OPAA.** Signaturschlüssel, Verschlüsselungsschlüssel und Tokens
+- **Keine festen Geheimnisse von opaa.** Signaturschlüssel, Verschlüsselungsschlüssel und Tokens
   bleiben in den Vorlagen leer. Fest vorgegeben sind nur die Zugangsdaten der Entwicklungsdienste
   (Datenbank, Keycloak-Administrator, Objektspeicher) und eines Testdienstes; jede davon ist in der
   Prüfung einzeln begründet.
@@ -784,7 +784,7 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
    früheren Fassungen einer `e2e/*.env`, bricht der Start im Modus `oidc` ab, ebenso mit einem
    `OPAA_AUTH_JWT_SECRET` aus einer solchen Datei. Einen eigenen Schlüssel erzeugen
    (`openssl rand -base64 32`) und den bisherigen in `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS` bzw.
-   `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen; OPAA verschlüsselt die gespeicherten Werte dann
+   `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen; opaa verschlüsselt die gespeicherten Werte dann
    selbst neu ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)). Ein neues
    Signaturgeheimnis (`openssl rand -base64 48`) beendet alle lokalen Sitzungen
    ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
@@ -849,7 +849,7 @@ CORS passt nicht: `OPAA_CORS_ALLOWED_ORIGINS` muss die Adresse des Frontends nen
 
 ### PostgreSQL: „Passwort-Authentifizierung für Benutzer fehlgeschlagen"
 
-Betrifft die **Datenbank**, kein Konto von OPAA: Das Volume stammt aus einer früheren Initialisierung
+Betrifft die **Datenbank**, kein Konto von opaa: Das Volume stammt aus einer früheren Initialisierung
 mit anderen Zugangsdaten ([Datenbank im Stapel](#datenbank-im-stapel)).
 
 ### `docker exec` in den Backend-Container schlägt mit „executable file not found" fehl

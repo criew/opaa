@@ -95,7 +95,7 @@ describe('ProfileChangePreview - was beim Speichern verworfen wird (#2249)', () 
     expect(discards).toHaveTextContent('Für 2 Bibliotheken ändert sich die Konfiguration')
     expect(discards).not.toHaveTextContent(/Token des Zugangs/)
     expect(screen.getByTestId('profile-change-confirmation')).toHaveTextContent(
-      'Vor dem Speichern fragt OPAA noch einmal nach: „Die Änderung verwirft die Zugangsdaten von 1 Bibliothek',
+      'Vor dem Speichern fragt opaa noch einmal nach: „Die Änderung verwirft die Zugangsdaten von 1 Bibliothek',
     )
   })
 

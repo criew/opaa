@@ -707,7 +707,7 @@ describe('ConnectionProfilesTab', () => {
     )
     expect(discards).toHaveTextContent(/Für 1 Bibliothek ändert sich die Konfiguration/)
     expect(within(preview).getByTestId('profile-change-confirmation')).toHaveTextContent(
-      'Vor dem Speichern fragt OPAA noch einmal nach: „Die Änderung verwirft alle Zugangsdaten',
+      'Vor dem Speichern fragt opaa noch einmal nach: „Die Änderung verwirft alle Zugangsdaten',
     )
     expect(previews).toHaveLength(1)
     expect(previews[0]).toMatchObject({ serverUrl: 'https://cloud-neu.rheinfurt.example' })

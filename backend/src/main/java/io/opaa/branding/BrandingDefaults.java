@@ -20,7 +20,7 @@ public final class BrandingDefaults {
   /** Maximum accepted length of {@link EffectiveBranding#aiNotice()}, in characters. */
   public static final int MAX_AI_NOTICE_LENGTH = 500;
 
-  public static final String PRODUCT_NAME = "OPAA";
+  public static final String PRODUCT_NAME = "opaa";
 
   public static final String CLAIM = "opaa weiß, was war, und hilft bei dem, was kommt.";
 

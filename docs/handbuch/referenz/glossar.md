@@ -15,13 +15,13 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Werkzeugfähigkeit** | Die Angabe am Chat-Modell, ob es Werkzeuge zuverlässig aufruft: „Ungeprüft“, „Fähig“ oder „Nicht fähig“, mit Grundlage gemessen oder manuell gesetzt; gilt der Kombination aus Modell und Laufzeit ([Modelle verwalten](../administration/modelle.md#werkzeugfähigkeit-festhalten)) |
 | **Katalog** | Der eine Einstieg der Hauptnavigation für Arbeitsmittel jeder Art, nur als Kacheln: genau die, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neuer Katalogeintrag" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
-| **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
+| **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt opaa selbst |
 | **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder eine angebundene Quelle mit Konnektor, etwa Confluence oder ein Webverzeichnis ([Konnektoren](../benutzer/konnektoren/README.md)) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
 | **Zugang** | Eine von der Systemverwaltung angelegte, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt“) mit Adresse und Vorgaben, oft auch App-Registrierung; nutzen darf ihn, wem er freigegeben ist. Wer eine Bibliothek anlegt, wählt ihn nur noch aus ([Zugänge](../administration/zugaenge.md)) |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |
 | **Betriebsart** | Ob ein Lauf die Quelle vollständig auflistet (und Verschwundenes entfernen darf) oder nur ergänzt |
-| **Dokument** | Eine Datei, Seite oder ein Eintrag der Quelle, so wie OPAA ihn kennt; identifiziert über Bibliothek und Ort in der Quelle. Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
+| **Dokument** | Eine Datei, Seite oder ein Eintrag der Quelle, so wie opaa ihn kennt; identifiziert über Bibliothek und Ort in der Quelle. Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
 | **Chunk** | Ein Textstück eines Dokuments mit Vektor, Volltext und Metadaten; die Einheit, auf der die Suche arbeitet |
 | **Originalablage** | Der Ort, an dem die Originale hochgeladener Dokumente liegen: ein Verzeichnis (auch ein dorthin eingehängtes Netzlaufwerk) oder ein Objektspeicher; Dokumente aus einem Konnektor bleiben bei ihrer Quelle |
 | **Format-Pipeline** | Die Verarbeitung eines Dateiformats: Parsen und Zuschnitt in Chunks, mit Kennung und Versionsnummer |
@@ -35,18 +35,18 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Belegstand** | Die Stufe im Fuß einer Antwort, wie weit sie sich auf bestätigte Belege stützt: „Belegt", „Teilweise belegt" oder „Nicht belegt", mit einem kurzen Grund; keine Zahl und kein Urteil über die Richtigkeit ([Suche](wie-die-suche-arbeitet.md)) |
 | **Fundstellen-Anker** | Die Stelle eines Chunks maschinenlesbar: Seiten, Abschnittspfad, Folie, Blatt und Zeilen oder Nachricht, dazu je ein kurzes Zitat von Anfang und Ende; Grundlage für den Sprung an die Fundstelle |
 | **Textfassung** | Der beim Indexieren gewonnene Text eines Dokuments in Lesereihenfolge; „Dokument öffnen" zeigt ihn für Formate, die der Browser nicht anzeigen kann, an der Fundstelle |
-| **Fakten-Manifest** | Die Beschreibung im Code, welche Daten OPAA speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |
+| **Fakten-Manifest** | Die Beschreibung im Code, welche Daten opaa speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |
 | **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md)) |
 | **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
 | **Live-Transkript** | Zusatz zur Spracheingabe: Ein Live-Dienst erkennt den Text schon beim Sprechen, der Chat zeigt ihn gedimmt im Eingabefeld und übernimmt ihn erst mit dem endgültigen Text. Fällt Live aus, gilt das Diktat mit der ganzen Aufnahme ([Live-Transkript](../betrieb/modell-endpunkte.md#live-transkript)) |
-| **Lokales Konto** | Ein Konto, das OPAA selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
-| **Notanker-Konto** | Das eine lokale Systemverwalterkonto, das OPAA beim Erststart anlegt; Notfallzugangsmittel, kein Arbeitskonto |
+| **Lokales Konto** | Ein Konto, das opaa selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
+| **Notanker-Konto** | Das eine lokale Systemverwalterkonto, das opaa beim Erststart anlegt; Notfallzugangsmittel, kein Arbeitskonto |
 | **Rolle** | Gestufte Berechtigung an genau einem Objekt — an einer Bibliothek Leser, Bearbeiter, Verwalter, Eigentümer; in einem Space Mitglied, Kurator, Administrator. Für eine Person oder eine Gruppe, unbefristet oder mit Ablaufdatum |
 | **Anlegerecht** | Ein installationsweites Recht, etwas anzulegen (Spaces, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken, Agenten, Vorlagen); vergeben an eine Person, eine Gruppe oder „Alle Konten", ohne Gegenstand und ohne Lesewirkung |
 | **Vollmacht** | Eine befristete, begründungspflichtige Erlaubnis mit Gegenstand, an genau eine Person gebunden und an keine Gruppe vergebbar: „Sicht als" in der Suchdiagnose und der Geltungsbereich einer anlassbezogenen Klärung im Nachweisprotokoll |
-| **Interne Gruppe** | Eine Gruppe, die in OPAA selbst entsteht und von benannten Verantwortlichen gepflegt wird; für andere erst wählbar, nachdem diese sie zur Verwendung freigegeben haben |
+| **Interne Gruppe** | Eine Gruppe, die in opaa selbst entsteht und von benannten Verantwortlichen gepflegt wird; für andere erst wählbar, nachdem diese sie zur Verwendung freigegeben haben |
 | **Geschützte Gruppe** | Eine Gruppe der Personalvertretung, der Schwerbehindertenvertretung, der Gleichstellung oder der Personalvorgänge: über die Suche nicht auffindbar, in fremden Listen ohne Namen, ohne Größenangabe. Über das Kennzeichen entscheidet die Systemverwaltung |
 | **Wirksame Gruppe** | Eine Gruppe, der ein Recht erteilt werden darf: nicht aufgelöst, ihr Anbieter eingeschaltet, ihre Mitgliedschaft noch gepflegt. Sie darf leer sein; hat sie mindestens ein **aktives** Konto, ist sie zusätzlich **handlungsfähig** und kann Eigentümerin oder Space-Administratorin sein |
 | **Alle Konten** | Empfänger einer Freigabe oder eines Anlegerechts, der jedes Konto der Organisation umfasst; an einem Arbeitsmittel höchstens mit der Rolle Bearbeiter |
@@ -55,7 +55,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Rechtehistorie** | Die Zeiträume, in denen ein Recht galt — die Grundlage der Stichtagsauskunft; getrennt vom Nachweisprotokoll, das Handlungen festhält |
 | **Anlagegrund** | Pflichtangabe zu jedem lokalen Konto: der dienstliche Anlass und der Grund seiner Befristung; die betroffene Person kann ihn lesen |
 | **Aktivitätsklasse** | Die einzige Angabe zur Nutzung eines lokalen Kontos in der Kontenliste („nie", „länger nicht genutzt", „aktiv") — kein Zeitstempel, nicht sortierbar |
-| **Externe KI-Werkzeuge** | KI-Werkzeuge außerhalb von OPAA, die über einen eigenen, lesenden Zugriffsweg in freigegebenen Bibliotheken suchen; der Zugriffsweg ist installationsweit schaltbar und standardmäßig aus |
+| **Externe KI-Werkzeuge** | KI-Werkzeuge außerhalb von opaa, die über einen eigenen, lesenden Zugriffsweg in freigegebenen Bibliotheken suchen; der Zugriffsweg ist installationsweit schaltbar und standardmäßig aus |
 | **Zugangstoken** | Ein persönliches Zugangsmerkmal für externe KI-Werkzeuge, mit Name, unveränderlicher Bibliotheksauswahl und Pflicht-Ablaufdatum; Ausschnitt der Rechte seiner Person, nie mehr |
 | **Freigabe für externe KI-Werkzeuge** | Das befristete Merkmal einer Wissensbibliothek „Für externe KI-Werkzeuge nutzbar"; wird wie die übrigen Reichweitenfelder historisiert |
 | **Effektive Sicht** | Was ein Zugangstoken bei einem Aufruf sieht: die Schnittmenge aus Rechten der Person, gültiger Freigabe, Tokenauswahl und Installationsschalter, je Aufruf neu ausgewertet |
@@ -64,5 +64,5 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Reranking** | Reiter und Schritt für das Modell, das die Kandidaten einer Suche neu ordnet, bevor die Antwort entsteht; optional |
 | **Spracheingabe** | Reiter und Schritt für das Transkriptionsmodell, das eine diktierte Frage in Text umsetzt, wahlweise schon beim Sprechen (Live-Transkript); optional |
 | **Texterkennung** | Reiter und Schritt für den Dienst, der gescannte PDFs ohne Textebene liest (OCR); optional ([Texterkennung](../betrieb/texterkennung.md)) |
-| **API-Schlüssel** | Das Geheimnis, mit dem sich OPAA an einem Modell-Endpunkt ausweist. Die Oberfläche zeigt einen gespeicherten Schlüssel nie wieder an, nur „Gesetzt“ mit „Ersetzen“ |
+| **API-Schlüssel** | Das Geheimnis, mit dem sich opaa an einem Modell-Endpunkt ausweist. Die Oberfläche zeigt einen gespeicherten Schlüssel nie wieder an, nur „Gesetzt“ mit „Ersetzen“ |
 | **Testnachricht** | Die E-Mail, mit der die Verwaltung („Testnachricht an mich senden“) oder der Schritt „E-Mail“ der Installation („Testnachricht an“) den Versand prüft ([E-Mail-Versand](../administration/e-mail.md)) |

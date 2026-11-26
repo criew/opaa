@@ -282,7 +282,7 @@ describe('createAppTheme', () => {
   // and an unconfigured deployment gets the OPAA standard blue-700 from the backend's
   // field-wise fallback - that must behave exactly like no branding, or the per-scheme accent
   // split never takes effect anywhere.
-  test('the OPAA standard colour behaves like no branding at all (#634)', () => {
+  test('the opaa standard colour behaves like no branding at all (#634)', () => {
     const light = createAppTheme('light', { primaryColor: OPAA_BRANDING.primaryColor })
     const dark = createAppTheme('dark', { primaryColor: OPAA_BRANDING.primaryColor })
 
@@ -290,7 +290,7 @@ describe('createAppTheme', () => {
     expect(dark.palette.primary.main).toBe(blue[500])
   })
 
-  test('the OPAA standard branding colour and the token accent are the same value', () => {
+  test('the opaa standard branding colour and the token accent are the same value', () => {
     expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[700].toUpperCase())
   })
 

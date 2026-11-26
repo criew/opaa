@@ -280,13 +280,13 @@ export default function LoginPage() {
 /** The trust note, worded for what this installation actually offers. */
 function trustNote(hasChoice: boolean, hasLocalForm: boolean): string {
   if (hasChoice && hasLocalForm) {
-    return 'Bei Anmeldung über einen Identitätsanbieter erhält OPAA kein Kennwort. Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren Prüfwert.'
+    return 'Bei Anmeldung über einen Identitätsanbieter erhält opaa kein Kennwort. Das Passwort eines Kontos dieser Installation speichert opaa nur als nicht umkehrbaren Prüfwert.'
   }
   if (hasChoice) {
-    return 'Die Anmeldung erfolgt beim Identitätsanbieter. OPAA erhält kein Kennwort und speichert keines.'
+    return 'Die Anmeldung erfolgt beim Identitätsanbieter. opaa erhält kein Kennwort und speichert keines.'
   }
   if (hasLocalForm) {
-    return 'Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren Prüfwert.'
+    return 'Das Passwort eines Kontos dieser Installation speichert opaa nur als nicht umkehrbaren Prüfwert.'
   }
   return 'Für diese Installation ist derzeit keine Anmeldung eingerichtet. Die Systemverwaltung meldet sich über die Anmeldung für die Systemverwaltung an.'
 }

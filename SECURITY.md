@@ -19,7 +19,7 @@
 > twice a year) is described in [docs/security-pruefung.md](docs/security-pruefung.md) (German).
 > There has been no external audit or penetration test so far.
 
-Diese Richtlinie beschreibt, wie Sicherheitslücken in OPAA gemeldet und behandelt werden. Das
+Diese Richtlinie beschreibt, wie Sicherheitslücken in opaa gemeldet und behandelt werden. Das
 Projekt ordnet sich als Open-Source-Steward nach Art. 24 des Cyber Resilience Act
 (VO (EU) 2024/2847) ein
 ([Rollenklärung](docs/behoerden/06-informationssicherheit/rollenklaerung-cra.md)); diese Datei ist
@@ -43,7 +43,7 @@ Hilfreich in einer Meldung sind:
 Meldungen dürfen auf Deutsch oder Englisch verfasst sein.
 
 Bereits öffentlich bekannte CVEs in Abhängigkeiten und Basis-Images erfasst der nächtliche Scan
-([docs/cve-scanning.md](docs/cve-scanning.md)). Wer annimmt, dass ein solcher Befund in OPAA
+([docs/cve-scanning.md](docs/cve-scanning.md)). Wer annimmt, dass ein solcher Befund in opaa
 tatsächlich ausnutzbar ist, meldet das trotzdem vertraulich über den Meldeweg oben.
 
 ## Unterstützte Versionen
@@ -51,7 +51,7 @@ tatsächlich ausnutzbar ist, meldet das trotzdem vertraulich über den Meldeweg 
 Sicherheitskorrekturen erhalten der bewegliche Stand **`main`** und jede **unterstützte
 Release-Linie** bis zu ihrem Supportende, als Patch-Release ohne neue Funktion; dieselben
 Patch-Releases bringen auch Behebungen
-[kritischer Fehler](docs/releases.md#kritische-fehler). OPAA erscheint
+[kritischer Fehler](docs/releases.md#kritische-fehler). opaa erscheint
 zweimal im Jahr (etwa Juni und Dezember); das Juni-Release ist eine LTS-Linie
 ([ADR-0054](docs/decisions/0054-release-zyklus-und-supportlinien.md)). Takt, Supportende jeder
 Linie und Roadmap stehen in [docs/releases.md](docs/releases.md#supportlinien), wie

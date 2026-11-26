@@ -18,7 +18,7 @@ public final class UntrustedCertificate {
   public static final String MESSAGE =
       "Das Zertifikat des Servers wird nicht anerkannt: Es stammt von einer unbekannten"
           + " Zertifizierungsstelle oder passt nicht zur Adresse. Stellt eine eigene"
-          + " Zertifizierungsstelle das Zertifikat aus, muss der Betrieb sie in OPAA ergänzen.";
+          + " Zertifizierungsstelle das Zertifikat aus, muss der Betrieb sie in opaa ergänzen.";
 
   private UntrustedCertificate() {}
 

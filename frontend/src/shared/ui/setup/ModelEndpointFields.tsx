@@ -72,7 +72,7 @@ const TRANSCRIPTION_TILES = {
   openai: 'Cloud-Dienst, braucht einen API-Schlüssel. Aufnahmen verlassen das Haus.',
 }
 
-const KEY_HINT_NEEDED = 'Der Anbieter verlangt einen Schlüssel; OPAA speichert ihn verschlüsselt.'
+const KEY_HINT_NEEDED = 'Der Anbieter verlangt einen Schlüssel; opaa speichert ihn verschlüsselt.'
 
 const KEY_REMOVAL_TEXTS = {
   removeLabel: 'Gespeicherten Schlüssel entfernen',

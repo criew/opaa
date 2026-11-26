@@ -513,7 +513,7 @@ class AnswerGenerationServiceTest {
 
     ChatResponse result =
         answerGenerationService.generateAnswer(
-            "What is OPAA?", List.of(chunk1, chunk2), "conv-123", List.of(), true, true, null);
+            "What is opaa?", List.of(chunk1, chunk2), "conv-123", List.of(), true, true, null);
 
     assertThat(result.getResult().getOutput().getText()).isEqualTo("Generated answer");
 
@@ -531,7 +531,7 @@ class AnswerGenerationServiceTest {
 
     var userMessage = capturedPrompt.getInstructions().get(1);
     assertThat(userMessage.getMessageType()).isEqualTo(MessageType.USER);
-    assertThat(userMessage.getText()).isEqualTo("What is OPAA?");
+    assertThat(userMessage.getText()).isEqualTo("What is opaa?");
   }
 
   @Test

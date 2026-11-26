@@ -167,7 +167,7 @@ components:
           nullable: true
           description: >-
             The value in force on this installation, in the form the export writes; what null
-            means depends on the key (for example the OPAA default, the delivered mail text, not
+            means depends on the key (for example the opaa default, the delivered mail text, not
             set).
         after:
           nullable: true

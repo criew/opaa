@@ -1,8 +1,8 @@
-# OPAA Produktvision
+# opaa Produktvision
 
 ## Nordstern
 
-**OPAA** — Open Project AI Assistant — ist die **souveräne, quelloffene KI-Plattform für die öffentliche
+**opaa** — open project ai assistant — ist die **souveräne, quelloffene KI-Plattform für die öffentliche
 Verwaltung**. Sie verbindet drei Säulen, ohne dass Daten das Haus verlassen:
 
 - **Wissen** — verstreutes Wissen aus Akten, Wikis, Postfächern, Dateiablagen und Fachverfahren wird
@@ -28,7 +28,7 @@ Sie entscheiden im Zweifel und sind der Maßstab für jede Feature-Frage.
 Eine Auskunft in der Verwaltung ist keine Meinung. Jemand steht mit seinem Namen dafür gerade, und Jahre
 später muss nachvollziehbar sein, worauf sie sich stützte.
 
-OPAA bindet deshalb jede Aussage an ihre Quelle: Fundstelle, Sprung zur Textstelle, Konfidenz und ein
+opaa bindet deshalb jede Aussage an ihre Quelle: Fundstelle, Sprung zur Textstelle, Konfidenz und ein
 Chunking, dessen Ergebnis man sich ansehen kann. Der Kern ist die **Belegvalidierung**: Jeder Beleg wird
 gegen die Fundstellen geprüft, die für diese Antwort tatsächlich abgerufen wurden — deterministisch, ohne
 zweiten Modellaufruf, gleiche Eingabe und gleiches Urteil. Ein Beleg, der auf nichts zeigt, wird
@@ -51,7 +51,7 @@ Das reale Problem ist heute nicht, ob es ein gutes Modell gibt. Es ist die Frage
 wenigen Könnern zu allen Beschäftigten kommt. Ohne Antwort darauf entsteht Schatten-KI: Einzelne basteln
 private Prompts, kopieren Amtsdaten in Verbraucherwerkzeuge, und das Können bleibt in Köpfen.
 
-OPAA macht KI-Können zum **verteilbaren Asset**:
+opaa macht KI-Können zum **verteilbaren Asset**:
 
 - **Assets statt Einzelwissen.** Agenten, Skills, Prompt-Bibliotheken, Wissensbibliotheken und Vorlagen
   sind benannte, beschriebene, auffindbare Objekte — nicht in Chatverläufen vergrabene Einzelfälle.
@@ -63,13 +63,13 @@ OPAA macht KI-Können zum **verteilbaren Asset**:
 - **Wirkung.** Die beste Arbeitsweise einer Abteilung wird zum Standard aller — nachvollziehbar,
   rechtekonform, ohne dass jede Stelle KI neu erfindet.
 
-OPAA ist damit nicht nur eine Chat-Oberfläche, sondern das Verteilungssystem für KI-Fähigkeit im Haus.
+opaa ist damit nicht nur eine Chat-Oberfläche, sondern das Verteilungssystem für KI-Fähigkeit im Haus.
 
 ---
 
-## Was OPAA unterscheidet
+## Was opaa unterscheidet
 
-Die drei Säulen beschreiben, **was** OPAA tut. Als Unterscheidungsmerkmal trägt das allein nicht: Wissen
+Die drei Säulen beschreiben, **was** opaa tut. Als Unterscheidungsmerkmal trägt das allein nicht: Wissen
 befragbar machen, Agenten bauen, Fähigkeiten verteilen — daran arbeiten viele, und Katalog, Freigabe,
 Eigentümerschaft und Versionierung sind dabei, allgemeiner Standard zu werden.
 
@@ -88,7 +88,7 @@ Trennscharf ist das **Wie**. Fünf Eigenschaften, jede für sich nachprüfbar:
 4. **Belege werden geprüft, nicht nur verlinkt.** Ein Quellenlink belegt, dass ein Dokument existiert. Die
    Belegvalidierung belegt, dass die Antwort aus diesem Dokument stammt.
 5. **Barrierefreiheit ist nachgewiesen, nicht in Aussicht gestellt.** Für eine öffentliche Stelle ist sie
-   Rechtspflicht und keine Ausstattung. OPAA ist nach BITV gebaut, automatisiert geprüft und mit einem
+   Rechtspflicht und keine Ausstattung. opaa ist nach BITV gebaut, automatisiert geprüft und mit einem
    manuellen Abschluss-Audit abgenommen. Ein Produkt, das diesen Nachweis nicht führen kann, ist für eine
    Behörde nicht beschaffbar — unabhängig davon, was es sonst leistet.
 
@@ -121,7 +121,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 | **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [Handbuch](handbuch/administration/konten.md), [Roadmap](./ROADMAP.md) |
 | **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [Handbuch](handbuch/betrieb/nachvollziehbarkeit.md), [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [Roadmap](./ROADMAP.md) |
-| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](handbuch/referenz/wie-die-suche-arbeitet.md), [Roadmap](./ROADMAP.md) |
+| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, opaa als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](handbuch/referenz/wie-die-suche-arbeitet.md), [Roadmap](./ROADMAP.md) |
 | **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [Handbuch](handbuch/betrieb/README.md), [Roadmap](./ROADMAP.md) |
 | **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [Roadmap](./ROADMAP.md) |
 
@@ -151,7 +151,7 @@ Agenten und Skills als teilbare Pakete · geführtes Agenten-Onboarding · Prüf
 Prüfagenten für kritische Vorgänge · isolierte Ausführungsumgebung für Dateiverarbeitung, Auswertungen,
 Texterkennung, Transkription und Diagramme · Deep Research · schreibende Integrationen mit menschlicher
 Freigabe · MCP · Textwerkzeuge einschließlich Leichter Sprache · zentrale Modellvorgaben · erklärbares
-Chunking · Barrierefreiheits-Audit · OPAA als Wissensschicht für externe KI-Werkzeuge, erreichbar über
+Chunking · Barrierefreiheits-Audit · opaa als Wissensschicht für externe KI-Werkzeuge, erreichbar über
 persönliche Zugangstokens und einen MCP-Server · Auswertung von Nutzung und Kosten.
 
 ### Phase 3 — Kollaboration und organisationsweiter Rollout
@@ -244,7 +244,7 @@ Jede Auslassung hat einen Sachgrund. Keine davon ist eine Reaktion auf ein ander
 
 **Grundsätzliche Abgrenzungen**
 
-- **Keine Spielwiese für private Nutzung.** OPAA ist ein Arbeitsmittel; alles darin ist zurechenbar.
+- **Keine Spielwiese für private Nutzung.** opaa ist ein Arbeitsmittel; alles darin ist zurechenbar.
 - **Keine Bildgenerierung.** Kein Verwaltungswert, dafür ein Missbrauchs- und Fälschungsrisiko, das ein
   Amt nicht tragen will.
 - **Kein reiner Modellvermittler.** Ein Zugang zu vielen Modellen ohne Wissensbindung löst keines der
@@ -254,14 +254,14 @@ Jede Auslassung hat einen Sachgrund. Keine davon ist eine Reaktion auf ein ander
 
 **Bewusst ausgelassene Fähigkeiten**
 
-- **Kein visueller Prozessbaukasten.** OPAA ist die belegte Wissens- und Agentenschicht, nicht das
+- **Kein visueller Prozessbaukasten.** opaa ist die belegte Wissens- und Agentenschicht, nicht das
   System, das Verwaltungsprozesse ausführt. Leichte Verkettung mehrerer Schritte bleibt eine Option.
 - **Kein Sprachassistent und keine Sprachausgabe.** Verbraucherfunktion ohne Verwaltungswert.
   Transkription von Besprechungen ist enthalten, ein sprechender Bot nicht.
 - **Kein öffentlich eingebettetes Widget** im Fundament — es setzt einen Bürger-Scope voraus und gehört
   damit in den Ausblick.
 - **Keine Lernplattform.** Die Pflicht zur KI-Kompetenz trifft den Betreiber, nicht die Software.
-  OPAA verteilt KI-**Assets** und macht Können damit nutzbar, ohne es zu unterrichten.
+  opaa verteilt KI-**Assets** und macht Können damit nutzbar, ohne es zu unterrichten.
 - **Keine Massenintegration über fremde Automatisierungsdienste.** Das widerspricht der Souveränität;
   stattdessen MCP und eigene Konnektoren.
 - **Keine automatische Auswahl des jeweils stärksten Cloud-Modells.** Das widerspricht dem Vorrang
@@ -317,11 +317,11 @@ sind und nicht bloß Ordner in einem Arbeitsraum.
 
 ## Häufige Fragen
 
-**Läuft OPAA ohne Internetverbindung?**
+**Läuft opaa ohne Internetverbindung?**
 Ja. Mit lokal betriebenen Modellen und ohne externe Konnektoren ist der Betrieb ohne Netzanbindung das
 vorgesehene Szenario, nicht die Ausnahme.
 
-**Wie geht OPAA mit Daten um, die das Haus nicht verlassen dürfen — etwa Steuerdaten?**
+**Wie geht opaa mit Daten um, die das Haus nicht verlassen dürfen — etwa Steuerdaten?**
 Die Beschränkung hängt an den Daten, nicht am Arbeitsraum. Eine Wissensbibliothek führt ihre Vorgabe
 „nur lokale Modelle" selbst mit sich; sie gilt überall, wo diese Daten verwendet werden, unabhängig davon,
 wer wo fragt.
@@ -336,12 +336,12 @@ Ja. Die Organisation ist die harte Mandantengrenze: keine Freigabe, keine Suche,
 keine Systemverwaltung überschreitet sie.
 
 **Was heißt „C5-fähig"?**
-OPAA wird nie selbst zertifiziert — der Kriterienkatalog des BSI prüft den **Betrieb**, nicht ein Stück
+opaa wird nie selbst zertifiziert — der Kriterienkatalog des BSI prüft den **Betrieb**, nicht ein Stück
 Software. Das Produktziel ist, so gebaut und dokumentiert zu sein, dass ein Betreiber die Prüfung mit
-OPAA im Prüfumfang besteht.
+opaa im Prüfumfang besteht.
 
 **Was bedeutet die neue Ausrichtung für die Personalvertretung?**
-OPAA erzeugt Daten mit Personenbezug, und ein Rollout beginnt in aller Regel nicht ohne
+opaa erzeugt Daten mit Personenbezug, und ein Rollout beginnt in aller Regel nicht ohne
 Dienstvereinbarung. Sichtbarkeit ist deshalb eine Handlung und keine Automatik, es gibt keinen
 personenbezogenen Auswertungspfad und keine Ranglisten, und Auswertungen sind aggregiert. Details in
 [Mitbestimmung](./behoerden/05-mitbestimmung/).

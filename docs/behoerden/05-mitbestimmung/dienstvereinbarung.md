@@ -28,7 +28,7 @@ welches Update nur angezeigt wird und welches eine neue Zustimmung braucht. So m
 Release neu verhandelt werden, und keine Anlage erweitert den Überwachungsumfang unbemerkt. Angaben
 in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Fakten für die Anlagen:** die Faktenblätter der eingesetzten Version, etwa
   {{faktenblatt:datenkatalog}}, {{faktenblatt:rollensicht}} und {{faktenblatt:datenfluesse}}, im
@@ -77,7 +77,7 @@ zwischen [Behörde], vertreten durch [Leitung], und dem Personalrat bei [Behörd
 #### 1. Gegenstand und Geltungsbereich
 
 (1) Diese Vereinbarung regelt Einführung, Nutzung und Änderung von [Name der Installation], einem
-KI-Assistenten auf Grundlage von OPAA in der Version [X.Y.Z] (Anlage 1).
+KI-Assistenten auf Grundlage von opaa in der Version [X.Y.Z] (Anlage 1).
 
 (2) Sie gilt für alle Beschäftigten von [Behörde], die [Name der Installation] nutzen oder deren Daten
 darin verarbeitet werden, auch für Beschäftigte, die das System verwalten.
@@ -197,7 +197,7 @@ Datenschutzverletzung; externe Prüfung oder Kontrolle]. Ausgeschlossen sind arb
 disziplinarische und leistungsbezogene Zwecke, auch bei gemischten Sachverhalten.
 
 (2) Person, Zeitraum und Zweck werden vorab festgelegt; der Zeitraum liegt in der Vergangenheit und
-umfasst höchstens [92] Tage, was OPAA technisch durchsetzt
+umfasst höchstens [92] Tage, was opaa technisch durchsetzt
 ({{faktenblatt:voreinstellungen#opaa-audit-incident-scope-max-days}}). Eine zweite Person der
 Revision gibt frei. Antrag und Freigabe stehen im Protokoll.
 
@@ -325,7 +325,7 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
 1. Agenten und Vorlagen legt nur an, wem die Dienststelle das Anlegerecht gibt; die Empfänger stehen
    in Anlage 4.
 2. Der Personalrat erhält das Recht „Agentenverzeichnis einsehen“ für [die Mitglieder des
-   Personalrats / die Gruppe des Personalrats]. Das Verzeichnis in OPAA nennt jeden Agenten und
+   Personalrats / die Gruppe des Personalrats]. Das Verzeichnis in opaa nennt jeden Agenten und
    jede Vorlage der Dienststelle mit Zweck, Anweisung, den Namen nicht privater Bibliotheken,
    Werkzeugen, Grenzen, verantwortlicher Stelle, Fassung und Sperrzustand, ohne Inhalte der
    Bibliotheken und ohne Angaben zur Nutzung. Jedes Ansehen und jeder Export steht im Protokoll. Den Export des
@@ -339,12 +339,12 @@ Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
    Werkzeugaufrufe je Werkzeug, Abweisungen nach Grund sowie belegte und verfügbare Plätze für
    gleichzeitige Läufe im Zeitverlauf, nichts davon je Person
    ({{faktenblatt:datenkatalog#operational-metrics}}).
-   Nur solange ein Lauf läuft, hält OPAA fest, wer ihn gestartet hat, damit gleichzeitige Läufe
+   Nur solange ein Lauf läuft, hält opaa fest, wer ihn gestartet hat, damit gleichzeitige Läufe
    je Person begrenzt sind und nur diese Person den Lauf stoppen kann; der Eintrag verschwindet
    mit dem Ende des Laufs, bricht eine Instanz ab, spätestens mit Ablauf der Reservierung, und
    ist in der Oberfläche nicht sichtbar ({{faktenblatt:datenkatalog#agent-run-reservations}}). Er wird nicht ausgewertet. Es gilt
    Nummer 10 Nr. 13.
-5. Mit dem ersten Einschalten der Agenten legt OPAA den mitgelieferten Agenten „Recherche“ an
+5. Mit dem ersten Einschalten der Agenten legt opaa den mitgelieferten Agenten „Recherche“ an
    ({{faktenblatt:voreinstellungen#prompt-agent-research}}). Er ist für alle Konten nutzbar,
    kann alle eingeschalteten Werkzeuge verwenden, gehört der Person aus der Systemverwaltung, die
    die Agenten eingeschaltet hat, und lässt sich wie jeder Agent ändern, einschränken oder löschen.
@@ -482,7 +482,7 @@ Regelung, die ihrem Zweck am nächsten kommt.
 
 #### Anlagen
 
-Jede Anlage nennt die OPAA-Version und den Commit, für die sie gilt. Version und Commit stehen im
+Jede Anlage nennt die opaa-Version und den Commit, für die sie gilt. Version und Commit stehen im
 Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 
 | Anlage | Inhalt | Quelle |

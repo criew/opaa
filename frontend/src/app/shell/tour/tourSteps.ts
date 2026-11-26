@@ -45,7 +45,7 @@ const CHECK: TourStep = {
 const KNOWLEDGE: TourStep = {
   id: 'knowledge',
   title: 'Worauf die Antwort sich stützt',
-  text: 'OPAA sucht die Antwort in Dokumenten, die Sie lesen dürfen. „@Space-Wissen“ heißt: alle Dokumente, die zu diesem Space gehören. Tippen Sie @, wenn nur bestimmte Bibliotheken – also Sammlungen von Dokumenten – gelten sollen.',
+  text: 'opaa sucht die Antwort in Dokumenten, die Sie lesen dürfen. „@Space-Wissen“ heißt: alle Dokumente, die zu diesem Space gehören. Tippen Sie @, wenn nur bestimmte Bibliotheken – also Sammlungen von Dokumenten – gelten sollen.',
   anchor: 'space-knowledge',
   // Above the chip, so the card leaves the question field below it free.
   keepVisible: 'space-knowledge',
@@ -54,7 +54,7 @@ const KNOWLEDGE: TourStep = {
 const FILTER: TourStep = {
   id: 'filter',
   title: 'Suche eingrenzen',
-  text: 'Mit „Filter“ sucht OPAA nur in bestimmten Dokumenten – zum Beispiel nur in einer Dokumentart oder nur in Dokumenten aus einem bestimmten Zeitraum.',
+  text: 'Mit „Filter“ sucht opaa nur in bestimmten Dokumenten – zum Beispiel nur in einer Dokumentart oder nur in Dokumenten aus einem bestimmten Zeitraum.',
   anchor: 'filter',
   optional: true,
 }
@@ -70,7 +70,7 @@ const PROMPTS: TourStep = {
 const ATTACH: TourStep = {
   id: 'attach',
   title: 'Eigene Dateien mitgeben',
-  text: 'Mit der Büroklammer hängen Sie eine eigene Datei an den Chat. OPAA bezieht sie dann in die Antworten ein. Ihre Anhänge sehen nur Sie, und sie werden mit dem Chat gelöscht.',
+  text: 'Mit der Büroklammer hängen Sie eine eigene Datei an den Chat. opaa bezieht sie dann in die Antworten ein. Ihre Anhänge sehen nur Sie, und sie werden mit dem Chat gelöscht.',
   anchor: 'attach',
   optional: true,
 }
@@ -129,7 +129,7 @@ const NOTIFICATIONS: TourStep = {
 const ADMIN: TourStep = {
   id: 'admin',
   title: 'Systemverwaltung',
-  text: 'Unter „Admin“ richten Sie OPAA für alle ein: Konten, Gruppen und die KI-Modelle. Diesen Eintrag sehen nur Personen aus der Systemverwaltung.',
+  text: 'Unter „Admin“ richten Sie opaa für alle ein: Konten, Gruppen und die KI-Modelle. Diesen Eintrag sehen nur Personen aus der Systemverwaltung.',
   anchor: 'admin',
 }
 

@@ -1,6 +1,6 @@
 # Fakten-Manifest nachpflegen
 
-Das Fakten-Manifest unter `backend/src/main/resources/compliance/manifest/` beschreibt, welche Daten OPAA speichert,
+Das Fakten-Manifest unter `backend/src/main/resources/compliance/manifest/` beschreibt, welche Daten opaa speichert,
 welche Protokollereignisse es schreibt, was Rollen sehen und welche System-Prompts es sendet; aus ihm entstehen die
 Behördenunterlagen ([ADR-0052](../../docs/decisions/0052-compliance-manifest.md)). Je Bereich gibt es eine Datei; Schema
 und Pflichtfelder stehen in `io.opaa.compliance.ComplianceManifest`.

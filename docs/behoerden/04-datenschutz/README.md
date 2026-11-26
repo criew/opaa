@@ -1,6 +1,6 @@
 # Datenschutz
 
-Vorlagen für die Datenschutzunterlagen, die eine Behörde vor dem Start von OPAA braucht. Die meisten
+Vorlagen für die Datenschutzunterlagen, die eine Behörde vor dem Start von opaa braucht. Die meisten
 erstellt die Behörde gemeinsam mit ihrer oder ihrem Datenschutzbeauftragten.
 
 | Dokument | Worum es geht |

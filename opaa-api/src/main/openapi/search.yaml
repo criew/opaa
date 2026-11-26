@@ -1106,7 +1106,7 @@ components:
             The retrieved document's own source type. Every sourceType opens through GET
             /api/v1/documents/{documentId}/content; sourceUrl below is secondary information
             for HTTP_DIRECTORY/RSS_FEED, not itself a deep link a client should navigate to directly
-            (the source may only be reachable from OPAA's own network). Null exactly when documentId
+            (the source may only be reachable from opaa's own network). Null exactly when documentId
             is null.
           example: FILESYSTEM
         sourceUrl:

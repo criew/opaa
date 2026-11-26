@@ -260,7 +260,7 @@ public class TargetAddressValidator {
       throw new GuardCapacityExceededException(
           "Die Zieladresse "
               + host
-              + " kann derzeit nicht geprüft werden: OPAA überwacht bereits die Höchstzahl"
+              + " kann derzeit nicht geprüft werden: opaa überwacht bereits die Höchstzahl"
               + " geprüfter Hostnamen. Ein Neustart des Backends setzt die Überwachung zurück.");
     }
     try {

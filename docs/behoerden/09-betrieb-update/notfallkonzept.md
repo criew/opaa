@@ -11,15 +11,15 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die OPAA selbst betreiben oder betreiben lassen.
+**Gilt für:** alle Behörden, die opaa selbst betreiben oder betreiben lassen.
 
 Das Notfallkonzept legt fest, was bei einem Ausfall gilt und wie der Dienst wieder anläuft. Diese
-Vorlage ist das Kapitel für OPAA im Notfallkonzept der Behörde. Verantwortlich ist die Behörde; die
+Vorlage ist das Kapitel für opaa im Notfallkonzept der Behörde. Verantwortlich ist die Behörde; die
 Werte für Wiederherstellungszeit (RTO, wie lange der Dienst höchstens steht) und
 Wiederherstellungspunkt (RPO, wie viel Arbeit höchstens verloren geht) legt sie fest, nicht das
 Projekt.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Was zu sichern ist** und in welcher Reihenfolge: [Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md),
   mit den Befehlen für [Docker Compose](../../handbuch/betrieb/docker-compose.md#sicherung-und-wiederherstellung)
@@ -52,14 +52,14 @@ Projekt.
 
 **Annahmen:** Die Datenbank ist die einzige Wahrheit, auch für den Suchindex. Die Originale
 hochgeladener Dokumente gibt es nur in der Originalablage. Wiederhergestellt wird mit derselben
-OPAA-Version und demselben Embedding-Modell. Die Konfiguration liegt versioniert außerhalb der
+opaa-Version und demselben Embedding-Modell. Die Konfiguration liegt versioniert außerhalb der
 Installation, die Images der Version sind abrufbar. Identitätsanbieter, Modelldienste und Quellen
 haben eigene Notfallpläne.
 
 ## Ergebnis festhalten
 
 ```text
-Installation:           [Name], OPAA-Version [Version], [eine / mehrere] Backend-Instanzen
+Installation:           [Name], opaa-Version [Version], [eine / mehrere] Backend-Instanzen
 RPO Datenbank:          [z. B. 24 Stunden]     Sicherungsintervall: [ ]
 RPO Originalablage:     [gleich oder kürzer als Datenbank]
 RTO bis arbeitsfähig:   [z. B. 4 Stunden]      max. tolerierbare Ausfallzeit: [ ]
@@ -67,12 +67,12 @@ Belegt durch Probe vom: [Datum]                 gemessen: [ ]
 Weitere Annahmen:       [Standort und Aufbewahrung der Sicherungen, ...]
 
 Zuständig (Name, Erreichbarkeit, Vertretung):
-  Notfallverantwortung OPAA:        [ ]
+  Notfallverantwortung opaa:        [ ]
   Plattform (Host oder Cluster):    [ ]
   Datenbank:                        [ ]
   Speicher (Originalablage):        [ ]
   Verwahrung der Geheimnisse:       [ ]
-  Systemverwaltung in OPAA:         [ ]
+  Systemverwaltung in opaa:         [ ]
   Modelldienste:                    [ ]
   Informationssicherheit:           [ ]
   Datenschutz:                      [ ]

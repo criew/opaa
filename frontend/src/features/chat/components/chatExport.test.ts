@@ -5,7 +5,7 @@ import { chatAsMarkdown, exportFileName, exportTimestamp } from './chatExport'
 const ASKED = '2026-03-05T09:15:00Z'
 const ANSWERED = '2026-03-05T09:15:30Z'
 const EXPORTED = new Date('2026-03-06T07:00:00Z')
-const NOTE = 'Antworten werden von einer KI erzeugt. – OPAA, 06.03.2026'
+const NOTE = 'Antworten werden von einer KI erzeugt. – opaa, 06.03.2026'
 const BESCHEID = '11111111-1111-1111-1111-111111111111'
 const MERKBLATT = '22222222-2222-2222-2222-222222222222'
 

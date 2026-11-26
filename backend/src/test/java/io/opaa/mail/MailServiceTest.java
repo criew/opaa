@@ -67,7 +67,7 @@ class MailServiceTest {
           null,
           MailEncryption.STARTTLS,
           "opaa@intern.example",
-          "OPAA");
+          "opaa");
 
   /** A password shaped like an address, as a server may echo it back in its refusal. */
   private static final String ECHOED = "kw@geheim.zz";
@@ -81,7 +81,7 @@ class MailServiceTest {
           ECHOED,
           MailEncryption.STARTTLS,
           "opaa@intern.example",
-          "OPAA");
+          "opaa");
 
   @Test
   void skipsWithoutThrowingWhileSmtpIsNotConfigured() {

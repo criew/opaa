@@ -5,11 +5,11 @@
   </picture>
 </p>
 
-# OPAA: Open Project AI Assistant
+# opaa: open project ai assistant
 
 **Antworten mit Fundstelle. KI, die im ganzen Haus ankommt.**
 
-OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
+opaa ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
 belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze
 Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
 
@@ -25,12 +25,12 @@ Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
 ## Zwei Leitprinzipien
 
 **Belegbarkeit.** Eine Auskunft in der Verwaltung ist keine Meinung — jemand steht mit seinem Namen dafür
-gerade, und Jahre später muss nachvollziehbar sein, worauf sie sich stützte. OPAA bindet jede Aussage an
+gerade, und Jahre später muss nachvollziehbar sein, worauf sie sich stützte. opaa bindet jede Aussage an
 ihre Quelle und lässt sich für haftungskritische Zusammenhänge so schalten, dass ohne Beleg keine Antwort
 ergeht.
 
 **Verteilbarkeit.** Das reale Problem ist nicht, ob es ein gutes Modell gibt, sondern wie das Können von
-wenigen zu allen kommt. OPAA macht Agenten, Prompts und Wissensbestände zu benannten, teilbaren,
+wenigen zu allen kommt. opaa macht Agenten, Prompts und Wissensbestände zu benannten, teilbaren,
 versionierbaren Objekten, die über Freigabestufen von einer Person bis in die ganze Organisation wandern.
 
 Die vollständige Begründung steht in
@@ -42,7 +42,7 @@ Zehn ausgearbeitete Fälle stehen in [USE-CASES.md](docs/USE-CASES.md). Drei dav
 
 **Fachfrage zur Rechtslage belegt beantworten.** Die Antwort steckt in einem Schreiben, einem
 Anwendungserlass, zwei Verfügungen und einer internen Arbeitsanweisung — verteilt über Netzlaufwerk,
-Intranet und eine Ordnerstruktur, die niemand mehr vollständig kennt. OPAA nennt jede Aussage mit
+Intranet und eine Ordnerstruktur, die niemand mehr vollständig kennt. opaa nennt jede Aussage mit
 Fundstelle und verweigert die Antwort, wo nichts belegt ist.
 
 **Aus einem guten Agenten den Standard machen.** Ein Sachgebiet hat eine Arbeitsweise entwickelt, die
@@ -83,7 +83,7 @@ einem Befehl: [demo/README.md](demo/README.md). Das Drehbuch selbst steht in
 
 ## Stand
 
-OPAA ist im Aufbau. Das Fundament steht — Aufnahme und Indizierung von Dokumenten, Abfrage mit
+opaa ist im Aufbau. Das Fundament steht — Aufnahme und Indizierung von Dokumenten, Abfrage mit
 Quellenangaben, Anmeldung über den Verzeichnisdienst, Spaces und Wissensbibliotheken mit eigenen Rechten,
 Betrieb über Docker Compose. Das Space- und Asset-Modell und die Messbarkeit der Suchqualität sind im Bau.
 

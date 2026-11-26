@@ -13,13 +13,13 @@ naechste-durchsicht: 2027-04-23
 
 **Gilt für:** alle Behörden; die beteiligten Stellen richten sich nach der eigenen Organisation.
 
-Der Update-Vermerk hält fest, wie die Behörde ein Update von OPAA bewertet und entschieden hat. Er
+Der Update-Vermerk hält fest, wie die Behörde ein Update von opaa bewertet und entschieden hat. Er
 gehört zu den Unterlagen der Installation, neben Verzeichnis von Verarbeitungstätigkeiten (VVT),
 Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und
 [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md). Grundlage ist das Update-Paket der
 Zielversion.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Das Update-Paket enthält:
 

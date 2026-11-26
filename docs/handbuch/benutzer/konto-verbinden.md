@@ -3,16 +3,16 @@
 **Ziel:** Ihre eigenen Zugangsdaten für einen Anbieter sind hinterlegt.
 {: .kopf }
 
-OPAA nutzt sie nur für Ihre [privaten Bibliotheken](private-bibliothek.md). Das Verbinden ist
+opaa nutzt sie nur für Ihre [privaten Bibliotheken](private-bibliothek.md). Das Verbinden ist
 freiwillig. Verbinden lässt sich nur, was die Systemverwaltung als Zugang für Personen freigegeben
 hat.
 
 1. „Einstellungen“, dann „Verbundene Konten“ öffnen.
 2. Unter **„Weitere Zugänge“** den Zugang wählen.
 3. Anmelden, je nach Zugang:
-   - mit **„App-Passwort oder Token“** oder Benutzername und Passwort: OPAA prüft die Anmeldung
+   - mit **„App-Passwort oder Token“** oder Benutzername und Passwort: opaa prüft die Anmeldung
      beim Anbieter und speichert die Daten nur, wenn sie gelingt;
-   - **beim Anbieter** (etwa Microsoft bei OneDrive): OPAA leitet weiter, Sie melden sich dort an,
+   - **beim Anbieter** (etwa Microsoft bei OneDrive): opaa leitet weiter, Sie melden sich dort an,
      stimmen zu und landen wieder auf dieser Seite.
 4. Die Verbindung steht unter **„Ihre verbundenen Konten“** mit dem Zustand „Verbunden“.
 
@@ -39,8 +39,8 @@ auf dieser Verbindung; sie ruhen danach, bis Sie wieder verbinden.
 
 **Gut zu wissen:**
 
-- Gespeicherte Zugangsdaten zeigt OPAA nie wieder an, auch nicht der Systemverwaltung.
-- Bei einer Anmeldung beim Anbieter zieht OPAA die Zustimmung dort mit zurück, wo der Anbieter das
+- Gespeicherte Zugangsdaten zeigt opaa nie wieder an, auch nicht der Systemverwaltung.
+- Bei einer Anmeldung beim Anbieter zieht opaa die Zustimmung dort mit zurück, wo der Anbieter das
   erlaubt. Microsoft erlaubt es nicht: Bei OneDrive entziehen Sie die Zustimmung zusätzlich in Ihrem
   Microsoft-Konto.
 - Die Meldungen beim Verbinden nennen die Ursache und die zuständige Stelle.

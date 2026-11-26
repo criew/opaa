@@ -89,7 +89,7 @@ describe('S3EventSection (#1381, ADR-0027)', () => {
     const confirmDialog = await screen.findByRole('dialog', {
       name: 'Benachrichtigung entfernen?',
     })
-    expect(confirmDialog).toHaveTextContent(/kann OPAA danach nicht mehr benachrichtigen/)
+    expect(confirmDialog).toHaveTextContent(/kann opaa danach nicht mehr benachrichtigen/)
     await user.click(screen.getByRole('button', { name: 'Entfernen' }))
 
     expect(mockRemove).toHaveBeenCalledWith('lib-1')

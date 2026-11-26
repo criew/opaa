@@ -1,6 +1,6 @@
 # Software Bill of Materials (SBOM)
 
-OPAA erzeugt SBOMs auf zwei Ebenen (Issue #1078), damit Abnehmer und Prüfer nachvollziehen
+opaa erzeugt SBOMs auf zwei Ebenen (Issue #1078), damit Abnehmer und Prüfer nachvollziehen
 können, welche Komponenten in den ausgelieferten Artefakten stecken. Ob darin bekannte
 Schwachstellen stecken, prüft [`docs/cve-scanning.md`](./cve-scanning.md). Für Betreiber
 zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste).

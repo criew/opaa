@@ -71,7 +71,7 @@ describe('ConfluenceWebhookSection (#1140)', () => {
     // a stray click must not cut the connection - the removal asks first
     expect(mockRemove).not.toHaveBeenCalled()
     const confirmDialog = await screen.findByRole('dialog', { name: 'Webhook entfernen?' })
-    expect(confirmDialog).toHaveTextContent(/kann OPAA danach nicht mehr benachrichtigen/)
+    expect(confirmDialog).toHaveTextContent(/kann opaa danach nicht mehr benachrichtigen/)
     await user.click(screen.getByRole('button', { name: 'Entfernen' }))
 
     expect(mockRemove).toHaveBeenCalledWith('lib-1')

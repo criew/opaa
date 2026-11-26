@@ -238,7 +238,7 @@ export default function UserManagementPage() {
         <AreaPageHeader
           icon={BadgeOutlinedIcon}
           title="Benutzer"
-          description="Alle Konten, die sich bei OPAA anmelden können. Lokale Konten pflegen Sie hier, bei Konten eines Identitätsanbieters nur die Rolle."
+          description="Alle Konten, die sich bei opaa anmelden können. Lokale Konten pflegen Sie hier, bei Konten eines Identitätsanbieters nur die Rolle."
         />
 
         <AreaTabs

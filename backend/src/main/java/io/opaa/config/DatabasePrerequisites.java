@@ -34,9 +34,9 @@ final class DatabasePrerequisites {
     return Optional.of(
         new DatabasePrerequisiteException(
             "The PostgreSQL server has the pgvector extension not installed; the schema migration"
-                + " of OPAA needs it (CREATE EXTENSION vector).",
+                + " of opaa needs it (CREATE EXTENSION vector).",
             "Install pgvector 0.8.0 or later on the database server - e.g. the image"
-                + " pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA"
+                + " pgvector/pgvector or the package postgresql-<version>-pgvector - and start opaa"
                 + " again. "
                 + HANDBOOK));
   }

@@ -1,8 +1,8 @@
 # Nachvollziehbarkeit
 
 Vor einer Einführung und bei jedem Update fragen Datenschutz, Personalrat und
-Informationssicherheit dasselbe: Welche Daten speichert OPAA, wie lange, wer sieht sie, was
-verlässt die Installation und was ist voreingestellt? Dieses Kapitel beschreibt, wie OPAA diese
+Informationssicherheit dasselbe: Welche Daten speichert opaa, wie lange, wer sieht sie, was
+verlässt die Installation und was ist voreingestellt? Dieses Kapitel beschreibt, wie opaa diese
 Fragen aus dem eigenen Code beantwortet, wo die Antworten liegen und was bei jeder Codeänderung
 automatisch geprüft wird, damit sie stimmen. Es gehört zum Teil Betrieb des
 [Handbuchs](../README.md).
@@ -16,9 +16,9 @@ automatisch geprüft wird, damit sie stimmen. Es gehört zum Teil Betrieb des
 > ändert, steht in den Release-Notizen unter „Datenrelevante Änderungen“ und im Delta seines
 > Update-Pakets.
 
-## Was OPAA automatisch nachweist
+## Was opaa automatisch nachweist
 
-Grundlage ist das **Fakten-Manifest**: eine Beschreibung im Code, welche Daten OPAA speichert,
+Grundlage ist das **Fakten-Manifest**: eine Beschreibung im Code, welche Daten opaa speichert,
 welche Protokollereignisse es schreibt, was jede Rolle über andere sieht, welche Verbindungen nach
 außen es aufbaut, welche Voreinstellungen, Standardmodelle und System-Prompts gelten und welche
 Fristen laufen. Das Manifest wird wie Code geändert und geprüft. Aus ihm entstehen die
@@ -119,7 +119,7 @@ gilt:
   dazu gehört, liegt getrennt in einer eigenen Tabelle (`datenkatalog`, Eintrag `audit-pseudonyms`).
 - **Feste Angaben je Ereignisart:** Was ein Eintrag über den Stand vorher und nachher festhält,
   legt ein Ereigniskatalog je Ereignisart fest, etwa bei einer geänderten Rolle in einem Space nur
-  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt OPAA nicht ins Protokoll und meldet
+  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt opaa nicht ins Protokoll und meldet
   sie im Log als Fehler. Welche Angaben je Ereignisart erlaubt sind, steht im Auszug für die
   Personalvertretung. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist,
   und die Revision sieht sie bei jedem Eintrag; Einträge von vor dem Katalog tragen keine.
@@ -167,7 +167,7 @@ Die Faktenblätter sind nicht eingecheckt, sondern werden neu erzeugt:
 
 Beide enthalten die Blätter als Markdown und `faktenblaetter.json` mit allen Inhalten für Werkzeuge.
 
-Jedes Blatt nennt in seinem Kopf, wofür es gilt: die OPAA-Version, den Commit, das
+Jedes Blatt nennt in seinem Kopf, wofür es gilt: die opaa-Version, den Commit, das
 Erzeugungsdatum und `erzeugung: generiert`. Im Update-Paket ist das Erzeugungsdatum das Datum des
 Commits, sodass ein erneut erzeugtes Paket gleich ausfällt. Die Blätter aus der CI auf `main` tragen
 immer die Version `0.0.0-dev`; welchen Stand sie beschreiben, bestimmt der Commit. Unter dem Titel steht
@@ -207,7 +207,7 @@ gh attestation verify opaa-update-paket-<Version>.tar.gz --repo criew/opaa \
   --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/v<Version>
 ```
 
-Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von OPAA zu
+Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von opaa zu
 genau dieser Version erzeugt hat.
 
 Der Release-Lauf erzeugt das Paket nur, wenn der Wächter (siehe [Was bei jeder Änderung geprüft
@@ -357,10 +357,10 @@ Die Auskunft enthält:
 
 | Teil | Inhalt |
 |---|---|
-| Kopf | OPAA-Version, Commit des Images und Zeitpunkt des Abrufs |
+| Kopf | opaa-Version, Commit des Images und Zeitpunkt des Abrufs |
 | Abweichungen von der Voreinstellung | jede Einstellung mit Datenwirkung, deren Wert in dieser Installation vom ausgelieferten abweicht |
 | Einstellungen mit Datenwirkung | alle diese Einstellungen mit Voreinstellung, wirksamem Wert und, bei Fristen aus der Verwaltung, dem Zeitpunkt der letzten Änderung |
-| Ausgehende Datenflüsse | jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
+| Ausgehende Datenflüsse | jede Verbindung, die opaa selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
@@ -376,7 +376,7 @@ erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protoko
 von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
 Bibliotheken.
 
-**Anlassbezogene Klärungen** zählt OPAA je Monat und Anlass, ohne Person, Begründung und Verweis
+**Anlassbezogene Klärungen** zählt opaa je Monat und Anlass, ohne Person, Begründung und Verweis
 auf die Freigabe; die Zahlen bleiben erhalten, wenn Anträge und Freigaben nach ihrer Frist gelöscht
 sind. „Abgelaufen“ heißt, dass die Nutzbarkeit einer Freigabe im Zeitraum endete.
 Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, bleibt unbeantwortet.
@@ -384,7 +384,7 @@ Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall 
 Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
 Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.
 
-**Angehaltene Chat-Löschungen** zählt OPAA je Monat, ohne Person: wie oft eine Anhaltung der
+**Angehaltene Chat-Löschungen** zählt opaa je Monat, ohne Person: wie oft eine Anhaltung der
 Löschung der Chats eines gesperrten Kontos mit der Freigabe durch eine zweite Person wirksam wurde.
 Darunter steht je Zweck, wie viele Anhaltungen beantragt, freigegeben, verlängert, abgelehnt
 (einschließlich zurückgezogener und unbeantwortet verfallener Anträge) und mit ihrer Höchstdauer
@@ -459,7 +459,7 @@ Code und Beschreibung auseinanderlaufen.
 
 | Prüfung | Wann | Was sie erzwingt |
 |---|---|---|
-| **Wächter im Backend-Build** | bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf `main` | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jedem ausgehenden Client im Code von OPAA und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
+| **Wächter im Backend-Build** | bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf `main` | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jedem ausgehenden Client im Code von opaa und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
 | **Kennzeichnung `data-impact`** | an jedem Pull Request (Prüfung „Datenwirkung“) | Die Beschreibung jedes Pull Requests fragt ab, ob er personenbezogene Daten, Sichtbarkeit, Auswertungen, Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung ändert. Trifft etwas zu, trägt er das Label `data-impact` und einen Satz in Alltagssprache. Ändert er Dateien, in denen Datenwirkung typischerweise entsteht, ohne Label und ohne die Angabe „Keine Wirkung“, schlägt die Prüfung fehl. Solche Änderungen erscheinen in den Release-Notizen als erste Rubrik „Datenrelevante Änderungen“ |
 | **Verweise der Behördenunterlagen** | bei jeder Änderung an den Unterlagen und am Manifest | Jeder Verweis einer Vorlage auf ein Faktenblatt trifft ein vorhandenes Blatt und einen vorhandenen Eintrag darin |
 | **Lizenzprüfung** | an Pull Requests, die Abhängigkeiten berühren, und bei jedem Stand auf `main` | Jede ausgelieferte Abhängigkeit steht unter einer freigegebenen Lizenz oder auf einer begründeten Ausnahmeliste. Die Lizenzübersicht liegt als Artefakt `license-report-backend` bzw. `license-report-frontend` am CI-Lauf und im Update-Paket jedes Release |
@@ -470,7 +470,7 @@ Die Prüfungen ergänzen sich: Der Wächter stellt sicher, **dass** es einen Ein
 er stimmt. Ob ein Personenbezug, ein Zweck oder eine Sichtbarkeit zutrifft, prüfen das Review jedes
 Pull Requests und die Drift-Routine.
 
-**Verbindungen eingebundener Bibliotheken.** Der Wächter liest den Code von OPAA. Eine Bibliothek,
+**Verbindungen eingebundener Bibliotheken.** Der Wächter liest den Code von opaa. Eine Bibliothek,
 die von sich aus eine Verbindung aufbaut, etwa zum Abruf einer Konfiguration bei ihrem Hersteller,
 erkennt er nicht. Solche Abrufe fallen nur im Lauf ohne Internetzugang auf, und nur in dem, was er
 durchläuft; was er nicht abdeckt, steht unter den Grenzen seines Nachweises. Bekannte Abrufe

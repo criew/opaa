@@ -25,7 +25,7 @@ function initialMailSettings(): MailSettingsResponse {
     passwordSet: true,
     encryption: 'STARTTLS',
     fromAddress: 'opaa@intern.example',
-    fromName: 'OPAA',
+    fromName: 'opaa',
     lastSuccessAt: '2026-09-10T08:14:00Z',
     lastFailureAt: '2026-09-11T06:02:00Z',
     lastFailureReason: 'Verbindung abgelehnt (Connection refused)',
@@ -172,7 +172,7 @@ const templateSeeds: MailTemplateSeed[] = [
 
 /** The sample values `MailTemplateKey.SAMPLE_VALUES` uses for preview and test send. */
 export const mockMailSampleValues: Record<string, string> = {
-  productName: 'OPAA',
+  productName: 'opaa',
   displayName: 'Erika Mustermann',
   actionUrl: 'https://opaa.example.org/set-password?token=BEISPIEL',
   expiresAtHuman: 'noch 24 Stunden',

@@ -15,13 +15,13 @@ naechste-durchsicht: 2027-04-23
 ausschreiben müssen.
 
 Gewährleistung heißt, dass jemand für Mängel der Leistung einsteht; Haftung, dass er für entstandene
-Schäden aufkommt. Eine Behörde, die OPAA einsetzt, hat keinen Vertrag mit dem Projekt. Gewährleistung,
+Schäden aufkommt. Eine Behörde, die opaa einsetzt, hat keinen Vertrag mit dem Projekt. Gewährleistung,
 Haftung und feste Reaktionszeiten erhält sie nur von einem Dienstleister, mit dem sie einen Vertrag
 schließt.
 
-## Was OPAA liefert
+## Was opaa liefert
 
-| Thema | Projekt OPAA | Fundstelle |
+| Thema | Projekt opaa | Fundstelle |
 |---|---|---|
 | Gewährleistung | keine; die Software wird bereitgestellt „wie sie ist“ | [Lizenz](../../../LICENSE), Abschnitt 15 |
 | Haftung | ausgeschlossen, soweit das anwendbare Recht es zulässt | [Lizenz](../../../LICENSE), Abschnitte 16 und 17 |
@@ -42,7 +42,7 @@ dem Dienstleister legt die Behörde fest:
 2. **Einstehen für die Software im vereinbarten Umfang,** etwa Fehlerbehebung in Fristen, auch wenn
    der Fehler im Code des Projekts liegt; Quellcode und eigene Korrekturen erlaubt die Lizenz.
 3. **Haftung** nach dem gewählten [EVB-IT-Vertragstyp](evb-it-hinweise.md#zuordnung-der-leistungen).
-4. **Pflichten als Hersteller nach dem Cyber Resilience Act,** wenn der Dienstleister OPAA kommerziell
+4. **Pflichten als Hersteller nach dem Cyber Resilience Act,** wenn der Dienstleister opaa kommerziell
    als Produkt bereitstellt (L-08).
 5. **Rückgabe von Korrekturen** an das Projekt (L-06); Sicherheitslücken vorher vertraulich über den
    [Meldeweg](../../../SECURITY.md#meldeweg).

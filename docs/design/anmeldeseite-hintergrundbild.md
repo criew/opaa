@@ -6,7 +6,7 @@ Das mitgelieferte Motiv der Markenfläche auf der Anmeldeseite (`frontend/src/fe
 
 Der Lesesaal eines Verwaltungsgebäudes, leicht erhöht gesehen: hohe, geordnete Regale mit Aktenordnern rechts und an der Rückwand, ein langer leerer Lesetisch, ein hohes Rundbogenfenster mit Morgenlicht, dahinter die Silhouette eines Rathauses. Aus den Ordnern steigen feine blaue Lichtfäden auf und verbinden sich über dem Tisch zu einer geordneten Konstellation kleiner Dokumentkarten, jede mit einer leuchtenden Fußnotenmarke. Das linke Drittel ist eine ruhige, dunkle Wand.
 
-Was das Bild von OPAA erzählt ([Vision](../VISION.md)):
+Was das Bild von opaa erzählt ([Vision](../VISION.md)):
 
 - **Wissen, das im Haus bleibt**: Alles spielt innerhalb der Mauern; die Akten sind die Quelle.
 - **Belegbarkeit**: Die Karten tragen Fußnotenmarken, die Fäden führen zurück in die Regale, nicht ins Leere.
@@ -18,7 +18,7 @@ Keine Personen, kein Text, keine Logos, keine Bildschirme. Das Bild entstand mit
 
 ## Erzeugung
 
-Erzeugt am 25.10.2026 über Higgsfield mit dem Modell GPT Image 2.5 (Variante Flare, Qualität high, 2048 × 2048, Seitenverhältnis 1:1). Das Bild wurde für OPAA generiert und ist Teil des Projekts; es enthält keine erkennbaren Personen, Marken oder fremden Werke.
+Erzeugt am 25.10.2026 über Higgsfield mit dem Modell GPT Image 2.5 (Variante Flare, Qualität high, 2048 × 2048, Seitenverhältnis 1:1). Das Bild wurde für opaa generiert und ist Teil des Projekts; es enthält keine erkennbaren Personen, Marken oder fremden Werke.
 
 Prompt (englisch, so wie er an das Modell ging):
 

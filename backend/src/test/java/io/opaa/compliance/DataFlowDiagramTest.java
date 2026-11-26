@@ -64,7 +64,7 @@ class DataFlowDiagramTest {
         .isEqualTo(
             """
             flowchart LR
-                opaa(["OPAA"])
+                opaa(["opaa"])
                 subgraph group_model["Modelle"]
                     flow_chat["chat"]
                 end

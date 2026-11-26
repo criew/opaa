@@ -14,7 +14,7 @@
    Stelle“ (Gruppe, Einheit oder Funktion, keine Einzelperson) und auf Wunsch Rollen.
 5. **Prüfen:** die Angaben durchsehen, einzelne über „Ändern“ korrigieren, dann „Anlegen“.
 
-OPAA prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
+opaa prüft die Datei beim Hochladen und zeigt im Reiter „Platzhalter“, welche Werte ein Agent
 liefern muss. Abgelehnt werden Dateien, die kein Word-Dokument sind, größer als 10 MB sind, einen
 Block nicht schließen oder aktive Inhalte tragen: Makros (auch als `.dotm`), ActiveX-Elemente,
 eingebettete Objekte, eine verknüpfte Dokumentvorlage, eine Seriendruck-Datenquelle, Makros an
@@ -33,7 +33,7 @@ Erlaubt sind nur Felder, Listen und Bedingungen, dazu Vergleiche (`{% if betrag 
 `-`, `~` zum Verketten und die Filter `default`, `upper`, `lower`, `title`, `capitalize`, `trim`,
 `round`, `int`, `float`, `abs`, `join`, `length`, `count`, `first` und `last` mit festen Werten als
 Argument, etwa `{{ name|default('unbekannt') }}`. Funktionsaufrufe, `set`, `macro`, andere Filter
-und Ähnliches lehnt OPAA beim Hochladen ab, damit jeder Wert als Text im Dokument landet.
+und Ähnliches lehnt opaa beim Hochladen ab, damit jeder Wert als Text im Dokument landet.
 
 Eine Liste wiederholt ihren Teil für jeden Eintrag; soll sie eine Tabellenzeile wiederholen, steht
 `{%tr for … %}` in der ersten und `{%tr endfor %}` in einer eigenen Zeile darunter. Ein `-` am Rand
@@ -47,7 +47,7 @@ Ein Agent nutzt nur Vorlagen, die ihm zugeordnet sind ([Agent anlegen](agent-anl
 Vorlage kann mehreren Agenten dienen. Mit dem Werkzeug „Vorlage ausfüllen“ bekommt er in jedem Lauf
 seine Vorlagen, die die fragende Person lesen darf, mit ihren Platzhaltern angeboten; ohne
 zugeordnete Vorlage fehlt das Werkzeug. Das Modell liefert nur die Werte, etwa Aktenzeichen und
-Maßnahmen aus den gefundenen Belegen. OPAA füllt die Vorlage damit in der
+Maßnahmen aus den gefundenen Belegen. opaa füllt die Vorlage damit in der
 [Sandbox](../betrieb/sandbox.md) und hängt das Ergebnis als Word-Datei und PDF an die Antwort; die
 Schritte der Antwort zeigen „Vorlage“ mit Vorlage und Dateien. Liefert das Modell einen Wert nicht,
 bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste hat keine Einträge, und eine
@@ -72,7 +72,7 @@ Leserecht, nicht zugeordnet) oder Sandbox antwortet der Agent ohne Datei im Chat
 
 **Gut zu wissen:**
 
-- OPAA führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
+- opaa führt nichts aus der Datei aus. Ausgefüllt wird sie erst, wenn ein Agent sie nutzt, in
   einer abgeschotteten Umgebung; Werte aus dem Chat landen dort immer als Text, nie als Befehl.
 - Eine ersetzte Datei wird wie beim Anlegen geprüft, die Platzhalter werden neu gelesen, und die
   Vorlage bekommt eine neue Fassung; eine Agentenantwort nennt die Fassung, die sie ausgefüllt hat.

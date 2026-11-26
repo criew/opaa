@@ -54,8 +54,8 @@ nichts gebaut. Backend, Frontend und das Texterkennungs-Image laufen immer mit *
 
 ### Installation ohne Internetzugang
 
-Erreicht das Netz der Installation GHCR nicht, kommt OPAA über das Offline-Bündel hinein. Es
-enthält alles von OPAA selbst und lässt sich hinter der Schleuse ohne Netz prüfen.
+Erreicht das Netz der Installation GHCR nicht, kommt opaa über das Offline-Bündel hinein. Es
+enthält alles von opaa selbst und lässt sich hinter der Schleuse ohne Netz prüfen.
 
 | Im Bündel | Inhalt |
 |---|---|
@@ -162,7 +162,7 @@ Java 21 auf einem Distroless-Image, ohne Shell, Coreutils, `curl` und Paketmanag
 - **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`. Nur eine Option, die schon vor der Anwendung einen
   Hostnamen auflöst, verhindert den Start: JMX-Remote (`-Dcom.sun.management.jmxremote.*`),
   `-Djdk.net.hosts.file` und ein `-javaagent`, der beim Laden Namen auflöst. Speicheroptionen und JFR
-  sind unschädlich. OPAA muss die Namensauflösung der JVM selbst übernehmen, um geprüfte Ziele zu
+  sind unschädlich. opaa muss die Namensauflösung der JVM selbst übernehmen, um geprüfte Ziele zu
   binden ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)); die Meldung beim
   Abbruch nennt diese Ursache.
 

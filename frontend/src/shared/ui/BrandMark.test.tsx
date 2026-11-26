@@ -18,11 +18,11 @@ describe('BrandMark', () => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
   })
 
-  it('renders the OPAA wordmark, named for screen readers, without the claim by default', () => {
+  it('renders the opaa wordmark, named for screen readers, without the claim by default', () => {
     renderMark()
 
-    expect(screen.getByRole('img', { name: 'OPAA' })).toBeInTheDocument()
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'opaa' })).toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
     expect(
       screen.queryByText('opaa weiß, was war, und hilft bei dem, was kommt.'),
     ).not.toBeInTheDocument()
@@ -43,7 +43,7 @@ describe('BrandMark', () => {
     renderMark()
 
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
     // The name sits right next to the logo, so the image stays decorative (WCAG 1.1.1).
     expect(document.querySelector('img[alt=""]')).toHaveAttribute(
       'src',
@@ -128,7 +128,7 @@ describe('BrandMark', () => {
   it('renders the standard wordmark decorative and rail-wide in logoOnly mode (#786)', () => {
     renderMark(<BrandMark logoOnly />)
 
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     const svg = document.querySelector('svg')
     expect(svg).toHaveAttribute('viewBox', `0 0 ${WORDMARK.width} ${WORDMARK.height}`)
@@ -143,7 +143,7 @@ describe('BrandMark', () => {
     const { container } = renderMark()
 
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'OPAA' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'opaa' })).not.toBeInTheDocument()
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
@@ -165,7 +165,7 @@ describe('BrandMark', () => {
   it('draws the standard wordmark without a tagline at every size', () => {
     renderMark(<BrandMark logoHeight={96} />)
 
-    expect(screen.getByRole('img', { name: 'OPAA' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'opaa' })).toHaveAttribute(
       'viewBox',
       `0 0 ${WORDMARK.width} ${WORDMARK.height}`,
     )

@@ -50,14 +50,14 @@ export function groupOriginExplanation(group: GroupListResponse): string | null 
       ? `, zurzeit ${intervalText(provider.directorySyncIntervalMinutes)}`
       : ''
     return (
-      `OPAA liest Gruppen und Mitglieder von ${name} selbst aus${rhythm}. Änderungen dort gelten ` +
+      `opaa liest Gruppen und Mitglieder von ${name} selbst aus${rhythm}. Änderungen dort gelten ` +
       'hier nach dem nächsten Abgleich, auch für Personen, die sich nicht anmelden.'
     )
   }
   return (
-    'OPAA erfährt die Mitglieder dieser Gruppe nur bei der Anmeldung: Meldet sich jemand über ' +
+    'opaa erfährt die Mitglieder dieser Gruppe nur bei der Anmeldung: Meldet sich jemand über ' +
     `${name} an, teilt der Anbieter mit, in welchen Gruppen die Person ist. Ändert sich dort etwas, ` +
-    'sieht OPAA das erst bei der nächsten Anmeldung dieser Person.'
+    'sieht opaa das erst bei der nächsten Anmeldung dieser Person.'
   )
 }
 

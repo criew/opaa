@@ -33,7 +33,7 @@ public class PgVectorVersionGuard implements ApplicationRunner {
       return;
     }
     throw new IllegalStateException(
-        ("The installed pgvector extension has version %s, but OPAA needs %d.%d.0 or later for its"
+        ("The installed pgvector extension has version %s, but opaa needs %d.%d.0 or later for its"
                 + " vector search (hnsw.iterative_scan). Install a newer pgvector and run ALTER"
                 + " EXTENSION vector UPDATE.")
             .formatted(versions.get(0), MINIMUM_MAJOR, MINIMUM_MINOR));

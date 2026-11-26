@@ -9,7 +9,7 @@ describe('BrandingPreview', () => {
   // that screen readers cannot see. inert removes the subtree from the tab order.
   it('keeps the aria-hidden preview out of the tab order via inert', () => {
     const { container } = renderWithProviders(
-      <BrandingPreview mode="light" productName="OPAA" claim="Testclaim" primaryColor="#1976d2" />,
+      <BrandingPreview mode="light" productName="opaa" claim="Testclaim" primaryColor="#1976d2" />,
     )
 
     const preview = container.querySelector('[aria-hidden="true"]')

@@ -19,7 +19,7 @@ wird und wie es um Datenschutz, Sicherheit, Barrierefreiheit und digitale Souver
 Antworten unten sind kurz und verweisen auf den Nachweis. Werte wie Fristen oder Datenflüsse stehen
 nur in den Faktenblättern der jeweiligen Version.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 **Funktion**
 
@@ -28,7 +28,7 @@ nur in den Faktenblättern der jeweiligen Version.
 | Was leistet die Software? | beantwortet Fragen aus Dokumenten der Behörde mit Fundstellen | [Belege](../../handbuch/referenz/wie-die-suche-arbeitet.md#belege-prüfen) |
 | Welche Quellen und Formate? | Dateiablagen, Confluence, Objektspeicher, Feeds und weitere; Upload | [Konnektoren](../../handbuch/benutzer/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/referenz/formate/README.md#zugelassene-formate) |
 | Werden Scans durchsuchbar? | ja, mit einer Texterkennung im eigenen Haus (ab Werk aus); der erkannte Text wird als solcher gekennzeichnet, das Original bleibt maßgeblich | [Texterkennung einschalten](../../handbuch/betrieb/modell-endpunkte.md#texterkennung-einschalten), [PDF](../../handbuch/referenz/formate/pdf.md#5-scans-und-fehler) |
-| Werden Rechte der Quelle übernommen? | nein; Leserechte werden in OPAA je Bibliothek vergeben und in jeder Suche geprüft | [Berechtigungen](../../handbuch/referenz/glossar.md) |
+| Werden Rechte der Quelle übernommen? | nein; Leserechte werden in opaa je Bibliothek vergeben und in jeder Suche geprüft | [Berechtigungen](../../handbuch/referenz/glossar.md) |
 | Spracheingabe? | ja, mit eigenem Transkriptionsdienst | [Spracheingabe](../../handbuch/betrieb/modell-endpunkte.md#spracheingabe-einschalten) |
 
 **Betrieb und Schnittstellen**

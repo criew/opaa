@@ -1,6 +1,6 @@
 # Register: Prozesslokaler Zustand (ADR-0053)
 
-OPAA läuft mit einer oder mehreren gleichrangigen Backend-Instanzen gegen eine Datenbank
+opaa läuft mit einer oder mehreren gleichrangigen Backend-Instanzen gegen eine Datenbank
 ([ADR-0053](../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)). Dieses Register führt jede
 Stelle, die Zustand im Prozess hält, mit ihrer Einordnung nach ADR-0053, Entscheidung 16 („E5“ =
 Entscheidung 5):

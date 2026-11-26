@@ -81,7 +81,7 @@ export default function LinkTargetsSection() {
   return (
     <PageSection
       title="Erlaubte Linkziele"
-      description="Links in Antworten und Dokumentvorschau sind nur zu OPAA selbst und zu diesen Zielen klickbar; andere erscheinen als Text, Bilder werden nie geladen."
+      description="Links in Antworten und Dokumentvorschau sind nur zu opaa selbst und zu diesen Zielen klickbar; andere erscheinen als Text, Bilder werden nie geladen."
     >
       {loadError ? (
         <LoadError

@@ -20,7 +20,7 @@ Verfügung.
 
 Die Datei ist JSON, mit Formatname, Formatversion, Zeitpunkt des Exports und je Bereich dessen
 wirksame Werte. Ein leerer Wert (`null`) hat je Angabe seine eigene Bedeutung: Beim Branding gilt
-der OPAA-Standard, beim Speicherkontingent privater Bibliotheken, beim Vollabgleich-Rhythmus, bei den Fristen der Chats
+der opaa-Standard, beim Speicherkontingent privater Bibliotheken, beim Vollabgleich-Rhythmus, bei den Fristen der Chats
 und der anlassbezogenen Klärungen, bei den Schwellen und Fristen der Verbindungen, bei der
 Erinnerung vor Ablauf einer Freigabe, bei der Hervorhebung „lange offen“ und bei der
 Plausibilitätsschwelle die Werkseinstellung, bei einer E-Mail-Vorlage der
@@ -83,7 +83,7 @@ nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
 
 ## Importieren
 
-Nach der Auswahl der Datei prüft OPAA sie gegen diese Installation, ohne etwas zu ändern, und zeigt
+Nach der Auswahl der Datei prüft opaa sie gegen diese Installation, ohne etwas zu ändern, und zeigt
 jede Angabe, die sich ändern würde, mit bisherigem und neuem Wert. Änderungen, die erweitern oder
 umlenken, was die Installation erreicht oder zulässt, oder Nachweise früher löschen, sind als
 „Sicherheitsrelevant“ markiert: Mailserver und Absender, Sperren und „Nur über Zugänge“ (eine
@@ -96,7 +96,7 @@ nutzbar), der Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelös
 auffindbar bleibt) und die Plausibilitätsschwelle des Verzeichnisabgleichs (sie bestimmt, wie
 viele Mitgliedschaften und Konten ein Lauf ohne Bestätigung entzieht). Erst **Übernehmen** ändert
 die Installation, nach einer Rückfrage. Enthält der Import eine sicherheitsrelevante Änderung oder
-ändert er Mailserver, E-Mail-Vorlagen oder die lokale Benutzerverwaltung, fragt OPAA vorher nach einer
+ändert er Mailserver, E-Mail-Vorlagen oder die lokale Benutzerverwaltung, fragt opaa vorher nach einer
 [erneuten Anmeldung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen).
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
@@ -104,7 +104,7 @@ die Installation, nach einer Rückfrage. Enthält der Import eine sicherheitsrel
   Betriebs: Ohne `OPAA_PUBLIC_BASE_URL` lässt sich etwa die Selbstregistrierung auch per Import nicht
   einschalten. Die Datei wird streng gelesen; eine doppelte oder unbekannte Angabe wird abgelehnt.
 - **Das Passwort des Mailservers folgt keinem neuen Ziel.** Ändern sich Server, Port, Zugangsname
-  oder Verschlüsselung, während ein Passwort hinterlegt ist, lehnt OPAA die Änderung ab, beim Import
+  oder Verschlüsselung, während ein Passwort hinterlegt ist, lehnt opaa die Änderung ab, beim Import
   wie im Formular: Das Passwort ist dann im Formular neu einzugeben oder zu leeren.
 - **Alles oder nichts.** Besteht ein Wert die Prüfung nicht, ändert der Import nichts, auch nicht an
   den Bereichen davor. Die Meldung nennt Bereich und Angabe.

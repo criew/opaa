@@ -12,7 +12,7 @@ beschreibt den Dienst dahinter: welchen man nimmt, wie man ihn bemisst und absic
 
 ## Mitgelieferter Dienst oder eigener Endpunkt
 
-OPAA bringt einen eigenen Dienst mit, `opaa-ocr`: docling-serve für die CPU mit der Texterkennung
+opaa bringt einen eigenen Dienst mit, `opaa-ocr`: docling-serve für die CPU mit der Texterkennung
 RapidOCR und deutschen Modellen. Das Image entsteht mit jedem Release wie Backend und Frontend, mit
 SBOM und signierter Provenance ([Images und Laufzeit](images-und-laufzeit.md)).
 
@@ -34,7 +34,7 @@ Der Betriebsschalter `OPAA_OCR_ENABLED` und der Dienst sind getrennt: Das Compos
 Verbindungstyp **docling-serve**, der Adresse und dem Schlüssel: bei der Installation im Schritt
 „Texterkennung“ des Einrichtungs-Assistenten oder im Abschnitt `textRecognitionModel` der
 Antwortdatei ([Installation](installation.md#einrichtungs-assistent-im-browser)), danach von der
-Systemverwaltung unter Modelle → Texterkennung. Den Schlüssel liest OPAA nicht vom Dienst; er wird
+Systemverwaltung unter Modelle → Texterkennung. Den Schlüssel liest opaa nicht vom Dienst; er wird
 dort eingetragen.
 
 | Betriebsweg | Adresse des mitgelieferten Dienstes |
@@ -85,7 +85,7 @@ etwa aus `openssl rand -hex 32`. Ohne ihn bricht Compose ab und der Chart render
 kurzer lässt den Container nicht starten.
 
 Derselbe Wert steht an zwei Stellen: beim Dienst (Compose `OPAA_OCR_API_KEY`, Kubernetes Schlüssel
-`ocr-api-key` im Secret) und in der Modellverwaltung unter Modelle → Texterkennung, wo OPAA ihn
+`ocr-api-key` im Secret) und in der Modellverwaltung unter Modelle → Texterkennung, wo opaa ihn
 verschlüsselt speichert. Ein Schlüsselwechsel ändert beide Stellen nacheinander; dazwischen
 scheitern Aufrufe mit „Schlüssel abgelehnt“, die der nächste Lauf wiederholt. Gesichert wird er
 mit den übrigen [Geheimnissen](sicherung-und-wiederherstellung.md).

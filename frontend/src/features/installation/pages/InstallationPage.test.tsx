@@ -86,7 +86,7 @@ describe('InstallationPage', () => {
     renderPage()
 
     expect(await stepHeading('Installations-Token')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'OPAA einrichten' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'opaa einrichten' })).toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
     // Before the token, the list holds only the token itself and offers nothing to open.
     expect(within(nav).queryByRole('button')).not.toBeInTheDocument()
@@ -1417,7 +1417,7 @@ describe('InstallationPage', () => {
       await openFromStepList(user, 'Virenprüfung')
     }
 
-    it('says OPAA ships no scanner and asks for the host', async () => {
+    it('says opaa ships no scanner and asks for the host', async () => {
       const user = userEvent.setup()
       await openMalwareScanStep(user)
 
@@ -1818,7 +1818,7 @@ describe('InstallationPage', () => {
       await openRerankStep(user)
 
       expect(
-        screen.getByText(/^Basis-Adresse eintragen; dann ruft OPAA die Modelle ab/),
+        screen.getByText(/^Basis-Adresse eintragen; dann ruft opaa die Modelle ab/),
       ).toBeInTheDocument()
       await submitStep(user)
 

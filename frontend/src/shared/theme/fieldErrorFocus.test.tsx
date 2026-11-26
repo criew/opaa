@@ -87,7 +87,7 @@ describe.each([
     render(
       <ThemeProvider theme={createAppTheme(mode)}>
         <CssBaseline />
-        <TextField label="Produktname" defaultValue="OPAA" />
+        <TextField label="Produktname" defaultValue="opaa" />
       </ThemeProvider>,
     )
     await userEvent.tab()

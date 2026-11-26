@@ -6,7 +6,7 @@ import { useBrandingStore } from '../branding/brandingStore'
  * (and for tests asserting the unbranded default) - the hook below reads the configured name
  * from the branding store, so the document title follows the operator's product name.
  */
-export const APP_TITLE = 'OPAA'
+export const APP_TITLE = 'opaa'
 
 /** Sets the document title to "<title> · <Produktname>" so route changes are reflected in the tab and by screen readers. */
 export function usePageTitle(title: string | null | undefined): void {

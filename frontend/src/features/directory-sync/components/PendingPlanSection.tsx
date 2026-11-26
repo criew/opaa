@@ -59,8 +59,8 @@ export default function PendingPlanSection({
       </Typography>
       <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mt: 0.5 }}>
         Erstmals vorgelegt am {formatDateTime(plan.createdAt)}. Der Lauf hätte mehr entzogen oder
-        gesperrt, als OPAA ohne Rückfrage anwendet; bis zu Ihrer Entscheidung gilt der bisherige
-        Stand. Beim Bestätigen liest OPAA das Verzeichnis neu — weicht es ab, wird der Plan neu
+        gesperrt, als opaa ohne Rückfrage anwendet; bis zu Ihrer Entscheidung gilt der bisherige
+        Stand. Beim Bestätigen liest opaa das Verzeichnis neu — weicht es ab, wird der Plan neu
         vorgelegt statt angewendet.
       </Typography>
 

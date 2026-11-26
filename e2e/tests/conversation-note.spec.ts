@@ -180,7 +180,7 @@ test.describe('Gesprächsnotiz im Chat (#1489)', () => {
     await expect(panel.getByRole('listitem')).toHaveText([WORKPLACE_NOTE])
     await expect(
       panel.getByText(
-        'Diese Angaben hat OPAA aus Ihren Nachrichten in diesem Chat festgehalten. Sie fließen in' +
+        'Diese Angaben hat opaa aus Ihren Nachrichten in diesem Chat festgehalten. Sie fließen in' +
           ' die nächsten Antworten ein.',
       ),
     ).toBeVisible()

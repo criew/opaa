@@ -35,7 +35,7 @@ function mountNarrowFrame(params: URLSearchParams): HTMLIFrameElement {
   frameParams.delete(WIDTH_PARAM)
   frameParams.set(FRAME_PARAM, '1')
   const frame = document.createElement('iframe')
-  frame.title = `OPAA bei ${NARROW_WIDTH} px Breite`
+  frame.title = `opaa bei ${NARROW_WIDTH} px Breite`
   frame.src = `${window.location.pathname}?${frameParams}${window.location.hash}`
   Object.assign(frame.style, {
     display: 'block',

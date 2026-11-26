@@ -17,7 +17,7 @@
 | „Teilweise belegt“ | ein Teil ohne Fundstelle oder ein Beleg nicht bestätigt; der Grund steht daneben |
 | „Nicht belegt“ | kein bestätigter Beleg |
 
-OPAA prüft jeden Beleg selbst: Hat die Antwort das Dokument wirklich gesehen, und passen Beträge,
+opaa prüft jeden Beleg selbst: Hat die Antwort das Dokument wirklich gesehen, und passen Beträge,
 Daten und Paragrafen? Was durchfällt, heißt **„Beleg nicht bestätigt“** und trägt ein Warnsymbol.
 
 Die Antwort eines Agenten trägt zusätzlich die Kennzeichnung „Entwurf“ und einen Stempel mit
