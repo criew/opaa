@@ -3,7 +3,6 @@ import { alpha, decomposeColor, getContrastRatio } from '@mui/material/styles'
 import { createAppTheme, createRailTheme } from './theme'
 import {
   blue,
-  carbon,
   controlHeight,
   darkRoles,
   fontSize,
@@ -40,7 +39,7 @@ describe('tokens', () => {
     expect(darkRoles.accentSurface).toBe(blue[700])
   })
 
-  // White on blue[500] only reached 3.3:1 - every filled action surface and every
+  // White on blue[500] only reaches 3.07:1 - every filled action surface and every
   // accent-as-text combination is proven here, so the guidelines' 2.4 claim and the tokens
   // cannot drift apart again.
   test('accentFg reaches 4.5:1 on the accent surface of every role set (#634)', () => {
@@ -79,7 +78,7 @@ describe('tokens', () => {
 
   // The Wissensbibliotheken table's column head ("Stand") and secondary description text
   // both render in fg-3; axe-core flags 3.68:1 against white as soon as the table has a row.
-  // gray[400] reaches only 3.69/3.47/3.28:1 against bg1/bg2/bg3 - all below the 4.5:1 WCAG AA
+  // gray[400] reaches only 3.73/3.51/3.35:1 against bg1/bg2/bg3 - all below the 4.5:1 WCAG AA
   // floor; fg-3 as gray[500] holds for every surface that uses the role, not just this one table.
   test('fg-3 meets the 4.5:1 text contrast floor against every light-scheme surface (#725)', () => {
     const backgrounds: Array<[string, string]> = [
@@ -95,18 +94,18 @@ describe('tokens', () => {
     }
   })
 
-  // fg-3 ('#7A8BA0') only clears 4.5:1 against bg1 in both sets (verified: Sidebar.tsx/
+  // fg-3 ('#A3A5B8') clears 4.5:1 against bg1 and bg2 of both sets, not the navy bg3 (verified: Sidebar.tsx/
   // GlobalRail.tsx never render fg-3 text on bg2/bg3, see guidelines.md 2.2). The bg2/bg3
   // ratios are pinned too, not asserted against the floor - a token edit that silently pushes
   // one of them past 4.5:1 must re-open the verification, not slip through as a green diff.
   test('fg-3 in navy/rail is pinned to its known bg1/bg2/bg3 ratios (#853)', () => {
     const cases: Array<[string, string, string, number]> = [
-      ['navy fg-3 vs bg1', navyRoles.fg3, navyRoles.bg1, 4.65],
-      ['navy fg-3 vs bg2', navyRoles.fg3, navyRoles.bg2, 3.8],
-      ['navy fg-3 vs bg3', navyRoles.fg3, navyRoles.bg3, 2.99],
-      ['rail fg-3 vs bg1', railRoles.fg3, railRoles.bg1, 5.26],
-      ['rail fg-3 vs bg2', railRoles.fg3, railRoles.bg2, 4.65],
-      ['rail fg-3 vs bg3', railRoles.fg3, railRoles.bg3, 3.8],
+      ['navy fg-3 vs bg1', navyRoles.fg3, navyRoles.bg1, 5.72],
+      ['navy fg-3 vs bg2', navyRoles.fg3, navyRoles.bg2, 4.92],
+      ['navy fg-3 vs bg3', navyRoles.fg3, navyRoles.bg3, 3.94],
+      ['rail fg-3 vs bg1', railRoles.fg3, railRoles.bg1, 6.61],
+      ['rail fg-3 vs bg2', railRoles.fg3, railRoles.bg2, 5.72],
+      ['rail fg-3 vs bg3', railRoles.fg3, railRoles.bg3, 4.92],
     ]
 
     for (const [label, foreground, background, expected] of cases) {
@@ -219,11 +218,11 @@ describe('createAppTheme', () => {
     expect(theme.palette.error.main).toBe(lightRoles.danger)
   })
 
-  // The scrim behind a dialog or the Belegfenster takes the scheme's own ground: the dark scheme
-  // is neutral carbon, and a navy scrim over it read as a blue cast.
+  // The scrim behind a dialog or the Belegfenster takes the scheme's own tone: navy-900 over the
+  // light ground, the deeper navy-950 over the dark one.
   test.each([
     ['light', alpha(navy[900], 0.42)],
-    ['dark', alpha(carbon[950], 0.72)],
+    ['dark', alpha(navy[950], 0.72)],
   ] as const)('the %s scheme dims behind a floating layer in its own tone', (mode, scrim) => {
     const theme = createAppTheme(mode)
     const backdrop = theme.components?.MuiBackdrop?.styleOverrides?.root as Record<
@@ -237,10 +236,10 @@ describe('createAppTheme', () => {
     expect(theme.palette.background.scrim).toBe(scrim)
   })
 
-  test('dark scheme maps the neutral carbon roles onto the MUI palette (#654)', () => {
+  test('dark scheme maps the Dunkelblau roles onto the MUI palette (#654)', () => {
     const theme = createAppTheme('dark')
 
-    expect(theme.palette.background.default).toBe(carbon[950])
+    expect(theme.palette.background.default).toBe(navy[950])
     expect(theme.palette.text.primary).toBe(darkRoles.fg1)
     expect(theme.palette.text.secondary).toBe(darkRoles.fg2)
     expect(theme.palette.primary.main).toBe(blue[500])
@@ -280,7 +279,7 @@ describe('createAppTheme', () => {
   // A light branding colour cannot carry white button text; the filled surface derives
   // as its bounded darkening while the accent itself stays the configured colour.
   // Regression guard for #634: the app always passes branding.primaryColor,
-  // and an unconfigured deployment gets the OPAA standard '#1292EE' from the backend's
+  // and an unconfigured deployment gets the OPAA standard blue-700 from the backend's
   // field-wise fallback - that must behave exactly like no branding, or the per-scheme accent
   // split never takes effect anywhere.
   test('the OPAA standard colour behaves like no branding at all (#634)', () => {
@@ -292,7 +291,7 @@ describe('createAppTheme', () => {
   })
 
   test('the OPAA standard branding colour and the token accent are the same value', () => {
-    expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[500].toUpperCase())
+    expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[700].toUpperCase())
   })
 
   test('a light branding colour gets a darkened action surface (#634)', () => {

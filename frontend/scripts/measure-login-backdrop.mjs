@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 /** navyRoles.bg1 in src/shared/theme/tokens.ts; the test asserts the two still agree. */
-const GROUND = [0x01, 0x21, 0x42]
+const GROUND = [0x24, 0x28, 0x55]
 const WHITE = [255, 255, 255]
 /** LOGIN_CLAIM_OPACITY in AuthLayout.tsx; the test asserts the two still agree. */
 const CLAIM_OPACITY = 0.78

@@ -39,7 +39,7 @@ const DEFAULT_LOGIN_BACKDROP_URL = bundledBackdropUrl
  * pixel the shipped file actually contains (measured by scripts/measure-login-backdrop.mjs and
  * pinned to the file's checksum) — which is what allows a lighter scrim than over uploads.
  */
-export const LOGIN_BACKDROP_DEFAULT_SCRIM_OPACITY = 0.56
+export const LOGIN_BACKDROP_DEFAULT_SCRIM_OPACITY = 0.62
 
 /**
  * Opacity of the claim on the brand area — the weaker of the two texts there and thus the

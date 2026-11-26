@@ -32,7 +32,7 @@ class EmailLayoutBuilderTest {
   void showsTheLinkAsAButtonAndAsPlainTextSoAStrippedButtonIsNotTheEndOfTheRoad() {
     String html =
         builder.wrap(
-            "OPAA", "#1292EE", "x", "<p>y</p>", "https://opaa.example.org/a?token=T", "Los");
+            "OPAA", "#0055A4", "x", "<p>y</p>", "https://opaa.example.org/a?token=T", "Los");
 
     assertThat(html).contains("Los");
     assertThat(html)
@@ -43,7 +43,7 @@ class EmailLayoutBuilderTest {
 
   @Test
   void rendersNoButtonWhenThereIsNoLink() {
-    String html = builder.wrap("OPAA", "#1292EE", "x", "<p>y</p>", null, null);
+    String html = builder.wrap("OPAA", "#0055A4", "x", "<p>y</p>", null, null);
 
     assertThat(html).doesNotContain("Falls die Schaltfläche nicht funktioniert");
   }
@@ -53,7 +53,7 @@ class EmailLayoutBuilderTest {
     String html =
         builder.wrap(
             "<script>alert(1)</script>",
-            "#1292EE",
+            "#0055A4",
             "\"quote\" & <b>",
             "<p>bereits geprüfter Inhalt</p>",
             null,
@@ -66,7 +66,7 @@ class EmailLayoutBuilderTest {
 
   @Test
   void declaresALightColourSchemeSoNoClientInvertsItIntoUnreadability() {
-    String html = builder.wrap("OPAA", "#1292EE", "x", "<p>y</p>", null, null);
+    String html = builder.wrap("OPAA", "#0055A4", "x", "<p>y</p>", null, null);
 
     assertThat(html).contains("<!DOCTYPE html>").contains("color-scheme").contains("light only");
     assertThat(html).contains("lang=\"de\"");

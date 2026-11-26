@@ -43,7 +43,7 @@ export const OPAA_BRANDING: BrandingResponse = {
   claim: 'Fragen. Belegen. Entscheiden.',
   aiNotice: AI_NOTICE_DEFAULT,
   aiNoticeDefault: AI_NOTICE_DEFAULT,
-  primaryColor: '#1292EE',
+  primaryColor: '#0055A4',
 }
 
 interface BrandingState {

@@ -25,7 +25,7 @@ import bundledBackdropInline from '../assets/login-backdrop.webp?inline'
 const BUNDLED_BACKDROP = {
   sha256: 'c7b2110edaeaf0dcf6872af1f221374986366c4ca7050b92f4021ac8da180496',
   /** The script's own constants; the proof below only holds while they match the theme. */
-  measuredAgainst: { ground: '#012142', claimOpacity: 0.78 },
+  measuredAgainst: { ground: '#242855', claimOpacity: 0.78 },
   worstPixel: '#ADB295',
 }
 

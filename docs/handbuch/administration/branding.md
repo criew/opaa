@@ -70,6 +70,15 @@ Standard zurücksetzen**. Wird der Standardtext unverändert gespeichert, bleibt
 „Standard" und folgt einer späteren Änderung des Standards. Der Text ist wie die anderen Felder ohne
 Anmeldung lesbar und steht im Nachweisprotokoll, wenn er sich ändert.
 
+## Akzentfarbe
+
+Die Akzentfarbe färbt Schaltflächen, Links, Fußnotenziffern und Fundstellen. Ohne eigene Farbe gilt
+das Mittelblau `#0055A4` des OPAA-Standards; im dunklen Farbschema zeigt OPAA Links und Ziffern dann
+in Hellblau `#009DDB`. Eine eigene Farbe wird als sechsstelliger Hex-Wert mit `#` eingetragen. Ist sie
+für weiße Schrift auf Schaltflächen zu hell oder als Text auf einer Fläche zu schwach, dunkelt oder
+hellt OPAA sie so weit ab, wie der Kontrast es verlangt. Reicht auch das nicht, warnt die Verwaltung,
+sperrt aber nicht.
+
 ## Die drei Bilder
 
 | Feld | Wo es erscheint | Grenzen |

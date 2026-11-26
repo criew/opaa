@@ -13,7 +13,7 @@ Quelle der Wahrheit für das OPAA-UI-Design sind die **Design-Guidelines**. Die 
 
 ## Designsystem in Kürze
 
-- **Farben:** Blau `#1292EE` auf Navy `#012142` und Weiß; helles und dunkles Schema gleichrangig
+- **Farben:** aus dem Markenkonzept: Dunkelblau `#242855`, Mittelblau `#0055A4` als Aktionsfarbe, Hellblau `#009DDB` als Akzent, dazu Weiß; helles und dunkles Schema (auf Dunkelblau) gleichrangig
 - **Schrift:** Quicksand mit Inter als Rückfall (Sklow ist Firmenschrift ohne freie Lizenz und bleibt außerhalb des Repos)
 - **Flächen:** flach, 1-px-Rahmen statt Schatten, 10-px-Standardradius
 - **Branding:** Produktname, Logo und Akzentfarbe sind Betreiber-Konfiguration, nicht Code

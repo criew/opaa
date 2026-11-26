@@ -61,7 +61,7 @@ class BrandingSettingsRulesTest {
             "Der Claim darf keine Steuerzeichen und keinen Zeilenumbruch enthalten",
             "Der Hinweis zur KI-Nutzung darf keine Steuerzeichen und keinen Zeilenumbruch enthalten",
             "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
-                + " #1292EE");
+                + " #0055A4");
   }
 
   @Test

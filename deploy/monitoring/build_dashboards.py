@@ -27,7 +27,7 @@ KSEL = 'namespace=~"$namespace"'
 
 # Light-scheme status colours of the design guidelines; white text reaches at least 4.5:1 on each.
 OK, WARN, CRIT, GREY = "#11774F", "#8F5A00", "#CE2C31", "#5A6270"
-NAVY, BLUE = "#012142", "#0B6FBC"
+NAVY, BLUE = "#242855", "#0055A4"
 # Marker of the rule groups behind a tile, read by templates/grafana-dashboards.yaml.
 GROUP_MARK = "# opaa-alert-groups: "
 # Rule groups (metrics.prometheusRule.groups) whose alerts alone colour a tile; tiles with a

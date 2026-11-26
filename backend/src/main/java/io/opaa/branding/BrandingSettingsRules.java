@@ -43,7 +43,7 @@ public final class BrandingSettingsRules {
 
   static final String COLOR_INVALID =
       "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
-          + " #1292EE";
+          + " #0055A4";
 
   private BrandingSettingsRules() {}
 

@@ -87,7 +87,7 @@ describe('LoginPage', () => {
         claim: 'Kurz und klar',
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
-        primaryColor: '#0B6FBC',
+        primaryColor: '#1A5FA0',
         logoUrl: '/api/v1/branding/logo?v=abc123',
       },
     })

@@ -13,8 +13,8 @@ import { darkRoles } from '../theme/tokens'
 
 describe('parseHexColor', () => {
   it('accepts six-digit hex in either case', () => {
-    expect(parseHexColor('#1292EE')).toEqual([0x12, 0x92, 0xee])
-    expect(parseHexColor('#1292ee')).toEqual([0x12, 0x92, 0xee])
+    expect(parseHexColor('#009DDB')).toEqual([0x00, 0x9d, 0xdb])
+    expect(parseHexColor('#009ddb')).toEqual([0x00, 0x9d, 0xdb])
     expect(parseHexColor('  #FFFFFF  ')).toEqual([255, 255, 255])
   })
 
@@ -30,12 +30,12 @@ describe('contrastRatio', () => {
   // The two anchors of the WCAG scale - if these drift, the luminance arithmetic is wrong.
   it('is 21:1 for black on white and 1:1 for a colour against itself', () => {
     expect(contrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 5)
-    expect(contrastRatio('#1292EE', '#1292EE')).toBeCloseTo(1, 5)
+    expect(contrastRatio('#009DDB', '#009DDB')).toBeCloseTo(1, 5)
   })
 
   it('is symmetric', () => {
-    expect(contrastRatio('#1292EE', '#FFFFFF')).toBeCloseTo(
-      contrastRatio('#FFFFFF', '#1292EE') as number,
+    expect(contrastRatio('#009DDB', '#FFFFFF')).toBeCloseTo(
+      contrastRatio('#FFFFFF', '#009DDB') as number,
       10,
     )
   })
@@ -88,17 +88,17 @@ describe('checkAccentContrast', () => {
   it('reports all three comparisons for a usable accent', () => {
     // The window is narrow, and that is the finding rather than a quirk of this test: white button
     // text wants a dark accent (>= 4,5:1), while the same accent has to stay visible against the
-    // dark scheme's navy surface (>= 3:1). #0B6FBC (blue-700 of the token scale) is inside it at
-    // 5,2 / 5,2 / 3,1.
-    const checks = checkAccentContrast('#0B6FBC')
+    // dark scheme's navy surface. #0055A4 (blue-700 of the token scale) carries white text at
+    // 7,4:1 and is lightened as text on the dark ground.
+    const checks = checkAccentContrast('#0055A4')
 
     expect(checks).toHaveLength(3)
     expect(checks.every((c) => c.passes)).toBe(true)
   })
 
   /**
-   * White on the raw standard accent (blue-500) reaches only 3,3:1, but filled surfaces render on
-   * the derived accent surface - so the button-label check evaluates that surface and passes.
+   * The OPAA standard accent (blue-700) carries white text itself; the dark-scheme text check
+   * evaluates its lightened derivation and passes as well.
    */
   it('passes the button-label check for the OPAA standard accent via the derived surface', () => {
     const checks = checkAccentContrast(OPAA_BRANDING.primaryColor)
@@ -129,10 +129,10 @@ describe('formatContrastRatio', () => {
 
 describe('deriveAccentText', () => {
   const HELLE_GRUENDE = ['#FFFFFF', '#F7F8FA', '#EFF1F4']
-  const DUNKLE_GRUENDE = ['#09090B', '#18181B', '#27272A']
+  const DUNKLE_GRUENDE = ['#151731', '#1B1E40', '#242855']
 
   it('keeps a colour that already reads on every ground of its scheme', () => {
-    expect(deriveAccentText('#0B6FBC', HELLE_GRUENDE)).toBe('#0B6FBC')
+    expect(deriveAccentText('#0055A4', HELLE_GRUENDE)).toBe('#0055A4')
   })
 
   it('lightens a dark colour until it reads on a dark ground', () => {
@@ -182,7 +182,7 @@ describe('deriveAccentText', () => {
 
 describe('deriveAccentSurface', () => {
   it('keeps a colour that already carries white text', () => {
-    expect(deriveAccentSurface('#0B6FBC')).toBe('#0B6FBC')
+    expect(deriveAccentSurface('#0055A4')).toBe('#0055A4')
   })
 
   it('darkens a light colour until white text reaches 4.5:1', () => {

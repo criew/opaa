@@ -35,7 +35,7 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "enable": true,
-        "iconColor": "#0B6FBC",
+        "iconColor": "#0055A4",
         "name": "Neuer Pod oder Neustart",
         "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",

@@ -35,7 +35,7 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "enable": true,
-        "iconColor": "#0B6FBC",
+        "iconColor": "#0055A4",
         "name": "Neuer Pod oder Neustart",
         "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",
@@ -187,7 +187,7 @@
       "transparent": true,
       "options": {
         "mode": "html",
-        "content": "<div style=\"background:#012142;color:#fff;padding:10px 18px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:16px;height:100%;box-sizing:border-box\"><span style=\"font-size:20px;font-weight:600\">OPAA · Lage</span><span style=\"font-size:13px\">Grün: nichts zu tun · Gelb: Ticket, nächster Arbeitstag · Rot: sofort handeln · Grau: nicht eingerichtet oder wenig Verkehr</span></div>"
+        "content": "<div style=\"background:#242855;color:#fff;padding:10px 18px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:16px;height:100%;box-sizing:border-box\"><span style=\"font-size:20px;font-weight:600\">OPAA · Lage</span><span style=\"font-size:13px\">Grün: nichts zu tun · Gelb: Ticket, nächster Arbeitstag · Rot: sofort handeln · Grau: nicht eingerichtet oder wenig Verkehr</span></div>"
       }
     },
     {
