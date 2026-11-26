@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  */
 public final class CoreMetadataExtractor {
 
-  public static final int EXTRACTION_VERSION = 5;
+  public static final int EXTRACTION_VERSION = 6;
 
   static final String FRONTMATTER_TITLE = "titel";
   static final String FRONTMATTER_DOCUMENT_TYPE = "dokumentart";
@@ -39,14 +39,24 @@ public final class CoreMetadataExtractor {
       Pattern.compile("(?<!\\d)(\\d{4})-(\\d{2})-(\\d{2})(?!\\d)");
   private static final Pattern GERMAN_DATE =
       Pattern.compile("(?<![\\d.])(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})(?![\\d.])");
+
+  /**
+   * A hyphen separates a month or a year from a word ("stand-2026-11", "plan-2024-entwurf"), never
+   * from another number: next to a digit it makes the date part of an Aktenzeichen ("AA-2024-017"),
+   * a version ("1.2-2024") or a range ("2020-2026"), and that yields no date.
+   */
   private static final Pattern ISO_MONTH =
-      Pattern.compile("(?<![\\d-])(\\d{4})-(\\d{2})(?![\\d-])");
+      Pattern.compile("(?<!\\d)(?<!\\d-)(\\d{4})-(\\d{2})(?!\\d)(?!-\\d)");
+
   private static final Pattern GERMAN_MONTH_NAME =
       Pattern.compile(
           "(?i)\\b(januar|februar|märz|maerz|april|mai|juni|juli|august|september|oktober"
               + "|november|dezember)\\s+((?:19|20)\\d{2})\\b");
+
+  /** The hyphen rule of {@link #ISO_MONTH}; a dot next to the year makes it part of a number. */
   private static final Pattern BARE_YEAR =
-      Pattern.compile("(?<![\\d.\\-])((?:19|20)\\d{2})(?![\\d.\\-])");
+      Pattern.compile("(?<![\\d.])(?<![\\d.]-)((?:19|20)\\d{2})(?![\\d.])(?!-[\\d.])");
+
   private static final Pattern ANCHORED_YEAR =
       Pattern.compile(
           "(?i)\\b(?:stand|fassung|ausgabe|vom|version)\\s*:?\\s*((?:19|20)\\d{2})(?![\\d.\\-])");
@@ -118,6 +128,12 @@ public final class CoreMetadataExtractor {
    */
   private static final Map<String, String> DOCUMENT_TYPE_BY_EXTENSION =
       Map.of(".pptx", "PRAESENTATION", ".odp", "PRAESENTATION");
+
+  /**
+   * Formats whose file name is no naming convention for the Dokumentart: a mail's file name is
+   * usually its Betreff, which names what the mail is about ("Entwurf Vertrag"), not what it is.
+   */
+  private static final Set<String> NO_DOCUMENT_TYPE_FROM_FILE_NAME = Set.of(".eml", ".msg");
 
   private static final Pattern EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,5}$");
 
@@ -240,7 +256,9 @@ public final class CoreMetadataExtractor {
     if (declared != null) {
       return vocabulary.resolve(unquote(declared));
     }
-    if (!props.syntheticName()) {
+    if (!props.syntheticName()
+        && (props.formatExtension() == null
+            || !NO_DOCUMENT_TYPE_FROM_FILE_NAME.contains(props.formatExtension()))) {
       Optional<String> fromFileName =
           singleCode(fileNameTokens(fileName), vocabulary::resolveToken);
       if (fromFileName.isPresent()) {

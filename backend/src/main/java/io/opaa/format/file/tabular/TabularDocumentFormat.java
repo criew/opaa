@@ -3,6 +3,7 @@ package io.opaa.format.file.tabular;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
 import io.opaa.format.FormatAdmission;
 import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
@@ -35,11 +36,11 @@ import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,13 +166,17 @@ public class TabularDocumentFormat implements DocumentFormat {
     // format POI can reject outright rather than mis-parse.
     String extension = source.effectiveExtension() == null ? "" : source.effectiveExtension();
     List<Document> chunks;
+    DocumentProperties properties = DocumentProperties.EMPTY;
     try {
-      chunks =
-          switch (extension) {
-            case ".csv" -> readCsv(source);
-            case ".ods" -> readOds(source);
-            default -> readXlsx(source);
-          };
+      switch (extension) {
+        case ".csv" -> chunks = readCsv(source);
+        case ".ods" -> chunks = readOds(source);
+        default -> {
+          XlsxContent xlsx = readXlsx(source);
+          chunks = xlsx.chunks();
+          properties = xlsx.properties();
+        }
+      }
     } catch (IOException e) {
       // Unparsable content (a corrupt workbook, an invalid ZIP, a rejected XXE attempt) is
       // reported as a parse failure by DocumentFormatRunner, for every format alike.
@@ -183,7 +188,30 @@ public class TabularDocumentFormat implements DocumentFormat {
       return DocumentFormatResult.noExtractableText();
     }
     limits.requireTextWithinLimit(chunks, "Tabular document");
-    return DocumentFormatResult.chunked(chunks);
+    return DocumentFormatResult.chunked(chunks).withProperties(properties);
+  }
+
+  /**
+   * An XLSX workbook's OOXML core properties (title, created, modified), read without building a
+   * chunk per row - the Bestandslauf needs no chunk stream. CSV and ODS declare none here.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentFormatSource source) {
+    String extension = source.effectiveExtension() == null ? "" : source.effectiveExtension();
+    if (source.file() == null || extension.equals(".csv") || extension.equals(".ods")) {
+      return DocumentProperties.EMPTY;
+    }
+    try {
+      return OoxmlPackages.read(
+          source.file(), limits, pkg -> coreProperties(new XSSFWorkbook(pkg)));
+    } catch (IOException | RuntimeException e) {
+      log.warn(
+          "Could not read properties of {} via pipeline {}",
+          source.logName(),
+          ID,
+          source.loggedName().of(e));
+      return DocumentProperties.EMPTY;
+    }
   }
 
   // --- CSV ---------------------------------------------------------------------------------
@@ -317,12 +345,12 @@ public class TabularDocumentFormat implements DocumentFormat {
    * against {@link ParserLimitProperties#maxTextCharacters()} row by row, since shared strings let
    * a small sheet repeat one long text in every cell.
    */
-  private List<Document> readXlsx(DocumentFormatSource source) throws IOException {
+  private XlsxContent readXlsx(DocumentFormatSource source) throws IOException {
     if (source.file() == null) {
       // Never actually reached through the registry (an XLSX admission always carries a file, see
       // SupportedDocumentFormats) - defensive rather than a NullPointerException on a future
       // caller that violates that assumption.
-      return List.of();
+      return new XlsxContent(List.of(), DocumentProperties.EMPTY);
     }
     // Instantiated per call, not shared: DataFormatter is not thread-safe, and this pipeline can
     // run several documents concurrently on the indexing thread pool.
@@ -342,12 +370,24 @@ public class TabularDocumentFormat implements DocumentFormat {
           List<Document> chunks = new ArrayList<>();
           long[] characters = {0};
           // released by OoxmlPackages.read, which reverts the read-only package
-          Workbook workbook = new XSSFWorkbook(pkg);
+          XSSFWorkbook workbook = new XSSFWorkbook(pkg);
           for (Sheet sheet : workbook) {
             chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName(), characters));
           }
-          return chunks;
+          return new XlsxContent(chunks, coreProperties(workbook));
         });
+  }
+
+  /** One workbook's reading: its chunks and what its core properties declare (ADR-0024). */
+  private record XlsxContent(List<Document> chunks, DocumentProperties properties) {}
+
+  private static DocumentProperties coreProperties(XSSFWorkbook workbook) {
+    POIXMLProperties.CoreProperties core = workbook.getProperties().getCoreProperties();
+    return DocumentProperties.builder()
+        .title(core.getTitle())
+        .createdAt(DocumentProperties.toLocalDate(core.getCreated()))
+        .modifiedAt(DocumentProperties.toLocalDate(core.getModified()))
+        .build();
   }
 
   private List<Document> readSheet(

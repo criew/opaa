@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -61,6 +62,54 @@ class HtmlDocumentFormatTest {
    * the Dokumentart is read from the title line, and an HTML page has no line breaks of its own -
    * the first text block is that line, the label paragraph below it is not part of it.
    */
+  // regression guard: a page's declared date meta is its document date, the first full day wins
+  @Test
+  void readsTheDeclaredDateMetaAsTheDocumentDate() throws IOException {
+    assertThat(declaredDate("<meta name=\"date\" content=\"2025-06-30\">"))
+        .isEqualTo(LocalDate.of(2025, 6, 30));
+    assertThat(declaredDate("<meta name=\"DC.date\" content=\"2025-06-30T10:15:00+02:00\">"))
+        .isEqualTo(LocalDate.of(2025, 6, 30));
+    assertThat(
+            declaredDate(
+                "<meta name=\"date\" content=\"2020-01-01\">"
+                    + "<meta name=\"dcterms.date\" content=\"2025-06-30\">"))
+        .isEqualTo(LocalDate.of(2025, 6, 30));
+    assertThat(
+            declaredDate(
+                "<meta name=\"dcterms.date\" content=\"Juni 2025\">"
+                    + "<meta name=\"date\" content=\"2025-06-30\">"))
+        .isEqualTo(LocalDate.of(2025, 6, 30));
+  }
+
+  @Test
+  void aMetaDateThatIsNoFullDayIsNotRead() throws IOException {
+    assertThat(declaredDate("<meta name=\"date\" content=\"2025\">")).isNull();
+    assertThat(declaredDate("<meta name=\"date\" content=\"2025-02-30\">")).isNull();
+    assertThat(declaredDate("<meta name=\"description\" content=\"2025-06-30\">")).isNull();
+  }
+
+  @Test
+  void theRunDeclaresTheSameDocumentDateAsTheBackfill() throws IOException {
+    DocumentFormatSource source =
+        sourceFor(
+            "<html><head><title>Seite</title><meta name=\"date\" content=\"2025-06-30\"></head>"
+                + "<body><h1>Seite</h1><p>Text</p></body></html>");
+
+    assertThat(pipeline.run(source).properties().documentDate())
+        .isEqualTo(LocalDate.of(2025, 6, 30));
+    assertThat(pipeline.readProperties(source).documentDate()).isEqualTo(LocalDate.of(2025, 6, 30));
+  }
+
+  private LocalDate declaredDate(String headMeta) throws IOException {
+    return pipeline
+        .readProperties(
+            sourceFor(
+                "<html><head><title>Seite</title>"
+                    + headMeta
+                    + "</head><body><p>Text</p></body></html>"))
+        .documentDate();
+  }
+
   @Test
   void readsTheFirstTextBlockAsTheTitleLine() throws IOException {
     assertThat(pipeline.readProperties(sourceFor(REALISTIC_PAGE)).titleLine())

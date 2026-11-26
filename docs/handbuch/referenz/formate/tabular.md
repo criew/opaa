@@ -72,8 +72,9 @@ Keine Überlappung zwischen Chunks.
 
 Zeilennummern sind 1-basiert wie in der Tabellenkalkulation.
 
-**Dokumenteigenschaften:** keine. Für Tabellen stehen dem Metadatenschema nur Dateiname und
-Struktur zur Verfügung.
+**Dokumenteigenschaften:** Bei XLSX Titel, Erstell- und Änderungsdatum aus den
+Dokumenteigenschaften der Datei (`docProps/core.xml`), wie bei DOCX. CSV und ODS liefern keine; für
+sie stehen dem Metadatenschema nur Dateiname und Struktur zur Verfügung.
 
 ## 5. Fehler
 

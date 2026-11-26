@@ -13,9 +13,14 @@ import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.format.shared.XhtmlEventBuilder;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.springframework.ai.document.Document;
@@ -46,6 +51,15 @@ public class HtmlDocumentFormat implements DocumentFormat {
   private final HeadingSectionSplitter splitter;
 
   private final ParserLimitProperties limits;
+
+  /**
+   * The {@code <meta name>} values that declare the page's own date, most specific first; matched
+   * case-insensitively, since generators write {@code DC.date} and {@code dc.date} alike.
+   */
+  private static final List<String> DATE_META_NAMES = List.of("dcterms.date", "dc.date", "date");
+
+  /** A W3CDTF day ({@code 2026-03-12}, optionally followed by a time) - the notation meta uses. */
+  private static final Pattern W3CDTF_DAY = Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2})(?:$|T)");
 
   public HtmlDocumentFormat(HeadingSectionSplitter splitter) {
     this(splitter, ParserLimitProperties.DEFAULTS);
@@ -116,9 +130,9 @@ public class HtmlDocumentFormat implements DocumentFormat {
   }
 
   /**
-   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the title line of the content - read
-   * from the same boilerplate-stripped view {@link #run} sees, so a navigation label never becomes
-   * a Dokumentart.
+   * The {@code <title>}, the declared date, the first {@code <h1>} (ADR-0024) and the title line of
+   * the content - read from the same boilerplate-stripped view {@link #run} sees, so a navigation
+   * label never becomes a Dokumentart.
    */
   @Override
   public DocumentProperties readProperties(DocumentFormatSource source) {
@@ -170,9 +184,43 @@ public class HtmlDocumentFormat implements DocumentFormat {
     Element h1 = htmlDoc.selectFirst("h1");
     return DocumentProperties.EMPTY
         .withTitle(htmlDoc.title())
+        .withDocumentDate(declaredDate(htmlDoc))
         .withFirstHeading(h1 == null ? null : h1.text())
         .withTitleLine(source.file() == null ? null : titleLine)
         .withHeadText(source.file() == null ? null : headText);
+  }
+
+  /**
+   * The day the first of {@link #DATE_META_NAMES} present declares, or {@code null} - a value that
+   * is no full W3CDTF day (a bare year, free text) is not read, never guessed.
+   */
+  static LocalDate declaredDate(org.jsoup.nodes.Document htmlDoc) {
+    for (String name : DATE_META_NAMES) {
+      for (Element meta : htmlDoc.select("meta[name][content]")) {
+        if (meta.attr("name").strip().toLowerCase(Locale.ROOT).equals(name)) {
+          LocalDate date = w3cdtfDay(meta.attr("content").strip());
+          if (date != null) {
+            return date;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  private static LocalDate w3cdtfDay(String value) {
+    Matcher matcher = W3CDTF_DAY.matcher(value);
+    if (!matcher.find()) {
+      return null;
+    }
+    try {
+      return LocalDate.of(
+          Integer.parseInt(matcher.group(1)),
+          Integer.parseInt(matcher.group(2)),
+          Integer.parseInt(matcher.group(3)));
+    } catch (DateTimeException e) {
+      return null;
+    }
   }
 
   private static org.jsoup.nodes.Document parse(DocumentFormatSource source) {
