@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
@@ -20,10 +21,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -264,6 +267,41 @@ class TabularDocumentFormatTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks().getFirst().getText()).contains("Blatt: Bericht");
+  }
+
+  // regression guard: an XLSX workbook declares title and dates in docProps/core.xml like DOCX
+  @Test
+  void anXlsxWorkbookDeclaresTitleAndDatesOfItsCoreProperties() throws Exception {
+    Path file = tempDir.resolve("tabelle.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      writeRow(workbook.createSheet("Daten"), 0, "Posten", "Betrag");
+      POIXMLProperties.CoreProperties core = workbook.getProperties().getCoreProperties();
+      core.setTitle("Finanzplanung der Jahre 2025 bis 2028");
+      core.setCreated("2024-02-01T09:00:00Z");
+      core.setModified("2024-03-15T16:30:00Z");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+    DocumentFormatSource source = DocumentFormatSource.ofFile(file, "tabelle.xlsx");
+
+    DocumentProperties fromRun = pipeline.run(source).properties();
+    DocumentProperties fromBackfill = pipeline.readProperties(source);
+
+    for (DocumentProperties properties : List.of(fromRun, fromBackfill)) {
+      assertThat(properties.title()).isEqualTo("Finanzplanung der Jahre 2025 bis 2028");
+      assertThat(properties.createdAt()).isEqualTo(LocalDate.of(2024, 2, 1));
+      assertThat(properties.modifiedAt()).isEqualTo(LocalDate.of(2024, 3, 15));
+    }
+  }
+
+  @Test
+  void aCsvFileDeclaresNoProperties() throws IOException {
+    Path file = tempDir.resolve("tabelle.csv");
+    Files.writeString(file, "Posten,Betrag\nStraßenbau,1240\n");
+
+    assertThat(pipeline.readProperties(DocumentFormatSource.ofFile(file, "tabelle.csv")))
+        .isEqualTo(DocumentProperties.EMPTY);
   }
 
   private static void writeRow(Sheet sheet, int rowIndex, String... values) {
