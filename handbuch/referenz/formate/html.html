@@ -4451,8 +4451,11 @@ ohne Pfad.</p>
 </table>
 <p>Der Abschnittspfad steht zusätzlich als erste Zeile im Chunk-Text.</p>
 <p><strong>Dokumenteigenschaften:</strong> <code>&lt;title&gt;</code>, die erste <code>&lt;h1&gt;</code> und bei Dateien die erste Textzeile des
-Inhalts als Titelzeile. Bei einer Feed-Detailseite wird keine Titelzeile gelesen: Eine Meldung
-benennt andere Dokumente als sich selbst und würde sonst deren Dokumentart erben.</p>
+Inhalts als Titelzeile. Ein <code>&lt;meta name="dcterms.date"&gt;</code>, <code>DC.date</code> oder <code>date</code> mit einem vollen
+Tag (<code>2025-06-30</code>, auch mit Uhrzeit) ist das Dokumentdatum der Seite; es geht Überschrift, Text und
+Dateiname vor. Ein Wert ohne Tag („2025“, „Juni 2025“) wird nicht gelesen. Bei einer
+Feed-Detailseite wird keine Titelzeile gelesen: Eine Meldung benennt andere Dokumente als sich
+selbst und würde sonst deren Dokumentart erben.</p>
 <h2 id="5-fehler">5. Fehler<a class="headerlink" href="#5-fehler" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

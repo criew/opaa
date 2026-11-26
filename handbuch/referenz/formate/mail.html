@@ -4528,8 +4528,9 @@ Suchbereich vorkommenden Adressen an; ein Dokument ohne Absender bleibt gefunden
 (Leerwert-Regel). Nach dem Betreff wird nicht gefiltert — er steht im Kopfblock des Chunk-Textes
 und damit in der Volltextsuche.</p>
 <p><strong>Dokumenteigenschaften:</strong> Betreff als Titel, der <code>Date</code>-Kopf als Dokumentdatum mit höchstem
-Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, führt die Fundstelle ihn
-nur einmal.</p>
+Rang für das Metadatenschema. Der Dateiname einer Mail liefert <strong>keine Dokumentart</strong>: Er entsteht
+meist aus dem Betreff und nennt, worum es geht („Entwurf Vertrag“), nicht was die Mail ist. Weil der
+Betreff zugleich der Titel ist, führt die Fundstelle ihn nur einmal.</p>
 <p><strong>Altbestand.</strong> Eine mit einer Pipeline-Version unter 5 indizierte Mail trägt die Kopfdaten noch
 nicht als Schemafelder. Sie kommen mit dem nächsten Lauf über das Dokument: Pipeline-Reindex oder
 Bestandslauf des Metadatenschemas.</p>
