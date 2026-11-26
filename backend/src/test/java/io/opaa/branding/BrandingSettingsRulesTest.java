@@ -36,6 +36,15 @@ class BrandingSettingsRulesTest {
   }
 
   @Test
+  void theStandardClaimFollowsTheDefault() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check("", null, " " + BrandingDefaults.CLAIM + " ", null, null);
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values().claim()).isNull();
+  }
+
+  @Test
   void valuesAreTrimmedAndKept() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(

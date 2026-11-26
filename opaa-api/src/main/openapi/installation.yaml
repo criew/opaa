@@ -987,7 +987,7 @@ components:
           type: string
           nullable: true
           maxLength: 120
-          example: Fragen. Belegen. Entscheiden.
+          example: "opaa weiß, was war, und hilft bei dem, was kommt."
         aiNotice:
           type: string
           nullable: true

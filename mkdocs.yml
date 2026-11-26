@@ -12,7 +12,7 @@ theme:
   name: material
   language: de
   font: false
-  logo: assets/opaa-mark-hell.svg
+  logo: assets/opaa-wortmarke-hell.svg
   favicon: assets/opaa-icon.svg
   features:
     - navigation.sections

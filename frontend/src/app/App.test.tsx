@@ -24,7 +24,7 @@ describe('App', () => {
   it('renders the OPAA branding', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('img', { name: 'OPAA' }).length).toBeGreaterThan(0)
     })
   })
 

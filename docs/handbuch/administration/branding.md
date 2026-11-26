@@ -28,6 +28,9 @@ Einrichtungs-Assistenten, in der Antwortdatei und beim Übertragen von Einstellu
   Satzzeichen und Symbole. Ein Wert nur aus Leerzeichen, geschützten oder unsichtbaren Zeichen
   (etwa geschütztes Leerzeichen, Leerzeichen ohne Breite, Füllzeichen) stellt den OPAA-Standard
   wieder her, statt Fenstertitel oder Anmeldeseite ohne Namen zu lassen.
+- **Der Standard-Claim gilt als leer.** Wer den Claim unverändert speichert, legt keinen eigenen fest:
+  Die Installation zeigt dann immer den aktuellen OPAA-Standard, auch wenn er sich mit einer neuen
+  Version ändert.
 - **Am Anfang und Ende wird still gekürzt.** Leerzeichen, unsichtbare Zeichen und Steuerzeichen wie
   ein Zeilenumbruch an den Rändern werden ohne Meldung entfernt: Aus einem Namen mit Umbruch davor
   und danach wird der Name allein.

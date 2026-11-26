@@ -352,7 +352,7 @@ test.describe('Einrichtungs-Assistent', () => {
       const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
       await expect(signIn).toBeVisible()
       // The skipped branding leaves the OPAA standard on the sign-in page and in the interface.
-      await expect(page.getByText(OPAA_PRODUCT_NAME, { exact: true }).first()).toBeVisible()
+      await expect(page.getByRole('img', { name: OPAA_PRODUCT_NAME, exact: true }).first()).toBeVisible()
       await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
       await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
       await signIn.getByRole('button', { name: 'Anmelden' }).click()

@@ -85,7 +85,7 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('shows the brand emblem without the product name - the rail has no room for text', () => {
+  it('shows the wordmark without the product name as text - the rail has no room for text', () => {
     renderRailAt('/spaces')
 
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()

@@ -22,7 +22,7 @@ public final class BrandingDefaults {
 
   public static final String PRODUCT_NAME = "OPAA";
 
-  public static final String CLAIM = "Fragen. Belegen. Entscheiden.";
+  public static final String CLAIM = "opaa weiß, was war, und hilft bei dem, was kommt.";
 
   /**
    * The notice that tells users the answers come from an AI (Art. 50 KI-VO). It can be replaced but

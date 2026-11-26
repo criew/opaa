@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { ThemeProvider } from '@mui/material/styles'
 import { createAppTheme } from '../theme/theme'
 import BrandMark from './BrandMark'
+import { MARK, WORDMARK } from './brandMarkPaths'
 import { OPAA_BRANDING, useBrandingStore } from '../branding/brandingStore'
 
 const theme = createAppTheme('light')
@@ -17,11 +18,14 @@ describe('BrandMark', () => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
   })
 
-  it('renders the OPAA standard name without the claim by default', () => {
+  it('renders the OPAA wordmark, named for screen readers, without the claim by default', () => {
     renderMark()
 
-    expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.queryByText('Fragen. Belegen. Entscheiden.')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'OPAA' })).toBeInTheDocument()
+    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('opaa weiß, was war, und hilft bei dem, was kommt.'),
+    ).not.toBeInTheDocument()
   })
 
   it('follows a configured branding with name and logo', () => {
@@ -121,29 +125,49 @@ describe('BrandMark', () => {
     expect(document.querySelector('img[alt=""]')).toHaveStyle({ maxWidth: '40px' })
   })
 
-  it('renders the emblem alone in logoOnly mode - the rail tile (#786)', () => {
+  it('renders the standard wordmark decorative and rail-wide in logoOnly mode (#786)', () => {
     renderMark(<BrandMark logoOnly />)
 
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
-    expect(document.querySelector('svg')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    const svg = document.querySelector('svg')
+    expect(svg).toHaveAttribute('viewBox', `0 0 ${WORDMARK.width} ${WORDMARK.height}`)
+    expect(svg).toHaveStyle({ width: '44px' })
   })
 
-  // Two marks on one page (rail and mobile header) must not share a mask id, or the second one
-  // would cut its lines with the first one's mask.
-  it('gives every standard mark its own mask id', () => {
-    renderMark(
-      <>
-        <BrandMark />
-        <BrandMark logoOnly />
-      </>,
-    )
-
-    const ids = Array.from(document.querySelectorAll('mask')).map((m) => m.id)
-    expect(ids).toHaveLength(2)
-    expect(new Set(ids).size).toBe(2)
-    document.querySelectorAll('path[mask]').forEach((path) => {
-      const ref = path.getAttribute('mask')?.match(/^url\(#(.+)\)$/)?.[1]
-      expect(ids).toContain(ref)
+  it('shows the underlined o beside a configured name when no logo is configured', () => {
+    useBrandingStore.setState({
+      branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
     })
+
+    const { container } = renderMark()
+
+    expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'OPAA' })).not.toBeInTheDocument()
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('shows only the decorative underlined o in the rail for a configured name', () => {
+    useBrandingStore.setState({
+      branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
+    })
+    const { container } = renderMark(<BrandMark logoOnly />)
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.queryByText('Landesamt-Assistent')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('svg')).toHaveLength(1)
+    expect(container.querySelector('svg')).toHaveAttribute(
+      'viewBox',
+      `0 0 ${MARK.width} ${MARK.height}`,
+    )
+  })
+
+  it('draws the standard wordmark without a tagline at every size', () => {
+    renderMark(<BrandMark logoHeight={96} />)
+
+    expect(screen.getByRole('img', { name: 'OPAA' })).toHaveAttribute(
+      'viewBox',
+      `0 0 ${WORDMARK.width} ${WORDMARK.height}`,
+    )
   })
 })
