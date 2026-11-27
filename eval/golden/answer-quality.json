@@ -26,9 +26,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -58,9 +58,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -95,9 +95,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -132,9 +132,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -171,9 +171,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -203,9 +203,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -238,9 +238,9 @@
           "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "known_gap",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
         }
       }
     },
@@ -270,9 +270,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -302,9 +302,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -334,9 +334,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -363,9 +363,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -392,9 +392,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -422,9 +422,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -452,9 +452,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -482,9 +482,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -512,9 +512,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -544,9 +544,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -575,9 +575,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -607,9 +607,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -637,9 +637,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -673,9 +673,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -707,9 +707,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -742,9 +742,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -778,9 +778,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -814,9 +814,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -853,9 +853,9 @@
           "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "known_gap",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
         }
       }
     },
@@ -892,9 +892,9 @@
           "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "known_gap",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
         }
       }
     },
@@ -927,9 +927,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -962,9 +962,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -996,9 +996,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -1029,9 +1029,9 @@
           "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "unmeasured",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     }

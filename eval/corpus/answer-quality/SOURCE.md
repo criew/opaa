@@ -81,7 +81,7 @@ beantworten“ oder „keine Angaben“ sagen in einer Antwort mit dem Wert etwa
 | Antwort | Antwortet ein echtes Modell ohne Fehlanzeige und Hinweis, mit der richtigen Bezugsgröße? | derselbe Lauf, ohne `-Dopaa.eval.answerQuality.skipAnswers=true` | ja, plus Modell-Endpunkt |
 
 Der Zustand je Fall und Ebene ist `solved`, `known_gap` oder, solange die Ebene nie gemessen wurde,
-`unmeasured`. Die Ebene `format` lässt `AnswerQualityDatasetTest` in **beide Richtungen** scheitern,
+`unmeasured` (heute trägt ihn keine Ebene mehr). Die Ebene `format` lässt `AnswerQualityDatasetTest` in **beide Richtungen** scheitern,
 wenn der gemessene Zustand vom deklarierten abweicht: Ein Paket, das eine Lücke schließt, stellt
 den Fall dort von `known_gap` auf `solved` um (im Generator, `FORMAT_GAPS`), und das Gegenteil ist
 eine Regression. Die Ebene `context` und die Antworten führen nur Berichte; eine Abweichung steht
@@ -97,10 +97,16 @@ sie ganz; die gefragten Zeilen stehen im zweiten Chunk, mit der Titelzeile als e
 lange Tabelle `aq-13` wiederholt ihren Kopf in allen drei Chunks, die kleine Matrix `aq-12` und die
 DOCX-Tabelle bleiben in einem Chunk.
 
-Ebene `context` und Antworten: in der Umgebung, in der die Domäne entstand, gab es weder Docker noch
-einen Modellschlüssel; alle Fälle tragen deshalb `unmeasured`. Der Erstlauf auf einer Maschine mit
-Docker trägt den Ist-Zustand ein (`./gradlew evaluateAnswerQuality -Dopaa.eval.answerQuality.skipAnswers=true`
-und Eintrag unter `expected_state.context`, danach `python eval/generator/generate_answer_quality_corpus.py`).
+Ebene `context` (Workflow `answer-quality.yml`, `nomic-embed-text:v1.5`, ohne Teilfragen-Zerlegung): Das
+Dokument steht in allen 31 Fällen im Kontext (19 von 19 `false_negative`, 10 von 10 `needless_caveat`,
+11 von 11 `wrong_reference`), und alle 9 Kennungs-Schreibweisen bringen es dorthin. Ein einzelner
+Abschnitt trägt Wert und Bezug in 28 von 31 Fällen (`false_negative` 18 von 19 Messungen, davon
+`aq-fn-07` nein, `needless_caveat` 10 von 10, `wrong_reference` 9 von 11). Die drei `known_gap` sind
+dieselben wie auf der Ebene `format`: Der Tabellenkopf geht über die Titelzeile von `aq-11` verloren,
+bevor die Suche etwas verfehlen kann.
+
+Antworten: nicht gemessen, es gibt keinen Modellschlüssel im Repository; der Lauf mit Modell steht
+als Befehl in `eval/README.md`.
 
 ## Pflege
 
@@ -108,6 +114,6 @@ und Eintrag unter `expected_state.context`, danach `python eval/generator/genera
 python eval/generator/generate_answer_quality_corpus.py
 ```
 
-Der Generator schreibt Korpus, Manifest und Fälle und behält die gemessenen Zustände der Ebene
-`context` aus der bestehenden Datei. Nach einer Korpusänderung ist die Ebene `context` neu zu
-messen.
+Der Generator schreibt Korpus, Manifest und Fälle samt den Zuständen beider Ebenen (`FORMAT_GAPS`,
+`CONTEXT_GAPS`). Nach einer Korpusänderung ist die Ebene `context` neu zu messen (Workflow
+`answer-quality.yml`) und `CONTEXT_GAPS` nachzuführen.

@@ -43,8 +43,12 @@ kein Chat-Modell läuft).
    `documentInContext` und `evidenceInOnePassage` gegenüberstellen. Ein Modell mit Temperatur über 0
    streut: dann dreimal laufen und die Spanne nennen.
 4. Fälle, die dadurch von `known_gap` auf `solved` wechseln, im Generator umstellen
-   (Ebene `format`: `FORMAT_GAPS`; Ebene `context`: `expected_state.context` in der Golden-Datei) und
+   (Ebene `format`: `FORMAT_GAPS`; Ebene `context`: `CONTEXT_GAPS`, beide im Generator) und
    den Generator laufen lassen.
 
 Der Lauf misst nur: Er scheitert an einer verletzten Voraussetzung (Manifest, Indizierung), nie an
 einer Quote. Der Antwortlauf mit Modell hat keinen CI-Job; die Kontextebene läuft als Workflow `answer-quality.yml`.
+
+## Aufgenommene Läufe
+
+- [`2026-11-27-kontext.md`](2026-11-27-kontext.md): Kontextebene, Ausgangswerte (Workflow `answer-quality.yml`, ohne Chat-Modell, ohne Teilfragen-Zerlegung).

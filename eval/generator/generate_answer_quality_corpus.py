@@ -7,8 +7,8 @@ XLSX are written by hand with fixed timestamps, so two runs give byte-identical 
 
     python eval/generator/generate_answer_quality_corpus.py
 
-Python standard library only. The state of the format layer is declared here (FORMAT_GAPS); the
-state of the context layer is measured by the Docker harness and kept from the existing golden file
+Python standard library only. The states of both layers are declared here (FORMAT_GAPS,
+CONTEXT_GAPS); the context states record the last measured run of the Docker harness
 (eval/corpus/answer-quality/SOURCE.md).
 """
 
@@ -787,32 +787,31 @@ FORMAT_GAPS = {
 }
 FORMAT_SOLVED = "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
 
-CONTEXT_UNMEASURED = (
-    "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank "
-    "(./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+# Context layer (Docker harness, ./gradlew evaluateAnswerQuality): state of the first CI run
+# (answer-quality.yml, nomic-embed-text:v1.5, no sub-question decomposition). Every document of all
+# 31 cases and all 9 identifier variants reached the context; three cases carry the table-head gap
+# of the format layer into the context, so no single passage holds value and reference together.
+CONTEXT_GAPS = {
+    case_id: (
+        "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: "
+        "dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
+    )
+    for case_id in FORMAT_GAPS
+}
+CONTEXT_SOLVED = (
+    "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
 )
 
 
-def load_context_states() -> dict[str, dict]:
-    """The context-layer state is measured by the Docker harness and kept across regenerations."""
-    if not GOLDEN_FILE.exists():
-        return {}
-    data = json.loads(GOLDEN_FILE.read_text(encoding="utf-8"))
-    return {
-        c["id"]: c["expected_state"]["context"]
-        for c in data["cases"]
-        if "context" in c.get("expected_state", {})
-    }
-
-
-def states_for(case_id: str, context_states: dict[str, dict]) -> dict:
+def states_for(case_id: str) -> dict:
     if case_id in FORMAT_GAPS:
         fmt = {"state": "known_gap", "since": STATE_DATE, "reason": FORMAT_GAPS[case_id]}
     else:
         fmt = {"state": "solved", "since": STATE_DATE, "reason": FORMAT_SOLVED}
-    context = context_states.get(
-        case_id, {"state": "unmeasured", "since": STATE_DATE, "reason": CONTEXT_UNMEASURED}
-    )
+    if case_id in CONTEXT_GAPS:
+        context = {"state": "known_gap", "since": STATE_DATE, "reason": CONTEXT_GAPS[case_id]}
+    else:
+        context = {"state": "solved", "since": STATE_DATE, "reason": CONTEXT_SOLVED}
     return {"format": fmt, "context": context}
 
 
@@ -822,7 +821,6 @@ def sha256_of(path: Path) -> str:
 
 def main() -> None:
     validate()
-    context_states = load_context_states()
     CORPUS_DIR.mkdir(parents=True, exist_ok=True)
     for existing in CORPUS_DIR.iterdir():
         if existing.name.startswith("aq-"):
@@ -838,7 +836,7 @@ def main() -> None:
     cases = []
     for c in CASES:
         entry = dict(c)
-        entry["expected_state"] = states_for(c["id"], context_states)
+        entry["expected_state"] = states_for(c["id"])
         cases.append(entry)
     GOLDEN_FILE.write_text(
         json.dumps({"cases": cases, "table_checks": TABLE_CHECKS}, ensure_ascii=False, indent=2) + "\n",
