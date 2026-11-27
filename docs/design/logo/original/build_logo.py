@@ -41,13 +41,16 @@ def shapes(svg_text: str):
         value = fill.group(1) if fill else classes[cls.group(1)]
         return value.upper() if len(value) == 7 else "#" + "".join(c * 2 for c in value[1:]).upper()
 
+    unsupported = re.search(r"<(polygon|polyline|circle|ellipse|line|text|use|image)\b|transform=", svg_text)
+    if unsupported or re.search(r"<path\b[^>]*[^/]>", svg_text) or re.search(r"<g\b[^>]*fill=", svg_text):
+        sys.exit("unsupported SVG construct in an original - extend shapes() before using it")
     result = []
     for tag, attrs in re.findall(r"<(path|rect)\b([^>]*)/>", svg_text):
         if tag == "path":
             result.append((colour(attrs), re.search(r'\bd="([^"]+)"', attrs).group(1)))
         else:
             num = {k: float(v) for k, v in re.findall(r'\b(x|y|width|height)="([-\d.]+)"', attrs)}
-            if "rx" in attrs:  # the icon tile, not part of the mark
+            if re.search(r'\brx="', attrs):  # the icon tile, not part of the mark
                 continue
             x, y, w, h = num.get("x", 0), num.get("y", 0), num["width"], num["height"]
             result.append((colour(attrs), f"M{x:g},{y:g}h{w:g}v{h:g}h{-w:g}Z"))
@@ -86,8 +89,14 @@ def brand_mark_ts() -> str:
     wx, wy, ww, wh = view_box(word)
     w_base, w_accent = split(word)
     _, s_accent = split(sign)
-    # The mark is the Zeichen without its tile: the Hellblau "a" and its underline.
-    sx, sy, sw, sh = 244.32, 0, 125.72, 156.14
+    # The mark is the Zeichen without its tile: the Hellblau "a" and its underline. Its width is
+    # the underline's; the tile is centred on the mark, so the top mirrors the underline's bottom.
+    bar = re.search(r'<rect(?![^>]*\brx=)[^>]*/>', sign).group(0)
+    bx, by, bw, bh = (float(re.search(rf'\b{k}="([-\d.]+)"', bar).group(1)) for k in ("x", "y", "width", "height"))
+    vx, vy, vw, vh = view_box(sign)
+    bottom = by + bh
+    top = 2 * (vy + vh / 2) - bottom
+    sx, sy, sw, sh = bx, round(top, 2), bw, round(bottom - top, 2)
     return f"""/**
  * Outlines of the opaa wordmark and mark, extracted from the marketing originals by
  * docs/design/logo/original/build_logo.py - do not edit by hand.

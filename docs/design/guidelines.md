@@ -1582,6 +1582,9 @@ Fallback, solange ein Betreiber kein eigenes Logo konfiguriert.
   keine Schatten oder Verläufe. Hellblau ist hier Bildmarke, keine Textfarbe; die Kontrastregel für
   Text (2.4) gilt für Logos nicht.
 
+Das Zeichen ist im Style Guide noch als Vorschlag markiert; seine Reinzeichnung ersetzt später nur
+die Dateien.
+
 Die Originale liegen in [`logo/original/`](./logo/original/) (`wortmarke.svg`,
 `wortmarke-auf-blau.svg`, `zeichen-dunkel.svg`, `zeichen-hell.svg`). Daraus erzeugt
 `logo/original/build_logo.py` die Dateien in [`logo/`](./logo/) (`opaa-wortmarke.svg` mit
