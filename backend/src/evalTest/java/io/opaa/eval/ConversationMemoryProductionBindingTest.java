@@ -16,6 +16,7 @@ import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.query.answer.ConversationWindowMessages;
+import io.opaa.query.answer.DocumentPartCounts;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
@@ -118,7 +119,8 @@ class ConversationMemoryProductionBindingTest {
     String conversationId = "binding-test-" + UUID.randomUUID();
 
     ChatResponse response =
-        new AnswerGenerationService(resolver, chatMemory, new ActiveAnswerStreams())
+        new AnswerGenerationService(
+                resolver, chatMemory, new ActiveAnswerStreams(), mock(DocumentPartCounts.class))
             .generateAnswer(
                 "Was kostet ein Anwohnerparkausweis?",
                 List.of(),
@@ -158,7 +160,8 @@ class ConversationMemoryProductionBindingTest {
     ActiveChatModelResolver resolver = mock(ActiveChatModelResolver.class);
     when(resolver.resolveChatClient()).thenReturn(chatClient);
     String conversationId = "binding-test-" + UUID.randomUUID();
-    new AnswerGenerationService(resolver, liveMemory, new ActiveAnswerStreams())
+    new AnswerGenerationService(
+            resolver, liveMemory, new ActiveAnswerStreams(), mock(DocumentPartCounts.class))
         .generateAnswer(
             "Was kostet ein Anwohnerparkausweis?",
             List.of(),

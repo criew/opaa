@@ -182,14 +182,17 @@ public class AnswerGenerationService {
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
   private final ActiveAnswerStreams activeAnswerStreams;
+  private final DocumentPartCounts documentPartCounts;
 
   public AnswerGenerationService(
       ActiveChatModelResolver activeChatModelResolver,
       ChatMemory chatMemory,
-      ActiveAnswerStreams activeAnswerStreams) {
+      ActiveAnswerStreams activeAnswerStreams,
+      DocumentPartCounts documentPartCounts) {
     this.activeChatModelResolver = activeChatModelResolver;
     this.chatMemory = chatMemory;
     this.activeAnswerStreams = activeAnswerStreams;
+    this.documentPartCounts = documentPartCounts;
   }
 
   /**
@@ -263,7 +266,7 @@ public class AnswerGenerationService {
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
             + (searchNeeded ? "" : NO_SEARCH_HINT)
             + CONTEXT_SECTION
-            + DocumentBlock.render(blockId, relevantChunks)
+            + DocumentBlock.render(blockId, relevantChunks, documentPartCounts.of(relevantChunks))
             + (bindToPassages ? CITATION_REMINDER : "")
             + (spaceBlock == null ? LANGUAGE_REMINDER : SPACE_LANGUAGE_REMINDER);
 

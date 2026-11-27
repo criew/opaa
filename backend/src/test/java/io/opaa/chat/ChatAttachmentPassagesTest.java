@@ -38,6 +38,7 @@ class ChatAttachmentPassagesTest {
     assertThat(passage.getMetadata())
         .containsEntry("document_id", first.getId().toString())
         .containsEntry("chunk_index", 0)
+        .containsEntry("chunk_count", 2)
         .containsEntry("file_name", "Vertrag.pdf")
         .containsEntry(ChatAttachmentPassages.ATTACHMENT_METADATA_KEY, true);
   }
@@ -59,6 +60,9 @@ class ChatAttachmentPassagesTest {
     assertThat(selection.passages())
         .extracting(passage -> passage.getMetadata().get("chunk_index"))
         .containsExactly(0, 2);
+    assertThat(selection.passages())
+        .extracting(passage -> passage.getMetadata().get("chunk_count"))
+        .containsOnly(4);
   }
 
   @Test

@@ -1057,7 +1057,10 @@ class QueryIntegrationTest {
         searchScopeResolver,
         chatSourceAssembler,
         new AnswerGenerationService(
-            activeChatModelResolver, memoryOfB, new io.opaa.query.answer.ActiveAnswerStreams()),
+            activeChatModelResolver,
+            memoryOfB,
+            new io.opaa.query.answer.ActiveAnswerStreams(),
+            org.mockito.Mockito.mock(io.opaa.query.answer.DocumentPartCounts.class)),
         memoryOfB,
         citationParser,
         citationValidator,
