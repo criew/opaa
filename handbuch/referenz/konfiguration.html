@@ -4937,6 +4937,18 @@ die die Variable nennt, ebenso bei <code>OPAA_SUCCESSION_DETECTION_CRON</code>. 
 <td>Wie lange die Filteroptionen einer Person (Füllstand, vorkommende Werte) zwischengespeichert bleiben, bevor sie über den aktuellen Bestand neu gezählt werden. Begrenzt nur die Veraltung des Bestands: Eine Rechteänderung der Person verwirft ihren Eintrag sofort</td>
 </tr>
 <tr>
+<td><code>OPAA_QUERY_ABSENCE_RECHECK_ENABLED</code></td>
+<td><code>true</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Nachprüfung einer Fehlanzeige: Sagt eine Antwort aus dem Suchbereich, etwas sei in den Quellen nicht enthalten, sucht opaa die Kennungen und Schlüsselbegriffe der Frage noch einmal im selben Suchbereich mit denselben Rechten und Filtern. Findet es Textstellen, die die Antwort nicht kannte und die diese Begriffe enthalten, antwortet das Modell genau einmal neu, im Agentenlauf als Nachfrage im laufenden Lauf (<a href="wie-die-suche-arbeitet.html#die-antwort">Suche</a>). Kostet bei einer Fehlanzeige eine Suche, mit neuen Textstellen einen weiteren Aufruf des Chat-Modells; <code>false</code> schaltet ab. In Kubernetes <code>absenceRecheck.enabled</code></td>
+</tr>
+<tr>
+<td><code>OPAA_QUERY_ABSENCE_RECHECK_MAX_PASSAGES</code></td>
+<td><code>4</code></td>
+<td>nicht gesetzt (Anwendungs-Default gilt)</td>
+<td>Wie viele Textstellen der Nachprüfung höchstens in die neue Antwort gehen (1–20), zuzüglich ihrer Nachbar-Chunks nach <code>OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS</code></td>
+</tr>
+<tr>
 <td><strong>Agenten</strong></td>
 <td></td>
 <td></td>

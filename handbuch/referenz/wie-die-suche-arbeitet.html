@@ -4371,8 +4371,23 @@ ein Dokument ihr widerspricht. Zu Beträgen, Quoten, Schwellen und Fristen nennt
 aus dem Dokument. Agenten antworten nach denselben Regeln, eine Agenten-Anweisung kann aber die Form
 vorgeben. Der Text der Dokumente steht als Material, nicht als Anweisung im Prompt; ganz verhindern
 lässt sich eine untergeschobene Anweisung nicht, das hängt am Modell.</p>
+<p><strong>Fehlanzeigen prüft opaa nach.</strong> Sagt die Antwort, etwas stehe nicht in den Dokumenten, etwa „die
+Gebühr der Tarifstelle AB-08 ist in den Dokumenten nicht enthalten“, sucht opaa die Kennungen und
+Schlüsselbegriffe der Frage noch einmal im selben Suchbereich, mit denselben Rechten und Filtern.
+Findet es Textstellen, die diese Begriffe enthalten und die die Antwort noch nicht kannte, antwortet
+das Modell genau einmal neu mit ihnen; die neue Antwort ersetzt die erste, auch während sie im Chat
+entsteht. Ohne solche Stellen, bei einem Fehler der Nachprüfung oder einer leeren neuen Antwort
+bleibt die erste. Erkannt wird die Fehlanzeige an festen deutschen und englischen Formulierungen,
+die sich auf die Dokumente beziehen, ohne weiteren Modellaufruf. Nachgeprüft wird nur, wenn sie die
+Antwort trägt: Die Antwort hat keinen bestätigten Beleg, oder die Fehlanzeige steht vor oder in dem
+ersten belegten Satz. Ein Vorbehalt nach einer belegten Antwort, etwa „Weitere Details sind in den
+Quellen nicht genannt“, bleibt, wie er ist. Im Agentenlauf bekommt das Modell die Stellen als
+Nachfrage im laufenden Lauf, und die Nachsuche steht als Schritt im Lauf.
+Abschalten lässt sich das mit <code>OPAA_QUERY_ABSENCE_RECHECK_ENABLED</code>.</p>
 <p>Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
-je Teilfrage, Rerank-Modell, falls an. Titel und Gesprächsnotiz eines Chats kosten je einen
+je Teilfrage, Rerank-Modell, falls an; nach einer Fehlanzeige einmal mehr Embedding- und
+Rerank-Modell für die Nachprüfung und, wenn sie neue Textstellen findet, das Chat-Modell für die
+neue Antwort. Titel und Gesprächsnotiz eines Chats kosten je einen
 weiteren Chat-Aufruf, ohne die Antwort zu verzögern.</p>
 <h2 id="belege-prüfen">Belege prüfen<a class="headerlink" href="#belege-prüfen" title="Permanent link">&para;</a></h2>
 <p>Den Zitiermarken glaubt opaa nicht, es prüft sie ohne weiteren Modellaufruf:</p>
