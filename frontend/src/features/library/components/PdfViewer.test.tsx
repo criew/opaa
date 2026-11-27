@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ChunkAnchor } from '@/shared/api/types'
 import { renderWithProviders } from '@/test/test-utils'
@@ -8,13 +8,30 @@ import PdfViewer from './PdfViewer'
 
 type Handler = (payload: never) => void
 
-/** Stand-ins for pdf.js: the test fires the viewer's events itself. */
+interface PageBox {
+  left: number
+  width: number
+  height: number
+}
+
+interface OutlineItem {
+  title: string
+  dest: unknown[]
+  items: OutlineItem[]
+}
+
+/**
+ * Stand-ins for pdf.js: the test fires the viewer's events itself. Pages lie stacked without gaps
+ * in the scrolled content; a destination scrolls like pdf.js does, its point to the top left.
+ */
 const pdf = vi.hoisted(() => ({
   handlers: new Map<string, ((payload: unknown) => void)[]>(),
   scrollPageIntoView: vi.fn(),
   /** The scale pdf.js would compute for „page-width“. */
   pageWidthScale: 1,
   viewer: null as { currentScale: number; currentPageNumber: number } | null,
+  pages: [] as PageBox[],
+  outline: null as OutlineItem[] | null,
 }))
 
 vi.mock('../utils/pdfjs', () => {
@@ -36,13 +53,26 @@ vi.mock('../utils/pdfjs', () => {
     set currentScaleValue(value: string) {
       if (value === 'page-width') this.currentScale = pdf.pageWidthScale
     }
-    linkService = { goToDestination: async () => {} }
+    linkService = {
+      goToDestination: async (dest: unknown[]) => {
+        const pageNumber = (dest[0] as { num: number }).num
+        pdf.scrollPageIntoView({ pageNumber, destArray: dest })
+      },
+    }
     scrollPageIntoView = pdf.scrollPageIntoView
+    get pagesCount() {
+      return pdf.pages.length
+    }
+    getPageView(index: number) {
+      return pageView(index)
+    }
     setDocument() {}
   }
   const document = {
     numPages: 3,
-    getOutline: async () => null,
+    getOutline: async () => pdf.outline,
+    getDestination: async () => null,
+    getPageIndex: async (ref: { num: number }) => ref.num - 1,
     getPage: async () => ({ getTextContent: async () => ({ items: [] }), cleanup() {} }),
   }
   return {
@@ -53,6 +83,63 @@ vi.mock('../utils/pdfjs', () => {
     }),
   }
 })
+
+const pageDivs = new Map<number, HTMLElement>()
+
+function container(): HTMLElement {
+  return screen.getByTestId('pdf-container')
+}
+
+function pageTop(index: number): number {
+  return pdf.pages.slice(0, index).reduce((sum, page) => sum + page.height, 0)
+}
+
+/** A page of {@link pdf.pages} as pdf.js's page view: its element, and PDF points as pixels. */
+function pageView(index: number) {
+  const box = pdf.pages[index]
+  if (!box) return undefined
+  let div = pageDivs.get(index)
+  if (!div) {
+    div = document.createElement('div')
+    div.getBoundingClientRect = () => {
+      const view = container()
+      const top = pageTop(index) - view.scrollTop
+      const left = box.left - view.scrollLeft
+      return rect({ left, top, width: box.width, height: box.height })
+    }
+    pageDivs.set(index, div)
+  }
+  return {
+    div,
+    viewport: {
+      height: box.height,
+      convertToViewportPoint: (x: number, y: number) => [x, box.height - y],
+    },
+  }
+}
+
+/** Scrolls as pdf.js does: a destination's point to the top left, a bare page to its top. */
+function scrollLikePdfJs({ pageNumber, destArray }: { pageNumber: number; destArray?: unknown[] }) {
+  const view = container()
+  const box = pdf.pages[pageNumber - 1]
+  if (destArray) {
+    const [, , x, y] = destArray as [unknown, unknown, number, number]
+    view.scrollLeft = box.left + x
+    view.scrollTop = pageTop(pageNumber - 1) + box.height - y
+  } else {
+    view.scrollTop = pageTop(pageNumber - 1)
+  }
+  fire('pagechanging', { pageNumber })
+  fire('updateviewarea', {})
+}
+
+/** The reader scrolls the view to `scrollTop` on their own. */
+function wheelTo(scrollTop: number) {
+  const view = container()
+  fireEvent.wheel(view)
+  view.scrollTop = scrollTop
+  fire('updateviewarea', {})
+}
 
 function fire(name: string, payload: unknown) {
   act(() => {
@@ -87,6 +174,9 @@ async function open(
       contentSha256={extra.contentSha256}
     />,
   )
+  const view = container()
+  Object.defineProperty(view, 'clientWidth', { configurable: true, value: 800 })
+  Object.defineProperty(view, 'clientHeight', { configurable: true, value: 600 })
   expect(await screen.findByText('Seite 1 von 3')).toBeInTheDocument()
 }
 
@@ -109,7 +199,11 @@ describe('PdfViewer', () => {
   beforeEach(() => {
     pdf.handlers.clear()
     pdf.scrollPageIntoView.mockReset()
+    pdf.scrollPageIntoView.mockImplementation(scrollLikePdfJs)
     pdf.pageWidthScale = 1
+    pdf.pages = [0, 1, 2].map(() => ({ left: 0, width: 600, height: 1000 }))
+    pdf.outline = null
+    pageDivs.clear()
     Element.prototype.scrollIntoView = scrollIntoView
   })
 
@@ -289,7 +383,7 @@ describe('PdfViewer', () => {
       expect(page.querySelectorAll('.opaa-passage-edge')).toHaveLength(1)
       expect(page.querySelector('.opaa-passage-label')).toHaveTextContent('Fundstelle')
       // a later page change does not change what the status says
-      fire('pagechanging', { pageNumber: 3 })
+      wheelTo(2000)
       expect(screen.getByRole('status')).toHaveTextContent('Fundstelle auf Seite 2 markiert.')
       expect(screen.getAllByRole('status')).toHaveLength(1)
 
@@ -309,11 +403,90 @@ describe('PdfViewer', () => {
 
     it('pages forward and back from the floating tools', async () => {
       await open(TEXT)
-      fire('pagechanging', { pageNumber: 2 })
+      wheelTo(1000)
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }))
       expect(pdf.viewer!.currentPageNumber).toBe(3)
       await userEvent.click(screen.getByRole('button', { name: 'Vorherige Seite' }))
       expect(pdf.viewer!.currentPageNumber).toBe(1)
+    })
+  })
+
+  // regression guard for #3880: the outline marks the place shown, and a jump keeps pages of
+  // different widths in view instead of scrolling a destination's left edge to the view's
+  describe('navigating pages of different widths', () => {
+    const at = (page: number, x: number, y: number) => [{ num: page }, { name: 'XYZ' }, x, y, 0]
+    const OUTLINE: OutlineItem[] = [
+      { title: 'Titel', dest: at(1, 0, 1000), items: [] },
+      { title: 'Inhalt', dest: at(2, 100, 900), items: [] },
+      { title: 'Vorwort', dest: at(2, 100, 400), items: [] },
+      {
+        title: 'Doppelseite',
+        dest: at(3, 50, 1000),
+        items: [{ title: 'Rechte Seite', dest: at(3, 1000, 700), items: [] }],
+      },
+    ]
+
+    beforeEach(() => {
+      // two portrait pages, centred above a spread twice as wide
+      pdf.pages = [
+        { left: 300, width: 600, height: 1000 },
+        { left: 300, width: 600, height: 1000 },
+        { left: 0, width: 1200, height: 1000 },
+      ]
+      pdf.outline = OUTLINE
+    })
+
+    const entry = async (title: string) =>
+      within(await screen.findByRole('navigation', { name: 'Inhaltsverzeichnis' })).getByRole(
+        'button',
+        { name: title },
+      )
+
+    it('marks the entry chosen and its page, then the place the reader scrolls to', async () => {
+      await open(undefined as unknown as ChunkAnchor)
+
+      await userEvent.click(await entry('Inhalt'))
+      expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+
+      await userEvent.click(await entry('Vorwort'))
+      expect(await entry('Vorwort')).toHaveAttribute('aria-current', 'location')
+      expect(await entry('Inhalt')).not.toHaveAttribute('aria-current')
+
+      // the reading line, a quarter down the view, decides once the reader scrolls
+      wheelTo(2000)
+      expect(await entry('Doppelseite')).toHaveAttribute('aria-current', 'location')
+      expect(screen.getByText('Seite 3 von 3')).toBeInTheDocument()
+
+      wheelTo(1300)
+      expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+    })
+
+    it('centres a page that fits and aligns a wider one left, unless the target lies beyond', async () => {
+      await open(undefined as unknown as ChunkAnchor)
+
+      await userEvent.click(await entry('Inhalt'))
+      expect(container().scrollLeft).toBe(200)
+
+      await userEvent.click(await entry('Doppelseite'))
+      expect(container().scrollLeft).toBe(0)
+
+      // the target would lie right of the view: shown with a margin, the spread's end at the edge
+      await userEvent.click(await entry('Rechte Seite'))
+      expect(container().scrollLeft).toBe(400)
+    })
+
+    it('opens a passage on a narrow page with the whole page in view', async () => {
+      await open({ pageFrom: 2, pageTo: 2, quoteStart: 'Das Modul indexing' })
+      const page = renderedPage(['Das Modul indexing verwaltet die Dokumentenaufnahme'])
+      sized(page.querySelector('span')!, { left: 400, top: 200, width: 300, height: 20 })
+
+      fire('textlayerrendered', { pageNumber: 2, source: { div: page } })
+
+      expect(screen.getByRole('status')).toHaveTextContent('Fundstelle auf Seite 2 markiert.')
+      expect(container().scrollLeft).toBe(200)
     })
   })
 
@@ -346,17 +519,20 @@ describe('PdfViewer', () => {
   })
 })
 
+function rect(box: { left: number; top: number; width: number; height: number }): DOMRect {
+  return {
+    ...box,
+    right: box.left + box.width,
+    bottom: box.top + box.height,
+    x: box.left,
+    y: box.top,
+    toJSON: () => box,
+  } as DOMRect
+}
+
 function sized(
   element: Element,
-  rect: { left: number; top: number; width: number; height: number },
+  box: { left: number; top: number; width: number; height: number },
 ) {
-  element.getBoundingClientRect = () =>
-    ({
-      ...rect,
-      right: rect.left + rect.width,
-      bottom: rect.top + rect.height,
-      x: rect.left,
-      y: rect.top,
-      toJSON: () => rect,
-    }) as DOMRect
+  element.getBoundingClientRect = () => rect(box)
 }

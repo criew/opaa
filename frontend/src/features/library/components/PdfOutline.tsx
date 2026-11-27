@@ -17,7 +17,7 @@ export interface OutlineNode {
 
 interface PdfOutlineProps {
   nodes: OutlineNode[]
-  /** The entry of the section on screen, marked as the current one. */
+  /** The entry of the section on screen, marked as the current one - or its folded parent. */
   activeNode: OutlineNode | null
   onSelect: (node: OutlineNode) => void
   depth?: number
@@ -51,9 +51,11 @@ function OutlineEntry({
   onSelect: (node: OutlineNode) => void
   depth: number
 }) {
-  const active = node === activeNode
   const [expanded, setExpanded] = useState(depth === 0)
   const hasChildren = node.children.length > 0
+  // a folded entry stands for the current one when that lies hidden below it
+  const active =
+    node === activeNode || (!expanded && activeNode !== null && holds(node.children, activeNode))
   return (
     <Box component="li">
       <Box sx={{ display: 'flex', alignItems: 'flex-start', pl: depth * 1.5 }}>
@@ -100,4 +102,8 @@ function OutlineEntry({
       )}
     </Box>
   )
+}
+
+function holds(nodes: OutlineNode[], target: OutlineNode): boolean {
+  return nodes.some((node) => node === target || holds(node.children, target))
 }

@@ -29,6 +29,7 @@ import { passageLabelSx } from './documentView/styles'
 import { anchorPlace, anchorQuote } from './documentView/findingText'
 import { passageBandSx } from './documentView/textMarks'
 import { backLabel } from './documentView/backLabel'
+import { lastAtOrBefore, readingLine, userScrollProps } from './documentView/readingPosition'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import EmptyState from '@/shared/ui/states/EmptyState'
@@ -83,6 +84,15 @@ export default function DocumentTextVersionDialog({
   const keepFromBottom = useRef<number | null>(null)
   // Raised by a retry after a failed load; the effect below asks again for the same preview.
   const [attempt, setAttempt] = useState(0)
+  // The outline marks the section just chosen in it; once the reader scrolls on their own, the
+  // section at the reading line; before either, the cited passage's section.
+  const [chosen, setChosen] = useState<{
+    of: TextVersionPreview
+    section: DocumentTextSection
+  } | null>(null)
+  const [readAt, setReadAt] = useState<{ of: TextVersionPreview; chunkIndex: number } | null>(null)
+  // the preview whose outline follows the reading line, once its reader scrolled on their own
+  const [following, setFollowing] = useState<TextVersionPreview | null>(null)
 
   useEffect(() => {
     if (!preview) return
@@ -194,6 +204,30 @@ export default function DocumentTextVersionDialog({
     }
   }
 
+  function choose(section: DocumentTextSection) {
+    if (!preview) return
+    setFollowing(null)
+    setChosen({ of: preview, section })
+    goTo(section.chunkIndex)
+  }
+
+  function releaseToScroll() {
+    setFollowing(preview)
+    setChosen(null)
+  }
+
+  function trackReading() {
+    const container = scrollRef.current
+    if (!container || !preview || following !== preview) return
+    const chunkIndex = chunkAtReadingLine(container)
+    if (chunkIndex === null) return
+    setReadAt((previous) =>
+      previous?.of === preview && previous.chunkIndex === chunkIndex
+        ? previous
+        : { of: preview, chunkIndex },
+    )
+  }
+
   function goTo(chunkIndex: number) {
     const container = scrollRef.current
     const block = container?.querySelector<HTMLElement>(`[data-chunk-index="${chunkIndex}"]`)
@@ -216,7 +250,15 @@ export default function DocumentTextVersionDialog({
   for (const section of sections) {
     sectionsAt.set(section.chunkIndex, [...(sectionsAt.get(section.chunkIndex) ?? []), section])
   }
-  const activeSection = target != null ? lastSectionAtOrBefore(sections, target) : null
+  const readChunk = readAt?.of === preview ? readAt.chunkIndex : null
+  const activeSection =
+    chosen?.of === preview
+      ? chosen.section
+      : readChunk != null
+        ? lastSectionAtOrBefore(sections, readChunk)
+        : target != null
+          ? lastSectionAtOrBefore(sections, target)
+          : null
   // on a phone the outline lives in the unfolding finding bar, without a toggle of its own
   const outlineOpen = (phone || (outlineToggled ?? wide)) && sections.length > 0
 
@@ -233,7 +275,7 @@ export default function DocumentTextVersionDialog({
           {sections.map((section, index) => (
             <Box component="li" key={index}>
               <ButtonBase
-                onClick={() => goTo(section.chunkIndex)}
+                onClick={() => choose(section)}
                 aria-current={section === activeSection ? 'location' : undefined}
                 sx={{
                   display: 'block',
@@ -265,6 +307,9 @@ export default function DocumentTextVersionDialog({
 
   function jumpToPassage() {
     if (target == null) return
+    setFollowing(null)
+    setChosen(null)
+    setReadAt(null)
     const block = scrollRef.current?.querySelector<HTMLElement>(`[data-chunk-index="${target}"]`)
     if (!block) {
       goTo(target)
@@ -351,6 +396,8 @@ export default function DocumentTextVersionDialog({
             aria-label="Dokument"
             tabIndex={0}
             sx={deskScrollSx}
+            onScroll={trackReading}
+            {...userScrollProps(releaseToScroll)}
           >
             <DocumentPaper>
               {hasBefore && (
@@ -487,6 +534,22 @@ function statusText(state: MarkState): string {
     default:
       return ''
   }
+}
+
+/** The passage at the reading line of `container`, counted from the top of its section heading. */
+function chunkAtReadingLine(container: HTMLElement): number | null {
+  const frame = container.getBoundingClientRect().top
+  const entries = Array.from(container.querySelectorAll<HTMLElement>('[data-chunk-index]')).map(
+    (block) => ({
+      chunkIndex: Number(block.dataset.chunkIndex),
+      position:
+        (block.parentElement ?? block).getBoundingClientRect().top - frame + container.scrollTop,
+    }),
+  )
+  return (
+    lastAtOrBefore(entries, readingLine(container.scrollTop, container.clientHeight))?.chunkIndex ??
+    null
+  )
 }
 
 function lastSectionAtOrBefore(
