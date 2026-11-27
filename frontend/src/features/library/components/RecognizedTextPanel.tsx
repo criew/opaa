@@ -55,23 +55,7 @@ export default function RecognizedTextPanel({
   const text = (loaded?.key === key ? loaded?.text : null) ?? quotes
   const section = anchor.path?.at(-1)
   return (
-    <Box
-      id={id}
-      component="aside"
-      aria-label="Erkannter Text"
-      tabIndex={0}
-      sx={{
-        width: { xs: 'auto', sm: 240, md: 300 },
-        maxHeight: { xs: '40%', sm: 'none' },
-        flex: 'none',
-        overflow: 'auto',
-        borderStyle: 'solid',
-        borderColor: 'divider',
-        borderWidth: { xs: '1px 0 0 0', sm: '0 0 0 1px' },
-        pl: { xs: 0, sm: 1.5 },
-        pt: { xs: 1, sm: 0 },
-      }}
-    >
+    <Box id={id} component="aside" aria-label="Erkannter Text" tabIndex={0} sx={{ minWidth: 0 }}>
       <Typography component="h3" sx={{ fontSize: fontSize.text, fontWeight: 600, mb: 0.25 }}>
         Erkannter Text
       </Typography>

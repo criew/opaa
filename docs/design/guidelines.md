@@ -172,8 +172,32 @@ braucht einen helleren Ton oder eine andere Rolle.
   Bedeutung trägt der Satz, die Farbe zeigt nur, wo er hingehört. Ausnahme ist ein knapper
   Zustand ohne eigenes Zeichen, etwa der Grund unter einer gesperrten Kachel (5.11) — dort ist
   die Rolle selbst die Textfarbe und hält 2.4.
-- **Markierung von Suchtreffern** liegt auf dem eigenen Ton `markHighlight` (blasses Amber zu
-  25 %, in beiden Schemata gleich), nicht auf einer Signalrolle; der Text darauf bleibt `fg-1`.
+- **Markierung von Suchtreffern** im Chat liegt auf dem eigenen Ton `markHighlight` (blasses
+  Amber zu 25 %, in beiden Schemata gleich), nicht auf einer Signalrolle; der Text darauf bleibt
+  `fg-1`. Die Fundstelle in der Dokumentansicht trägt ihn nicht, sie folgt dem Belegfenster
+  (nächster Punkt).
+- **Die Dokumentansicht hat ein eigenes Rollenset `documentView`** (#3876), das den Lesemodus
+  für Originale und Textfassungen trägt (5.6):
+
+  | Rolle    | Verwendung                                             | Hell                 | Dunkel               |
+  |----------|--------------------------------------------------------|----------------------|----------------------|
+  | `desk`   | Grund des Lesemodus hinter dem Papier                  | Grau-100 `#E7E8EC`   | Navy-950 `#151731`   |
+  | `paper`  | Papier des Dokuments, in beiden Schemata hell          | Weiß                 | Weiß                 |
+  | `band`   | Fläche der Fundstelle, im PDF multipliziert            | Blau-100 `#CCEBF8`   | Blau-100 `#CCEBF8`   |
+  | `edge`   | Kante links der Fundstelle, Fläche des Etiketts        | Blau-700 `#0055A4`   | Blau-700 `#0055A4`   |
+  | `edgeFg` | Text des Etiketts „Fundstelle“                         | Weiß                 | Weiß                 |
+  | `card`   | Fundstellen-Karte und Panels neben dem Papier          | Weiß                 | Navy-900 `#1B1E40`   |
+
+  Das Papier bleibt auch im dunklen Schema hell: Ein Dokument sieht in der Ansicht aus wie
+  gedruckt, Text darauf steht im hellen Schema (`fg-1`), und das Papier trägt dafür das helle
+  Theme in sich. Die Fundstelle ist Fläche `band` plus 4 px Kante `edge` — dasselbe Zeichen wie
+  beim markierten Beleg im Belegfenster (5.8), nur auf dem Papier statt in der Leiste. Das
+  Etikett „Fundstelle“ steht genau einmal je Fundstelle, in der Typostufe `label`, links neben der
+  Kante im Rand, wo dieser reicht, sonst darüber; deckt es im PDF Text, entfällt es, Kante und
+  Fläche bleiben. Nachweis: `fg-1` auf `band` 11,13:1, `edgeFg` auf `edge` 7,41:1, `edge` gegen
+  `paper` 7,41:1 und gegen `band` 5,93:1; Text des Schemas auf `desk` und `card` hält die Werte
+  aus 2.4 (`frontend/src/shared/theme/theme.test.ts`). Im Modus „Erzwungene Farben“ werden Fläche
+  und Kante zu `Mark` und `Highlight`.
 
 ### 2.4 Kontrast
 
@@ -293,6 +317,9 @@ Gruppen deutlich getrennt (24–48).
   Schemas — hell `navy-900` mit 42 %, dunkel das tiefere `navy-950` mit 72 %.
 - Im dunklen Schema bleiben die Schattenwerte gleich; die Trennung leisten dort vor allem die
   helleren Flächenstufen.
+- Im Lesemodus der Dokumentansicht (5.6) liegt das Papier wie ein Blatt auf dem Grund `desk`
+  und trägt deshalb den Schatten der Ebene 2, ebenso die schwebende Werkzeugpille des PDF; unter
+  600 px füllt das Papier die Breite und trägt keinen Schatten.
 
 ### 4.4 Fokus
 
@@ -904,6 +931,19 @@ Darunter folgen, wo die Ansicht sie braucht, ein Suchfeld über der Liste und di
 Fußzeile mit „Schließen“. Das Panel ist ein benannter Dialog (`role="dialog"` mit `aria-label`);
 öffnet es an einer bestimmten Stelle, liegt der Fokus dort, beim Schließen kehrt er auf den
 Auslöser zurück. Escape und ein Klick daneben schließen es.
+
+**Ein Dokument liest man im Lesemodus** (`ReadingModeDialog`, #3876). Er füllt den Bildschirm
+auf dem Grund `desk` (2.3). Sein Kopf trägt links den Rückweg, benannt nach dem Ziel („Zurück zur
+Antwort“, unter 600 px nur der Pfeil mit diesem Namen), daneben den Dateinamen als Titel und
+rechts die Aktionen der Ansicht und das ✕; Escape schließt ebenfalls. Darunter steht links die
+**Fundstellen-Karte** mit Fundort, Zitat ohne Auszeichnungszeichen, der Statuszeile und „Zur
+Fundstelle“, rechts das Dokument auf hellem Papier mit der markierten Fundstelle. Ab 1440 px
+lässt sich die Kartenspalte über einen Trenner verbreitern, auch per Pfeiltasten, Pos1 und Ende.
+Unter 600 px wird die Karte zu einer Leiste über dem Dokument, die mit einer Zeile den Fundort
+nennt und für das Zitat aufklappt. Jede Ansicht hat genau eine Statusmeldung
+(`role="status"`). Die Werkzeuge des PDF (Gliederung, Blättern, Zoom, Seitenbreite, erkannter
+Text) schweben als Pille über den Seiten (Ebene 2, 4.3); unter 600 px trägt sie nur Blättern und
+Zoom, Gliederung und erkannter Text liegen in der Leiste.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 

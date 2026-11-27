@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ChunkAnchor } from '@/shared/api/types'
 import { renderWithProviders } from '@/test/test-utils'
+import { setViewportWidth } from '@/test/viewport'
 import PdfViewer from './PdfViewer'
 
 type Handler = (payload: never) => void
@@ -11,6 +12,9 @@ type Handler = (payload: never) => void
 const pdf = vi.hoisted(() => ({
   handlers: new Map<string, ((payload: unknown) => void)[]>(),
   scrollPageIntoView: vi.fn(),
+  /** The scale pdf.js would compute for „page-width“. */
+  pageWidthScale: 1,
+  viewer: null as { currentScale: number; currentPageNumber: number } | null,
 }))
 
 vi.mock('../utils/pdfjs', () => {
@@ -24,8 +28,14 @@ vi.mock('../utils/pdfjs', () => {
     setDocument() {}
   }
   class PDFViewer {
-    currentScaleValue = 'auto'
     currentScale = 1
+    currentPageNumber = 1
+    constructor() {
+      pdf.viewer = this
+    }
+    set currentScaleValue(value: string) {
+      if (value === 'page-width') this.currentScale = pdf.pageWidthScale
+    }
     linkService = { goToDestination: async () => {} }
     scrollPageIntoView = pdf.scrollPageIntoView
     setDocument() {}
@@ -99,6 +109,7 @@ describe('PdfViewer', () => {
   beforeEach(() => {
     pdf.handlers.clear()
     pdf.scrollPageIntoView.mockReset()
+    pdf.pageWidthScale = 1
     Element.prototype.scrollIntoView = scrollIntoView
   })
 
@@ -258,9 +269,94 @@ describe('PdfViewer', () => {
       expect(pdf.scrollPageIntoView).toHaveBeenCalledWith({ pageNumber: 2 })
       expect(page.querySelectorAll('.passage')).toHaveLength(1)
       expect(page.querySelector('.recognized-region')).toBeNull()
-      expect(screen.getByRole('status')).toHaveTextContent('Fundstelle auf Seite 1 markiert.')
+      expect(screen.getByRole('status')).toHaveTextContent('Fundstelle auf Seite 2 markiert.')
       expect(screen.queryByRole('button', { name: 'Erkannter Text' })).toBeNull()
       expect(screen.queryByRole('complementary', { name: 'Erkannter Text' })).toBeNull()
     })
+
+    it('draws band, edge and label over the page and keeps naming the cited page', async () => {
+      await open(TEXT)
+      fire('pagesinit', {})
+      const page = renderedPage(['2 Module', 'Das Modul indexing verwaltet die Dokumentenaufnahme'])
+      sized(page, { left: 0, top: 0, width: 600, height: 800 })
+      sized(page.querySelectorAll('span')[1], { left: 100, top: 200, width: 300, height: 20 })
+
+      fire('textlayerrendered', { pageNumber: 2, source: { div: page } })
+
+      const band = page.querySelector<HTMLElement>('.opaa-passage-band')!
+      expect(band).toHaveAttribute('aria-hidden', 'true')
+      expect(band.style.left).toMatch(/%$/)
+      expect(page.querySelectorAll('.opaa-passage-edge')).toHaveLength(1)
+      expect(page.querySelector('.opaa-passage-label')).toHaveTextContent('Fundstelle')
+      // a later page change does not change what the status says
+      fire('pagechanging', { pageNumber: 3 })
+      expect(screen.getByRole('status')).toHaveTextContent('Fundstelle auf Seite 2 markiert.')
+      expect(screen.getAllByRole('status')).toHaveLength(1)
+
+      scrollIntoView.mockReset()
+      await userEvent.click(screen.getByRole('button', { name: 'Zur Fundstelle' }))
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', inline: 'nearest' })
+    })
+
+    it('shows the finding card with place and quote', async () => {
+      await open(TEXT)
+      expect(screen.getByRole('heading', { name: 'Fundstelle' })).toBeInTheDocument()
+      expect(screen.getByText('Seite 2')).toBeInTheDocument()
+      expect(
+        screen.getByText('„Das Modul indexing verwaltet die Dokumentenaufnahme“'),
+      ).toBeInTheDocument()
+    })
+
+    it('pages forward and back from the floating tools', async () => {
+      await open(TEXT)
+      fire('pagechanging', { pageNumber: 2 })
+      await userEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }))
+      expect(pdf.viewer!.currentPageNumber).toBe(3)
+      await userEvent.click(screen.getByRole('button', { name: 'Vorherige Seite' }))
+      expect(pdf.viewer!.currentPageNumber).toBe(1)
+    })
+  })
+
+  describe('opening scale', () => {
+    const originalMatchMedia = window.matchMedia
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia
+    })
+
+    it('opens in page width, no larger than the opening bound on a wide screen', async () => {
+      pdf.pageWidthScale = 2.4
+      await open({ pageFrom: 1 })
+      fire('pagesinit', {})
+      expect(pdf.viewer!.currentScale).toBe(1.6)
+    })
+
+    it('keeps a readable minimum on a phone and offers only paging and zoom there', async () => {
+      setViewportWidth(360)
+      pdf.pageWidthScale = 0.42
+      await open({ pageFrom: 1 })
+      fire('pagesinit', {})
+      expect(pdf.viewer!.currentScale).toBe(0.7)
+      const tools = screen.getByRole('toolbar', { name: 'Ansicht' })
+      expect(
+        within(tools)
+          .getAllByRole('button')
+          .map((b) => b.getAttribute('aria-label')),
+      ).toEqual(['Vorherige Seite', 'Nächste Seite', 'Verkleinern', 'Vergrößern'])
+    })
   })
 })
+
+function sized(
+  element: Element,
+  rect: { left: number; top: number; width: number; height: number },
+) {
+  element.getBoundingClientRect = () =>
+    ({
+      ...rect,
+      right: rect.left + rect.width,
+      bottom: rect.top + rect.height,
+      x: rect.left,
+      y: rect.top,
+      toJSON: () => rect,
+    }) as DOMRect
+}

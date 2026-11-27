@@ -1,20 +1,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
-import AddIcon from '@mui/icons-material/Add'
-import RemoveIcon from '@mui/icons-material/Remove'
-import FitWidthIcon from '@mui/icons-material/WidthFull'
-import TocIcon from '@mui/icons-material/Toc'
-import SubjectIcon from '@mui/icons-material/Subject'
-import { alpha } from '@mui/material/styles'
+import type { SxProps, Theme } from '@mui/material/styles'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/legacy/web/pdf_viewer.mjs'
 import 'pdfjs-dist/legacy/web/pdf_viewer.css'
 import type { ChunkAnchor } from '@/shared/api/types'
-import { fontSize, markHighlight } from '@/shared/theme/tokens'
+import { fontSize, fontWeight, radius, shadow } from '@/shared/theme/tokens'
 import { isRecognizedText, RECOGNIZED_TEXT_NOTICE } from '@/shared/utils/recognizedText'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
@@ -24,6 +15,18 @@ import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/
 import PdfOutline, { type OutlineNode } from './PdfOutline'
 import RecognizedTextPanel from './RecognizedTextPanel'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import useFullScreenDialog from '@/shared/ui/dialog/useFullScreenDialog'
+import ReadingLayout from './documentView/ReadingLayout'
+import PdfTools from './documentView/PdfTools'
+import { FindingPanel } from './documentView/FindingCard'
+import { anchorPlace, anchorQuote } from './documentView/findingText'
+import {
+  drawPassageMarks,
+  labelFrame,
+  PASSAGE_BAND_CLASS,
+  PASSAGE_EDGE_CLASS,
+  PASSAGE_LABEL_CLASS,
+} from './documentView/passageMarks'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
 const SEARCH_PAGE_LIMIT = 50
@@ -31,6 +34,10 @@ const SEARCH_PAGE_LIMIT = 50
 const ZOOM_STEP = 1.25
 const MIN_SCALE = 0.25
 const MAX_SCALE = 5
+/** A PDF opens in page width, but no larger than this on a wide screen. */
+const MAX_OPENING_SCALE = 1.6
+/** On a phone, page width would shrink the text below reading size: it opens at least this large. */
+const PHONE_MIN_SCALE = 0.7
 
 const RECOGNIZED_TEXT_PANEL_ID = 'pdf-recognized-text'
 
@@ -82,6 +89,15 @@ export default function PdfViewer({
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [page, setPage] = useState(1)
+  const [scale, setScale] = useState(1)
+  // the page the passage starts on; the status names it, not the page scrolled to since
+  const [markedPage, setMarkedPage] = useState(1)
+  const firstMarkRef = useRef<HTMLElement | null>(null)
+  const phone = useFullScreenDialog()
+  const phoneRef = useRef(phone)
+  useEffect(() => {
+    phoneRef.current = phone
+  }, [phone])
   const recognized = isRecognizedText(anchor)
   const [recognizedOpen, setRecognizedOpen] = useState(true)
   const [markState, setMarkState] = useState<MarkState>(() => initialMarkState(anchor))
@@ -146,7 +162,10 @@ export default function PdfViewer({
         let jumped = false
 
         eventBus.on('pagesinit', () => {
-          viewer.currentScaleValue = 'auto'
+          viewer.currentScaleValue = 'page-width'
+          const fitted = viewer.currentScale
+          if (phoneRef.current && fitted < PHONE_MIN_SCALE) viewer.currentScale = PHONE_MIN_SCALE
+          else if (fitted > MAX_OPENING_SCALE) viewer.currentScale = MAX_OPENING_SCALE
           if (passage) viewer.scrollPageIntoView({ pageNumber: passage.from })
         })
         if (frames) {
@@ -154,6 +173,10 @@ export default function PdfViewer({
             'pagerendered',
             ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
               const first = drawRegions(source.div, regionsOnPage(anchor, pageNumber))
+              if (first && pageNumber === firstFramed) {
+                labelFrame(first)
+                firstMarkRef.current = first
+              }
               // drawn again after every zoom step, scrolled to only once
               if (first && pageNumber === firstFramed && !jumped) {
                 jumped = true
@@ -164,6 +187,7 @@ export default function PdfViewer({
           )
         }
         eventBus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => setPage(pageNumber))
+        eventBus.on('scalechanging', ({ scale: next }: { scale: number }) => setScale(next))
         eventBus.on(
           'textlayerrendered',
           ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
@@ -179,11 +203,16 @@ export default function PdfViewer({
             )
             if (range) {
               for (let i = range[0]; i <= range[1]; i++) spans[i].classList.add('passage')
+              const band = drawPassageMarks(source.div, spans.slice(range[0], range[1] + 1), {
+                label: startsHere,
+              })
+              if (startsHere) firstMarkRef.current = band ?? spans[range[0]]
               // a text layer renders again on zoom and when its page scrolls back into view - the
               // passage stays marked, but the view jumps to it only once
               if (startsHere && !jumped) {
                 jumped = true
-                spans[range[0]].scrollIntoView?.({ block: 'center' })
+                spans[range[0]].scrollIntoView?.({ block: 'center', inline: 'nearest' })
+                setMarkedPage(pageNumber)
                 setMarkState('marked')
               }
             } else if (startsHere && !jumped) {
@@ -246,161 +275,184 @@ export default function PdfViewer({
     void viewer.linkService.goToDestination(node.dest)
   }
 
+  function goToPage(next: number) {
+    if (viewerRef.current) viewerRef.current.currentPageNumber = next
+  }
+
+  function jumpToPassage() {
+    firstMarkRef.current?.scrollIntoView?.({ block: 'center', inline: 'nearest' })
+  }
+
   const numPages = pdf?.numPages ?? 0
   const hasOutline = outline.length > 0
+  const status = {
+    text: recognized
+      ? scanStatusText(markState, changed, anchor)
+      : statusText(markState, changed, anchor?.pageFrom != null, markedPage),
+    warning: changed || markState === 'not-found',
+  }
+  const canJump = markState === 'marked' || markState === 'framed'
+  const showOutline = hasOutline && outlineOpen
+  const showRecognized = recognized && recognizedOpen && anchor != null
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }}>
-      <Box
-        role="toolbar"
-        aria-label="Ansicht"
-        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}
-      >
-        {hasOutline && (
-          <Tooltip
-            title={outlineOpen ? 'Inhaltsverzeichnis ausblenden' : 'Inhaltsverzeichnis einblenden'}
-          >
-            <IconButton
-              size="small"
-              aria-label="Inhaltsverzeichnis"
-              aria-expanded={outlineOpen}
-              aria-controls={outlineOpen ? 'pdf-outline' : undefined}
-              onClick={() => setOutlineOpen((open) => !open)}
-            >
-              <TocIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Typography component="span" sx={{ fontSize: fontSize.text, mx: 1 }}>
-          {numPages > 0 ? `Seite ${page} von ${numPages}` : <LoadingState shape="inline" />}
-        </Typography>
-        {recognized && (
-          <Tooltip
-            title={recognizedOpen ? 'Erkannten Text ausblenden' : 'Erkannten Text einblenden'}
-          >
-            <IconButton
-              size="small"
-              aria-label="Erkannter Text"
-              aria-expanded={recognizedOpen}
-              aria-controls={recognizedOpen ? RECOGNIZED_TEXT_PANEL_ID : undefined}
-              onClick={() => setRecognizedOpen((open) => !open)}
-            >
-              <SubjectIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Tooltip title="Verkleinern">
-          <IconButton size="small" aria-label="Verkleinern" onClick={() => zoom(1 / ZOOM_STEP)}>
-            <RemoveIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Vergrößern">
-          <IconButton size="small" aria-label="Vergrößern" onClick={() => zoom(ZOOM_STEP)}>
-            <AddIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Seitenbreite">
-          <IconButton size="small" aria-label="Seitenbreite" onClick={fitWidth}>
-            <FitWidthIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
-      <Typography
-        role="status"
-        sx={
-          changed || markState === 'not-found'
-            ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
-            : markState === 'no-anchor' || markState === 'framed' || markState === 'page-only'
-              ? { fontSize: fontSize.text, color: 'text.secondary' }
-              : visuallyHidden
-        }
-      >
-        {recognized
-          ? scanStatusText(markState, changed, anchor)
-          : statusText(markState, changed, anchor?.pageFrom != null, page)}
-      </Typography>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: recognized ? 'column' : 'row', sm: 'row' },
-          flex: 1,
-          minHeight: 0,
-          gap: 1,
-        }}
-      >
-        {hasOutline && outlineOpen && (
-          <Box
-            id="pdf-outline"
-            component="nav"
-            aria-label="Inhaltsverzeichnis"
-            sx={{
-              width: 260,
-              flex: 'none',
-              overflow: 'auto',
-              borderRight: 1,
-              borderColor: 'divider',
-              pr: 1,
-            }}
-          >
-            <PdfOutline nodes={outline} activeNode={activeNode(outline, page)} onSelect={goTo} />
+    <ReadingLayout
+      finding={
+        anchor !== undefined
+          ? { place: anchorPlace(anchor), quote: recognized ? '' : anchorQuote(anchor) }
+          : null
+      }
+      status={status}
+      onJump={canJump ? jumpToPassage : undefined}
+      panels={
+        showOutline || showRecognized ? (
+          <>
+            {showOutline && (
+              <FindingPanel>
+                <Box
+                  id="pdf-outline"
+                  component="nav"
+                  aria-label="Inhaltsverzeichnis"
+                  sx={{ mx: -1 }}
+                >
+                  <PdfOutline
+                    nodes={outline}
+                    activeNode={activeNode(outline, page)}
+                    onSelect={goTo}
+                  />
+                </Box>
+              </FindingPanel>
+            )}
+            {showRecognized && (
+              <FindingPanel>
+                <RecognizedTextPanel
+                  id={RECOGNIZED_TEXT_PANEL_ID}
+                  anchor={anchor}
+                  documentId={documentId}
+                  chunkIndex={chunkIndex}
+                />
+              </FindingPanel>
+            )}
+          </>
+        ) : undefined
+      }
+    >
+      <Box sx={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 160 }}>
+        {!pdf && (
+          <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
+            <LoadingState shape="block" />
           </Box>
         )}
         <Box
-          sx={{
-            position: 'relative',
-            flex: 1,
-            minWidth: 0,
-            minHeight: 160,
-            bgcolor: 'action.hover',
-          }}
+          ref={containerRef}
+          data-testid="pdf-container"
+          tabIndex={0}
+          role="region"
+          aria-label="Seiten"
+          sx={pagesSx}
         >
-          {!pdf && (
-            <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
-              <LoadingState shape="block" />
-            </Box>
-          )}
-          <Box
-            ref={containerRef}
-            data-testid="pdf-container"
-            tabIndex={0}
-            role="region"
-            aria-label="Seiten"
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'auto',
-              '& .textLayer .passage': {
-                backgroundColor: markHighlight,
-                boxShadow: `0 0 0 2px ${markHighlight}`,
-                borderRadius: '2px',
-              },
-              // The frame lies on the scanned paper, which stays light in both schemes: the
-              // accent's pressed tone stays far above 3:1 there, the solid 3 px line is its shape.
-              [`& .${REGION_CLASS}`]: {
-                position: 'absolute',
-                zIndex: 3,
-                pointerEvents: 'none',
-                boxSizing: 'border-box',
-                border: '3px solid',
-                borderColor: 'primary.dark',
-                borderRadius: '3px',
-                backgroundColor: (theme) => alpha(theme.palette.primary.dark, 0.06),
-              },
-            }}
-          >
-            <div className="pdfViewer" />
-          </Box>
+          <div className="pdfViewer" />
         </Box>
-        {recognized && recognizedOpen && anchor && (
-          <RecognizedTextPanel
-            id={RECOGNIZED_TEXT_PANEL_ID}
-            anchor={anchor}
-            documentId={documentId}
-            chunkIndex={chunkIndex}
-          />
-        )}
+        <PdfTools
+          page={page}
+          numPages={numPages}
+          scale={scale}
+          onPage={goToPage}
+          onZoomIn={() => zoom(ZOOM_STEP)}
+          onZoomOut={() => zoom(1 / ZOOM_STEP)}
+          onFitWidth={fitWidth}
+          hasOutline={hasOutline}
+          outlineOpen={outlineOpen}
+          outlineId="pdf-outline"
+          onToggleOutline={() => setOutlineOpen((open) => !open)}
+          recognized={recognized}
+          recognizedOpen={recognizedOpen}
+          recognizedId={RECOGNIZED_TEXT_PANEL_ID}
+          onToggleRecognized={() => setRecognizedOpen((open) => !open)}
+        />
       </Box>
-    </Box>
+    </ReadingLayout>
   )
+}
+
+/**
+ * The pages on the desk, and the marks on them: bands multiplied onto the page, so the text
+ * stays dark on them, the Mittelblau edge, the label; a scan's frames in the same colours.
+ */
+const pagesSx: SxProps<Theme> = (theme) => {
+  const { band, edge, edgeFg } = theme.palette.documentView
+  return {
+    position: 'absolute',
+    inset: 0,
+    overflow: 'auto',
+    '--page-margin': '16px auto',
+    '--page-border': 'none',
+    '& .pdfViewer': { pb: 10 },
+    '& .pdfViewer .page': { boxShadow: shadow.floating, borderRadius: '2px' },
+    // the spans only carry the passage for the search; the bands below draw it
+    '& .textLayer .passage': { backgroundColor: 'transparent' },
+    [`& .${PASSAGE_BAND_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 1,
+      pointerEvents: 'none',
+      backgroundColor: band,
+      mixBlendMode: 'multiply',
+      borderRadius: '3px',
+    },
+    [`& .${PASSAGE_EDGE_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 1,
+      pointerEvents: 'none',
+      backgroundColor: edge,
+      borderRadius: '2px',
+    },
+    [`& .${REGION_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 3,
+      pointerEvents: 'none',
+      boxSizing: 'border-box',
+      border: `2px solid ${edge}`,
+      borderRadius: '4px',
+      backgroundColor: band,
+      mixBlendMode: 'multiply',
+    },
+    [`& .${PASSAGE_LABEL_CLASS}`]: {
+      position: 'absolute',
+      left: 0,
+      bottom: '100%',
+      mb: 0.5,
+      whiteSpace: 'nowrap',
+      backgroundColor: edge,
+      color: edgeFg,
+      fontFamily: theme.typography.fontFamily,
+      fontSize: fontSize.label,
+      fontWeight: fontWeight.semibold,
+      lineHeight: '16px',
+      px: 1,
+      borderRadius: `${radius.xs}px`,
+      '&[data-place="margin"]': {
+        left: 'auto',
+        right: '100%',
+        bottom: 'auto',
+        top: 0,
+        mb: 0,
+        mr: 1,
+      },
+    },
+    '@media (forced-colors: active)': {
+      [`& .${PASSAGE_BAND_CLASS}`]: {
+        backgroundColor: 'Mark',
+        mixBlendMode: 'normal',
+        opacity: 0.5,
+      },
+      [`& .${PASSAGE_EDGE_CLASS}`]: { backgroundColor: 'Highlight', forcedColorAdjust: 'none' },
+      [`& .${REGION_CLASS}`]: { borderColor: 'Highlight', backgroundColor: 'transparent' },
+      [`& .${PASSAGE_LABEL_CLASS}`]: {
+        backgroundColor: 'Highlight',
+        color: 'HighlightText',
+        forcedColorAdjust: 'none',
+      },
+    },
+  }
 }
 
 function initialMarkState(anchor: ChunkAnchor | null | undefined): MarkState {
