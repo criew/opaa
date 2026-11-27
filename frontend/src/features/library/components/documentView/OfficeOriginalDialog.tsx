@@ -15,9 +15,12 @@ import { anchorPlace, anchorQuote } from './findingText'
 import { CsvTableView, DocxView, MailView } from './OfficeOriginalViews'
 import PassageLabel from './PassageLabel'
 import ReadingLayout from './ReadingLayout'
+import { OutlinePanel, OutlineToggle, OutlineToolbar } from './OutlinePanel'
+import { useHeadingNavigation, useOutlineOpen, useRenderedHeadings } from './useHeadingNavigation'
 import { highlightStyles, markPassageBlocks, passageBlockSx } from './textMarks'
 
 const TITLE_ID = 'office-original-title'
+const OUTLINE_ID = 'office-original-outline'
 /** Name of the CSS Custom Highlight that marks the cited passage in a Word file or a mail. */
 const HIGHLIGHT = 'opaa-original-passage'
 
@@ -48,7 +51,12 @@ export default function OfficeOriginalDialog({
   onClose: () => void
   onUnreadable: (original: OfficeOriginal) => void
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null)
+  const scrollerRef = useCallback((element: HTMLDivElement | null) => {
+    scrollRef.current = element
+    setScroller(element)
+  }, [])
   const [paper, setPaper] = useState<HTMLDivElement | null>(null)
   const [docxBody, setDocxBody] = useState<{ of: OfficeOriginal; body: HTMLElement } | null>(null)
   const [found, setFound] = useState<Found | null>(null)
@@ -61,6 +69,15 @@ export default function OfficeOriginalDialog({
         ? docxBody.body
         : null
       : (paper?.querySelector<HTMLElement>('[data-document-body]') ?? null)
+
+  // a Word file's outline: its heading paragraphs, as the indexing recognizes them
+  const { nodes: outline, headings } = useRenderedHeadings(
+    original?.format === 'docx' ? body : null,
+    'docx',
+    original,
+  )
+  const navigation = useHeadingNavigation(scroller, outline, headings)
+  const outlineState = useOutlineOpen(outline.length > 0)
 
   // The passage is searched once the content is in the DOM: a table by the anchor's rows where it
   // names them, everything else by its quotes. A frame later, so the marks measure laid-out text.
@@ -171,9 +188,28 @@ export default function OfficeOriginalDialog({
           }
           status={status}
           onJump={located ? jump : undefined}
+          panels={
+            outlineState.open ? (
+              <OutlinePanel
+                id={OUTLINE_ID}
+                nodes={outline}
+                activeNode={navigation.active}
+                onSelect={navigation.goTo}
+              />
+            ) : undefined
+          }
         >
+          {outlineState.toggleable && (
+            <OutlineToolbar>
+              <OutlineToggle
+                open={outlineState.open}
+                controls={OUTLINE_ID}
+                onToggle={outlineState.toggle}
+              />
+            </OutlineToolbar>
+          )}
           <Box
-            ref={scrollRef}
+            ref={scrollerRef}
             data-testid="office-original-content"
             role="region"
             aria-label="Dokument"

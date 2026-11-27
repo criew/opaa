@@ -15,6 +15,12 @@ import PassageLabel from './documentView/PassageLabel'
 import { anchorPlace, anchorQuote } from './documentView/findingText'
 import { highlightStyles, markPassageBlocks, passageBlockSx } from './documentView/textMarks'
 import { backLabel } from './documentView/backLabel'
+import { OutlinePanel, OutlineToggle, OutlineToolbar } from './documentView/OutlinePanel'
+import {
+  useHeadingNavigation,
+  useOutlineOpen,
+  useRenderedHeadings,
+} from './documentView/useHeadingNavigation'
 
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
@@ -33,6 +39,7 @@ interface DocumentTextPreviewDialogProps {
 // automatically - without an explicit, matching id pair, the dialog's accessible name falls back
 // to nothing a screen reader can announce on open.
 const TITLE_ID = 'document-preview-title'
+const OUTLINE_ID = 'document-preview-outline'
 
 /**
  * The client-side preview for Markdown/plain text originals ("Dokument öffnen" on a `.md`/
@@ -112,6 +119,29 @@ export default function DocumentTextPreviewDialog({
     [previewDocument],
   )
 
+  const [scrollBox, setScrollBox] = useState<HTMLDivElement | null>(null)
+  const contentRef = useCallback(
+    (content: HTMLDivElement | null) => {
+      setScrollBox(content)
+      const cleanup = markPassage(content)
+      return () => {
+        cleanup?.()
+        setScrollBox(null)
+      }
+    },
+    [markPassage],
+  )
+
+  // a Markdown original's outline: its headings, `#` to `######`
+  const markdown = previewDocument?.contentType === 'text/markdown'
+  const { nodes: outline, headings } = useRenderedHeadings(
+    markdown ? (paper?.querySelector<HTMLElement>('[data-document-body]') ?? null) : null,
+    'markdown',
+    previewDocument,
+  )
+  const navigation = useHeadingNavigation(scrollBox, outline, headings)
+  const outlineState = useOutlineOpen(outline.length > 0)
+
   const anchor = previewDocument?.anchor
   const current = mark?.of === previewDocument ? mark : null
   const markState = anchor === null ? 'no-anchor' : (current?.state ?? 'none')
@@ -158,9 +188,28 @@ export default function DocumentTextPreviewDialog({
               }
             : undefined
         }
+        panels={
+          outlineState.open ? (
+            <OutlinePanel
+              id={OUTLINE_ID}
+              nodes={outline}
+              activeNode={navigation.active}
+              onSelect={navigation.goTo}
+            />
+          ) : undefined
+        }
       >
+        {outlineState.toggleable && (
+          <OutlineToolbar>
+            <OutlineToggle
+              open={outlineState.open}
+              controls={OUTLINE_ID}
+              onToggle={outlineState.toggle}
+            />
+          </OutlineToolbar>
+        )}
         <Box
-          ref={markPassage}
+          ref={contentRef}
           data-testid="document-text-content"
           role="region"
           aria-label="Dokument"

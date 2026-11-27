@@ -8,6 +8,7 @@ import type { CsvTable } from '../../utils/csvTable'
 import { confineRenderedDocx } from '../../utils/docxConfinement'
 import { neutralizeLinks } from '../../utils/documentLinks'
 import type { MailMessage } from '../../utils/mailMessage'
+import { markDocxHeadings } from './headingOutline'
 import { passageLabelSx } from './styles'
 import { PASSAGE_BLOCK_ATTR, PASSAGE_FIRST_ATTR, passageBandSx } from './textMarks'
 
@@ -267,7 +268,14 @@ function DocxShadow({
     }
     watch()
     import('docx-preview')
-      .then(({ renderAsync }) => renderAsync(blob, body, styles, DOCX_RENDER_OPTIONS))
+      .then(async ({ parseAsync, renderDocument }) => {
+        const document = await parseAsync(blob, DOCX_RENDER_OPTIONS)
+        // heading paragraphs carry their level into the rendered page, for the outline
+        markDocxHeadings(document)
+        const nodes = await renderDocument(document, DOCX_RENDER_OPTIONS)
+        if (cancelled) return
+        for (const node of nodes) (node.nodeName === 'STYLE' ? styles : body).appendChild(node)
+      })
       .then(() => {
         if (cancelled) return
         guard?.disconnect()
