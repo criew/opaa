@@ -1,0 +1,1031 @@
+{
+  "cases": [
+    {
+      "id": "aq-fn-01",
+      "class": "false_negative",
+      "question": "Wie hoch ist die Müllpauschale auf dem Wochenmarkt?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Müllpauschale",
+        "5 Euro je Markttag und Stand"
+      ],
+      "answer_must_match": [
+        "\\b5\\b.{0,12}(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-02",
+      "class": "false_negative",
+      "question": "Innerhalb welcher Frist kann ich Einwendungen gegen die Niederschrift einer Gemeinderatssitzung erheben?",
+      "documents": [
+        "aq-08_geschaeftsordnung-gemeinderat.md"
+      ],
+      "evidence": [
+        "Einwendungen gegen die Niederschrift",
+        "14 Tagen"
+      ],
+      "answer_must_match": [
+        "\\b14\\b.{0,10}Tage"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-03",
+      "class": "false_negative",
+      "question": "Bis zu welchem Auftragswert ist nach AB08 eine Direktvergabe ohne Vergleichsangebote zulässig?",
+      "documents": [
+        "aq-02_dienstanweisung-vergabe.md"
+      ],
+      "evidence": [
+        "AB-08",
+        "1.000 Euro netto"
+      ],
+      "answer_must_match": [
+        "1\\.?000\\s*(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "identifier_variants"
+      ],
+      "question_variants": [
+        "Bis zu welchem Auftragswert ist nach AB-08 eine Direktvergabe ohne Vergleichsangebote zulässig?",
+        "Bis zu welchem Auftragswert ist nach AB 08 eine Direktvergabe ohne Vergleichsangebote zulässig?",
+        "Bis zu welchem Auftragswert ist nach ab-08 eine Direktvergabe ohne Vergleichsangebote zulässig?"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-04",
+      "class": "false_negative",
+      "question": "Wofür wird das Formular FB-12 verwendet?",
+      "documents": [
+        "aq-03_formularverzeichnis.md"
+      ],
+      "evidence": [
+        "FB12",
+        "Direktvergabe"
+      ],
+      "answer_must_match": [
+        "Direktvergabe"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "identifier_variants"
+      ],
+      "question_variants": [
+        "Wofür wird das Formular FB12 verwendet?",
+        "Wofür wird das Formular FB 12 verwendet?",
+        "Wofür wird das Formular fb12 verwendet?"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-05",
+      "class": "false_negative",
+      "question": "Welches Amt ist für den Vorgang ZV117 zuständig?",
+      "documents": [
+        "aq-13_zustaendigkeiten.xlsx"
+      ],
+      "evidence": [
+        "ZV-117",
+        "Ordnungsamt"
+      ],
+      "answer_must_match": [
+        "Ordnungsamt"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "identifier_variants",
+        "table_late_row"
+      ],
+      "question_variants": [
+        "Welches Amt ist für den Vorgang ZV-117 zuständig?",
+        "Welches Amt ist für den Vorgang ZV 117 zuständig?",
+        "Welches Amt ist für den Vorgang zv-117 zuständig?"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-06",
+      "class": "false_negative",
+      "question": "Wie viele Tage beträgt die Bearbeitungsfrist für ZV-098?",
+      "documents": [
+        "aq-13_zustaendigkeiten.xlsx"
+      ],
+      "evidence": [
+        "ZV-098",
+        "Fundsachenversteigerung",
+        "9"
+      ],
+      "answer_must_match": [
+        "\\b9\\b.{0,10}Tage"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "table_late_row"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-07",
+      "class": "false_negative",
+      "question": "Was kostet eine Warenauslage auf dem Gehweg?",
+      "documents": [
+        "aq-11_sondernutzungsentgelte.xlsx"
+      ],
+      "evidence": [
+        "Warenauslage",
+        "3,00",
+        "je qm und Monat"
+      ],
+      "answer_must_match": [
+        "3(,00)?\\s*(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "table_title_row"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "known_gap",
+          "since": "2026-11-27",
+          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile, die Spaltenköpfe stehen als Datenzeile im Chunk und tragen keinen Bezug zu den Werten."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-08",
+      "class": "false_negative",
+      "question": "Wie viel kostet der Saal im Bürgerhaus für Vereine pro Stunde?",
+      "documents": [
+        "aq-12_raumentgelte.xlsx"
+      ],
+      "evidence": [
+        "Saal",
+        "Vereine",
+        "25"
+      ],
+      "answer_must_match": [
+        "\\b25\\b.{0,12}(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "table_row_column"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-09",
+      "class": "false_negative",
+      "question": "Wie lange darf ich eine DVD aus der Bibliothek ausleihen?",
+      "documents": [
+        "aq-09_benutzungsordnung-bibliothek.pdf"
+      ],
+      "evidence": [
+        "DVDs",
+        "7 Tage"
+      ],
+      "answer_must_match": [
+        "\\b7\\b.{0,6}Tage"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "pdf"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-10",
+      "class": "false_negative",
+      "question": "Was kostet ein Urnenwahlgrab?",
+      "documents": [
+        "aq-10_friedhofsgebuehren.docx"
+      ],
+      "evidence": [
+        "Urnenwahlgrab",
+        "20",
+        "780"
+      ],
+      "answer_must_match": [
+        "780"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "docx_table"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-01",
+      "class": "needless_caveat",
+      "question": "Wie viele Urlaubstage stehen Beschäftigten pro Jahr zu?",
+      "documents": [
+        "aq-04_urlaubsordnung.md"
+      ],
+      "evidence": [
+        "30 Arbeitstage"
+      ],
+      "answer_must_match": [
+        "\\b30\\b"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-02",
+      "class": "needless_caveat",
+      "question": "Wie früh muss ich meinen Urlaub beantragen?",
+      "documents": [
+        "aq-04_urlaubsordnung.md"
+      ],
+      "evidence": [
+        "mindestens 14 Tage"
+      ],
+      "answer_must_match": [
+        "\\b14\\b.{0,10}Tage"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-03",
+      "class": "needless_caveat",
+      "question": "Wie hoch ist die Wegstreckenentschädigung, wenn ich für eine Dienstreise mein privates Auto nutze?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "Wegstreckenentschädigung",
+        "0,30 Euro je gefahrenem Kilometer"
+      ],
+      "answer_must_match": [
+        "0,30"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-04",
+      "class": "needless_caveat",
+      "question": "Wie viel Tagegeld bekomme ich für eine eintägige Dienstreise von neun Stunden?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "mehr als 8 Stunden",
+        "14 Euro"
+      ],
+      "answer_must_match": [
+        "\\b14\\b.{0,6}(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-05",
+      "class": "needless_caveat",
+      "question": "Bis wann muss ich das Bürgerhaus am Samstagabend räumen?",
+      "documents": [
+        "aq-06_nutzungsordnung-buergerhaus.md"
+      ],
+      "evidence": [
+        "Freitagen und Samstagen",
+        "24 Uhr"
+      ],
+      "answer_must_match": [
+        "24(:00)?\\s*Uhr"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-06",
+      "class": "needless_caveat",
+      "question": "Wie hoch ist die Geschwisterermäßigung in der Kita?",
+      "documents": [
+        "aq-07_kita-beitragssatzung.md"
+      ],
+      "evidence": [
+        "Geschwisterermäßigung",
+        "50 Prozent"
+      ],
+      "answer_must_match": [
+        "50\\s*(Prozent|%)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-07",
+      "class": "needless_caveat",
+      "question": "Wie lange darf ich ein Buch aus der Gemeindebibliothek behalten?",
+      "documents": [
+        "aq-09_benutzungsordnung-bibliothek.pdf"
+      ],
+      "evidence": [
+        "Bücher",
+        "28 Tage"
+      ],
+      "answer_must_match": [
+        "\\b28\\b.{0,6}Tage"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "pdf"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-08",
+      "class": "needless_caveat",
+      "question": "An welchen Tagen findet der Wochenmarkt statt?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Mittwoch",
+        "Samstag"
+      ],
+      "answer_must_match": [
+        "Mittwoch",
+        "Samstag"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-09",
+      "class": "needless_caveat",
+      "question": "Wie hoch ist die Monatspauschale für einen Dauerstandplatz auf dem Markt?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Dauerstandplatz",
+        "36 Euro"
+      ],
+      "answer_must_match": [
+        "\\b36\\b.{0,6}(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-10",
+      "class": "needless_caveat",
+      "question": "Ich fahre im Herbst mit der Bahn zu einer Dienstreise und übernachte zweimal. Bis zu welchem Betrag werden die Übernachtungskosten erstattet?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "Übernachtungskosten",
+        "80 Euro je Nacht"
+      ],
+      "answer_must_match": [
+        "\\b80\\b.{0,6}(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-01",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist die Standgebühr auf dem Wochenmarkt je Meter?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Standgebühr",
+        "4,50 Euro je laufendem Meter Standfläche und Markttag"
+      ],
+      "answer_must_match": [
+        "4,50\\s*(Euro|EUR|€)",
+        "(Markttag|Tag)"
+      ],
+      "answer_must_not_match": [
+        "36\\s*(Euro|EUR|€)\\s*(je|pro)\\s*(laufenden?\\s*)?Meter"
+      ],
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-02",
+      "class": "wrong_reference",
+      "question": "Was kostet das Mittagessen in der Kita?",
+      "documents": [
+        "aq-07_kita-beitragssatzung.md"
+      ],
+      "evidence": [
+        "Mittagessen",
+        "3,20 Euro je Essen"
+      ],
+      "answer_must_match": [
+        "3,20\\s*(Euro|EUR|€)",
+        "(je|pro)\\s*(Essen|Mahlzeit|Mittagessen)"
+      ],
+      "answer_must_not_match": [
+        "3,20\\s*(Euro|EUR|€)\\s*(je|pro|im)\\s*Monat"
+      ],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-03",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist der monatliche Kita-Beitrag für ein Kind unter drei Jahren bei 35 Wochenstunden Betreuung?",
+      "documents": [
+        "aq-07_kita-beitragssatzung.md"
+      ],
+      "evidence": [
+        "Kinder unter drei Jahren",
+        "35 Wochenstunden",
+        "285 Euro"
+      ],
+      "answer_must_match": [
+        "285\\s*(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [
+        "\\b160\\s*(Euro|EUR|€)",
+        "\\b210\\s*(Euro|EUR|€)",
+        "\\b360\\s*(Euro|EUR|€)"
+      ],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-04",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist die Säumnisgebühr in der Bibliothek?",
+      "documents": [
+        "aq-09_benutzungsordnung-bibliothek.pdf"
+      ],
+      "evidence": [
+        "Säumnisgebühr",
+        "0,50 Euro je Medium und angefangener Woche"
+      ],
+      "answer_must_match": [
+        "0,50\\s*(Euro|EUR|€)",
+        "(Woche)"
+      ],
+      "answer_must_not_match": [
+        "0,50\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Tag"
+      ],
+      "tags": [
+        "pdf"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-05",
+      "class": "wrong_reference",
+      "question": "Was kostet die Verlängerung des Nutzungsrechts an einem Wahlgrab?",
+      "documents": [
+        "aq-10_friedhofsgebuehren.docx"
+      ],
+      "evidence": [
+        "Verlängerung",
+        "15 Euro je Jahr"
+      ],
+      "answer_must_match": [
+        "15\\s*(Euro|EUR|€)",
+        "(je|pro)\\s*Jahr"
+      ],
+      "answer_must_not_match": [
+        "980"
+      ],
+      "tags": [
+        "docx_table"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-06",
+      "class": "wrong_reference",
+      "question": "Was kostet ein Gerüst auf dem Gehweg?",
+      "documents": [
+        "aq-11_sondernutzungsentgelte.xlsx"
+      ],
+      "evidence": [
+        "Gerüst",
+        "0,25",
+        "je qm und Woche"
+      ],
+      "answer_must_match": [
+        "0,25\\s*(Euro|EUR|€)",
+        "Woche"
+      ],
+      "answer_must_not_match": [
+        "0,25\\s*(Euro|EUR|€)\\s*(je|pro)\\s*(qm|Quadratmeter)\\s*und\\s*(Tag|Monat)"
+      ],
+      "tags": [
+        "table_title_row"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "known_gap",
+          "since": "2026-11-27",
+          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile, die Spaltenköpfe stehen als Datenzeile im Chunk und tragen keinen Bezug zu den Werten."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-07",
+      "class": "wrong_reference",
+      "question": "Wie viel kostet die Außengastronomie je Quadratmeter?",
+      "documents": [
+        "aq-11_sondernutzungsentgelte.xlsx"
+      ],
+      "evidence": [
+        "Außengastronomie",
+        "6,50",
+        "je qm und Monat"
+      ],
+      "answer_must_match": [
+        "6,50?\\s*(Euro|EUR|€)",
+        "Monat"
+      ],
+      "answer_must_not_match": [
+        "40\\s*(Euro|EUR|€)\\s*(je|pro)\\s*(qm|Quadratmeter)"
+      ],
+      "tags": [
+        "table_title_row"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "known_gap",
+          "since": "2026-11-27",
+          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile, die Spaltenköpfe stehen als Datenzeile im Chunk und tragen keinen Bezug zu den Werten."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-08",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist die Kaution für das Foyer?",
+      "documents": [
+        "aq-12_raumentgelte.xlsx"
+      ],
+      "evidence": [
+        "Foyer",
+        "Kaution",
+        "100"
+      ],
+      "answer_must_match": [
+        "\\b100\\s*(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [
+        "100\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Stunde"
+      ],
+      "tags": [
+        "table_row_column"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-09",
+      "class": "wrong_reference",
+      "question": "Was kostet der Saal im Bürgerhaus für Auswärtige pro Stunde?",
+      "documents": [
+        "aq-12_raumentgelte.xlsx"
+      ],
+      "evidence": [
+        "Saal",
+        "Auswärtige",
+        "60"
+      ],
+      "answer_must_match": [
+        "\\b60\\s*(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [
+        "\\b(85|25|200)\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Stunde"
+      ],
+      "tags": [
+        "table_row_column"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-10",
+      "class": "wrong_reference",
+      "question": "Welcher Betrag wird bei einer Stornierung weniger als 14 Tage vor dem Termin fällig?",
+      "documents": [
+        "aq-06_nutzungsordnung-buergerhaus.md"
+      ],
+      "evidence": [
+        "Stornierung",
+        "50 Prozent des vereinbarten Entgelts"
+      ],
+      "answer_must_match": [
+        "50\\s*(Prozent|%)",
+        "Entgelt"
+      ],
+      "answer_must_not_match": [
+        "50\\s*(Prozent|%)\\s*(der|von)\\s*(der\\s*)?Kaution"
+      ],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-11",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist das Tagegeld bei einer Dienstreise von 24 Stunden?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "24 Stunden",
+        "28 Euro je Kalendertag"
+      ],
+      "answer_must_match": [
+        "28\\s*(Euro|EUR|€)"
+      ],
+      "answer_must_not_match": [
+        "\\b14\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Kalendertag"
+      ],
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "unmeasured",
+          "since": "2026-11-27",
+          "reason": "Noch nicht gemessen: die Kontextebene braucht Embedding-Modell und Datenbank (./gradlew evaluateAnswerQuality); der Erstlauf trägt den Ist-Zustand ein."
+        }
+      }
+    }
+  ],
+  "table_checks": [
+    {
+      "document": "aq-11_sondernutzungsentgelte.xlsx",
+      "header_cells": [
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
+      ],
+      "last_row": "Verkaufswagen",
+      "title": "Entgelte für Sondernutzungen"
+    },
+    {
+      "document": "aq-12_raumentgelte.xlsx",
+      "header_cells": [
+        "Raum",
+        "Vereine",
+        "Gewerbe",
+        "Auswärtige",
+        "Kaution"
+      ],
+      "last_row": "Küche",
+      "title": null
+    },
+    {
+      "document": "aq-13_zustaendigkeiten.xlsx",
+      "header_cells": [
+        "Kennung",
+        "Aufgabe",
+        "Amt",
+        "Bearbeitungsfrist"
+      ],
+      "last_row": "ZV-130",
+      "title": null
+    }
+  ]
+}
