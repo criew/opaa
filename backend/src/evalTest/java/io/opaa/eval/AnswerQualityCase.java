@@ -25,6 +25,10 @@ import tools.jackson.databind.json.JsonMapper;
  * @param answerMustNotMatch regular expressions of a wrong reference; none may match
  * @param questionVariants further spellings of the question (identifier forms), each of which must
  *     bring the document into the context
+ * @param canonicalAnswer a detailed, correct answer that also names neighbouring figures; it must
+ *     pass every check of its case
+ * @param wrongAnswer for the class wrong reference an answer with the figure on the wrong
+ *     reference; a forbidden pattern must match it; {@code null} in the other classes
  * @param expectedState declared state per measurement layer ({@link #LAYER_FORMAT}, {@link
  *     #LAYER_CONTEXT})
  */
@@ -38,6 +42,8 @@ record AnswerQualityCase(
     List<String> answerMustNotMatch,
     List<String> questionVariants,
     List<String> tags,
+    String canonicalAnswer,
+    String wrongAnswer,
     Map<String, ExpectedState> expectedState) {
 
   static final String FALSE_NEGATIVE = "false_negative";
@@ -60,9 +66,9 @@ record AnswerQualityCase(
 
   /**
    * A table document whose later chunks must repeat the header: the chunk of the last data row
-   * carries every header cell, and the title row above the header row is not what is repeated.
+   * carries every header cell.
    */
-  record TableCheck(String document, List<String> headerCells, String lastRow, String title) {}
+  record TableCheck(String document, List<String> headerCells, String lastRow) {}
 
   record Dataset(List<AnswerQualityCase> cases, List<TableCheck> tableChecks) {}
 
@@ -105,6 +111,8 @@ record AnswerQualityCase(
                   ? strings(node.get("question_variants"))
                   : List.of(),
               strings(node.get("tags")),
+              node.get("canonical_answer").asString(),
+              node.hasNonNull("wrong_answer") ? node.get("wrong_answer").asString() : null,
               Map.copyOf(states)));
     }
     List<TableCheck> checks = new ArrayList<>();
@@ -113,8 +121,7 @@ record AnswerQualityCase(
           new TableCheck(
               node.get("document").asString(),
               strings(node.get("header_cells")),
-              node.get("last_row").asString(),
-              node.hasNonNull("title") ? node.get("title").asString() : null));
+              node.get("last_row").asString()));
     }
     return new Dataset(List.copyOf(cases), List.copyOf(checks));
   }

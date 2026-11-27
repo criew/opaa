@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -18,26 +19,42 @@ final class AnswerQualityAnswers {
 
   private AnswerQualityAnswers() {}
 
+  private static final int FLAGS =
+      Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.UNICODE_CHARACTER_CLASS;
+
   private static final Pattern CITATION_MARKER = Pattern.compile("【[^】]*】");
 
-  /** The answer claims the information is missing from the sources. */
-  static final List<Pattern> REFUSAL =
-      compile(
-          "nicht\\s+(\\w+\\s+){0,4}in\\s+(den|der|dem)\\s+(\\w+\\s+){0,3}(Quellen|Dokumenten|Unterlagen|Kontext|Informationen)",
-          "(keine|nicht\\s+\\w+)\\s+(\\w+\\s+){0,3}(Informationen|Angaben|Hinweise|Treffer)\\s+(\\w+\\s+){0,4}(gefunden|enthalten|vorhanden|verfügbar|zu finden)",
-          "kann\\s+(ich\\s+)?(\\w+\\s+){0,3}nicht\\s+beantworten",
-          "nicht\\s+beantwortet\\s+werden",
-          "(ist|sind)\\s+(\\w+\\s+){0,3}nicht\\s+(\\w+\\s+){0,3}(zu\\s+finden|enthalten|aufgeführt|genannt)",
-          "keine\\s+(\\w+\\s+){0,3}(Informationen|Angaben)\\s+(zu|über|dazu)");
+  /** A thousands group written with a point or a blank: {@code 1.000}, {@code 1 000}. */
+  private static final Pattern THOUSANDS =
+      Pattern.compile("(?<![\\d.,])\\d{1,3}(?:[. ]\\d{3})+(?!\\d)");
+
+  private static final Pattern ZERO_DECIMALS = Pattern.compile("(\\d),00(?!\\d)");
+  private static final Pattern CURRENCY = Pattern.compile("€|\\bEUR\\b");
+  private static final Pattern PERCENT = Pattern.compile("\\s*%");
+  private static final Pattern MIDNIGHT = Pattern.compile("Mitternacht|24[:.]00\\s*Uhr", FLAGS);
+
+  private static final Map<String, Pattern> CASE_PATTERNS = new ConcurrentHashMap<>();
 
   /**
-   * Phrases that claim missing information; they count as a refusal only in an answer that lacks
-   * the expected value, because a correct answer may name a gap of something else.
+   * The answer says the sources do not hold the information: only phrases that name the sources or
+   * refuse to answer. They count on their own, because they say nothing else.
+   */
+  static final List<Pattern> REFUSAL =
+      compile(
+          "nicht\\s+(\\w+\\s+){0,4}in\\s+(den|der|dem)\\s+(\\w+\\s+){0,3}(Quellen|Dokumenten|Unterlagen|Kontextdokumenten)",
+          "kann\\s+(ich\\s+)?(\\w+\\s+){0,3}nicht\\s+beantworten",
+          "nicht\\s+beantwortet\\s+werden");
+
+  /**
+   * General phrases of a missing piece of information. A correct answer may well use them for
+   * something else ("Parkgebühren sind darin nicht enthalten"), so they count as a refusal only in
+   * an answer that lacks the expected value.
    */
   static final List<Pattern> MISSING_CLAIM =
       compile(
           "keine\\s+(\\w+\\s+){0,2}(Informationen|Angaben|Auskünfte|Details)",
-          "(nicht|nirgends)\\s+(\\w+\\s+){0,3}(gefunden|auffindbar|enthalten|vorhanden|verfügbar)");
+          "(nicht|nirgends)\\s+(\\w+\\s+){0,3}(gefunden|auffindbar|enthalten|vorhanden|verfügbar|aufgeführt|genannt)",
+          "(Quellen|Unterlagen|Dokumenten)\\s+(\\w+\\s+){0,5}(keine|nichts)");
 
   /** A note on a premise or a gap that a fully answerable question does not need. */
   static final List<Pattern> CAVEAT =
@@ -54,17 +71,33 @@ final class AnswerQualityAnswers {
   private static List<Pattern> compile(String... regexes) {
     List<Pattern> patterns = new ArrayList<>();
     for (String regex : regexes) {
-      patterns.add(Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE));
+      patterns.add(Pattern.compile(regex, FLAGS));
     }
     return List.copyOf(patterns);
   }
 
+  private static boolean matches(String regex, String text) {
+    return CASE_PATTERNS
+        .computeIfAbsent(regex, r -> Pattern.compile(r, FLAGS))
+        .matcher(text)
+        .find();
+  }
+
+  private static boolean anyMatches(List<Pattern> patterns, String text) {
+    return patterns.stream().anyMatch(p -> p.matcher(text).find());
+  }
+
   /**
    * What an answer shows. {@code valueMissing}: a required pattern does not match; {@code
-   * wrongReference}: a forbidden pattern matches, or a required one is missing in a case of the
-   * class wrong reference.
+   * forbiddenHit}: a forbidden pattern matches; {@code wrongReference}: that, or a required pattern
+   * missing in a case of the class wrong reference.
    */
-  record Verdict(boolean refusal, boolean caveat, boolean valueMissing, boolean wrongReference) {
+  record Verdict(
+      boolean refusal,
+      boolean caveat,
+      boolean valueMissing,
+      boolean forbiddenHit,
+      boolean wrongReference) {
 
     /** Whether the answer is what the case's class demands. */
     boolean passed(String klass) {
@@ -79,35 +112,33 @@ final class AnswerQualityAnswers {
 
   static Verdict judge(AnswerQualityCase c, String answer) {
     String text = clean(answer);
-    boolean caveat = CAVEAT.stream().anyMatch(p -> p.matcher(text).find());
-    boolean valueMissing =
-        c.answerMustMatch().stream()
-            .anyMatch(
-                regex -> !Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(text).find());
-    boolean forbidden =
-        c.answerMustNotMatch().stream()
-            .anyMatch(
-                regex -> Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(text).find());
+    boolean valueMissing = c.answerMustMatch().stream().anyMatch(regex -> !matches(regex, text));
+    boolean forbidden = c.answerMustNotMatch().stream().anyMatch(regex -> matches(regex, text));
     boolean refusal =
-        REFUSAL.stream().anyMatch(p -> p.matcher(text).find())
-            || (valueMissing && MISSING_CLAIM.stream().anyMatch(p -> p.matcher(text).find()));
+        anyMatches(REFUSAL, text) || (valueMissing && anyMatches(MISSING_CLAIM, text));
     boolean wrongReference =
         forbidden || (AnswerQualityCase.WRONG_REFERENCE.equals(c.klass()) && valueMissing);
-    return new Verdict(refusal, caveat, valueMissing, wrongReference);
+    return new Verdict(refusal, anyMatches(CAVEAT, text), valueMissing, forbidden, wrongReference);
   }
 
-  /** The answer without citation markers (their ids carry digits) and with plain blanks. */
+  /**
+   * The answer as the patterns read it: without citation markers (their ids carry digits), with
+   * plain blanks, thousands separators and zero decimals removed ({@code 1.000,00 Euro} reads
+   * {@code 1000 Euro}), {@code €} and {@code EUR} as {@code Euro}, {@code %} as {@code Prozent},
+   * midnight as {@code 24 Uhr}.
+   */
   static String clean(String answer) {
     if (answer == null) {
       return "";
     }
-    return CITATION_MARKER
-        .matcher(answer)
-        .replaceAll(" ")
-        .replace(' ', ' ')
-        .replace(' ', ' ')
-        .replaceAll("\\s+", " ")
-        .strip();
+    String text =
+        CITATION_MARKER.matcher(answer).replaceAll(" ").replace(' ', ' ').replace(' ', ' ');
+    text = THOUSANDS.matcher(text).replaceAll(m -> m.group().replaceAll("[. ]", ""));
+    text = ZERO_DECIMALS.matcher(text).replaceAll("$1");
+    text = CURRENCY.matcher(text).replaceAll(" Euro");
+    text = PERCENT.matcher(text).replaceAll(" Prozent");
+    text = MIDNIGHT.matcher(text).replaceAll("24 Uhr");
+    return text.replaceAll("\\s+", " ").strip();
   }
 
   /** One answered case. {@code answer} is {@code null} when the run did not ask the model. */

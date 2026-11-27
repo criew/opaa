@@ -35,7 +35,7 @@ Formen und Längen sind gezielt so gewählt, dass sie die Fehlerbilder auslösen
   als `question_variants` am Fall.
 - **Lange Dokumente mit spätem Treffer:** `aq-01` (Marktsatzung, rund 15 000 Zeichen, die Gebühren
   stehen in § 18) und `aq-08` (Geschäftsordnung, rund 21 000 Zeichen, die Niederschrift in § 27).
-- **Tabellen:** `aq-11` mit Titelzeile und Leerzeile über der Kopfzeile, `aq-12` als kleine Matrix,
+- **Tabellen:** `aq-11` mit Titelzeile und Leerzeile über der Kopfzeile und 63 Datenzeilen (mehr als eine Zeilengruppe, die gefragten Zeilen stehen am Ende), `aq-12` als kleine Matrix,
   deren Antwort Zeile und Spalte braucht (Raum mal Nutzergruppe, dazu eine Kaution je Buchung statt
   je Stunde), `aq-13` mit 130 Zeilen, damit spätere Chunks den Kopf wiederholen müssen. `aq-10`
   (DOCX) trägt eine Tabelle und Fließtext, `aq-09` ist ein PDF.
@@ -52,14 +52,20 @@ selbst, mit festen ZIP-Zeitstempeln: Zwei Läufe erzeugen byte-identische Dateie
 |---|---|
 | `id`, `class`, `question`, `documents` | Kennung (`aq-fn-`, `aq-nc-`, `aq-wr-`), Klasse, Frage, erwartetes Dokument |
 | `question_variants` | weitere Schreibweisen der Frage; jede muss das Dokument in den Kontext bringen |
-| `evidence` | Texte, die **alle in einem Abschnitt** des Kontexts stehen müssen: Wert samt Einheit oder samt Zeile und Spalte |
+| `evidence` | Texte, die **alle in einem Abschnitt** des Kontexts stehen müssen: Wert samt Einheit; bei einer Tabelle die gerenderte Zeile (`Saal \| 25 \| 85 \| 60 \| 200`) samt den Zellen des Kopfs, die ihre Spalte benennen |
 | `answer_must_match` | Muster, die alle auf die Antwort passen müssen (Wert, Einheit) |
-| `answer_must_not_match` | Muster einer falschen Bezugsgröße; keines darf passen |
+| `answer_must_not_match` | Muster einer falschen Bezugsgröße; keines darf passen. Sie binden die Zahl an ihren Bezug (`Auswärtige\D{0,40}\b85\b`: keine weitere Zahl dazwischen), damit erläuternde Nachbarzahlen in einer richtigen Antwort nicht zählen |
+| `canonical_answer`, `wrong_answer` | eine ausführliche richtige Antwort mit Nachbarzahlen, die alle Prüfungen besteht, und (nur `wrong_reference`) eine Antwort mit der falschen Bezugsgröße, auf die ein verbotenes Muster passen muss; `AnswerQualityDatasetTest` prüft beides |
 | `tags` | `long_document`, `identifier_variants`, `table_title_row`, `table_row_column`, `table_late_row`, `pdf`, `docx_table` |
 | `expected_state` | der zuletzt akzeptierte Zustand je Ebene, mit Datum und Grund |
 
-`table_checks` prüfen je Tabelle, dass der Chunk der letzten Datenzeile den Kopf trägt und dass
-nicht die Titelzeile als Kopf wiederholt wird.
+`table_checks` prüfen je Tabelle, dass der Chunk der letzten Datenzeile die Kopfzellen trägt.
+
+Die Antwort wird vor der Prüfung normalisiert (`AnswerQualityAnswers#clean`): Zitiermarken entfernt,
+Tausendertrenner und `,00` entfernt (`1.000,00 €` liest als `1000 Euro`), `€`/`EUR` als `Euro`, `%` als
+`Prozent`, Mitternacht als `24 Uhr`. Fehlanzeige-Muster zählen nur dort allein, wo sie die Quellen
+nennen (`in den Quellen`) oder die Antwort verweigern; allgemeine Wendungen („nicht enthalten“) zählen
+nur in einer Antwort ohne den erwarteten Wert.
 
 ## Ebenen und Zustände
 
@@ -78,11 +84,13 @@ im Bericht, bricht aber den Lauf nicht ab.
 
 ### Ausgangswerte (2026-11-27, Stand vor den Paketen 4, 5 und 7 des Epics)
 
-Ebene `format`: 28 von 31 Fällen `solved`, 3 `known_gap` (`aq-fn-07`, `aq-wr-06`, `aq-wr-07`): Das
-Tabellenformat liest die erste nichtleere Zeile als Kopf, in `aq-11` ist es die Titelzeile.
-Der Chunk beginnt dann mit der Titelzeile als „Kopf“, die echten Spaltenköpfe stehen als Datenzeile
-darunter. Die lange Tabelle `aq-13` wiederholt ihren Kopf in allen drei Chunks, die kleine Matrix
-`aq-12` und die DOCX-Tabelle bleiben in einem Chunk.
+Ebene `format`: 28 von 31 Fällen `solved`, 3 `known_gap` (`aq-fn-07`, `aq-wr-06`, `aq-wr-07`; je Klasse
+`false_negative` 9 von 10, `needless_caveat` 10 von 10, `wrong_reference` 9 von 11 gelöst). Ursache: Das
+Tabellenformat liest die erste nichtleere Zeile als Kopf, in `aq-11` die Titelzeile. Der erste Chunk
+trägt die echten Spaltenköpfe daher als Datenzeile, ab dem zweiten (Zeilengruppen zu 50 Zeilen) fehlen
+sie ganz; die gefragten Zeilen stehen im zweiten Chunk, mit der Titelzeile als einzigem „Kopf“. Die
+lange Tabelle `aq-13` wiederholt ihren Kopf in allen drei Chunks, die kleine Matrix `aq-12` und die
+DOCX-Tabelle bleiben in einem Chunk.
 
 Ebene `context` und Antworten: in der Umgebung, in der die Domäne entstand, gab es weder Docker noch
 einen Modellschlüssel; alle Fälle tragen deshalb `unmeasured`. Der Erstlauf auf einer Maschine mit

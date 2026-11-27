@@ -56,34 +56,13 @@ final class AnswerQualityFormatLayer {
   }
 
   /**
-   * Whether one chunk of one of the case's documents carries all of its evidence and none of the
-   * case's table documents is read under a wrong header (the title row taken for the header, or the
-   * last row without it).
+   * Whether one chunk of one of the case's documents carries all of its evidence: for a table the
+   * rendered row of the answer together with the header cells that name its columns.
    */
-  boolean evidenceReaches(AnswerQualityCase c, List<AnswerQualityCase.TableCheck> tableChecks) {
-    boolean evidence =
-        c.documents().stream()
-            .anyMatch(
-                document -> AnswerQualityCase.evidenceInOnePassage(chunks(document), c.evidence()));
-    boolean headerRight =
-        tableChecks.stream()
-            .filter(check -> c.documents().contains(check.document()))
-            .allMatch(check -> lastRowCarriesHeader(check) && !titleTakenAsHeader(check));
-    return evidence && headerRight;
-  }
-
-  /**
-   * Whether the chunk of the table's last data row repeats the title row as if it were the header.
-   */
-  boolean titleTakenAsHeader(AnswerQualityCase.TableCheck check) {
-    if (check.title() == null) {
-      return false;
-    }
-    String title = AnswerQualityCase.normalize(check.title());
-    String lastRow = AnswerQualityCase.normalize(check.lastRow());
-    return chunks(check.document()).stream()
-        .map(AnswerQualityCase::normalize)
-        .anyMatch(chunk -> chunk.contains(lastRow) && chunk.contains(title));
+  boolean evidenceReaches(AnswerQualityCase c) {
+    return c.documents().stream()
+        .anyMatch(
+            document -> AnswerQualityCase.evidenceInOnePassage(chunks(document), c.evidence()));
   }
 
   /** Whether the chunk of the table's last data row carries every header cell. */

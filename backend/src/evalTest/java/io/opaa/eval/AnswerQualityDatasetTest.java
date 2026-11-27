@@ -85,7 +85,7 @@ class AnswerQualityDatasetTest {
     Map<String, Object> measurement = new LinkedHashMap<>();
     Map<String, Boolean> measured = new LinkedHashMap<>();
     for (AnswerQualityCase c : dataset.cases()) {
-      measured.put(c.id(), layer.evidenceReaches(c, dataset.tableChecks()));
+      measured.put(c.id(), layer.evidenceReaches(c));
     }
     Map<String, Object> tables = new LinkedHashMap<>();
     for (AnswerQualityCase.TableCheck check : dataset.tableChecks()) {
@@ -93,7 +93,6 @@ class AnswerQualityDatasetTest {
           check.document(),
           Map.of(
               "lastRowCarriesHeader", layer.lastRowCarriesHeader(check),
-              "titleTakenAsHeader", layer.titleTakenAsHeader(check),
               "chunks", layer.chunks(check.document()).size()));
     }
     measurement.put("cases", measured);
@@ -240,20 +239,78 @@ class AnswerQualityDatasetTest {
   }
 
   /**
-   * Every case's own evidence answers its own value patterns: the goldens agree with themselves.
+   * A detailed, correct answer that also names neighbouring figures passes every check of its case;
+   * no refusal, caveat or wrong-reference pattern fires on it.
    */
   @Test
-  void aModelAnswerThatRepeatsTheEvidenceOfEveryCaseHasPassedItsChecks() throws IOException {
-    List<AnswerQualityCase> cases = AnswerQualityCase.load(GOLDEN_FILE).cases();
+  void theCanonicalAnswerOfEveryCasePassesItsChecks() throws IOException {
     List<String> failing = new ArrayList<>();
-    for (AnswerQualityCase c : cases) {
-      String answer = String.join(". ", c.evidence());
-      AnswerQualityAnswers.Verdict verdict = AnswerQualityAnswers.judge(c, answer);
-      if (verdict.refusal() || verdict.caveat()) {
-        failing.add(c.id() + " (refusal/caveat pattern fires on its own evidence)");
+    for (AnswerQualityCase c : AnswerQualityCase.load(GOLDEN_FILE).cases()) {
+      AnswerQualityAnswers.Verdict verdict = AnswerQualityAnswers.judge(c, c.canonicalAnswer());
+      if (!verdict.passed(c.klass())
+          || verdict.refusal()
+          || verdict.caveat()
+          || verdict.forbiddenHit()) {
+        failing.add(c.id() + ": " + verdict);
       }
     }
     assertThat(failing).isEmpty();
+  }
+
+  /** The wrong answer of a wrong-reference case is caught by a forbidden pattern, not by a gap. */
+  @Test
+  void theWrongAnswerOfEveryWrongReferenceCaseHitsAForbiddenPattern() throws IOException {
+    List<String> failing = new ArrayList<>();
+    for (AnswerQualityCase c : AnswerQualityCase.load(GOLDEN_FILE).cases()) {
+      if (!AnswerQualityCase.WRONG_REFERENCE.equals(c.klass())) {
+        assertThat(c.wrongAnswer()).as(c.id()).isNull();
+        continue;
+      }
+      AnswerQualityAnswers.Verdict verdict = AnswerQualityAnswers.judge(c, c.wrongAnswer());
+      if (!verdict.forbiddenHit() || !verdict.wrongReference() || verdict.passed(c.klass())) {
+        failing.add(c.id() + ": " + verdict);
+      }
+    }
+    assertThat(failing).isEmpty();
+  }
+
+  /** A correct answer may say that something else is not covered; that is no refusal. */
+  @Test
+  void aCorrectAnswerNamingAnotherGapIsNoRefusalButAnAnswerWithoutTheValueIs() throws IOException {
+    AnswerQualityCase c = byId().get("aq-nc-03");
+
+    AnswerQualityAnswers.Verdict correct =
+        AnswerQualityAnswers.judge(
+            c, "Es sind 0,30 Euro je Kilometer. Fahrtkosten sind darin nicht enthalten.");
+    AnswerQualityAnswers.Verdict missing =
+        AnswerQualityAnswers.judge(c, "Der Betrag ist in den Dokumenten nicht genannt.");
+
+    assertThat(correct.refusal()).isFalse();
+    assertThat(correct.passed(c.klass())).isTrue();
+    assertThat(missing.refusal()).isTrue();
+  }
+
+  /** Writing styles of the same figure read alike: separators, currency sign, percent, midnight. */
+  @Test
+  void numbersAreReadInTheirCommonGermanWritings() throws IOException {
+    Map<String, AnswerQualityCase> byId = byId();
+
+    assertThat(missing(byId, "aq-fn-03", "Bis 1.000,00 € netto.")).isFalse();
+    assertThat(missing(byId, "aq-fn-03", "Bis 1 000 EUR netto.")).isFalse();
+    assertThat(missing(byId, "aq-fn-03", "Bis 10.000 Euro netto.")).isTrue();
+    assertThat(missing(byId, "aq-nc-06", "Es sind 50 % weniger.")).isFalse();
+    assertThat(missing(byId, "aq-nc-05", "Bis Mitternacht.")).isFalse();
+    assertThat(missing(byId, "aq-wr-01", "4,5 Euro je lfd. Meter und Tag")).isFalse();
+    assertThat(missing(byId, "aq-nc-04", "14,00 Euro Tagegeld")).isFalse();
+  }
+
+  private static boolean missing(Map<String, AnswerQualityCase> byId, String id, String answer) {
+    return AnswerQualityAnswers.judge(byId.get(id), answer).valueMissing();
+  }
+
+  private static Map<String, AnswerQualityCase> byId() throws IOException {
+    return AnswerQualityCase.load(GOLDEN_FILE).cases().stream()
+        .collect(Collectors.toMap(AnswerQualityCase::id, c -> c));
   }
 
   /**
@@ -275,6 +332,8 @@ class AnswerQualityDatasetTest {
             first.answerMustNotMatch(),
             first.questionVariants(),
             first.tags(),
+            first.canonicalAnswer(),
+            first.wrongAnswer(),
             Map.of(
                 AnswerQualityCase.LAYER_CONTEXT,
                 new AnswerQualityCase.ExpectedState(
@@ -290,6 +349,8 @@ class AnswerQualityDatasetTest {
             second.answerMustNotMatch(),
             second.questionVariants(),
             second.tags(),
+            second.canonicalAnswer(),
+            second.wrongAnswer(),
             Map.of(
                 AnswerQualityCase.LAYER_CONTEXT,
                 new AnswerQualityCase.ExpectedState(AnswerQualityCase.SOLVED, "2026-11-27", "x")));

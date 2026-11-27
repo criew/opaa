@@ -12,9 +12,10 @@
         "5 Euro je Markttag und Stand"
       ],
       "answer_must_match": [
-        "\\b5\\b.{0,12}(Euro|EUR|€)"
+        "\\b5\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Die Müllpauschale beträgt 5 Euro je Markttag und Stand. Daneben fallen die Standgebühr von 4,50 Euro je laufendem Meter und Markttag sowie 2,00 Euro je Markttag für den Stromanschluss an.",
       "tags": [
         "long_document"
       ],
@@ -43,9 +44,10 @@
         "14 Tagen"
       ],
       "answer_must_match": [
-        "\\b14\\b.{0,10}Tage"
+        "\\b14\\s*Tage"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Einwendungen gegen die Niederschrift können innerhalb von 14 Tagen nach ihrem Zugang erhoben werden; die Ladungsfrist zu Sitzungen beträgt dagegen 7 Tage.",
       "tags": [
         "long_document"
       ],
@@ -74,9 +76,10 @@
         "1.000 Euro netto"
       ],
       "answer_must_match": [
-        "1\\.?000\\s*(Euro|EUR|€)"
+        "\\b1000\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Nach AB-08 sind Direktvergaben bis zu einem Auftragswert von 1.000 Euro netto ohne Vergleichsangebote zulässig. Bis 15.000 Euro netto gilt AB-09 mit mindestens drei Vergleichsangeboten.",
       "tags": [
         "identifier_variants"
       ],
@@ -113,6 +116,7 @@
         "Direktvergabe"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Das Formular FB12 dokumentiert eine Direktvergabe und ist zusammen mit der Rechnung an die Kämmerei zu geben.",
       "tags": [
         "identifier_variants"
       ],
@@ -142,13 +146,15 @@
         "aq-13_zustaendigkeiten.xlsx"
       ],
       "evidence": [
-        "ZV-117",
-        "Ordnungsamt"
+        "ZV-117 | Sondernutzungserlaubnis Straßenfest | Ordnungsamt | Teamleitung | 21",
+        "Kennung",
+        "Amt"
       ],
       "answer_must_match": [
         "Ordnungsamt"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Für den Vorgang ZV-117 (Sondernutzungserlaubnis Straßenfest) ist das Ordnungsamt zuständig; die zuständige Stelle ist die Teamleitung, die Bearbeitungsfrist beträgt 21 Tage.",
       "tags": [
         "identifier_variants",
         "table_late_row"
@@ -179,14 +185,14 @@
         "aq-13_zustaendigkeiten.xlsx"
       ],
       "evidence": [
-        "ZV-098",
-        "Fundsachenversteigerung",
-        "9"
+        "ZV-098 | Fundsachenversteigerung | Bürgerbüro | Sachbearbeitung | 9",
+        "Bearbeitungsfrist in Tagen"
       ],
       "answer_must_match": [
-        "\\b9\\b.{0,10}Tage"
+        "\\b9\\s*(Kalender|Werk)?tage"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Für ZV-098 (Fundsachenversteigerung, Bürgerbüro) beträgt die Bearbeitungsfrist 9 Tage; bei ZV-117 sind es 21 Tage.",
       "tags": [
         "table_late_row"
       ],
@@ -211,22 +217,25 @@
         "aq-11_sondernutzungsentgelte.xlsx"
       ],
       "evidence": [
-        "Warenauslage",
-        "3,00",
-        "je qm und Monat"
+        "Warenauslage | 3,00 | je qm und Monat | 15",
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
       ],
       "answer_must_match": [
-        "3(,00)?\\s*(Euro|EUR|€)"
+        "\\b3\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Eine Warenauslage kostet 3,00 Euro je qm und Monat, mindestens jedoch 15 Euro. Die Außengastronomie kostet 6,50 Euro je qm und Monat.",
       "tags": [
-        "table_title_row"
+        "table_title_row",
+        "table_late_row"
       ],
       "expected_state": {
         "format": {
           "state": "known_gap",
           "since": "2026-11-27",
-          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile, die Spaltenköpfe stehen als Datenzeile im Chunk und tragen keinen Bezug zu den Werten."
+          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
         },
         "context": {
           "state": "unmeasured",
@@ -243,14 +252,14 @@
         "aq-12_raumentgelte.xlsx"
       ],
       "evidence": [
-        "Saal",
-        "Vereine",
-        "25"
+        "Saal | 25 | 85 | 60 | 200",
+        "Vereine (Euro je Stunde)"
       ],
       "answer_must_match": [
-        "\\b25\\b.{0,12}(Euro|EUR|€)"
+        "\\b25\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Der Saal kostet für Vereine 25 Euro je Stunde; für Gewerbe sind es 85 Euro und für Auswärtige 60 Euro je Stunde.",
       "tags": [
         "table_row_column"
       ],
@@ -279,9 +288,10 @@
         "7 Tage"
       ],
       "answer_must_match": [
-        "\\b7\\b.{0,6}Tage"
+        "\\b7\\s*Tage"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "DVDs und andere Medien können für 7 Tage entliehen werden, Bücher dagegen für 28 Tage. Die Frist lässt sich zweimal um je 14 Tage verlängern.",
       "tags": [
         "pdf"
       ],
@@ -306,14 +316,14 @@
         "aq-10_friedhofsgebuehren.docx"
       ],
       "evidence": [
-        "Urnenwahlgrab",
-        "20",
-        "780"
+        "Urnenwahlgrab | 20 | 780",
+        "Gebühr in Euro je Grabstätte"
       ],
       "answer_must_match": [
-        "780"
+        "\\b780\\b"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Ein Urnenwahlgrab kostet 780 Euro je Grabstätte bei einer Nutzungsdauer von 20 Jahren; ein Urnenreihengrab kostet 410 Euro.",
       "tags": [
         "docx_table"
       ],
@@ -344,6 +354,7 @@
         "\\b30\\b"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Beschäftigte haben Anspruch auf 30 Arbeitstage Erholungsurlaub im Kalenderjahr bei einer Fünftagewoche; schwerbehinderte Beschäftigte erhalten fünf zusätzliche Tage.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -369,9 +380,10 @@
         "mindestens 14 Tage"
       ],
       "answer_must_match": [
-        "\\b14\\b.{0,10}Tage"
+        "\\b14\\s*Tage"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Urlaub ist mindestens 14 Tage vor Beginn mit dem Formular FB10 zu beantragen. Die Genehmigung erteilt die Fachbereichsleitung.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -401,6 +413,7 @@
         "0,30"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Bei Nutzung des privaten Pkw beträgt die Wegstreckenentschädigung 0,30 Euro je gefahrenem Kilometer. Parkgebühren sind darin nicht enthalten, sie werden gegen Beleg gesondert erstattet.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -427,9 +440,10 @@
         "14 Euro"
       ],
       "answer_must_match": [
-        "\\b14\\b.{0,6}(Euro|EUR|€)"
+        "\\b14\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Bei einer Dienstreise von mehr als 8 Stunden werden 14 Euro Tagegeld gezahlt. Bei 24 Stunden Abwesenheit sind es 28 Euro je Kalendertag.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -456,9 +470,10 @@
         "24 Uhr"
       ],
       "answer_must_match": [
-        "24(:00)?\\s*Uhr"
+        "\\b24\\s*Uhr"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Am Samstag ist das Bürgerhaus bis 24 Uhr nutzbar; an anderen Tagen gilt 22 Uhr. Ab 22 Uhr ist auf die Nachbarschaft Rücksicht zu nehmen.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -485,9 +500,10 @@
         "50 Prozent"
       ],
       "answer_must_match": [
-        "50\\s*(Prozent|%)"
+        "\\b50\\s*Prozent"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Für das zweite und jedes weitere Kind ermäßigt sich der Beitrag um 50 Prozent, wenn es gleichzeitig eine Einrichtung der Gemeinde besucht. Das Mittagessen ist darin nicht enthalten, es kostet 3,20 Euro je Essen.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -514,9 +530,10 @@
         "28 Tage"
       ],
       "answer_must_match": [
-        "\\b28\\b.{0,6}Tage"
+        "\\b28\\s*Tage"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Bücher werden für 28 Tage entliehen, DVDs und andere Medien für 7 Tage. Eine zweimalige Verlängerung um je 14 Tage ist möglich.",
       "tags": [
         "pdf"
       ],
@@ -549,6 +566,7 @@
         "Samstag"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Der Wochenmarkt findet jeden Mittwoch und jeden Samstag von 7 bis 13 Uhr statt. Fällt ein Markttag auf einen Feiertag, entfällt er.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -575,9 +593,10 @@
         "36 Euro"
       ],
       "answer_must_match": [
-        "\\b36\\b.{0,6}(Euro|EUR|€)"
+        "\\b36\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Für einen Dauerstandplatz beträgt die Monatspauschale 36 Euro je Standplatz; sie ersetzt die Tagesgebühr von 4,50 Euro je laufendem Meter.",
       "tags": [
         "long_document"
       ],
@@ -606,9 +625,10 @@
         "80 Euro je Nacht"
       ],
       "answer_must_match": [
-        "\\b80\\b.{0,6}(Euro|EUR|€)"
+        "\\b80\\s*Euro"
       ],
       "answer_must_not_match": [],
+      "canonical_answer": "Übernachtungskosten werden gegen Beleg bis zu 80 Euro je Nacht erstattet, bei zwei Nächten also bis zu 160 Euro. Fahrkarten der zweiten Klasse werden ebenfalls gegen Beleg erstattet.",
       "tags": [],
       "expected_state": {
         "format": {
@@ -635,15 +655,17 @@
         "4,50 Euro je laufendem Meter Standfläche und Markttag"
       ],
       "answer_must_match": [
-        "4,50\\s*(Euro|EUR|€)",
-        "(Markttag|Tag)"
+        "4,50?\\s*Euro",
+        "\\b(Markt)?tag\\b"
       ],
       "answer_must_not_match": [
-        "36\\s*(Euro|EUR|€)\\s*(je|pro)\\s*(laufenden?\\s*)?Meter"
+        "\\b36\\s*Euro\\s*(je|pro)\\s*(laufenden?\\s*)?Meter"
       ],
+      "canonical_answer": "Die Standgebühr beträgt 4,50 Euro je laufendem Meter Standfläche und Markttag. Für einen Dauerstandplatz gilt stattdessen eine Monatspauschale von 36 Euro je Standplatz.",
       "tags": [
         "long_document"
       ],
+      "wrong_answer": "Die Standgebühr beträgt 36 Euro je Meter.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -669,13 +691,15 @@
         "3,20 Euro je Essen"
       ],
       "answer_must_match": [
-        "3,20\\s*(Euro|EUR|€)",
+        "3,20?\\s*Euro",
         "(je|pro)\\s*(Essen|Mahlzeit|Mittagessen)"
       ],
       "answer_must_not_match": [
-        "3,20\\s*(Euro|EUR|€)\\s*(je|pro|im)\\s*Monat"
+        "3,20?\\s*Euro\\s*(je|pro|im)\\s*Monat"
       ],
+      "canonical_answer": "Das Mittagessen kostet 3,20 Euro je Essen und wird gesondert zum Monatsende abgerechnet; der Beitrag für die Betreuung wird dagegen monatlich erhoben.",
       "tags": [],
+      "wrong_answer": "Das Mittagessen kostet 3,20 Euro je Monat.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -702,14 +726,15 @@
         "285 Euro"
       ],
       "answer_must_match": [
-        "285\\s*(Euro|EUR|€)"
+        "\\b285\\s*Euro"
       ],
       "answer_must_not_match": [
-        "\\b160\\s*(Euro|EUR|€)",
-        "\\b210\\s*(Euro|EUR|€)",
-        "\\b360\\s*(Euro|EUR|€)"
+        "35\\s*Wochenstunden\\D{0,25}\\b(160|210|360)\\b",
+        "unter\\s+drei\\s+Jahren\\D{0,60}\\b(120|160|205)\\b"
       ],
+      "canonical_answer": "Für ein Kind unter drei Jahren beträgt der monatliche Beitrag bei 35 Wochenstunden 285 Euro; bei 25 Wochenstunden sind es 210 Euro, bei 45 Wochenstunden 360 Euro. Ab drei Jahren gelten 160 Euro bei 35 Wochenstunden.",
       "tags": [],
+      "wrong_answer": "Für ein Kind unter drei Jahren beträgt der Beitrag bei 35 Wochenstunden 160 Euro.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -735,15 +760,17 @@
         "0,50 Euro je Medium und angefangener Woche"
       ],
       "answer_must_match": [
-        "0,50\\s*(Euro|EUR|€)",
-        "(Woche)"
+        "0,50?\\s*Euro",
+        "Woche"
       ],
       "answer_must_not_match": [
-        "0,50\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Tag"
+        "0,50?\\s*Euro\\s*(je|pro)\\s*(Medium\\s*und\\s*)?Tag"
       ],
+      "canonical_answer": "Die Säumnisgebühr beträgt 0,50 Euro je Medium und angefangener Woche, höchstens aber 10 Euro je Medium.",
       "tags": [
         "pdf"
       ],
+      "wrong_answer": "Die Säumnisgebühr beträgt 0,50 Euro je Tag.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -769,15 +796,17 @@
         "15 Euro je Jahr"
       ],
       "answer_must_match": [
-        "15\\s*(Euro|EUR|€)",
+        "\\b15\\s*Euro",
         "(je|pro)\\s*Jahr"
       ],
       "answer_must_not_match": [
-        "980"
+        "Verlängerung\\w*\\D{0,60}\\b980\\b"
       ],
+      "canonical_answer": "Die Verlängerung des Nutzungsrechts an einem Wahlgrab kostet 15 Euro je Jahr der Verlängerung, höchstens für 10 Jahre. Das Nutzungsrecht selbst kostet 980 Euro je Grabstätte für 30 Jahre.",
       "tags": [
         "docx_table"
       ],
+      "wrong_answer": "Die Verlängerung des Wahlgrabs kostet 980 Euro.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -799,25 +828,29 @@
         "aq-11_sondernutzungsentgelte.xlsx"
       ],
       "evidence": [
-        "Gerüst",
-        "0,25",
-        "je qm und Woche"
+        "Gerüst | 0,25 | je qm und Woche | 25",
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
       ],
       "answer_must_match": [
-        "0,25\\s*(Euro|EUR|€)",
+        "0,25\\s*Euro",
         "Woche"
       ],
       "answer_must_not_match": [
-        "0,25\\s*(Euro|EUR|€)\\s*(je|pro)\\s*(qm|Quadratmeter)\\s*und\\s*(Tag|Monat)"
+        "0,25\\s*Euro\\s*(je|pro)\\s*(qm|Quadratmeter)\\s*und\\s*(Tag|Monat)"
       ],
+      "canonical_answer": "Ein Gerüst kostet 0,25 Euro je qm und Woche, mindestens 25 Euro. Ein Bauzaun kostet dagegen 0,40 Euro je lfd. m und Tag.",
       "tags": [
-        "table_title_row"
+        "table_title_row",
+        "table_late_row"
       ],
+      "wrong_answer": "Ein Gerüst kostet 0,25 Euro je qm und Tag.",
       "expected_state": {
         "format": {
           "state": "known_gap",
           "since": "2026-11-27",
-          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile, die Spaltenköpfe stehen als Datenzeile im Chunk und tragen keinen Bezug zu den Werten."
+          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
         },
         "context": {
           "state": "unmeasured",
@@ -834,25 +867,29 @@
         "aq-11_sondernutzungsentgelte.xlsx"
       ],
       "evidence": [
-        "Außengastronomie",
-        "6,50",
-        "je qm und Monat"
+        "Außengastronomie | 6,50 | je qm und Monat | 40",
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
       ],
       "answer_must_match": [
-        "6,50?\\s*(Euro|EUR|€)",
+        "6,50?\\s*Euro",
         "Monat"
       ],
       "answer_must_not_match": [
-        "40\\s*(Euro|EUR|€)\\s*(je|pro)\\s*(qm|Quadratmeter)"
+        "\\b40\\s*Euro\\s*(je|pro)\\s*(qm|Quadratmeter)"
       ],
+      "canonical_answer": "Die Außengastronomie kostet 6,50 Euro je qm und Monat, mindestens jedoch 40 Euro.",
       "tags": [
-        "table_title_row"
+        "table_title_row",
+        "table_late_row"
       ],
+      "wrong_answer": "Die Außengastronomie kostet 40 Euro je qm und Monat.",
       "expected_state": {
         "format": {
           "state": "known_gap",
           "since": "2026-11-27",
-          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile, die Spaltenköpfe stehen als Datenzeile im Chunk und tragen keinen Bezug zu den Werten."
+          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
         },
         "context": {
           "state": "unmeasured",
@@ -869,19 +906,20 @@
         "aq-12_raumentgelte.xlsx"
       ],
       "evidence": [
-        "Foyer",
-        "Kaution",
-        "100"
+        "Foyer | 15 | 45 | 35 | 100",
+        "Kaution (Euro je Buchung)"
       ],
       "answer_must_match": [
-        "\\b100\\s*(Euro|EUR|€)"
+        "\\b100\\s*Euro"
       ],
       "answer_must_not_match": [
-        "100\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Stunde"
+        "\\b100\\s*Euro\\s*(je|pro)\\s*Stunde"
       ],
+      "canonical_answer": "Für das Foyer wird eine Kaution von 100 Euro je Buchung erhoben, unabhängig von der Dauer. Die Nutzung kostet für Vereine 15 Euro je Stunde.",
       "tags": [
         "table_row_column"
       ],
+      "wrong_answer": "Die Kaution für das Foyer beträgt 100 Euro je Stunde.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -903,19 +941,20 @@
         "aq-12_raumentgelte.xlsx"
       ],
       "evidence": [
-        "Saal",
-        "Auswärtige",
-        "60"
+        "Saal | 25 | 85 | 60 | 200",
+        "Auswärtige (Euro je Stunde)"
       ],
       "answer_must_match": [
-        "\\b60\\s*(Euro|EUR|€)"
+        "\\b60\\s*Euro"
       ],
       "answer_must_not_match": [
-        "\\b(85|25|200)\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Stunde"
+        "Auswärtige\\w*\\D{0,40}\\b(85|25|200)\\b"
       ],
+      "canonical_answer": "Für Auswärtige kostet der Saal 60 Euro je Stunde; Vereine zahlen 25 Euro und Gewerbe 85 Euro je Stunde.",
       "tags": [
         "table_row_column"
       ],
+      "wrong_answer": "Auswärtige zahlen für den Saal 85 Euro je Stunde.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -941,13 +980,15 @@
         "50 Prozent des vereinbarten Entgelts"
       ],
       "answer_must_match": [
-        "50\\s*(Prozent|%)",
+        "\\b50\\s*Prozent",
         "Entgelt"
       ],
       "answer_must_not_match": [
-        "50\\s*(Prozent|%)\\s*(der|von)\\s*(der\\s*)?Kaution"
+        "\\b50\\s*Prozent\\s*(der|von)\\s*(der\\s*)?Kaution"
       ],
+      "canonical_answer": "Bei einer Stornierung weniger als 14 Tage vor dem Termin werden 50 Prozent des vereinbarten Entgelts fällig. Die Kaution von 150 Euro wird in voller Höhe zurückgezahlt.",
       "tags": [],
+      "wrong_answer": "Fällig werden 50 Prozent der Kaution.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -973,12 +1014,14 @@
         "28 Euro je Kalendertag"
       ],
       "answer_must_match": [
-        "28\\s*(Euro|EUR|€)"
+        "\\b28\\s*Euro"
       ],
       "answer_must_not_match": [
-        "\\b14\\s*(Euro|EUR|€)\\s*(je|pro)\\s*Kalendertag"
+        "\\b14\\s*Euro\\s*(je|pro)\\s*Kalendertag"
       ],
+      "canonical_answer": "Bei einer Abwesenheit von 24 Stunden beträgt das Tagegeld 28 Euro je Kalendertag; bei mehr als 8 Stunden werden 14 Euro gezahlt.",
       "tags": [],
+      "wrong_answer": "Das Tagegeld beträgt 14 Euro je Kalendertag.",
       "expected_state": {
         "format": {
           "state": "solved",
@@ -1001,8 +1044,7 @@
         "Entgelt in Euro",
         "Bezugseinheit"
       ],
-      "last_row": "Verkaufswagen",
-      "title": "Entgelte für Sondernutzungen"
+      "last_row": "Verkaufswagen"
     },
     {
       "document": "aq-12_raumentgelte.xlsx",
@@ -1013,8 +1055,7 @@
         "Auswärtige",
         "Kaution"
       ],
-      "last_row": "Küche",
-      "title": null
+      "last_row": "Küche"
     },
     {
       "document": "aq-13_zustaendigkeiten.xlsx",
@@ -1024,8 +1065,7 @@
         "Amt",
         "Bearbeitungsfrist"
       ],
-      "last_row": "ZV-130",
-      "title": null
+      "last_row": "ZV-130"
     }
   ]
 }

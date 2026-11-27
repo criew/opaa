@@ -134,6 +134,11 @@ Zwei Ebenen, beide ohne Modellurteil:
   [`reports/answer-quality/README.md`](reports/answer-quality/README.md). Der Lauf misst nur, ohne
   Baseline und Schwelle.
 
+Der Workflow `retrieval-regression.yml` führt die Kontextebene als Job `answer-quality` mit (nächtlich,
+per `workflow_dispatch` und per Label `evaluation`, ohne Chat-Modell); er berichtet in Job-Zusammenfassung,
+Artefakt und PR-Kommentar und schlägt nur bei einer verletzten Voraussetzung fehl, nicht an einer Abweichung
+vom deklarierten Zustand.
+
 Ohne Docker und Modell laufen in der CI die Fall- und Urteilstests: `AnswerQualityDatasetTest`
 prüft Manifest, Fallvollständigkeit, die Ebene `format` und die Mustererkennung je Klasse in beide
 Richtungen gegen geskriptete Antworten.
