@@ -160,16 +160,16 @@ ausgeschlossen. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
 Die Fehlanzeige des Modells („in den vorliegenden Dokumenten nicht enthalten“) wird ebenso
 deterministisch gegengeprüft, nicht verweigert: Eine feste deutsche und englische Musterliste mit
 Bezug auf die Quellen erkennt sie; nachgeprüft wird nur, wenn sie die Antwort trägt, also die
-Antwort keinen gültigen Beleg hat oder die Fehlanzeige vor dem ersten belegten Satz steht. Ein
-Vorbehalt nach einer belegten Antwort löst nie aus; ob ein Satz eine Frage berührt, entscheidet
-kein Wortabgleich zuverlässig, seine Stellung hinter der belegten Antwort aber schon. Die Kennungen und Schlüsselbegriffe der Frage werden
-über denselben Suchweg im selben Suchbereich mit denselben Rechten und Filtern gesucht, und nur
-Treffer, deren Text diese Begriffe trägt und die die Antwort nicht kannte, gehen in genau eine
-weitere Antwort; im Agentenlauf als Nachfrage im laufenden Lauf ohne Werkzeuge. Ohne solche
-Treffer und bei jedem Fehler danach bleibt die erste Antwort. Eine Fehlanzeige ist sonst die
-einzige Aussage, die die Belegvalidierung nicht erreicht, weil sie nichts zitiert; der Suchbereich
-kann sie widerlegen, ohne dass ein Modell über sie urteilt. Eine Schleife gibt es nicht, und der
-Schalter `OPAA_QUERY_ABSENCE_RECHECK_ENABLED` ist ab Werk an.
+Antwort keinen gültigen Beleg hat oder die Fehlanzeige vor oder in dem ersten belegten Satz steht.
+Ein Vorbehalt nach einer belegten Antwort löst nie aus; ob ein Satz eine Frage berührt, entscheidet
+kein Wortabgleich zuverlässig, seine Stellung hinter der belegten Antwort aber schon. Die Kennungen
+und Schlüsselbegriffe der Frage werden über denselben Suchweg im selben Suchbereich mit denselben
+Rechten und Filtern gesucht, und nur Treffer, deren Text diese Begriffe trägt und die die Antwort
+nicht kannte, gehen in genau eine weitere Antwort; im Agentenlauf als Nachfrage im laufenden Lauf
+ohne Werkzeuge. Ohne solche Treffer und bei jedem Fehler danach bleibt die erste Antwort. Eine
+Fehlanzeige ist sonst die einzige Aussage, die die Belegvalidierung nicht erreicht, weil sie nichts
+zitiert; der Suchbereich kann sie widerlegen, ohne dass ein Modell über sie urteilt. Eine Schleife
+gibt es nicht, und der Schalter `OPAA_QUERY_ABSENCE_RECHECK_ENABLED` ist ab Werk an.
 
 ### 15. Nachweis der Organisationsgrenze
 

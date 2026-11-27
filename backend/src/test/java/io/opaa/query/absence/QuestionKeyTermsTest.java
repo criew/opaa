@@ -34,6 +34,30 @@ class QuestionKeyTermsTest {
   }
 
   @Test
+  void anAllCapsQuestionReadsNoFunctionWordsAndNoNames() {
+    QuestionKeyTerms terms = QuestionKeyTerms.of("WIE IST DIE FRIST?");
+
+    assertThat(terms.identifiers()).isEmpty();
+    assertThat(terms.words()).containsExactly("frist");
+    assertThat(terms.matches("Wie ist die Lage?")).isFalse();
+  }
+
+  @Test
+  void anAllCapsVerbIsNoIdentifier() {
+    QuestionKeyTerms terms = QuestionKeyTerms.of("WIE LANGE DAUERT DIE BEARBEITUNG VON AB-08?");
+
+    assertThat(terms.identifiers()).containsExactly("AB-08");
+    assertThat(terms.words()).contains("dauert", "bearbeitung").doesNotContain("wie", "die");
+  }
+
+  @Test
+  void anAbbreviationInAMixedCaseQuestionStaysAndAFunctionWordDoesNot() {
+    QuestionKeyTerms terms = QuestionKeyTerms.of("Gilt die DSGVO auch FÜR Bauakten?");
+
+    assertThat(terms.words()).contains("dsgvo", "bauakten").doesNotContain("für");
+  }
+
+  @Test
   void aPassageMatchesByAnIdentifierAsAWholeToken() {
     QuestionKeyTerms terms = QuestionKeyTerms.of("Wie hoch ist die Gebühr nach Tarifstelle AB-08?");
 

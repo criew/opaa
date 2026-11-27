@@ -13,7 +13,8 @@ import java.util.regex.Pattern;
  * or separators such as {@code AB-08} or {@code 4.2}, a paragraph such as {@code § 34}, an
  * uppercase name of six letters or more) and content words (five letters or more, a number of three
  * digits or more, or a short uppercase abbreviation such as {@code DSGVO}, outside a fixed list of
- * question and filler words).
+ * question and filler words). In a question written entirely in capitals no word without a digit is
+ * read as a name or abbreviation, only as an ordinary word.
  *
  * <p>A passage {@link #matches} when it contains one of the identifiers, or - for a question
  * without any - at least two of the content words (all of them when there are fewer): a short
@@ -182,6 +183,16 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
           "between",
           "whose");
 
+  /** Short function words that an all-caps spelling must not turn into an abbreviation. */
+  private static final Set<String> SHORT_FUNCTION_WORDS =
+      Set.of(
+          "wie", "was", "wer", "wo", "wem", "wen", "wann", "ist", "sind", "gilt", "hat", "kann",
+          "muss", "darf", "die", "der", "das", "den", "dem", "des", "ein", "eine", "einen", "einem",
+          "einer", "für", "nach", "mit", "von", "vom", "bei", "beim", "und", "oder", "im", "in",
+          "zu", "zum", "zur", "an", "am", "auf", "aus", "um", "es", "ich", "wir", "sie", "er",
+          "man", "nicht", "kein", "the", "what", "who", "how", "is", "are", "does", "for", "of",
+          "to", "and", "or", "on", "at", "by", "with");
+
   /** The key terms of {@code question}; empty lists for a question without any. */
   public static QuestionKeyTerms of(String question) {
     if (question == null || question.isBlank()) {
@@ -196,24 +207,29 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
     while (paragraph.find()) {
       identifiers.add("§ " + paragraph.group(1));
     }
+    boolean allCaps = question.codePoints().noneMatch(Character::isLowerCase);
     Matcher token = TOKEN.matcher(PARAGRAPH.matcher(question).replaceAll(" "));
     while (token.find()) {
       String value = token.group();
       boolean digitless = value.codePoints().noneMatch(Character::isDigit);
-      if (digitless && STOP_WORDS.contains(value.toLowerCase(Locale.ROOT))) {
+      String lower = value.toLowerCase(Locale.ROOT);
+      if (digitless
+          && (STOP_WORDS.contains(lower) || allCaps && SHORT_FUNCTION_WORDS.contains(lower))) {
         continue;
+      }
+      if (allCaps && digitless) {
+        value = lower;
       }
       if (isIdentifier(value)) {
         identifiers.add(value);
       } else if (SHORT_ABBREVIATION.matcher(value).matches()) {
-        words.add(value.toLowerCase(Locale.ROOT));
+        if (!SHORT_FUNCTION_WORDS.contains(lower)) {
+          words.add(lower);
+        }
       } else if (NUMBER.matcher(value).matches()) {
         words.add(value);
       } else if (value.codePoints().allMatch(Character::isLetter) && value.length() >= 5) {
-        String lower = value.toLowerCase(Locale.ROOT);
-        if (!STOP_WORDS.contains(lower)) {
-          words.add(lower);
-        }
+        words.add(lower);
       }
     }
     return new QuestionKeyTerms(
@@ -247,10 +263,7 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
     return found >= Math.min(2, words.size());
   }
 
-  /**
-   * Whether {@code sentence} names any of the key terms at all - one identifier or one content
-   * word: the test whether an absence claim is about the question rather than a side remark.
-   */
+  /** Whether {@code sentence} names any of the key terms at all: one identifier or one word. */
   public boolean mentionedIn(String sentence) {
     if (sentence == null || sentence.isBlank() || isEmpty()) {
       return false;

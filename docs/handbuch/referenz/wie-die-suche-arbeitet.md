@@ -49,10 +49,10 @@ das Modell genau einmal neu mit ihnen; die neue Antwort ersetzt die erste, auch 
 entsteht. Ohne solche Stellen, bei einem Fehler der Nachprüfung oder einer leeren neuen Antwort
 bleibt die erste. Erkannt wird die Fehlanzeige an festen deutschen und englischen Formulierungen,
 die sich auf die Dokumente beziehen, ohne weiteren Modellaufruf. Nachgeprüft wird nur, wenn sie die
-Antwort trägt: Die Antwort hat keinen bestätigten Beleg, oder die Fehlanzeige steht vor dem ersten
-belegten Satz. Ein Vorbehalt nach einer belegten Antwort, etwa „Weitere Details sind in den Quellen
-nicht genannt“, bleibt, wie er ist. Im Agentenlauf bekommt das
-Modell die Stellen als Nachfrage im laufenden Lauf, und die Nachsuche steht als Schritt im Lauf.
+Antwort trägt: Die Antwort hat keinen bestätigten Beleg, oder die Fehlanzeige steht vor oder in dem
+ersten belegten Satz. Ein Vorbehalt nach einer belegten Antwort, etwa „Weitere Details sind in den
+Quellen nicht genannt“, bleibt, wie er ist. Im Agentenlauf bekommt das Modell die Stellen als
+Nachfrage im laufenden Lauf, und die Nachsuche steht als Schritt im Lauf.
 Abschalten lässt sich das mit `OPAA_QUERY_ABSENCE_RECHECK_ENABLED`.
 
 Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell

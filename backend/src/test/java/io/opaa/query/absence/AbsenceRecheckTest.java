@@ -27,9 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ai.document.Document;
 
@@ -99,16 +102,26 @@ class AbsenceRecheckTest {
     assertThat(outcome.passages()).containsExactly(fresh);
   }
 
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "Weitere Details zur Bearbeitung sind in den Quellen nicht genannt.",
-        "Ob die Frist verlängert werden kann, geht aus den Dokumenten nicht hervor.",
-        "Eine Ermäßigung der Gebühr ist in den Unterlagen nicht geregelt."
-      })
-  void aCaveatAfterACitedAnswerNeverTriggers(String caveat) {
-    String answer = "Die Bearbeitung dauert vier Wochen 【source: doc-1#0 | doc-1.pdf】. " + caveat;
+  static Stream<Arguments> caveatsAfterACitedAnswer() {
+    String marker = "【source: doc-1#0 | doc-1.pdf】";
+    List<String> caveats =
+        List.of(
+            "Weitere Details zur Bearbeitung sind in den Quellen nicht genannt.",
+            "Ob die Frist verlängert werden kann, geht aus den Dokumenten nicht hervor.",
+            "Eine Ermäßigung der Gebühr ist in den Unterlagen nicht geregelt.");
+    List<String> citedAnswers =
+        List.of(
+            "Die Bearbeitung dauert vier Wochen " + marker + ". ",
+            "Die Bearbeitung dauert vier Wochen. " + marker + " ",
+            "Die Bearbeitung dauert vier Wochen." + marker + " ",
+            "Die Bearbeitung dauert vier Wochen." + marker);
+    return citedAnswers.stream()
+        .flatMap(cited -> caveats.stream().map(caveat -> Arguments.of(cited + caveat)));
+  }
 
+  @ParameterizedTest
+  @MethodSource("caveatsAfterACitedAnswer")
+  void aCaveatAfterACitedAnswerNeverTriggers(String answer) {
     AbsenceRecheck.Outcome outcome =
         recheck(true)
             .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
@@ -116,6 +129,39 @@ class AbsenceRecheckTest {
     assertThat(outcome.searched()).isFalse();
     verifyNoInteractions(retrieval);
     assertThat(count("rag", "detected")).isZero();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "Tarifstelle AB-08 steht in Anlage 2. 【source: doc-1#0 | doc-1.pdf】 Weitere Details"
+            + " sind in den Quellen nicht genannt.",
+        "Tarifstelle AB-08 steht in Anlage 2.【source: doc-1#0 | doc-1.pdf】 Weitere Details"
+            + " sind in den Quellen nicht genannt.",
+        "Tarifstelle AB-08 steht in Anlage 2. 【source: doc-1#0 | doc-1.pdf】"
+            + " 【source: doc-1#0 | doc-1.pdf】 Weitere Details sind in den Quellen nicht genannt."
+      })
+  void aMarkerAfterTheSentenceEndBelongsToTheSentenceBefore(String answer) {
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.searched()).isFalse();
+    verifyNoInteractions(retrieval);
+  }
+
+  @Test
+  void aClaimFollowedByItsOwnMarkerIsRechecked() {
+    when(retrieval.retrieveAsGiven(any(), any(), any())).thenReturn(result(fresh));
+    String answer =
+        "Die Gebühr der Tarifstelle AB-08 ist in den Quellen nicht enthalten."
+            + " 【source: doc-1#0 | doc-1.pdf】 Anlage 2 nennt nur die Tarifstellen.";
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.passages()).containsExactly(fresh);
   }
 
   @Test

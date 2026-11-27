@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -32,13 +33,13 @@ import org.springframework.stereotype.Component;
 /**
  * Checks an answer that claims something is missing from the sources against the question's search
  * scope. A claim of {@link AbsenceClaims} counts when it carries the answer - the answer has no
- * valid citation, or the claim comes before its first cited sentence; a caveat after a cited answer
- * does not. Then the {@link QuestionKeyTerms key terms} of the question are searched through {@link
- * KnowledgeRetrieval#retrieveAsGiven} - the same pipeline and permission filter as every search,
- * over the scope and filter of the request and never wider. A hit counts only when its text carries
- * the key terms and the answer had not seen it; those hits, with their neighbours, are what the
- * caller answers once more from. The caller asks this at most once per answer, so the recheck never
- * loops, and keeps the first answer when anything after it fails ({@link #mustPropagate}).
+ * valid citation, or the claim comes before or in its first cited sentence; a caveat after a cited
+ * answer does not. Then the {@link QuestionKeyTerms key terms} of the question are searched through
+ * {@link KnowledgeRetrieval#retrieveAsGiven} - the same pipeline and permission filter as every
+ * search, over the scope and filter of the request and never wider. A hit counts only when its text
+ * carries the key terms and the answer had not seen it; those hits, with their neighbours, are what
+ * the caller answers once more from. The caller asks this at most once per answer, so the recheck
+ * never loops, and keeps the first answer when anything after it fails ({@link #mustPropagate}).
  */
 @Component
 public class AbsenceRecheck {
@@ -47,6 +48,10 @@ public class AbsenceRecheck {
 
   /** Stands in for a valid marker: no whitespace or punctuation, so no sentence ends in it. */
   private static final String VALID_CITATION = "\u3010cited\u3011";
+
+  /** Masked markers placed after the end of their sentence, with the space around them. */
+  private static final Pattern TRAILING_CITATION =
+      Pattern.compile("([.!?:;])[\\s\\p{Z}]*+(?:\u3010cited\u3011[\\s\\p{Z}]*+)++");
 
   /**
    * What the recheck of one answer did.
@@ -243,9 +248,10 @@ public class AbsenceRecheck {
 
   /**
    * Whether the absence claim of {@code answer} is its answer rather than a caveat after it: the
-   * answer carries no valid citation, or a claim comes before its first sentence with a valid
+   * answer carries no valid citation, or a claim comes before or in its first sentence with a valid
    * citation. A caveat after a cited answer never counts. Markers are masked before the sentence
-   * split, so the colon inside a marker never cuts a sentence.
+   * split, so the colon inside a marker never cuts a sentence, and a marker right after a sentence
+   * end belongs to the sentence before it.
    */
   private boolean claimCarriesTheAnswer(String answer, List<Document> context) {
     String repaired = CitationMarkerRepair.repair(answer, context);
@@ -263,7 +269,8 @@ public class AbsenceRecheck {
       index++;
     }
     marker.appendTail(masked);
-    for (String sentence : AbsenceClaims.sentences(masked.toString())) {
+    String attached = TRAILING_CITATION.matcher(masked).replaceAll(VALID_CITATION + "$1 ");
+    for (String sentence : AbsenceClaims.sentences(attached)) {
       if (AbsenceClaims.isClaim(sentence)) {
         return true;
       }
