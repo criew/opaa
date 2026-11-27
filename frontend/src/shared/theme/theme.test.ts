@@ -36,7 +36,9 @@ describe('tokens', () => {
     expect(lightRoles.accentSurface).toBe(blue[700])
     expect(lightRoles.accentHover).toBe(blue[800])
     expect(lightRoles.accentPress).toBe(blue[900])
-    expect(darkRoles.accentSurface).toBe(blue[700])
+    // Dark scheme: white action with Dunkelblau label - Mittelblau reaches only 1.9:1 there.
+    expect(darkRoles.accentSurface).toBe(white)
+    expect(darkRoles.accentFg).toBe(navy[800])
   })
 
   // White on blue[500] only reaches 3.07:1 - every filled action surface and every
@@ -262,10 +264,11 @@ describe('createAppTheme', () => {
   test('dark scheme maps the Dunkelblau roles onto the MUI palette (#654)', () => {
     const theme = createAppTheme('dark')
 
-    expect(theme.palette.background.default).toBe(navy[950])
+    expect(theme.palette.background.default).toBe(navy[800])
     expect(theme.palette.text.primary).toBe(darkRoles.fg1)
     expect(theme.palette.text.secondary).toBe(darkRoles.fg2)
-    expect(theme.palette.primary.main).toBe(blue[500])
+    expect(theme.palette.primary.main).toBe(blue[400])
+    expect(theme.palette.primary.contrastText).toBe(navy[800])
     expect(theme.palette.divider).toBe(darkRoles.border)
   })
 
@@ -310,8 +313,47 @@ describe('createAppTheme', () => {
     const dark = createAppTheme('dark', { primaryColor: OPAA_BRANDING.primaryColor })
 
     expect(light.palette.primary.main).toBe(blue[700])
-    expect(dark.palette.primary.main).toBe(blue[500])
+    expect(dark.palette.primary.main).toBe(blue[400])
   })
+
+  test('a house colour in the dark scheme keeps white labels on its derived surface', () => {
+    const theme = createAppTheme('dark', { primaryColor: '#1153EE' })
+    expect(theme.palette.primary.contrastText).toBe(white)
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{
+        props: { variant?: string }
+        style: { backgroundColor: string; color: string }
+      }>
+    }
+    const contained = button.variants.find((v) => v.props.variant === 'contained')
+    expect(contained?.style.color).toBe(white)
+    expect(contrastRatio(white, contained?.style.backgroundColor ?? '')).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
+  })
+
+  // regression guard: the chat's send button is an icon on the action surface; with a house
+  // colour in the dark scheme it used to sit on the lightened text accent with a white icon.
+  test.each([
+    ['light', undefined],
+    ['dark', undefined],
+    ['light', '#1153EE'],
+    ['dark', '#1153EE'],
+    ['dark', '#E30613'],
+  ] as const)(
+    'actionSurface carries its label in %s with house colour %s',
+    (mode, primaryColor) => {
+      const { actionSurface } = createAppTheme(
+        mode,
+        primaryColor ? { primaryColor } : undefined,
+      ).palette
+      for (const surface of [actionSurface.main, actionSurface.hover, actionSurface.press]) {
+        expect(getContrastRatio(actionSurface.contrastText, surface)).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    },
+  )
 
   test('the opaa standard branding colour and the token accent are the same value', () => {
     expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[700].toUpperCase())

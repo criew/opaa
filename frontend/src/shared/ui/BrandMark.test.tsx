@@ -131,11 +131,14 @@ describe('BrandMark', () => {
     expect(screen.queryByText('opaa')).not.toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     const svg = document.querySelector('svg')
-    expect(svg).toHaveAttribute('viewBox', `0 0 ${WORDMARK.width} ${WORDMARK.height}`)
+    expect(svg).toHaveAttribute(
+      'viewBox',
+      `${WORDMARK.x} ${WORDMARK.y} ${WORDMARK.width} ${WORDMARK.height}`,
+    )
     expect(svg).toHaveStyle({ width: '44px' })
   })
 
-  it('shows the underlined o beside a configured name when no logo is configured', () => {
+  it('shows the mark beside a configured name when no logo is configured', () => {
     useBrandingStore.setState({
       branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
     })
@@ -147,7 +150,7 @@ describe('BrandMark', () => {
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('shows only the decorative underlined o in the rail for a configured name', () => {
+  it('shows only the decorative mark (Hellblau a with underline) in the rail for a configured name', () => {
     useBrandingStore.setState({
       branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },
     })
@@ -158,7 +161,7 @@ describe('BrandMark', () => {
     expect(container.querySelectorAll('svg')).toHaveLength(1)
     expect(container.querySelector('svg')).toHaveAttribute(
       'viewBox',
-      `0 0 ${MARK.width} ${MARK.height}`,
+      `${MARK.x} ${MARK.y} ${MARK.width} ${MARK.height}`,
     )
   })
 
@@ -167,7 +170,7 @@ describe('BrandMark', () => {
 
     expect(screen.getByRole('img', { name: 'opaa' })).toHaveAttribute(
       'viewBox',
-      `0 0 ${WORDMARK.width} ${WORDMARK.height}`,
+      `${WORDMARK.x} ${WORDMARK.y} ${WORDMARK.width} ${WORDMARK.height}`,
     )
   })
 })
