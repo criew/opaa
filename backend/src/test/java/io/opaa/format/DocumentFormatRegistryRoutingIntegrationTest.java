@@ -186,7 +186,12 @@ class DocumentFormatRegistryRoutingIntegrationTest {
                     ChunkMetadataKeys.TEXT_RECOGNITION_METADATA_KEY)),
             Map.entry("docx", Set.of(locationAndAnchor)),
             Map.entry("pptx", Set.of(locationAndAnchor)),
-            Map.entry("tabular", Set.of(locationAndAnchor)),
+            Map.entry(
+                "tabular",
+                Set.of(
+                    ChunkMetadataKeys.LOCATION_METADATA_KEY,
+                    ChunkMetadataKeys.ANCHOR_METADATA_KEY,
+                    ChunkMetadataKeys.TABLE_METADATA_KEY)),
             Map.entry("html", Set.of(locationAndAnchor)),
             Map.entry("tika-fallback", Set.of(locationAndAnchor)),
             Map.entry("odt", Set.of(locationAndAnchor)),

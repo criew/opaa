@@ -20,10 +20,10 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Reads chunks by position straight out of the pgvector table, in one query. The search scope is
- * part of that query ({@code library_id = ANY(?)}), exactly as in both search paths, so a position
- * outside the caller's libraries is never loaded. Schema and table name come from the same
- * properties as in {@code ChunkEmbeddingLookup}.
+ * Reads chunks by position, by range or by table ({@link #findTables}) straight out of the pgvector
+ * table, each in one query. The search scope is part of that query ({@code library_id = ANY(?)}),
+ * exactly as in both search paths, so a position outside the caller's libraries is never loaded.
+ * Schema and table name come from the same properties as in {@code ChunkEmbeddingLookup}.
  */
 @Component
 public class NeighborChunkLookup {

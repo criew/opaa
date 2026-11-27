@@ -432,6 +432,48 @@ class TabularDocumentFormatTest {
         .contains("Zwischensumme");
   }
 
+  @Test
+  void aSemicolonCsvWhoseDataRowsCarryDecimalCommasKeepsTheSemicolon() throws IOException {
+    Path file = tempDir.resolve("gebuehren.csv");
+    Files.writeString(
+        file,
+        "Kennung;Leistung;Gebühr\nAB-01;Beglaubigung;12,00;ermäßigt\nAB-02;Auskunft;8,00;voll\n",
+        StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "gebuehren.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Tabelle: gebuehren\n\nKennung | Leistung | Gebühr\n")
+        .contains("AB-01 | Beglaubigung | 12,00 | ermäßigt");
+  }
+
+  @Test
+  void aOneColumnListWithAnOccasionalSecondCellHasNoTitle() throws IOException {
+    Path file = tempDir.resolve("namen.csv");
+    Files.writeString(file, "Name;\nAnna;\nBob;\nCarl;Urlaub\n", StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "namen.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Tabelle: namen\n\nName")
+        .contains("\nAnna")
+        .contains("\nBob")
+        .contains("Carl | Urlaub");
+  }
+
+  @Test
+  void singleCellRowsAboveAHeaderThatMostRowsBelowDoNotMatchAreNoTitle() throws IOException {
+    Path file = tempDir.resolve("namen.csv");
+    Files.writeString(
+        file, "Name;\nAnna;\nBob;\nCarl;Urlaub\nDora;\nEmil;\n", StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "namen.csv"));
+
+    assertThat(result.chunks().getFirst().getText()).startsWith("Tabelle: namen\n\nName");
+  }
+
   // --- Table extent ----------------------------------------------------------------------------
 
   @Test

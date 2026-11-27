@@ -131,23 +131,38 @@ public class NeighborChunkExpansion {
   }
 
   /**
-   * The tables of {@code selection} in rank order that are small enough to load whole; empty when
-   * loading whole tables is switched off.
+   * The tables of {@code selection} in rank order that are small enough to load whole and not
+   * already whole in it - measured by their size, so a table of the hit alone needs no lookup;
+   * empty when loading whole tables is switched off.
    */
   private Set<TableReference> smallTables(List<Document> selection) {
-    Set<TableReference> tables = new LinkedHashSet<>();
+    Map<TableReference, Integer> missingCharacters = new LinkedHashMap<>();
     if (properties.wholeTableMaxCharacters() == 0) {
-      return tables;
+      return Set.of();
     }
+    Set<ChunkPosition> counted = new HashSet<>();
     for (Document chunk : selection) {
       Optional<ChunkPosition> position = ChunkPosition.of(chunk);
       Optional<ChunkTable> table = ChunkTable.of(chunk.getMetadata());
-      if (position.isPresent()
-          && table.isPresent()
-          && table.get().characters() <= properties.wholeTableMaxCharacters()) {
-        tables.add(new TableReference(position.get().documentId(), table.get().id()));
+      if (position.isEmpty()
+          || table.isEmpty()
+          || table.get().characters() > properties.wholeTableMaxCharacters()) {
+        continue;
+      }
+      TableReference reference = new TableReference(position.get().documentId(), table.get().id());
+      missingCharacters.putIfAbsent(reference, table.get().characters());
+      if (counted.add(position.get())) {
+        int length = chunk.getText() == null ? 0 : chunk.getText().length();
+        missingCharacters.merge(reference, -length, Integer::sum);
       }
     }
+    Set<TableReference> tables = new LinkedHashSet<>();
+    missingCharacters.forEach(
+        (reference, missing) -> {
+          if (missing > 0) {
+            tables.add(reference);
+          }
+        });
     return tables;
   }
 

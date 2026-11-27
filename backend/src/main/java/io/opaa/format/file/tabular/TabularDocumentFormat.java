@@ -296,12 +296,25 @@ public class TabularDocumentFormat implements DocumentFormat {
 
   /**
    * Picks the delimiter among {@link #CSV_DELIMITER_CANDIDATES} whose {@link #delimiterScore} is
-   * highest across the file's first {@link #DELIMITER_SAMPLE_LINES} non-blank lines. Falls back to
-   * comma when no candidate scores above zero (a single-column file).
+   * highest across the file's first {@link #DELIMITER_SAMPLE_LINES} non-blank lines. Up to {@link
+   * #MAX_TITLE_ROWS} leading lines no candidate splits - title lines - are left out of the sample,
+   * so the first line any candidate splits decides as before. Falls back to comma when no candidate
+   * scores above zero (a single-column file).
    */
   private static char detectDelimiter(String text) {
+    List<String> lines =
+        text.lines()
+            .filter(line -> !line.isBlank())
+            .limit(DELIMITER_SAMPLE_LINES + MAX_TITLE_ROWS)
+            .toList();
+    int titleLines = 0;
+    while (titleLines < MAX_TITLE_ROWS
+        && titleLines < lines.size() - 1
+        && splitsUnderNoCandidate(lines.get(titleLines))) {
+      titleLines++;
+    }
     List<String> sampleLines =
-        text.lines().filter(line -> !line.isBlank()).limit(DELIMITER_SAMPLE_LINES).toList();
+        lines.subList(titleLines, Math.min(lines.size(), titleLines + DELIMITER_SAMPLE_LINES));
     if (sampleLines.isEmpty()) {
       return ',';
     }
@@ -318,13 +331,21 @@ public class TabularDocumentFormat implements DocumentFormat {
     return best;
   }
 
+  private static boolean splitsUnderNoCandidate(String line) {
+    for (char candidate : CSV_DELIMITER_CANDIDATES) {
+      if (delimiterScore(line, candidate) > 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * How well {@code candidate} explains {@code sample} as the delimiter: it parses the sample and
-   * rewards both the column count of the first row it splits (a title line above the table splits
-   * under no candidate) and how many rows agree on it, so a delimiter every line agrees on beats
-   * one that merely splits the first line into more columns. Occurrences inside a quoted field
-   * never count, since boundaries come from parsing rather than a raw character count. Returns 0
-   * for a candidate that does not split the sample or fails to parse.
+   * rewards both the first row's column count and how many rows agree on it, so a delimiter every
+   * line agrees on beats one that merely splits the first line into more columns. Occurrences
+   * inside a quoted field never count, since boundaries come from parsing rather than a raw
+   * character count. Returns 0 for a candidate that does not split the sample or fails to parse.
    */
   private static long delimiterScore(String sample, char candidate) {
     CSVFormat format =
@@ -346,9 +367,8 @@ public class TabularDocumentFormat implements DocumentFormat {
     if (records.isEmpty()) {
       return 0;
     }
-    int firstRowColumns =
-        records.stream().mapToInt(CSVRecord::size).filter(size -> size > 1).findFirst().orElse(0);
-    if (firstRowColumns == 0) {
+    int firstRowColumns = records.getFirst().size();
+    if (firstRowColumns <= 1) {
       return 0;
     }
     long consistentRows = records.stream().filter(r -> r.size() == firstRowColumns).count();
@@ -727,8 +747,9 @@ public class TabularDocumentFormat implements DocumentFormat {
   /**
    * How many of the leading non-blank {@code rows} are title rows rather than the header: up to
    * {@link #MAX_TITLE_ROWS} rows with exactly one filled cell (a merged or centred heading, a
-   * "Stand:" line), counted only when the row right after them fills at least two cells. A table
-   * whose first rows all have a single cell - a one-column list - keeps its first row as header.
+   * "Stand:" line). They count only when the row right after them fills at least two cells, the
+   * rows from that header on are at least as many as the title rows and at least half of them fill
+   * two cells or more. A one-column list, even with a second cell here and there, has no title.
    */
   private static int titleRowCount(List<RawRow> rows) {
     int count = 0;
@@ -736,6 +757,11 @@ public class TabularDocumentFormat implements DocumentFormat {
       count++;
     }
     if (count == 0 || count >= rows.size() || filledCells(rows.get(count)) < 2) {
+      return 0;
+    }
+    List<RawRow> table = rows.subList(count, rows.size());
+    long multiCellRows = table.stream().filter(row -> filledCells(row) >= 2).count();
+    if (table.size() < count || multiCellRows * 2 < table.size()) {
       return 0;
     }
     return count;

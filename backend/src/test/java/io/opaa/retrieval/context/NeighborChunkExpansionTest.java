@@ -282,6 +282,20 @@ class NeighborChunkExpansionTest {
   }
 
   @Test
+  void looksUpNoTableTheSelectionAlreadyHoldsWhole() {
+    storeTable("a", 1, 0, 1);
+    storeTable("b", 1, 0, 0);
+
+    List<Document> result =
+        expansion(1, 40_000, 500)
+            .expand(
+                List.of(index(chunk("a", 0)), index(chunk("a", 1)), index(chunk("b", 0))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#0", "a#1", "b#0");
+    assertThat(tableLookups).isEmpty();
+  }
+
+  @Test
   void aThresholdOfZeroLoadsNoTableWhole() {
     storeTable("a", 1, 1, 5);
 

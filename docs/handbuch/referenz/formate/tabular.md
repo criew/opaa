@@ -29,8 +29,10 @@ Je Tabellenblatt (bei CSV: die eine Tabelle):
 1. Die **erste nicht-leere Zeile ist die Kopfzeile**. Ausnahme **Titelzeile**: Haben die ersten
    nicht-leeren Zeilen (höchstens drei) genau eine belegte Zelle und die Zeile danach mindestens
    zwei, sind sie der Titel der Tabelle, auch über verbundenen Zellen oder Leerzeilen; die Zeile
-   danach ist die Kopfzeile. Mehrere Titelzeilen werden mit „ – " verbunden. Eine einspaltige
-   Tabelle behält ihre erste Zeile als Kopfzeile.
+   danach ist die Kopfzeile. Dafür müssen ab der Kopfzeile mindestens so viele Zeilen folgen, wie
+   es Titelzeilen gibt, und mindestens die Hälfte davon zwei oder mehr Zellen belegen. Mehrere
+   Titelzeilen werden mit „ – " verbunden. Eine einspaltige Liste, auch mit vereinzelt belegter
+   zweiter Spalte, behält ihre erste Zeile als Kopfzeile.
 2. Die Datenzeilen werden zu **Gruppen von höchstens 50 Zeilen** zusammengefasst. Eine Gruppe
    endet früher, wenn die nächste Zeile den Chunk über die Zielgröße `chunk-target-characters`
    brächte. Sind Kontext- und Kopfzeile allein schon länger als die halbe Zielgröße (eine sehr
@@ -61,8 +63,8 @@ Kennung | Leistung | Gebühr
 AB-08 | Beglaubigung | 12,00 EUR
 ```
 
-Bei CSV entscheidet über das Trennzeichen die erste Zeile, die sich überhaupt teilen lässt; eine
-Titelzeile ohne Trennzeichen zählt nicht.
+Bei der Erkennung des CSV-Trennzeichens zählen bis zu drei führende Zeilen nicht mit, die sich mit
+keinem Kandidaten teilen lassen (Titelzeilen ohne Trennzeichen).
 
 Kontextzeile und Kopfzeile zusammen werden vor jedem Chunk auf die halbe Zielgröße gekürzt
 (mindestens 500 Zeichen, bei 4.000 Zeichen also 2.000), damit eine sehr breite Tabelle ihre
