@@ -314,7 +314,9 @@ def fill(job):
     formats = [f for f in job.get("formats") or FORMATS if f in FORMATS] or list(FORMATS)
     base = safe_name(job.get("output_name"))
     stamp = job.get("stamp")
+    stamp = stamp.strip() if isinstance(stamp, str) else ""
     footer = job.get("footer")
+    footer = footer.strip() if isinstance(footer, str) else ""
     files, errors = [], []
     work_dir = tempfile.mkdtemp(prefix="opaa-fill-")
     try:
@@ -328,10 +330,9 @@ def fill(job):
                 "files": [],
                 "errors": [f"Die Vorlage ließ sich nicht befüllen: {type(error).__name__} {reason}"],
             }
-        if isinstance(stamp, str) and stamp.strip():
+        if stamp:
             try:
-                line = footer.strip() if isinstance(footer, str) and footer.strip() else None
-                add_stamp(rendered, stamp.strip(), line or stamp.strip())
+                add_stamp(rendered, stamp, footer or stamp)
             except ValueError:  # a character XML cannot hold; the file is never left unstamped
                 return 2, {
                     "files": [],
