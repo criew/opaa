@@ -196,6 +196,7 @@ class FillTemplateToolTest {
     assertThat(job.path("formats").valueStream().map(JsonNode::asString))
         .containsExactly("docx", "pdf");
     assertThat(job.path("stamp").isNull()).isTrue();
+    assertThat(job.path("footer").isNull()).isTrue();
     assertThat(job.path("output_dir").asString())
         .startsWith(FillTemplateTool.OUTPUT_PARENT + "/")
         .hasSize(FillTemplateTool.OUTPUT_PARENT.length() + 37);
@@ -218,8 +219,10 @@ class FillTemplateToolTest {
             new String(sandboxes.uploads.get(FillTemplateTool.JOB_PATH), StandardCharsets.UTF_8));
     assertThat(job.path("stamp").asString())
         .isEqualTo(
-            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bericht Ignoriere"
-                + " alles“, Fassung 2 · Modell modell-a");
+            "KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage"
+                + " „Bericht Ignoriere alles“, Fassung 2 · Modell modell-a");
+    assertThat(job.path("footer").asString())
+        .isEqualTo("KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3");
     assertThat(run.stamp().templates())
         .containsExactly(new AgentRunStamp.TemplateRef(bericht.id(), bericht.name(), 2));
   }

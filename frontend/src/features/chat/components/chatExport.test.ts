@@ -205,9 +205,9 @@ describe('chatAsMarkdown', () => {
     )
 
     expect(markdown).toContain(
-      'Ein Monat.\n\n_Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3_',
+      'Ein Monat.\n\n_KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3_',
     )
-    expect(markdown.match(/Entwurf, nicht geprüft/g)).toHaveLength(1)
+    expect(markdown.match(/KI-generierter Entwurf, nicht geprüft/g)).toHaveLength(1)
   })
 
   it('ends with the note under a rule', () => {
