@@ -10,12 +10,19 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0
 }
 
+/** An entry packed with deflate (method 8); `size` is the unpacked size the archive declares. */
+export interface DeflatedEntry {
+  deflated: Uint8Array
+  size: number
+}
+
 /**
- * A ZIP archive of uncompressed entries, for tests that need a real Word file or a forged one:
- * `declaredSize` overrides the unpacked size the central directory names for every entry.
+ * A ZIP archive for tests that need a real Word file or a forged one: text entries are stored
+ * uncompressed, a {@link DeflatedEntry} as given. `declaredSize` overrides the unpacked size the
+ * central directory names for every entry.
  */
 export function storedZip(
-  files: Record<string, string>,
+  files: Record<string, string | DeflatedEntry>,
   { declaredSize }: { declaredSize?: number } = {},
 ): Uint8Array<ArrayBuffer> {
   const encoder = new TextEncoder()
@@ -24,15 +31,19 @@ export function storedZip(
   let offset = 0
   for (const [name, content] of Object.entries(files)) {
     const nameBytes = encoder.encode(name)
-    const data = encoder.encode(content)
-    const crc = crc32(data)
+    const deflated = typeof content === 'string' ? null : content
+    const data = deflated ? deflated.deflated : encoder.encode(content as string)
+    const crc = deflated ? 0 : crc32(data)
+    const method = deflated ? 8 : 0
+    const size = deflated ? deflated.size : data.length
     const local = new Uint8Array(30 + nameBytes.length + data.length)
     const lv = new DataView(local.buffer)
     lv.setUint32(0, 0x04034b50, true)
     lv.setUint16(4, 20, true)
+    lv.setUint16(8, method, true)
     lv.setUint32(14, crc, true)
     lv.setUint32(18, data.length, true)
-    lv.setUint32(22, data.length, true)
+    lv.setUint32(22, size, true)
     lv.setUint16(26, nameBytes.length, true)
     local.set(nameBytes, 30)
     local.set(data, 30 + nameBytes.length)
@@ -41,9 +52,10 @@ export function storedZip(
     cv.setUint32(0, 0x02014b50, true)
     cv.setUint16(4, 20, true)
     cv.setUint16(6, 20, true)
+    cv.setUint16(10, method, true)
     cv.setUint32(16, crc, true)
     cv.setUint32(20, data.length, true)
-    cv.setUint32(24, declaredSize ?? data.length, true)
+    cv.setUint32(24, declaredSize ?? size, true)
     cv.setUint16(28, nameBytes.length, true)
     cv.setUint32(42, offset, true)
     central.set(nameBytes, 46)

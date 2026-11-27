@@ -170,8 +170,9 @@ const DOCX_RENDER_OPTIONS = {
 /**
  * A Word original rendered by docx-preview into a shadow root of its own, so the document's
  * styles cannot reach the app and the app's cannot reach the document; what the document's CSS
- * could still do to the page is cut off by {@link confineRenderedDocx} and a containing box. Links are made safe before
- * `onRendered` hands over the body to search and mark; a file it cannot read calls `onFailed`.
+ * could still do to the page is cut off by {@link confineRenderedDocx} and a containing box.
+ * Links are made safe before `onRendered` hands over the body to search and mark; a file it
+ * cannot read calls `onFailed`.
  */
 export function DocxView({
   blob,
@@ -212,7 +213,7 @@ function DocxShadow({
   const css = `
     :host { display: block; color: ${text}; }
     .docx-wrapper { background: transparent !important; padding: 0 !important;
-      display: flex; flex-direction: column; align-items: center; gap: 24px; }
+      display: flex; flex-direction: column; align-items: safe center; gap: 24px; }
     .docx-wrapper > section.docx { box-shadow: ${shadow.floating}; margin-bottom: 0 !important;
       color: ${text}; }
     ::highlight(${highlight}) { background-color: ${band}; }
@@ -285,9 +286,19 @@ function DocxShadow({
   }, [blob, css])
 
   // Paint containment makes this box the containing block of anything fixed below it and clips
-  // what reaches beyond it, whatever the document's CSS asks for.
+  // what reaches beyond it, whatever the document's CSS asks for. The box grows with the pages,
+  // which keep their printed width, so the desk scrolls to every part of a wide page; on a phone
+  // the pages take the screen's width instead.
   return (
-    <Box sx={{ contain: 'layout paint', overflow: 'clip', isolation: 'isolate' }}>
+    <Box
+      sx={{
+        contain: 'layout paint',
+        overflow: 'clip',
+        isolation: 'isolate',
+        width: { xs: 'auto', sm: 'max-content' },
+        minWidth: '100%',
+      }}
+    >
       <Box ref={hostRef} data-testid="docx-original" />
     </Box>
   )

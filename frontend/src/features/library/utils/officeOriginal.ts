@@ -3,7 +3,7 @@ import { getDocumentContent } from '../api/libraryApi'
 import { decodeCsv, parseCsv, type CsvTable } from './csvTable'
 import { TEXT_PREVIEW_MAX_BYTES } from './documentContent'
 import { parseMail, type MailMessage } from './mailMessage'
-import { declaredUnpackedSize } from './zipSize'
+import { unpacksBeyond } from './zipSize'
 
 /** The office formats „Dokument öffnen“ shows as themselves rather than as their Textfassung. */
 export type OriginalFormat = 'docx' | 'csv' | 'mail'
@@ -25,7 +25,7 @@ export const ORIGINAL_VIEW_MAX_BYTES: Record<OriginalFormat, number> = {
   mail: 10 * 1024 * 1024,
 }
 
-/** Largest sum of unpacked sizes a Word file may declare; more is likely a ZIP bomb. */
+/** Most bytes a Word file may unpack to, declared or real; more is likely a ZIP bomb. */
 export const DOCX_UNPACKED_MAX_BYTES = 50 * 1024 * 1024
 
 /** Why an original opens as its Textfassung instead. */
@@ -56,7 +56,7 @@ export function originalFormat(fileName: string): OriginalFormat | null {
 /**
  * Fetches the original through the content endpoint and reads it for its view, or names why the
  * Textfassung stands in instead: a file above {@link ORIGINAL_VIEW_MAX_BYTES}, a Word file that
- * declares more than {@link DOCX_UNPACKED_MAX_BYTES} unpacked, a mail without a plain text part.
+ * unpacks to more than {@link DOCX_UNPACKED_MAX_BYTES}, a mail without a plain text part.
  * A failed fetch rejects.
  */
 export async function loadOfficeOriginal(
@@ -68,8 +68,7 @@ export async function loadOfficeOriginal(
   const base = { ...document, fileName: fileName ?? document.fileName, blob }
   const bytes = new Uint8Array(await blob.arrayBuffer())
   if (format === 'docx') {
-    const unpacked = declaredUnpackedSize(bytes)
-    return unpacked != null && unpacked > DOCX_UNPACKED_MAX_BYTES
+    return (await unpacksBeyond(bytes, DOCX_UNPACKED_MAX_BYTES))
       ? { fallback: 'too-large' }
       : { ...base, format }
   }

@@ -1,3 +1,4 @@
+import { deflateRawSync } from 'node:zlib'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentPreview } from './useDocumentPreview'
@@ -278,6 +279,22 @@ describe('useDocumentPreview', () => {
             ),
           ]),
         'bombe.docx ist zu groß für die Originalansicht – die Textfassung wird gezeigt.',
+      ],
+      [
+        'a Word file that declares little but unpacks beyond the bound',
+        'luege.docx',
+        () =>
+          new Blob([
+            storedZip({
+              'word/document.xml': {
+                deflated: new Uint8Array(
+                  deflateRawSync(new Uint8Array(DOCX_UNPACKED_MAX_BYTES + 1)),
+                ),
+                size: 1000,
+              },
+            }),
+          ]),
+        'luege.docx ist zu groß für die Originalansicht – die Textfassung wird gezeigt.',
       ],
       [
         'a mail without a plain text part',

@@ -82,7 +82,8 @@ function separatorScore(sample: string, separator: string): number {
 /**
  * RFC 4180 records. A quote opens a quoted cell only as its first character, elsewhere it is
  * text; blanks after a closing quote are dropped. `strict` rejects other text there and an
- * unclosed quote, as the index's parser does; `skipEmpty` drops empty lines instead of reading them as a record of one empty cell.
+ * unclosed quote, as the index's parser does; `skipEmpty` drops empty lines instead of reading
+ * them as a record of one empty cell.
  */
 function readRecords(
   source: string,

@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import { passageLabelSx } from './styles'
 
 /** Margin left of a block that holds the label beside its edge stroke. */
-const MARGIN_ROOM_PX = 100
+const MARGIN_ROOM_PX = 88
 
 /**
  * The label „Fundstelle“ once beside the first block of the passage, as a text element of its own:
