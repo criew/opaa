@@ -13,20 +13,20 @@ function Outline({
   height,
   label,
 }: {
-  shape: { width: number; height: number; base: string; accent: string }
+  shape: { x: number; y: number; width: number; height: number; base: string; accent: string }
   height: number
   label?: string
 }) {
   return (
     <Box
       component="svg"
-      viewBox={`0 0 ${shape.width} ${shape.height}`}
+      viewBox={`${shape.x} ${shape.y} ${shape.width} ${shape.height}`}
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
       sx={{ height, width: (height * shape.width) / shape.height, flexShrink: 0, display: 'block' }}
     >
-      <path fill="currentColor" d={shape.base} />
+      {shape.base && <path fill="currentColor" d={shape.base} />}
       <path fill={MARK_ACCENT} d={shape.accent} />
     </Box>
   )

@@ -1555,43 +1555,39 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
-### 7.1 Das opaa-Standardlogo (temporäre Fassung)
+### 7.1 Das opaa-Standardlogo
 
-> **Temporär.** Die Fassung setzt das Markenkonzept um, bis dessen Reinzeichnung als Vektordatei
-> vorliegt. Die Wortmarke ist aus der freien Schrift Saira (SIL OFL) in Pfade gewandelt, das
-> Bildzeichen ist ein Vorschlag zur Erprobung. Mit der Reinzeichnung werden Dateien und dieser
-> Abschnitt ersetzt.
+Das Logo ist die **Wortmarke „opaa“** aus den Originaldateien des Marketings (Style Guide der
+VISION). Das erste a und der Balken darunter stehen in Hellblau, der Rest in der Textfarbe der
+Fläche. Das Logo wird nicht nachgebaut: Alle Dateien entstehen aus den Originalen. Es ist der
+Fallback, solange ein Betreiber kein eigenes Logo konfiguriert.
 
-Das Logo ist die **Wortmarke „opaa“**: Das erste a und ein Balken darunter stehen in Hellblau, der
-Rest in der Textfarbe der Fläche. Der Balken steht mit Abstand unter der Grundlinie, etwa auf Höhe der
-Unterlänge des p, und ragt seitlich etwas über das a hinaus. Es ist der Fallback, solange ein
-Betreiber kein eigenes Logo konfiguriert.
+| Bestandteil        | Farbe                                                       |
+| ------------------ | ----------------------------------------------------------- |
+| „op“ und letztes a | Dunkelblau auf hellen Flächen, Weiß auf dunklen             |
+| erstes a, Balken   | Hellblau `#009DDB`, auf jeder Fläche                        |
+| Zeichen (Icon)     | hellblaues a mit Balken auf dunkelblauer (bzw. weißer) Kachel |
 
-| Bestandteil             | Farbe                                             |
-| ----------------------- | ------------------------------------------------- |
-| „op“ und letztes a      | Dunkelblau auf hellen Flächen, Weiß auf dunklen   |
-| erstes a, Balken        | Hellblau `#009DDB`, auf jeder Fläche              |
-| Bildzeichen (Icon)      | „o“ in Dunkelblau bzw. Weiß, Unterstrich Hellblau |
-
-- **Ohne Unterzeile:** Die Langform „open project ai assistant“ steht nicht im Logo, solange ihre
-  markenrechtliche Prüfung offen ist. Auf dunklen Flächen steht die Wortmarke ohne weißen Kasten.
+- **Ohne Unterzeile:** Die Langform „open project ai assistant“ steht nicht im Logo der Software.
+  Auf dunklen Flächen steht die Wortmarke ohne weißen Kasten.
 - **In der globalen Leiste** steht die Wortmarke dekorativ und auf 44 px Breite verkleinert.
-- **Bildzeichen** für Favicon, App- und Touch-Icon und `og:image`: ein kleines
-  „o“ mit hellblauem Unterstrich, der wie im Logo mit Abstand unter der Grundlinie steht. Die
-  Icon-Fassung steht auf einer Kachel in Dunkelblau (Favicon, Touch-Icon) oder Weiß, Radius 14/64;
-  die Raster-PNGs sind vollflächig ohne Rundung, weil Betriebssysteme Icons selbst maskieren.
+- **Zeichen** für Favicon, App- und Touch-Icon und `og:image`: das hellblaue a mit Balken auf einer
+  dunkelblauen Kachel mit abgerundeten Ecken; die Fassung auf Weiß nur, wo eine helle Fläche
+  verlangt ist. Die Raster-PNGs sind vollflächig ohne Rundung, weil Betriebssysteme Icons selbst
+  maskieren. Das Zeichen ersetzt nie das Logo, wo Platz für die Wortmarke ist.
 - **In der App** zeigt `BrandMark` mit dem Standardnamen „opaa“ die Wortmarke statt Name und Marke
   und gibt den Namen als zugänglichen Namen mit. Trägt die Installation einen eigenen Namen, aber
-  kein Logo, steht das Bildzeichen neben dem Namen. Ein konfiguriertes Logo ersetzt beides.
-- Schutzraum mindestens so hoch wie das hellblaue a. Nicht verzerren, nicht drehen, keine Schatten
-  oder Verläufe. Hellblau ist hier Bildmarke, keine Textfarbe; die Kontrastregel für Text (2.4) gilt
-  für Logos nicht.
+  kein Logo, steht das Zeichen ohne Kachel neben dem Namen. Ein konfiguriertes Logo ersetzt beides.
+- Schutzraum mindestens so hoch wie das hellblaue a. Nicht verzerren, nicht drehen, nicht umfärben,
+  keine Schatten oder Verläufe. Hellblau ist hier Bildmarke, keine Textfarbe; die Kontrastregel für
+  Text (2.4) gilt für Logos nicht.
 
-Die Dateien liegen in [`logo/`](./logo/): `opaa-wortmarke.svg` und `opaa-mark.svg` (Bildzeichen),
-jeweils mit `-hell`-Fassung für dunkle Flächen,
-`opaa-icon.svg` (dunkelblaue Kachel), `opaa-icon-weiss.svg` sowie die Icon-Raster in 32, 180, 192
-und 512 px. Alle entstehen mit `logo/quelle/build_logo.py` aus der Schrift daneben; das Skript
-schreibt auch die Kopien für App, Handbuch und Homepage und die Pfade, die `BrandMark` zeichnet.
+Die Originale liegen in [`logo/original/`](./logo/original/) (`wortmarke.svg`,
+`wortmarke-auf-blau.svg`, `zeichen-dunkel.svg`, `zeichen-hell.svg`). Daraus erzeugt
+`logo/original/build_logo.py` die Dateien in [`logo/`](./logo/) (`opaa-wortmarke.svg` mit
+`-hell`-Fassung, `opaa-icon.svg`, `opaa-icon-weiss.svg`, Icon-Raster in 32, 180, 192 und 512 px),
+die Kopien für App, Handbuch und Homepage und die Pfade, die `BrandMark` zeichnet. Kommt eine neue
+Reinzeichnung, werden nur die Originale getauscht und das Skript erneut ausgeführt.
 
 ---
 
