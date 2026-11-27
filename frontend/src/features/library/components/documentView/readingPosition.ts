@@ -1,9 +1,10 @@
 /**
- * Where a reader is in a scrolling document view: the line a quarter down the viewport. The page
- * and the outline entry shown as current are both taken at this line, so they always agree.
+ * Where a reader is in a scrolling document view: by default the line a quarter down the viewport;
+ * a view that opens its passage further down passes its own `fraction`. The page and the outline
+ * entry shown as current are both taken at this line, so they always agree.
  */
-export function readingLine(scrollTop: number, clientHeight: number): number {
-  return scrollTop + clientHeight / 4
+export function readingLine(scrollTop: number, clientHeight: number, fraction = 1 / 4): number {
+  return scrollTop + clientHeight * fraction
 }
 
 /**

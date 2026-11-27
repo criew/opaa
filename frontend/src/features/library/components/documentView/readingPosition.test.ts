@@ -5,6 +5,10 @@ describe('readingLine', () => {
   it('lies a quarter down the view', () => {
     expect(readingLine(1000, 800)).toBe(1200)
   })
+
+  it('lies where a view asks for it', () => {
+    expect(readingLine(1000, 800, 1 / 2)).toBe(1400)
+  })
 })
 
 describe('lastAtOrBefore', () => {
