@@ -419,7 +419,7 @@ class FullTextChunkSearchIntegrationTest {
 
     List<Document> hits =
         fullTextChunkSearch
-            .search("Tarifstelle", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25)
+            .search("Was gilt für AB?", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25)
             .chunks();
 
     assertThat(hits).extracting(Document::getId).containsExactly(chunk.toString());

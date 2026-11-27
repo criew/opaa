@@ -102,8 +102,9 @@ class FullTextIdentifiersTest {
   void keywordFreeAdministrativeFileNumbersAreRecognized() {
     assertThat(FullTextIdentifiers.extract("Was regelt die Dienstanweisung BAU-DA-2/2024?"))
         .containsExactly("xakzbauda22024");
+    // also a letter-digit code, so KAE07 and KAE 07 reach it as well
     assertThat(FullTextIdentifiers.extract("Wofür wird Formular KAE-07 verwendet?"))
-        .containsExactly("xakzkae07");
+        .containsExactly("xakzkae07", "xkzkae07");
   }
 
   /** Two administrative file numbers differing in one component must not share a lexeme. */

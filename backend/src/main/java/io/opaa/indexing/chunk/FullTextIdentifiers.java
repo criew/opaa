@@ -15,10 +15,10 @@ import java.util.regex.Pattern;
 
 /**
  * The curated pattern list behind the lexical path's identifier protection (ADR-0065, Entscheidung
- * 2): paragraph references, file numbers, Erlass-/Drucksachen numbers, email addresses and
- * technical field names become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35" stay
- * distinguishable under stemming. Write and query path call this same method, or the two sides
- * would build different lexemes and never match.
+ * 2): paragraph references, file numbers, Erlass-/Drucksachen numbers, email addresses,
+ * letter-digit codes and technical field names become <b>undecomposed lexemes</b>, so "§ 34" and "§
+ * 35" stay distinguishable under stemming and {@code AB-08} meets {@code AB08}. Write and query
+ * path call this same method, or the two sides would build different lexemes and never match.
  *
  * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
  * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
@@ -39,6 +39,7 @@ public final class FullTextIdentifiers {
   private static final String FILE_NUMBER_PREFIX = "xakz";
   private static final String ORDINANCE_NUMBER_PREFIX = "xnr";
   private static final String EMAIL_PREFIX = "xmail";
+  private static final String CODE_PREFIX = "xkz";
   private static final String FIELD_NAME_PREFIX = "xfld";
 
   /**
@@ -153,6 +154,21 @@ public final class FullTextIdentifiers {
           "\\b([A-Za-z0-9][A-Za-z0-9._%+-]{0,63}@[A-Za-z0-9.-]{1,253}\\.[A-Za-z]{2,63})\\b");
 
   /**
+   * A letter-digit code in any of its spellings - {@code AB08}, {@code AB-08}, {@code ab_08},
+   * {@code AB 08}, {@code AB.08} - all reduced to one lexeme. A space or a dot joins the two blocks
+   * only behind uppercase letters: lowercase, "ab 08 Uhr" or "um.12" is prose. Neither block may
+   * continue - no letter or digit, no separator with a further letter or digit, no space with a
+   * further number - so a longer chain ({@code AB-08-15}), a version ({@code v2.1}) or a phone
+   * number ({@code FAX 0711 123456}) is never shortened to a code it does not name.
+   */
+  private static final Pattern LETTER_DIGIT_CODE =
+      Pattern.compile(
+          "(?<![\\p{L}\\p{N}])(?<![\\p{L}\\p{N}][-_./])"
+              + "(?:([A-Za-z]{1,6})[-_]?|([A-Z]{1,6})[ .])"
+              + "(\\d{1,6})"
+              + "(?![\\p{L}\\p{N}])(?![-_./,][\\p{L}\\p{N}])(?!\\s\\d)");
+
+  /**
    * A maximal run of letters, digits and underscores - the unit a field name is recognized in. A
    * hyphen ends the run, so {@code EU-DSGVO} offers {@code DSGVO} on its own, as a question that
    * names it bare does.
@@ -226,6 +242,7 @@ public final class FullTextIdentifiers {
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
+    collect(LETTER_DIGIT_CODE, text, CODE_PREFIX, false, lexemes);
     Set<String> structural = new HashSet<>(lexemes);
     Map<String, String> wordForms = new LinkedHashMap<>();
     collectFieldNames(text, lawAbbreviationStarts(text), lexemes, structural, wordForms);
