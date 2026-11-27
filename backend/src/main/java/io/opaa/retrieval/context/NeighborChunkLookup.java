@@ -1,5 +1,6 @@
 package io.opaa.retrieval.context;
 
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.VectorTable;
 import java.util.ArrayList;
@@ -89,6 +90,59 @@ public class NeighborChunkLookup {
               ChunkPosition.of(chunk)
                   .map(position -> byKey.get(position.key()))
                   .ifPresent(position -> result.put(position, chunk));
+            });
+    return result;
+  }
+
+  /**
+   * Every stored chunk of every one of {@code tables} within {@code libraryIds}, keyed by position,
+   * in one query. A table outside the scope, or of a document indexed before tables were recorded,
+   * loads nothing; an empty scope loads nothing.
+   */
+  public Map<ChunkPosition, Document> findTables(
+      Collection<TableReference> tables, Set<UUID> libraryIds) {
+    if (tables.isEmpty() || libraryIds.isEmpty()) {
+      return Map.of();
+    }
+    Set<String> documentIds = new LinkedHashSet<>();
+    Set<String> tableKeys = new LinkedHashSet<>();
+    for (TableReference table : tables) {
+      documentIds.add(table.documentId());
+      tableKeys.add(table.key());
+    }
+    String documentIdKey = VectorChunkStore.DOCUMENT_ID_METADATA_KEY;
+    String sql =
+        "SELECT id, content, metadata FROM "
+            + vectorTable.qualifiedName()
+            + " WHERE metadata->>'"
+            + documentIdKey
+            + "' = ANY(?)"
+            + " AND metadata->>'"
+            + VectorChunkStore.LIBRARY_ID_METADATA_KEY
+            + "' = ANY(?)"
+            + " AND (metadata->>'"
+            + documentIdKey
+            + "') || '#' || (metadata->'"
+            + ChunkMetadataKeys.TABLE_METADATA_KEY
+            + "'->>'id') = ANY(?)";
+    String[] libraries = libraryIds.stream().map(UUID::toString).toArray(String[]::new);
+    Map<ChunkPosition, Document> result = new HashMap<>();
+    jdbcTemplate.query(
+        sql,
+        ps -> {
+          ps.setArray(1, ps.getConnection().createArrayOf("text", documentIds.toArray()));
+          ps.setArray(2, ps.getConnection().createArrayOf("text", libraries));
+          ps.setArray(3, ps.getConnection().createArrayOf("text", tableKeys.toArray()));
+        },
+        (RowCallbackHandler)
+            rs -> {
+              Document chunk =
+                  Document.builder()
+                      .id(rs.getString("id"))
+                      .text(rs.getString("content"))
+                      .metadata(readMetadata(rs.getString("metadata")))
+                      .build();
+              ChunkPosition.of(chunk).ifPresent(position -> result.put(position, chunk));
             });
     return result;
   }

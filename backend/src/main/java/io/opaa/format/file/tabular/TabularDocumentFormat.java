@@ -9,6 +9,7 @@ import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkContextTitle;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.chunk.ChunkTable;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -60,14 +61,14 @@ import org.xml.sax.helpers.DefaultHandler;
  *
  * <p>Every chunk repeats its column headers plus a "Blatt: … · Tabelle: …" structural-context line,
  * baked into the chunk's own text since only a fixed, generic metadata set survives into the stored
- * chunk otherwise.
+ * chunk otherwise. Every chunk of one table also carries the same {@link ChunkTable}.
  */
 public class TabularDocumentFormat implements DocumentFormat {
 
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 5;
+  static final short VERSION = 6;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -76,6 +77,11 @@ public class TabularDocumentFormat implements DocumentFormat {
    * table into chunks that are still readable and citable.
    */
   static final int MAX_ROWS_PER_CHUNK = 50;
+
+  /** How many single-cell rows above a table's header {@link #titleRowCount} reads as its title. */
+  static final int MAX_TITLE_ROWS = 3;
+
+  private static final String TITLE_LINE_SEPARATOR = " – ";
 
   private static final char[] CSV_DELIMITER_CANDIDATES = {',', ';', '\t'};
 
@@ -164,6 +170,14 @@ public class TabularDocumentFormat implements DocumentFormat {
   }
 
   @Override
+  public Set<String> passthroughMetadataKeys() {
+    return Set.of(
+        ChunkMetadataKeys.LOCATION_METADATA_KEY,
+        ChunkMetadataKeys.ANCHOR_METADATA_KEY,
+        ChunkMetadataKeys.TABLE_METADATA_KEY);
+  }
+
+  @Override
   public DocumentFormatResult run(DocumentFormatSource source) {
     // A source with neither a detected extension nor a suffix in its name is read as XLSX, the
     // format POI can reject outright rather than mis-parse.
@@ -240,7 +254,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       rows.add(new RawRow(record.getRecordNumber(), toValues(record)));
     }
     String tableTitle = ChunkContextTitle.deriveTitle(source.fileName());
-    return chunksFromRawRows(null, tableTitle, rows);
+    return chunksFromRawRows(null, tableTitle, rows, 1);
   }
 
   /**
@@ -306,10 +320,11 @@ public class TabularDocumentFormat implements DocumentFormat {
 
   /**
    * How well {@code candidate} explains {@code sample} as the delimiter: it parses the sample and
-   * rewards both the first row's column count and how many rows agree on it, so a delimiter every
-   * line agrees on beats one that merely splits the first line into more columns. Occurrences
-   * inside a quoted field never count, since boundaries come from parsing rather than a raw
-   * character count. Returns 0 for a candidate that does not split the sample or fails to parse.
+   * rewards both the column count of the first row it splits (a title line above the table splits
+   * under no candidate) and how many rows agree on it, so a delimiter every line agrees on beats
+   * one that merely splits the first line into more columns. Occurrences inside a quoted field
+   * never count, since boundaries come from parsing rather than a raw character count. Returns 0
+   * for a candidate that does not split the sample or fails to parse.
    */
   private static long delimiterScore(String sample, char candidate) {
     CSVFormat format =
@@ -331,8 +346,9 @@ public class TabularDocumentFormat implements DocumentFormat {
     if (records.isEmpty()) {
       return 0;
     }
-    int firstRowColumns = records.getFirst().size();
-    if (firstRowColumns <= 1) {
+    int firstRowColumns =
+        records.stream().mapToInt(CSVRecord::size).filter(size -> size > 1).findFirst().orElse(0);
+    if (firstRowColumns == 0) {
       return 0;
     }
     long consistentRows = records.stream().filter(r -> r.size() == firstRowColumns).count();
@@ -373,8 +389,10 @@ public class TabularDocumentFormat implements DocumentFormat {
           long[] characters = {0};
           // released by OoxmlPackages.read, which reverts the read-only package
           XSSFWorkbook workbook = new XSSFWorkbook(pkg);
+          int tableId = 0;
           for (Sheet sheet : workbook) {
-            chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName(), characters));
+            chunks.addAll(
+                readSheet(sheet, ++tableId, cellFormatter, source.loggedName(), characters));
           }
           return new XlsxContent(
               chunks, coreProperties(workbook.getProperties().getCoreProperties()));
@@ -402,7 +420,7 @@ public class TabularDocumentFormat implements DocumentFormat {
   }
 
   private List<Document> readSheet(
-      Sheet sheet, DataFormatter cellFormatter, LoggedName names, long[] characters) {
+      Sheet sheet, int tableId, DataFormatter cellFormatter, LoggedName names, long[] characters) {
     List<RawRow> rows = new ArrayList<>();
     List<String> header = null;
     boolean anyRowTruncated = false;
@@ -420,7 +438,8 @@ public class TabularDocumentFormat implements DocumentFormat {
             "XLSX workbook exceeds the configured text character limit of "
                 + limits.maxTextCharacters());
       }
-      if (header == null && !isBlankRow(values)) {
+      // the widths of the rows below follow the header, never a single-cell title row above it
+      if (header == null && filledCells(values) >= 2) {
         header = values;
       }
       // 1-based, matching the row number Excel itself displays (getRowNum() is 0-based).
@@ -433,7 +452,7 @@ public class TabularDocumentFormat implements DocumentFormat {
           names.of(sheet.getSheetName()),
           maxRowColumns);
     }
-    return chunksFromRawRows(sheet.getSheetName(), sheet.getSheetName(), rows);
+    return chunksFromRawRows(sheet.getSheetName(), sheet.getSheetName(), rows, tableId);
   }
 
   private List<String> toValues(Row row, int minColumns, DataFormatter cellFormatter) {
@@ -482,8 +501,9 @@ public class TabularDocumentFormat implements DocumentFormat {
           maxRowColumns);
     }
     List<Document> chunks = new ArrayList<>();
+    int tableId = 0;
     for (OdsSheet sheet : handler.sheets()) {
-      chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), sheet.rows()));
+      chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), sheet.rows(), ++tableId));
     }
     return chunks;
   }
@@ -649,24 +669,43 @@ public class TabularDocumentFormat implements DocumentFormat {
   }
 
   /**
-   * Shared header/data-row detection for all three readers: the first non-blank row is the header,
-   * every following one is data, and a table without a non-blank row contributes no chunk. Exactly
-   * one non-blank row is always content, in a chunk of its own - treating it as an empty header
-   * would drop real content (the format chapter of the Handbuch).
+   * Shared title/header/data-row detection for all three readers: leading title rows ({@link
+   * #titleRowCount}) name the table, the first non-blank row after them is the header, every
+   * following one is data, and a table without a non-blank row contributes no chunk. Exactly one
+   * non-blank row is always content, in a chunk of its own - treating it as an empty header would
+   * drop real content (the format chapter of the Handbuch). Every chunk of the table carries the
+   * same {@link ChunkTable}.
    *
    * @param sheetName the sheet name, or {@code null} for CSV, forwarded unchanged
-   * @param tableName see {@link #buildChunks}
+   * @param tableName see {@link #buildChunks}; replaced by the title rows when the table has any
+   * @param tableId the table's 1-based ordinal within its document
    */
+  private List<Document> chunksFromRawRows(
+      String sheetName, String tableName, List<RawRow> rows, int tableId) {
+    List<Document> chunks = chunksFromRawRows(sheetName, tableName, rows);
+    ChunkTable.tag(chunks, tableId);
+    return chunks;
+  }
+
   private List<Document> chunksFromRawRows(String sheetName, String tableName, List<RawRow> rows) {
-    // both repeat in every chunk's context, Fundort and anchor
-    sheetName = RepeatedContext.cut(sheetName);
-    tableName = RepeatedContext.cut(tableName);
     List<RawRow> nonBlank = new ArrayList<>();
     for (RawRow row : rows) {
       if (!isBlankRow(row.values())) {
         nonBlank.add(row);
       }
     }
+    int titleRows = titleRowCount(nonBlank);
+    if (titleRows > 0) {
+      List<String> titleLines = new ArrayList<>(titleRows);
+      for (RawRow row : nonBlank.subList(0, titleRows)) {
+        titleLines.add(row.values().stream().filter(v -> !v.isBlank()).findFirst().orElseThrow());
+      }
+      tableName = String.join(TITLE_LINE_SEPARATOR, titleLines);
+      nonBlank = nonBlank.subList(titleRows, nonBlank.size());
+    }
+    // both repeat in every chunk's context, Fundort and anchor
+    sheetName = RepeatedContext.cut(sheetName);
+    tableName = RepeatedContext.cut(tableName);
     if (nonBlank.isEmpty()) {
       return List.of();
     }
@@ -683,6 +722,31 @@ public class TabularDocumentFormat implements DocumentFormat {
       dataRowNumbers.add(row.number());
     }
     return buildChunks(sheetName, tableName, headerRow.number(), header, dataRows, dataRowNumbers);
+  }
+
+  /**
+   * How many of the leading non-blank {@code rows} are title rows rather than the header: up to
+   * {@link #MAX_TITLE_ROWS} rows with exactly one filled cell (a merged or centred heading, a
+   * "Stand:" line), counted only when the row right after them fills at least two cells. A table
+   * whose first rows all have a single cell - a one-column list - keeps its first row as header.
+   */
+  private static int titleRowCount(List<RawRow> rows) {
+    int count = 0;
+    while (count < rows.size() && count < MAX_TITLE_ROWS && filledCells(rows.get(count)) == 1) {
+      count++;
+    }
+    if (count == 0 || count >= rows.size() || filledCells(rows.get(count)) < 2) {
+      return 0;
+    }
+    return count;
+  }
+
+  private static long filledCells(RawRow row) {
+    return filledCells(row.values());
+  }
+
+  private static long filledCells(List<String> values) {
+    return values.stream().filter(value -> !value.isBlank()).count();
   }
 
   private List<Document> renderSingleRowChunk(String sheetName, String tableName, RawRow row) {

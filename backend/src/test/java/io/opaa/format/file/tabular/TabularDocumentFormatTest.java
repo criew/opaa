@@ -338,6 +338,26 @@ class TabularDocumentFormatTest {
   }
 
   @Test
+  void rowsBelowATitleRowArePaddedToTheHeaderWidthNotTheTitleWidth() throws IOException {
+    Path file = tempDir.resolve("gebuehrenordnung.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Gebühren");
+      writeRow(sheet, 0, "Gebührenordnung 2026");
+      writeRow(sheet, 1, "Kennung", "Leistung", "Gebühr");
+      writeRow(sheet, 2, "AB-10", "Prüfung");
+      writeRow(sheet, 3, "AB-08", "Beglaubigung", "12,00 EUR");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "gebuehrenordnung.xlsx"));
+
+    assertThat(result.chunks().getFirst().getText()).contains("\nAB-10 | Prüfung | \nAB-08");
+  }
+
+  @Test
   void severalTitleRowsAndBlankRowsAboveTheHeaderAllBecomeTheTitle() throws IOException {
     Path file = tempDir.resolve("gebuehren.csv");
     Files.writeString(
