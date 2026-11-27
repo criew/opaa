@@ -109,8 +109,10 @@ bevor die Suche etwas verfehlen kann.
 
 Das Tabellenformat erkennt die Titelzeile über dem Kopf und wiederholt die echten Spaltenköpfe in jedem
 Chunk. Ebene `format`: 31 von 31 Fällen `solved` (`aq-fn-07`, `aq-wr-06`, `aq-wr-07` von `known_gap` auf
-`solved`). Ebene `context`: ebenfalls als `solved` deklariert; der Lauf von `answer-quality.yml` auf dem
-umstellenden PR bestätigt das.
+`solved`). Ebene `context` (Workflow `answer-quality.yml`, `nomic-embed-text:v1.5`, ohne Teilfragen-Zerlegung): ein
+Abschnitt trägt Wert und Bezug in 31 von 31 Fällen (`false_negative` 19 von 19 Messungen,
+`needless_caveat` 10 von 10, `wrong_reference` 11 von 11), alle 9 Kennungs-Schreibweisen bringen das
+Dokument in den Kontext.
 
 Antworten: nicht gemessen, es gibt keinen Modellschlüssel im Repository; der Lauf mit Modell steht
 als Befehl in `eval/README.md`.
