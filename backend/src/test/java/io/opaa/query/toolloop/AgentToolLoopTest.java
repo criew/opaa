@@ -428,9 +428,7 @@ class AgentToolLoopTest {
     assertThat(toolsOf(followUp)).isNotEmpty();
     Message last = followUp.getInstructions().getLast();
     assertThat(last).isInstanceOf(UserMessage.class);
-    assertThat(last.getText())
-        .isEqualTo(AgentPrompt.afterBlankOutput(false))
-        .doesNotContain(AgentPrompt.CUT_AT_OUTPUT_LIMIT);
+    assertThat(last.getText()).isEqualTo(AgentPrompt.afterBlankOutput(false));
     assertThat(followUp.getInstructions())
         .noneMatch(
             m ->
@@ -452,8 +450,7 @@ class AgentToolLoopTest {
     ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
     verify(chatModel, times(3)).call(prompts.capture());
     assertThat(prompts.getAllValues().get(2).getInstructions().getLast().getText())
-        .isEqualTo(AgentPrompt.afterBlankOutput(true))
-        .contains(AgentPrompt.CUT_AT_OUTPUT_LIMIT);
+        .isEqualTo(AgentPrompt.afterBlankOutput(true));
   }
 
   @Test
@@ -488,6 +485,24 @@ class AgentToolLoopTest {
     verify(sourceAssembler).assemble(anyList(), citations.capture(), any());
     assertThat(citations.getValue()).singleElement().matches(c -> !c.valid());
     assertThat(meters.find(AgentMetrics.CITATIONS_UNVERIFIABLE).counter().count()).isEqualTo(1.0);
+  }
+
+  @Test
+  void aBlankClosingCallAtALimitIsNotFollowedUp() {
+    List<ChatResponse> script = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      script.add(toolCall("call-" + i, "{\"frage\":\"Regeln\"}"));
+    }
+    script.add(answer(""));
+    script.add(answer("Nie erreicht."));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(script.get(0), script.subList(1, script.size()).toArray(ChatResponse[]::new));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.LIMIT_CALLS);
+    assertThat(result.answer()).isEqualTo(AgentToolLoop.NO_ANSWER_AT_LIMIT);
+    verify(chatModel, times(5)).call(any(Prompt.class));
   }
 
   @Test
@@ -1234,6 +1249,19 @@ class AgentToolLoopTest {
         .appendTurn(any(), any(), any(), any(), any(), any(), any(), any(), eq(result.agentRun()));
     assertThat(runs("builtin", "plan")).isEqualTo(1.0);
     assertThat(runs("builtin", "completed")).isZero();
+  }
+
+  @Test
+  void aBlankPlanIsNotFollowedUpBecauseAPlanRunOffersNoTool() {
+    planning(true);
+    when(chatService.latestAgentRun(chat.getId())).thenReturn(Optional.empty());
+    when(chatModel.call(any(Prompt.class))).thenReturn(answer(""), answer("Nie erreicht."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.PLAN);
+    assertThat(result.answer()).isEqualTo(AgentToolLoop.NO_PLAN);
+    verify(chatModel, times(1)).call(any(Prompt.class));
   }
 
   @Test

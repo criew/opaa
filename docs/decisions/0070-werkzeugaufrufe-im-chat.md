@@ -181,12 +181,13 @@ Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
    `ContentFence`). Ein Ergebnis steht nie in der Nachricht der Person und nie im Systemvorspann.
 8. **Erinnerung an die verbindlichen Regeln** am Ende jedes Werkzeugergebnisses, hinter dessen
    Datenblock und außerhalb davon. Damit ist vor jedem Modellaufruf mit Fremdinhalt die Erinnerung
-   das Letzte, was das Modell liest. Sie besteht wie im Chat aus Zitier- und Sprachzeile
+   das Letzte, was das Modell liest, ausgenommen die Nachfrage nach einer leeren Ausgabe (unten). Sie besteht wie im Chat aus Zitier- und Sprachzeile
    (`AnswerGenerationService.CITATION_REMINDER`, dazu `LANGUAGE_REMINDER` oder mit einer
    Space-Anweisung `SPACE_LANGUAGE_REMINDER`).
 
 Die Teile 1 bis 4 sind über alle Schritte eines Laufs zeichengleich. Ein Schritt hängt nur ein
-weiteres Ergebnis mit eigener Erinnerung hinter Teil 7 an. Darauf beruht die Zusage, dass der
+weiteres Ergebnis mit eigener Erinnerung hinter Teil 7 an; einzige weitere Nachricht ist die
+Nachfrage nach einer leeren Ausgabe (unten). Darauf beruht die Zusage, dass der
 Systemvorspann nicht über den Chat änderbar ist, auch wenn fremd verfasster Text in die Schleife
 gelangt. Begründung: Eine Erinnerung als Nachricht der Person spräche mit deren Stimme. Eine
 Systemnachricht mitten im Verlauf lehnen manche Chat-Templates über den OpenAI-kompatiblen Weg ab
@@ -194,13 +195,16 @@ Systemnachricht mitten im Verlauf lehnen manche Chat-Templates über den OpenAI-
 Werkzeugergebnis erzeugt die Anwendung ohnehin selbst.
 
 Liefert ein Modellaufruf mit Werkzeugen weder Text noch einen Werkzeugaufruf, endet der Lauf nicht
-sofort. Einmal je Lauf folgt eine kurze Nachricht der Anwendung, die zum Fortfahren auffordert, mit
-weiter angebotenen Werkzeugen; endete die leere Ausgabe an der Längengrenze, bittet sie um kürzere
-Werkzeugeingaben. Die leere Ausgabe selbst kommt nicht in den Verlauf. Begründung: Ein großer
-Werkzeugaufruf, den die Längengrenze abschneidet, oder ein leer beendeter Zug nach Werkzeugergebnissen
-ließe sonst einen Lauf mit vollständiger Recherche ohne Antwort enden. Eine Wiederholung ohne neue
-Nachricht brächte dasselbe Ergebnis. Bleibt auch die zweite Ausgabe leer, endet der Lauf mit dem
-Hinweis, dass keine Antwort formuliert wurde.
+sofort. Einmal je Lauf folgt eine Nachfrage, die zum Fortfahren auffordert, mit weiter angebotenen
+Werkzeugen; endete die leere Ausgabe an der Längengrenze, bittet sie um kürzere Werkzeugeingaben. Die
+Nachfrage steht in der Rolle der Person, weil eine Systemnachricht mitten im Verlauf nicht überall
+geht (siehe oben). Sie ist ein fester Text der Anwendung ohne Fremdinhalt, nach demselben Muster wie
+der Prüfhinweis der Fehlanzeigen-Nachprüfung. Die leere Ausgabe selbst kommt nicht in den Verlauf.
+Ein Abschlussaufruf und ein Planlauf bieten keine Werkzeuge an und fragen nicht nach. Begründung: Ein
+großer Werkzeugaufruf, den die Längengrenze abschneidet, oder ein leer beendeter Zug nach
+Werkzeugergebnissen ließe sonst einen Lauf mit vollständiger Recherche ohne Antwort enden. Eine
+Wiederholung ohne neue Nachricht brächte dasselbe Ergebnis. Bleibt auch die zweite Ausgabe leer,
+endet der Lauf mit dem Hinweis, dass keine Antwort formuliert wurde.
 
 ### 6. Erzwungen oder gemessen, und was dafür im Betrieb gilt
 
