@@ -113,10 +113,11 @@ class ChatPdfRendererTest {
                     AT,
                     "Ein Monat.",
                     List.of(),
-                    "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3")));
+                    "KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3")));
 
     assertThat(text(transcript))
-        .containsSubsequence("Ein Monat.", "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3");
+        .containsSubsequence(
+            "Ein Monat.", "KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3");
   }
 
   @Test

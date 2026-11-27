@@ -57,8 +57,8 @@ class AgentRunStampDescription implements InstanceStateSource {
                 new QueryPath(
                     "eigene Antwort",
                     "Die Person an ihrer Antwort im Chat und in einer kopierten oder exportierten"
-                        + " Antwort; eine Datei nach Vorlage trägt den Stempel in Fußzeile und"
-                        + " Dokumenteigenschaften"),
+                        + " Antwort; eine Datei nach Vorlage trägt Agent und Fassung in der"
+                        + " Fußzeile, den vollständigen Stempel in den Dokumenteigenschaften"),
                 new QueryPath("Selbstauskunft", "Die Person in ihrer eigenen Selbstauskunft"),
                 new QueryPath(
                     "Betriebsmetriken",

@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-11
+stand: 2026-11-27
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-23
@@ -38,7 +38,9 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
   etwa mehreren Suchen, und kann eine Word-Datei nach Vorlage erstellen; der mitgelieferte Agent
   „Recherche“ ist einer davon. Ab Werk aus ({{faktenblatt:voreinstellungen#ki-funktion-agent-run}}).
   Er liest nur, was die Person lesen darf, handelt nicht außerhalb der Antwort und trifft keine
-  Entscheidung: Jede Antwort und jede Datei trägt „Entwurf, nicht geprüft“ mit Fassungsstempel
+  Entscheidung: Jede Antwort und jede Datei trägt „KI-generierter Entwurf, nicht geprüft“ mit
+  Fassungsstempel; eine Datei nach Vorlage zeigt in der Fußzeile die kurze Zeile mit dem Agenten und
+  hat den vollständigen Stempel maschinenlesbar in den Dokumenteigenschaften
   ([Agentenergebnis prüfen](../../handbuch/benutzer/agentenergebnis-pruefen.md)). Der Einsatzzweck
   eines Agenten steht an ihm selbst und gehört in die Einstufung wie der Zweck eines Space.
 - **Kein Schulungsmaterial;** das Handbuch zur Suche taugt als Grundlage einer Einweisung.

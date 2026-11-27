@@ -30,7 +30,7 @@ Der Bericht beginnt mit einer kurzen Zusammenfassung, dann folgen die Teilfragen
 ## Grenzen und Entwurf
 
 - Erreicht ein Lauf seine Grenze für Schritte, Dauer oder gesammelten Text, antwortet der Agent mit dem bis dahin Gefundenen, die Antwort trägt „nicht geprüft“. Dann hilft eine engere Frage oder ein geänderter Plan.
-- Der Bericht ist ein **Entwurf, nicht geprüft** mit dem Fassungsstempel des Agenten. Prüfen Sie Fundstellen und Zahlen, bevor Sie ihn weitergeben ([Agentenergebnis prüfen](agentenergebnis-pruefen.md)).
+- Der Bericht ist ein **KI-generierter Entwurf, nicht geprüft** mit dem Fassungsstempel des Agenten. Prüfen Sie Fundstellen und Zahlen, bevor Sie ihn weitergeben ([Agentenergebnis prüfen](agentenergebnis-pruefen.md)).
 - Eine Datei nach Vorlage liefert „Recherche“ nur, wenn ihm jemand eine Vorlage zugeordnet hat; ohne Vorlage antwortet er im Chat.
 
 **Gut zu wissen:**

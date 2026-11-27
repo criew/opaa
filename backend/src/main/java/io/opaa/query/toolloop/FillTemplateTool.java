@@ -394,7 +394,8 @@ class FillTemplateTool implements AgentTool {
               formats,
               outputDir,
               pdfDeadline(timeout),
-              stamp == null ? null : stamp.documentText(run.agentName(), filled)));
+              stamp == null ? null : stamp.documentText(run.agentName(), filled),
+              stamp == null ? null : stamp.shortText(run.agentName())));
       result = session.runInstalled(SCRIPT, List.of(JOB_PATH), timeout);
       sandbox.scriptRan(result);
       reported = ScriptResult.read(result.stdout(), objectMapper);
@@ -512,7 +513,8 @@ class FillTemplateTool implements AgentTool {
       List<String> formats,
       String outputDir,
       long pdfDeadlineSeconds,
-      String stamp) {
+      String stamp,
+      String footer) {
     ObjectNode job = objectMapper.createObjectNode();
     job.put("template", TEMPLATE_PATH);
     job.set("data", data);
@@ -522,11 +524,14 @@ class FillTemplateTool implements AgentTool {
     ArrayNode formatList = job.putArray("formats");
     formats.forEach(formatList::add);
     // Version stamp and draft notice come from the run, never from the model; the script writes
-    // them as plain text into every footer and the document properties, never as a template.
+    // them as plain text, never as a template: the full stamp into the document properties, the
+    // short footer line into every footer.
     if (stamp == null) {
       job.putNull("stamp");
+      job.putNull("footer");
     } else {
       job.put("stamp", stamp);
+      job.put("footer", footer);
     }
     return objectMapper.writeValueAsString(job).getBytes(StandardCharsets.UTF_8);
   }

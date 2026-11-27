@@ -54,12 +54,12 @@ bleibt ein Feld leer (oder zeigt, was `default(…)` vorgibt), eine Liste hat ke
 Bedingung gilt als nicht erfüllt. Rechnet die Vorlage mit einem fehlenden Wert, scheitert das
 Befüllen.
 
-Word-Datei und PDF tragen in jeder Fußzeile und in den Dokumenteigenschaften den Fassungsstempel,
-etwa: Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bescheid“, Fassung 2 ·
-Bibliotheken: Erlasse, Satzungen · Modell (Kennung des Modells). Er wandert mit, wenn Sie die
-Datei weitergeben, die Namen der durchsuchten Bibliotheken eingeschlossen
-([Agentenergebnis prüfen](agentenergebnis-pruefen.md)). Ohne nutzbare Vorlage (Vorlagen aus, kein
-Leserecht, nicht zugeordnet) oder Sandbox antwortet der Agent ohne Datei im Chat und sagt das dazu.
+Jede Fußzeile von Word-Datei und PDF zeigt: KI-generierter Entwurf, nicht geprüft · Agent
+„Prüfhilfe“, Fassung 3. Der volle Fassungsstempel steht in den Dokumenteigenschaften, etwa: … ·
+Vorlage „Bescheid“, Fassung 2 · Bibliotheken: Erlasse, Satzungen · Modell (Kennung). Er wandert mit
+der Datei, Bibliotheksnamen eingeschlossen ([Agentenergebnis prüfen](agentenergebnis-pruefen.md)).
+Ohne nutzbare Vorlage (Vorlagen aus, kein Leserecht, nicht zugeordnet) oder Sandbox antwortet der
+Agent ohne Datei im Chat und sagt das dazu.
 
 **Rollen an der Vorlage:**
 
