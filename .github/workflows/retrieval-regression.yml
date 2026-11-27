@@ -17,8 +17,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   # A workflow-level concurrency group keyed only on the PR number cancelled an in-flight
@@ -146,6 +144,10 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.label.name == 'evaluation'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -550,6 +552,10 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.label.name == 'evaluation'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -790,6 +796,9 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.label.name == 'evaluation'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -829,21 +838,39 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
-      - name: Bericht als PR-Kommentar posten
+      # Ein Kommentar je PR, am Marker wiedergefunden und bei jedem Lauf aktualisiert.
+      - name: Bericht als PR-Kommentar posten oder aktualisieren
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
+            const marker = '<!-- retrieval-regression-answer-quality-context -->';
             const path = 'backend/build/eval-reports/answer-quality.md';
-            const body = fs.existsSync(path)
+            const report = fs.existsSync(path)
               ? fs.readFileSync(path, 'utf8')
               : '## Antwortqualität (Kontextebene)\n\nKein Bericht erzeugt — dieser Schritt wurde ' +
                 'nicht erreicht (siehe Workflow-Logs).';
-            await github.rest.issues.createComment({
+            const body = `${marker}\n${report}`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body,
             });
+            const existing = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

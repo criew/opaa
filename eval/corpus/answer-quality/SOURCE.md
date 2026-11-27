@@ -22,7 +22,10 @@ sondern drei Fehlerbilder der Antwort und, davor, ob das Material dafür im Prom
 
 Jede Antwort-Prüfung ist ein Muster, nie ein Modellurteil. Die Muster sind eine Stichprobe dessen,
 wie deutsche Antworten Fehlanzeige und Hinweis formulieren; ein Fall in einer unbekannten
-Formulierung zählt als sauber, die Quoten sind Untergrenzen.
+Formulierung zählt bei Fehlanzeige und Hinweis als sauber, diese Quoten sind Untergrenzen. Ein
+fehlender Wert oder eine falsche Bezugsgröße kann dagegen überzählt werden, wenn die richtige Zahl in
+einer Schreibweise steht, die die Normalisierung nicht kennt; der Bericht nennt jede Antwort im
+Wortlaut zur Gegenprobe.
 
 ## Aufbau
 

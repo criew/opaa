@@ -288,6 +288,24 @@ class AnswerQualityDatasetTest {
     assertThat(correct.refusal()).isFalse();
     assertThat(correct.passed(c.klass())).isTrue();
     assertThat(missing.refusal()).isTrue();
+
+    AnswerQualityCase pauschale = byId().get("aq-fn-01");
+    AnswerQualityAnswers.Verdict namesGapOfSomethingElse =
+        AnswerQualityAnswers.judge(
+            pauschale,
+            "Die Müllpauschale beträgt 5 Euro je Markttag. Ob sie an Feiertagen entfällt, steht"
+                + " nicht in den Unterlagen.");
+    assertThat(namesGapOfSomethingElse.refusal()).isFalse();
+    assertThat(namesGapOfSomethingElse.passed(pauschale.klass())).isTrue();
+    for (String refusal :
+        List.of(
+            "Das geht aus den Unterlagen nicht hervor.",
+            "Dazu habe ich nichts gefunden.",
+            "Dazu gibt es keine Angabe.",
+            "Das steht nicht in den Quellen.",
+            "Das kann ich nicht beantworten.")) {
+      assertThat(AnswerQualityAnswers.judge(pauschale, refusal).refusal()).as(refusal).isTrue();
+    }
   }
 
   /** Writing styles of the same figure read alike: separators, currency sign, percent, midnight. */
@@ -302,6 +320,12 @@ class AnswerQualityDatasetTest {
     assertThat(missing(byId, "aq-nc-05", "Bis Mitternacht.")).isFalse();
     assertThat(missing(byId, "aq-wr-01", "4,5 Euro je lfd. Meter und Tag")).isFalse();
     assertThat(missing(byId, "aq-nc-04", "14,00 Euro Tagegeld")).isFalse();
+    assertThat(missing(byId, "aq-fn-03", "Bis 1000,- EUR netto.")).isFalse();
+    assertThat(missing(byId, "aq-nc-03", "Es sind 30 Cent je Kilometer.")).isFalse();
+    assertThat(missing(byId, "aq-fn-09", "Sieben Tage lang.")).isFalse();
+    assertThat(missing(byId, "aq-nc-05", "Bis 0 Uhr.")).isFalse();
+    assertThat(missing(byId, "aq-nc-06", "Um 50 v. H.")).isFalse();
+    assertThat(missing(byId, "aq-nc-06", "Um 15 Prozent.")).isTrue();
   }
 
   private static boolean missing(Map<String, AnswerQualityCase> byId, String id, String answer) {

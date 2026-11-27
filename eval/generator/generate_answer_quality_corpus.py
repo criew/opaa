@@ -712,7 +712,7 @@ CASES: list[dict] = [
     case("aq-wr-03", WRONG_REFERENCE, "Wie hoch ist der monatliche Kita-Beitrag für ein Kind unter drei Jahren bei 35 Wochenstunden Betreuung?", [KITA],
          ["Kinder unter drei Jahren", "35 Wochenstunden", "285 Euro"], [r"\b285\s*Euro"],
          "Für ein Kind unter drei Jahren beträgt der monatliche Beitrag bei 35 Wochenstunden 285 Euro; bei 25 Wochenstunden sind es 210 Euro, bei 45 Wochenstunden 360 Euro. Ab drei Jahren gelten 160 Euro bei 35 Wochenstunden.",
-         [r"35\s*Wochenstunden\D{0,25}\b(160|210|360)\b", r"unter\s+drei\s+Jahren\D{0,60}\b(120|160|205)\b"],
+         [r"35\s*Wochenstunden\D{0,25}\b(160|210|360)\b", r"unter\s+(drei|3)\s+Jahren\D{0,60}\b(120|160|205)\b"],
          "Für ein Kind unter drei Jahren beträgt der Beitrag bei 35 Wochenstunden 160 Euro."),
     case("aq-wr-04", WRONG_REFERENCE, "Wie hoch ist die Säumnisgebühr in der Bibliothek?", [BIB],
          ["Säumnisgebühr", "0,50 Euro je Medium und angefangener Woche"], [r"0,50?\s*Euro", r"Woche"],

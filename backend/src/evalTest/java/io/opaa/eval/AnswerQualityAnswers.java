@@ -3,6 +3,7 @@ package io.opaa.eval;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -31,28 +32,35 @@ final class AnswerQualityAnswers {
   private static final Pattern ZERO_DECIMALS = Pattern.compile("(\\d),00(?!\\d)");
   private static final Pattern CURRENCY = Pattern.compile("€|\\bEUR\\b");
   private static final Pattern PERCENT = Pattern.compile("\\s*%");
-  private static final Pattern MIDNIGHT = Pattern.compile("Mitternacht|24[:.]00\\s*Uhr", FLAGS);
+  private static final Pattern MIDNIGHT =
+      Pattern.compile("Mitternacht|24[:.]00\\s*Uhr|\\b0(?:[:.]00)?\\s*Uhr", FLAGS);
+  private static final Pattern DASH_DECIMALS = Pattern.compile("(\\d),-");
+  private static final Pattern CENT = Pattern.compile("\\b(\\d{1,2})\\s*Cent\\b", FLAGS);
+  private static final Pattern PER_HUNDRED =
+      Pattern.compile("\\s*(v\\.\\s*H\\.|vom\\s+Hundert)", FLAGS);
+  private static final Pattern NUMBER_WORD =
+      Pattern.compile("\\b(zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)\\b", FLAGS);
+  private static final List<String> NUMBER_WORDS =
+      List.of(
+          "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf",
+          "zwölf");
 
   private static final Map<String, Pattern> CASE_PATTERNS = new ConcurrentHashMap<>();
 
   /**
-   * The answer says the sources do not hold the information: only phrases that name the sources or
-   * refuse to answer. They count on their own, because they say nothing else.
-   */
-  static final List<Pattern> REFUSAL =
-      compile(
-          "nicht\\s+(\\w+\\s+){0,4}in\\s+(den|der|dem)\\s+(\\w+\\s+){0,3}(Quellen|Dokumenten|Unterlagen|Kontextdokumenten)",
-          "kann\\s+(ich\\s+)?(\\w+\\s+){0,3}nicht\\s+beantworten",
-          "nicht\\s+beantwortet\\s+werden");
-
-  /**
-   * General phrases of a missing piece of information. A correct answer may well use them for
-   * something else ("Parkgebühren sind darin nicht enthalten"), so they count as a refusal only in
-   * an answer that lacks the expected value.
+   * Phrases that say a piece of information is missing, whether they name the sources ("steht nicht
+   * in den Unterlagen") or not ("keine Angaben"). A correct answer may use them for something else
+   * ("Ob sie an Feiertagen entfällt, steht nicht in den Unterlagen"), so they count as a refusal
+   * only in an answer that lacks the expected value.
    */
   static final List<Pattern> MISSING_CLAIM =
       compile(
-          "keine\\s+(\\w+\\s+){0,2}(Informationen|Angaben|Auskünfte|Details)",
+          "nicht\\s+(\\w+\\s+){0,4}in\\s+(den|der|dem)\\s+(\\w+\\s+){0,3}(Quellen|Dokumenten|Unterlagen|Kontextdokumenten)",
+          "kann\\s+(ich\\s+)?(\\w+\\s+){0,3}nicht\\s+beantworten",
+          "nicht\\s+beantwortet\\s+werden",
+          "keine\\s+(\\w+\\s+){0,2}(Informationen?|Angaben?|Auskünfte|Details)",
+          "geht\\s+(\\w+\\s+){0,4}nicht\\s+hervor",
+          "nichts\\s+(\\w+\\s+){0,2}gefunden",
           "(nicht|nirgends)\\s+(\\w+\\s+){0,3}(gefunden|auffindbar|enthalten|vorhanden|verfügbar|aufgeführt|genannt)",
           "(Quellen|Unterlagen|Dokumenten)\\s+(\\w+\\s+){0,5}(keine|nichts)");
 
@@ -114,8 +122,7 @@ final class AnswerQualityAnswers {
     String text = clean(answer);
     boolean valueMissing = c.answerMustMatch().stream().anyMatch(regex -> !matches(regex, text));
     boolean forbidden = c.answerMustNotMatch().stream().anyMatch(regex -> matches(regex, text));
-    boolean refusal =
-        anyMatches(REFUSAL, text) || (valueMissing && anyMatches(MISSING_CLAIM, text));
+    boolean refusal = valueMissing && anyMatches(MISSING_CLAIM, text);
     boolean wrongReference =
         forbidden || (AnswerQualityCase.WRONG_REFERENCE.equals(c.klass()) && valueMissing);
     return new Verdict(refusal, anyMatches(CAVEAT, text), valueMissing, forbidden, wrongReference);
@@ -125,7 +132,9 @@ final class AnswerQualityAnswers {
    * The answer as the patterns read it: without citation markers (their ids carry digits), with
    * plain blanks, thousands separators and zero decimals removed ({@code 1.000,00 Euro} reads
    * {@code 1000 Euro}), {@code €} and {@code EUR} as {@code Euro}, {@code %} as {@code Prozent},
-   * midnight as {@code 24 Uhr}.
+   * midnight and 0 Uhr as {@code 24 Uhr}, {@code 1000,-} as {@code 1000}, {@code 30 Cent} as {@code
+   * 0,30 Euro}, {@code v. H.} as percent, number words from two to twelve as digits ("ein" stays:
+   * it is mostly an article).
    */
   static String clean(String answer) {
     if (answer == null) {
@@ -134,7 +143,19 @@ final class AnswerQualityAnswers {
     String text =
         CITATION_MARKER.matcher(answer).replaceAll(" ").replace(' ', ' ').replace(' ', ' ');
     text = THOUSANDS.matcher(text).replaceAll(m -> m.group().replaceAll("[. ]", ""));
+    text = DASH_DECIMALS.matcher(text).replaceAll("$1");
     text = ZERO_DECIMALS.matcher(text).replaceAll("$1");
+    text =
+        CENT.matcher(text)
+            .replaceAll(m -> String.format("0,%02d Euro", Integer.parseInt(m.group(1))));
+    text = PER_HUNDRED.matcher(text).replaceAll(" Prozent");
+    text =
+        NUMBER_WORD
+            .matcher(text)
+            .replaceAll(
+                m ->
+                    Integer.toString(
+                        NUMBER_WORDS.indexOf(m.group(1).toLowerCase(Locale.ROOT)) + 2));
     text = CURRENCY.matcher(text).replaceAll(" Euro");
     text = PERCENT.matcher(text).replaceAll(" Prozent");
     text = MIDNIGHT.matcher(text).replaceAll("24 Uhr");

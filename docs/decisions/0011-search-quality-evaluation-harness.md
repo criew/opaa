@@ -75,8 +75,9 @@ unnötiger Hinweis, falsche Bezugsgröße) ausschließlich mit Mustern auf Text;
 Jeder Fall trägt je Ebene einen deklarierten Zustand (`solved`, `known_gap`, `unmeasured`): die
 Formatebene (produktive Formate ohne Docker, in `evalUnitTest`) lässt die CI in beide Richtungen
 scheitern, die Kontextebene (Suche bis Prompt-Kontext) und der Antwortlauf mit Modell messen nur und
-nennen Abweichungen im Bericht. Ein Muster ist eine Stichprobe von Formulierungen; die Quoten sind
-Untergrenzen, und kein Wert gated. Ein Modell-Juror wäre selbst ein zu messendes, mit Version und
+nennen Abweichungen im Bericht. Ein Muster ist eine Stichprobe von Formulierungen; die Quoten für Fehlanzeige
+und Hinweis sind Untergrenzen, ein Wert- oder Bezugsfehler kann dagegen auch überzählt werden (eine
+unbekannte Schreibweise der richtigen Zahl), und kein Wert gated. Ein Modell-Juror wäre selbst ein zu messendes, mit Version und
 Temperatur driftendes Modell.
 
 ## Konsequenzen

@@ -27,7 +27,8 @@ record AnswerQualityReport(
       "Die Kontextebene zeigt, ob die Passage mit der Antwort im Prompt-Kontext ankommt: das Dokument"
           + " steht im Kontext, und ein einzelner Abschnitt trägt Wert und Bezug (Einheit, Zeile,"
           + " Spalte) gemeinsam. Die Antwortebene urteilt ohne Modell nach Mustern; ein Fall, den"
-          + " kein Muster kennt, zählt als sauber, die Quoten sind deshalb Untergrenzen. Beide"
+          + " kein Muster kennt, zählt bei Fehlanzeige und Hinweis als sauber (Untergrenzen); ein"
+          + " fehlender Wert kann überzählt werden, die Antworten stehen zur Gegenprobe im Wortlaut. Beide"
           + " Ebenen sind eine Stichprobe über konstruierte Dokumente, keine Schwelle.";
 
   /** {@code chatModel} is {@code null} for a run that skipped the answers. */
