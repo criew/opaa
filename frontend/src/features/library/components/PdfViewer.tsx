@@ -13,6 +13,12 @@ import { sha256Hex } from '../utils/sha256'
 import { NO_ANCHOR_NOTICE } from '../utils/textPassage'
 import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/recognizedRegions'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
+import {
+  horizontalOffset,
+  lastAtOrBefore,
+  readingLine,
+  useUserScroll,
+} from './documentView/readingPosition'
 import RecognizedTextPanel from './RecognizedTextPanel'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import useFullScreenDialog from '@/shared/ui/dialog/useFullScreenDialog'
@@ -61,6 +67,25 @@ interface Passage {
   to: number
 }
 
+/** Where an outline entry leads: its page and pdf.js's explicit destination there. */
+interface OutlineTarget {
+  node: OutlineNode
+  pageNumber: number
+  destArray: unknown[]
+}
+
+/** An outline entry with its destination resolved, where it resolves. */
+interface ResolvedNode extends OutlineNode {
+  children: ResolvedNode[]
+  destination: { pageNumber: number; destArray: unknown[] } | null
+}
+
+/** The page and the outline entry at the reading line; both shown as current. */
+interface Reading {
+  page: number
+  node: OutlineNode | null
+}
+
 /**
  * The PDF view behind „Dokument öffnen“: pdf.js's own viewer, scrolling continuously from page to
  * page, with the outline as a collapsible table of contents beside it. It opens on the anchor's
@@ -87,8 +112,12 @@ export default function PdfViewer({
   const viewerRef = useRef<PdfJsViewer | null>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [outline, setOutline] = useState<OutlineNode[]>([])
+  const targetsRef = useRef<OutlineTarget[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
-  const [page, setPage] = useState(1)
+  const [reading, setReading] = useState<Reading>({ page: 1, node: null })
+  // the entry just chosen stays the current one until the reader scrolls on their own
+  const [chosen, setChosen] = useState<OutlineTarget | null>(null)
+  const forgetInput = useUserScroll(containerRef, () => setChosen(null))
   const [scale, setScale] = useState(1)
   // the page the passage starts on; the status names it, not the page scrolled to since
   const [markedPage, setMarkedPage] = useState(1)
@@ -166,7 +195,10 @@ export default function PdfViewer({
           const fitted = viewer.currentScale
           if (phoneRef.current && fitted < PHONE_MIN_SCALE) viewer.currentScale = PHONE_MIN_SCALE
           else if (fitted > MAX_OPENING_SCALE) viewer.currentScale = MAX_OPENING_SCALE
-          if (passage) viewer.scrollPageIntoView({ pageNumber: passage.from })
+          if (passage) {
+            viewer.scrollPageIntoView({ pageNumber: passage.from })
+            alignPage(container, viewer, passage.from)
+          }
         })
         if (frames) {
           eventBus.on(
@@ -181,12 +213,20 @@ export default function PdfViewer({
               if (first && pageNumber === firstFramed && !jumped) {
                 jumped = true
                 first.scrollIntoView?.({ block: 'center' })
+                alignPage(container, viewer, pageNumber, first)
                 setMarkState('framed')
               }
             },
           )
         }
-        eventBus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => setPage(pageNumber))
+        // pdf.js's own current page is the most visible one, which with pages of different widths
+        // is often not the one at the top: page and outline entry are measured at the reading line
+        eventBus.on('updateviewarea', () => {
+          const next = readingAt(container, viewer, targetsRef.current)
+          setReading((previous) =>
+            previous.page === next.page && previous.node === next.node ? previous : next,
+          )
+        })
         eventBus.on('scalechanging', ({ scale: next }: { scale: number }) => setScale(next))
         eventBus.on(
           'textlayerrendered',
@@ -212,6 +252,7 @@ export default function PdfViewer({
               if (startsHere && !jumped) {
                 jumped = true
                 spans[range[0]].scrollIntoView?.({ block: 'center', inline: 'nearest' })
+                alignPage(container, viewer, pageNumber, spans[range[0]])
                 setMarkedPage(pageNumber)
                 setMarkState('marked')
               }
@@ -227,7 +268,11 @@ export default function PdfViewer({
         setPdf(document)
         const items = (await document.getOutline()) as PdfJsOutlineItem[] | null
         const nodes = await toOutline(document, items ?? [])
-        if (!cancelled) setOutline(nodes)
+        if (cancelled) return
+        const targets = outlineTargets(nodes)
+        targetsRef.current = targets
+        setOutline(nodes)
+        setReading(readingAt(container, viewer, targets))
       } catch (error) {
         if (!cancelled) reportError(error)
       }
@@ -236,6 +281,7 @@ export default function PdfViewer({
     return () => {
       cancelled = true
       viewerRef.current = null
+      targetsRef.current = []
       teardown()
       abort.abort()
       void task?.destroy()
@@ -271,17 +317,39 @@ export default function PdfViewer({
 
   function goTo(node: OutlineNode) {
     const viewer = viewerRef.current
-    if (!viewer || node.dest == null) return
-    void viewer.linkService.goToDestination(node.dest)
+    const container = containerRef.current
+    const target = targetsRef.current.find((candidate) => candidate.node === node)
+    if (!viewer || !container || !target) return
+    forgetInput()
+    viewer.scrollPageIntoView({ pageNumber: target.pageNumber, destArray: target.destArray })
+    alignPage(container, viewer, target.pageNumber, destinationX(viewer, target))
+    setChosen(target)
   }
 
   function goToPage(next: number) {
-    if (viewerRef.current) viewerRef.current.currentPageNumber = next
+    const viewer = viewerRef.current
+    const container = containerRef.current
+    if (!viewer || !container) return
+    forgetInput()
+    setChosen(null)
+    viewer.currentPageNumber = next
+    alignPage(container, viewer, next)
   }
 
   function jumpToPassage() {
-    firstMarkRef.current?.scrollIntoView?.({ block: 'center', inline: 'nearest' })
+    const mark = firstMarkRef.current
+    const viewer = viewerRef.current
+    const container = containerRef.current
+    if (!mark || !viewer || !container) return
+    forgetInput()
+    setChosen(null)
+    mark.scrollIntoView?.({ block: 'center', inline: 'nearest' })
+    const pageNumber = Number(mark.closest<HTMLElement>('.page')?.dataset.pageNumber)
+    if (pageNumber) alignPage(container, viewer, pageNumber, mark)
   }
+
+  const page = chosen?.pageNumber ?? reading.page
+  const currentNode = chosen ? chosen.node : reading.node
 
   const numPages = pdf?.numPages ?? 0
   const hasOutline = outline.length > 0
@@ -314,11 +382,7 @@ export default function PdfViewer({
                   aria-label="Inhaltsverzeichnis"
                   sx={{ mx: -1 }}
                 >
-                  <PdfOutline
-                    nodes={outline}
-                    activeNode={activeNode(outline, page)}
-                    onSelect={goTo}
-                  />
+                  <PdfOutline nodes={outline} activeNode={currentNode} onSelect={goTo} />
                 </Box>
               </FindingPanel>
             )}
@@ -501,17 +565,98 @@ function statusText(markState: MarkState, changed: boolean, pageKnown: boolean, 
   return markState === 'marked' ? `Fundstelle auf Seite ${page} markiert.` : ''
 }
 
-/** The last entry, in reading order, whose page is at or before `page` - the section shown. */
-function activeNode(nodes: OutlineNode[], page: number): OutlineNode | null {
-  let active: OutlineNode | null = null
-  const visit = (list: OutlineNode[]) => {
-    for (const node of list) {
-      if (node.page !== null && node.page <= page) active = node
-      visit(node.children)
+/** The bounds of `element` in the scrolled content of `container`. */
+function contentRect(element: Element, container: HTMLElement) {
+  const box = element.getBoundingClientRect()
+  const frame = container.getBoundingClientRect()
+  const left = box.left - frame.left - container.clientLeft + container.scrollLeft
+  const top = box.top - frame.top - container.clientTop + container.scrollTop
+  return { left, top, right: left + box.width, width: box.width }
+}
+
+/** The page and the outline entry at the reading line of the view. */
+function readingAt(container: HTMLElement, viewer: PdfJsViewer, targets: OutlineTarget[]): Reading {
+  const count = viewer.pagesCount
+  if (!count) return { page: 1, node: null }
+  const line = readingLine(container)
+  const tops = new Map<number, number>()
+  const topOf = (pageNumber: number) => {
+    let top = tops.get(pageNumber)
+    if (top === undefined) {
+      const div = viewer.getPageView(pageNumber - 1)?.div
+      top = div ? contentRect(div, container).top : 0
+      tops.set(pageNumber, top)
     }
+    return top
   }
-  visit(nodes)
-  return active
+  // pages run top to bottom: the last one starting at or above the line holds it
+  let low = 1
+  let high = count
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2)
+    if (topOf(middle) <= line) low = middle
+    else high = middle - 1
+  }
+  const entries = targets.map((target) => ({
+    node: target.node,
+    position: topOf(target.pageNumber) + destinationY(viewer, target),
+  }))
+  return { page: low, node: lastAtOrBefore(entries, line)?.node ?? null }
+}
+
+/** How far down its page an outline entry points, in CSS pixels; the page top if it names none. */
+function destinationY(viewer: PdfJsViewer, target: OutlineTarget): number {
+  const view = viewer.getPageView(target.pageNumber - 1)
+  if (!view) return 0
+  const [, kind, ...args] = target.destArray as [unknown, { name?: string } | null, ...unknown[]]
+  const name = kind?.name
+  const y =
+    name === 'XYZ'
+      ? args[1]
+      : name === 'FitH' || name === 'FitBH'
+        ? args[0]
+        : name === 'FitR'
+          ? args[3]
+          : null
+  if (typeof y !== 'number') return 0
+  const offset = view.viewport.convertToViewportPoint(0, y)[1]
+  return Math.min(Math.max(offset, 0), view.viewport.height)
+}
+
+/** Where across its page an outline entry points, in CSS pixels; `null` if it names no place. */
+function destinationX(viewer: PdfJsViewer, target: OutlineTarget): number | null {
+  const view = viewer.getPageView(target.pageNumber - 1)
+  const [, kind, x] = target.destArray as [unknown, { name?: string } | null, unknown]
+  const name = kind?.name
+  if (!view || typeof x !== 'number') return null
+  if (name !== 'XYZ' && name !== 'FitR' && name !== 'FitV' && name !== 'FitBV') return null
+  return view.viewport.convertToViewportPoint(x, 0)[0]
+}
+
+/**
+ * Scrolls the view across so that page `pageNumber` shows as fully as it fits (see
+ * {@link horizontalOffset}), keeping `target` - a mark on the page or a position across it - in
+ * view. pdf.js would scroll a destination's left edge to the view's left edge instead, which on a
+ * page narrower than the widest one cuts off what lies to its left.
+ */
+function alignPage(
+  container: HTMLElement,
+  viewer: PdfJsViewer,
+  pageNumber: number,
+  target?: HTMLElement | number | null,
+) {
+  const div = viewer.getPageView(pageNumber - 1)?.div
+  if (!div) return
+  const page = contentRect(div, container)
+  let mark: { left: number; right: number } | null = null
+  if (typeof target === 'number') mark = { left: page.left + target, right: page.left + target }
+  else if (target) mark = contentRect(target, container)
+  container.scrollLeft = horizontalOffset({
+    pageLeft: page.left,
+    pageWidth: page.width,
+    viewWidth: container.clientWidth,
+    target: mark,
+  })
 }
 
 /** The text items of a rendered page's text layer, in reading order. */
@@ -567,27 +712,51 @@ interface PdfJsOutlineItem {
 }
 
 /** The outline with the page each entry points at, where its destination resolves to one. */
-async function toOutline(pdf: PDFDocumentProxy, items: PdfJsOutlineItem[]): Promise<OutlineNode[]> {
+async function toOutline(
+  pdf: PDFDocumentProxy,
+  items: PdfJsOutlineItem[],
+): Promise<ResolvedNode[]> {
   return Promise.all(
-    items.map(async (item) => ({
-      title: item.title,
-      dest: item.dest,
-      page: await pageOfDestination(pdf, item.dest),
-      children: await toOutline(pdf, item.items ?? []),
-    })),
+    items.map(async (item) => {
+      const [destination, children] = await Promise.all([
+        resolveDestination(pdf, item.dest),
+        toOutline(pdf, item.items ?? []),
+      ])
+      const node: ResolvedNode = {
+        title: item.title,
+        dest: item.dest,
+        page: destination?.pageNumber ?? null,
+        children,
+        destination,
+      }
+      return node
+    }),
   )
 }
 
-async function pageOfDestination(
+/** The resolved entries of `nodes` and everything below them, in reading order. */
+function outlineTargets(nodes: ResolvedNode[], targets: OutlineTarget[] = []): OutlineTarget[] {
+  for (const node of nodes) {
+    if (node.destination) targets.push({ node, ...node.destination })
+    outlineTargets(node.children, targets)
+  }
+  return targets
+}
+
+async function resolveDestination(
   pdf: PDFDocumentProxy,
   dest: string | unknown[] | null,
-): Promise<number | null> {
+): Promise<{ pageNumber: number; destArray: unknown[] } | null> {
   try {
     const explicit = typeof dest === 'string' ? await pdf.getDestination(dest) : dest
-    const target = explicit?.[0]
-    if (typeof target === 'number') return target + 1
+    if (!explicit) return null
+    const target = explicit[0]
+    if (typeof target === 'number') return { pageNumber: target + 1, destArray: explicit }
     if (target && typeof target === 'object') {
-      return (await pdf.getPageIndex(target as Parameters<PDFDocumentProxy['getPageIndex']>[0])) + 1
+      const index = await pdf.getPageIndex(
+        target as Parameters<PDFDocumentProxy['getPageIndex']>[0],
+      )
+      return { pageNumber: index + 1, destArray: explicit }
     }
   } catch {
     // an unresolvable destination only loses the entry's page, not the entry
