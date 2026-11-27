@@ -31,7 +31,8 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>The query mirrors {@link FullTextChunkStore#indexChunks}: the German analysis chain over the
  * question's words, OR-ed rather than AND-ed because this path feeds a fusion, plus the identifier
- * lexemes of {@link FullTextIdentifiers} - weight {@code A}, which keeps "§ 34" and "§ 35" apart.
+ * lexemes of {@link FullTextIdentifiers} - weight {@code A}, which keeps "§ 34" and "§ 35" apart
+ * and lets every spelling of a code ({@code AB08}, {@code AB-08}, {@code AB 08}) reach the others.
  * An uppercase word form among them ({@code ELSTER}) keeps weight {@code A} only while at most
  * {@code limit} chunks of the search scope carry it; a more common one would fill the whole list
  * with its chunks and is searched as an ordinary word of the question instead. Both halves use
@@ -83,7 +84,8 @@ public class FullTextChunkSearch {
    * under the same permission and metadata filter, and counting stops after {@code limit + 1}
    * chunks. A word form found in more than {@code limit} chunks is dropped from the identifier
    * lexemes and named in {@link FullTextSearchResult#demotedIdentifiers()}; paragraph, file-number,
-   * ordinance, email and structured field-name lexemes are never counted.
+   * ordinance, email, letter-digit code ({@code AB-08}) and structured field-name lexemes are never
+   * counted.
    *
    * <p>Returns an empty result without touching the database when there is nothing that could match
    * - no libraries, no limit, or a question that carries neither a usable word token nor an

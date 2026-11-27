@@ -24,7 +24,7 @@ flowchart LR
 | Filter | gesetzte [Metadaten](metadaten.md)-Filter schränken beide Suchwege ein; Dokumente ohne Wert bleiben drin |
 | Teilfragen | das Chat-Modell macht aus der Frage eigenständige Suchanfragen: zwei Themen werden zwei Anfragen, „Und bei Bedürftigkeit?“ wird zur vollständigen Frage |
 | Vektorsuche | findet Chunks mit ähnlicher **Bedeutung** |
-| Volltextsuche | findet die **Wörter**, mit deutscher Wortstammbildung; Paragrafen und Aktenzeichen exakt, sodass „§ 34“ nicht „§ 35“ trifft |
+| Volltextsuche | findet die **Wörter**, mit deutscher Wortstammbildung; Paragrafen und Aktenzeichen exakt, sodass „§ 34“ nicht „§ 35“ trifft. Kennungen aus Buchstaben und Ziffern findet jede Schreibweise: „AB08“, „AB-08“, „AB 08“, „ab_08“ und „AB.08“ treffen einander, „AB-09“ nicht. Mit Leerzeichen oder Punkt zählt das nur ab zwei Großbuchstaben und nicht hinter gängigen Wörtern, „ab 8 Uhr“ oder „SEITE 3“ bleiben Text |
 | Fusion | führt beide Listen nach Rang zusammen; wer in beiden steht, gewinnt |
 | Reranking | ein eigenes Modell liest Frage und Chunk zusammen und ordnet neu. Ab Werk aus, weil es einen eigenen Endpunkt braucht |
 | Relevanzschnitt | schneidet schwache Treffer ab, wenn eingeschaltet |
