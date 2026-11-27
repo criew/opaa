@@ -483,8 +483,9 @@ class AgentToolLoop implements AgentTurnHandler {
     boolean asked = endState == EndState.ASK_USER || endState == EndState.PLAN;
     AnswerCompleteness completeness =
         asked ? AnswerCompleteness.COMPLETE : ChatResponses.completeness(response);
-    // Each search is a sub-query of the assessment: a confirmed citation covers every search that
-    // found its document, as the retrieval's attribution does for a decomposed question.
+    // Each searched question is a sub-query of the assessment: a confirmed citation covers every
+    // question a search found its document for, as the retrieval's attribution does for a
+    // decomposed question.
     List<AgentRun.SearchStep> searches = run.searches();
     List<String> searchQueries = searches.stream().map(AgentRun.SearchStep::query).toList();
     Map<String, Set<Integer>> subQueriesByDocument = new HashMap<>();
