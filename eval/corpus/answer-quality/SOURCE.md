@@ -105,6 +105,13 @@ Abschnitt trägt Wert und Bezug in 28 von 31 Fällen (`false_negative` 18 von 19
 dieselben wie auf der Ebene `format`: Der Tabellenkopf geht über die Titelzeile von `aq-11` verloren,
 bevor die Suche etwas verfehlen kann.
 
+### Stand nach Paket 5 (Titelzeile von Tabellen, 2026-11-27)
+
+Das Tabellenformat erkennt die Titelzeile über dem Kopf und wiederholt die echten Spaltenköpfe in jedem
+Chunk. Ebene `format`: 31 von 31 Fällen `solved` (`aq-fn-07`, `aq-wr-06`, `aq-wr-07` von `known_gap` auf
+`solved`). Ebene `context`: ebenfalls als `solved` deklariert; der Lauf von `answer-quality.yml` auf dem
+umstellenden PR bestätigt das.
+
 Antworten: nicht gemessen, es gibt keinen Modellschlüssel im Repository; der Lauf mit Modell steht
 als Befehl in `eval/README.md`.
 

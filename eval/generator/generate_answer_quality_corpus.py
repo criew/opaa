@@ -776,28 +776,14 @@ def validate() -> None:
 
 STATE_DATE = "2026-11-27"
 
-# Format layer (Docker-free, AnswerQualityDatasetTest): every case not listed is solved. The gap is
-# the first non-blank row of a sheet being read as the header although it is the title row.
-FORMAT_GAPS = {
-    case_id: (
-        "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. "
-        "Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
-    )
-    for case_id in ("aq-fn-07", "aq-wr-06", "aq-wr-07")
-}
+# Format layer (Docker-free, AnswerQualityDatasetTest): every case not listed is solved. Since the
+# tabular format recognises title rows above the header, no case carries a format gap.
+FORMAT_GAPS: dict[str, str] = {}
 FORMAT_SOLVED = "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
 
-# Context layer (Docker harness, ./gradlew evaluateAnswerQuality): state of the first CI run
-# (answer-quality.yml, nomic-embed-text:v1.5, no sub-question decomposition). Every document of all
-# 31 cases and all 9 identifier variants reached the context; three cases carry the table-head gap
-# of the format layer into the context, so no single passage holds value and reference together.
-CONTEXT_GAPS = {
-    case_id: (
-        "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: "
-        "dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
-    )
-    for case_id in FORMAT_GAPS
-}
+# Context layer (Docker harness, ./gradlew evaluateAnswerQuality, answer-quality.yml with
+# nomic-embed-text:v1.5, no sub-question decomposition): every case not listed is solved.
+CONTEXT_GAPS: dict[str, str] = {}
 CONTEXT_SOLVED = (
     "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
 )
