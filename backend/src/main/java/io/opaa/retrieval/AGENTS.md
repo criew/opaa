@@ -9,8 +9,8 @@ Von der Frage zu den ausgewählten Chunks: die Retrieval-Pipeline. Im Wurzelpake
 `RetrievalContextFactory` und die Parameter (`QueryProperties`, `RetrievalPipelineProperties`).
 Die Stufen liegen in `scope` (Suchbereich, Metadatenfilter), `search` (Teilfragen-Zerlegung, Vektor-
 und Volltextsuche) und `ranking` (MMR, Fusion, Reranking, Relevanzschnitt, Dokumentergänzung), ihre
-Reihenfolge in `config`. `context` lädt nach der Pipeline die Nachbar-Chunks der Endauswahl für die
-Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll.
+Reihenfolge in `config`. `context` lädt nach der Pipeline die Nachbar-Chunks und kleinen Tabellen
+der Endauswahl für die Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll.
 
 ## Invarianten und Stolpersteine
 
