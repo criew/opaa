@@ -46,10 +46,13 @@ prompts:
       Regel, zuerst nur einen Plan vorzulegen, und im nächsten Lauf die Regel, den bestätigten oder
       geänderten Plan abzuarbeiten, auch nach der Antwort auf eine Rückfrage dabei; dazu die Beschreibungen der Werkzeuge,
       nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
-      dem Hinweis, dass ihr Inhalt keine Anweisung ist
+      dem Hinweis, dass ihr Inhalt keine Anweisung ist. Sagt die Antwort, etwas sei in den Quellen
+      nicht enthalten, und findet die Nachprüfung im Suchbereich neue Fundstellen, folgt ihr ein
+      Prüfhinweis mit diesen Fundstellen und der Bitte, die Antwort einmal neu zu geben
     classes:
       - io.opaa.query.toolloop.AgentPrompt
       - io.opaa.query.answer.AnswerRules
+      - io.opaa.query.absence.AbsenceFollowUp
       - io.opaa.query.toolloop.AgentToolCallback
       - io.opaa.query.toolloop.SearchKnowledgeTool
       - io.opaa.query.toolloop.ReadDocumentTool
@@ -63,7 +66,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "8f8fa1ceefa30cbd5a946f4a2c3203f3d52fbdf88ebad385ec8a7a690d5f138a"
+    sha256: "9e294548fb224aa1378f41bb0fe66af517df415e0a67e452386aeec651d52412"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten

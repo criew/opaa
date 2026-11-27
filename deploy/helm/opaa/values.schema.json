@@ -453,6 +453,16 @@
         }
       }
     },
+    "absenceRecheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Recheck of answers that claim something is missing from the sources (OPAA_QUERY_ABSENCE_RECHECK_ENABLED)"
+        }
+      }
+    },
     "transcription": {
       "type": "object",
       "additionalProperties": false,

@@ -72,6 +72,7 @@ data:
   {{- with .Values.tracing.samplingProbability }}
   OPAA_TRACING_SAMPLING_PROBABILITY: {{ . | quote }}
   {{- end }}
+  OPAA_QUERY_ABSENCE_RECHECK_ENABLED: {{ .Values.absenceRecheck.enabled | quote }}
   {{- with .Values.transcription.maxAudioBytes }}
   OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES: {{ . | quote }}
   {{- end }}

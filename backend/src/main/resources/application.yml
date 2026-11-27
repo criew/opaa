@@ -376,6 +376,12 @@ opaa:
       document-date-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD:0.75}
       library-field-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_LIBRARY_FIELD_THRESHOLD:0.75}
       options-cache-ttl: ${OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL:5m}
+    # An answer claiming that something is missing from the sources is checked once: the key terms
+    # of the question are searched within the same scope, and new passages carrying them lead to
+    # one further answer (AbsenceRecheckProperties). Chat and agent runs alike.
+    absence-recheck:
+      enabled: ${OPAA_QUERY_ABSENCE_RECHECK_ENABLED:true}
+      max-passages: ${OPAA_QUERY_ABSENCE_RECHECK_MAX_PASSAGES:4}
   # The reading path without generation. The hit count is cut out of the retrieval's own selection
   # (opaa.query.top-k), it never searches further. The fetch cap is the one place a single call can
   # return a whole document, and it is deliberately finite.

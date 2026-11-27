@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -39,6 +40,8 @@ import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.AgentTurn;
 import io.opaa.query.QueryResult;
+import io.opaa.query.absence.AbsenceRecheck;
+import io.opaa.query.absence.AbsenceRecheckProperties;
 import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
@@ -107,6 +110,7 @@ class AgentToolLoopTest {
   private final ChatSourceAssembler sourceAssembler = mock(ChatSourceAssembler.class);
   private final ChatModel chatModel = mock(ChatModel.class);
   private final NeighborChunkLookup chunkLookup = mock(NeighborChunkLookup.class);
+  private final QueryMetrics queryMetrics = new QueryMetrics(meters);
 
   private final UUID agentId = UUID.randomUUID();
   private final UUID spaceLibrary = UUID.randomUUID();
@@ -115,6 +119,11 @@ class AgentToolLoopTest {
       new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
   private final Document passageOne = passage("doc-1", "regeln.pdf");
   private final Document passageTwo = passage("doc-2", "fristen.pdf");
+  private final Document tariffPassage =
+      Document.builder()
+          .text("Tarifstelle AB-08: 12 Euro je Bescheid.")
+          .metadata(Map.of("file_name", "tarif.pdf", "document_id", "doc-7", "chunk_index", 2))
+          .build();
 
   private AgentRunSpec spec =
       new AgentRunSpec(
@@ -181,12 +190,19 @@ class AgentToolLoopTest {
         new CitationParser(),
         new CitationValidator(),
         sourceAssembler,
-        new QueryMetrics(meters),
+        queryMetrics,
         provider(null),
         JsonMapper.builder().build(),
         runLogWriter,
         activeStreams,
-        Clock.fixed(NOW, ZoneOffset.UTC));
+        Clock.fixed(NOW, ZoneOffset.UTC),
+        new AbsenceRecheck(
+            retrieval,
+            expansion,
+            new CitationParser(),
+            new CitationValidator(),
+            new AbsenceRecheckProperties(true, 4),
+            queryMetrics));
   }
 
   @Test
@@ -1503,6 +1519,188 @@ class AgentToolLoopTest {
     var counter =
         meters.find(AgentMetrics.TOOL_CALLS).tag("tool", tool).tag("result", result).counter();
     return counter == null ? 0.0 : counter.count();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void anAbsenceClaimWithNewPassagesInTheScopeIsAskedBackOnceWithoutTools() {
+    Document tariff =
+        Document.builder()
+            .text("Tarifstelle AB-08: 12 Euro je Bescheid.")
+            .metadata(Map.of("file_name", "tarif.pdf", "document_id", "doc-7", "chunk_index", 2))
+            .build();
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(result(tariff));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."),
+            answer("Nach Tarifstelle AB-08 sind es 12 Euro 【source: doc-7#2 | tarif.pdf】."));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).startsWith("Nach Tarifstelle AB-08 sind es 12 Euro");
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(3)).call(prompts.capture());
+    Prompt followUp = prompts.getAllValues().get(2);
+    assertThat(followUp.getInstructions().getLast().getText())
+        .startsWith("Prüfhinweis:")
+        .contains("Tarifstelle AB-08: 12 Euro je Bescheid.")
+        .doesNotContain("Inhalt von regeln.pdf");
+    assertThat(toolsOf(followUp)).isNullOrEmpty();
+    ArgumentCaptor<List<Document>> passages = ArgumentCaptor.captor();
+    verify(sourceAssembler).assemble(passages.capture(), anyList(), any());
+    assertThat(passages.getValue()).contains(passageOne, tariff);
+    assertThat(absenceRecheck("replaced")).isEqualTo(1.0);
+  }
+
+  @Test
+  void anAbsenceClaimWithoutNewPassagesKeepsTheAnswerAndCallsTheModelNoFurther() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(
+            result(
+                Document.builder()
+                    .text("Tarifstelle AB-08 in der schon gelieferten Stelle.")
+                    .metadata(
+                        Map.of("file_name", "regeln.pdf", "document_id", "doc-1", "chunk_index", 0))
+                    .build()));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."),
+            answer("Darf nie erreicht werden."));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).contains("nicht enthalten");
+    verify(chatModel, times(2)).call(any(Prompt.class));
+    assertThat(absenceRecheck("detected")).isEqualTo(1.0);
+    assertThat(absenceRecheck("searched")).isEqualTo(1.0);
+    assertThat(absenceRecheck("replaced")).isZero();
+  }
+
+  @Test
+  void theRecheckSearchIsAStepOfTheRunAndASearchQueryOfItsEvidence() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(result(tariffPassage));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."),
+            answer("Nach Tarifstelle AB-08 sind es 12 Euro 【source: doc-7#2 | tarif.pdf】."));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::tool, AgentRunRecord.Step::hits)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(ToolNames.SEARCH_KNOWLEDGE, 1),
+            org.assertj.core.groups.Tuple.tuple(ToolNames.SEARCH_KNOWLEDGE, 1));
+    assertThat(result.agentRun().steps().get(1).detail()).startsWith("AB-08 ");
+    ArgumentCaptor<List<AgentStepLogEntry>> trace = ArgumentCaptor.captor();
+    verify(runLogWriter).writeSteps(any(), any(), trace.capture());
+    assertThat(trace.getValue()).hasSize(2);
+  }
+
+  @Test
+  void aFailingFollowUpCallLeavesTheFirstAnswerStanding() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(result(tariffPassage));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."))
+        .thenThrow(new IllegalStateException("model failed"));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).contains("nicht enthalten");
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    ArgumentCaptor<List<Document>> passages = ArgumentCaptor.captor();
+    verify(sourceAssembler).assemble(passages.capture(), anyList(), any());
+    assertThat(passages.getValue()).doesNotContain(tariffPassage);
+    assertThat(absenceRecheck("replaced")).isZero();
+  }
+
+  @Test
+  void aFailingRecheckSearchLeavesTheFirstAnswerStanding() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenThrow(new IllegalStateException("search failed"));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).contains("nicht enthalten");
+    verify(chatModel, times(2)).call(any(Prompt.class));
+  }
+
+  @Test
+  void aRunWithoutTheSearchToolIsNotRechecked() {
+    switchedOn = Set.of();
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."));
+
+    loop().handle(tariffTurn());
+
+    verifyNoInteractions(retrieval);
+    verify(chatModel, times(1)).call(any(Prompt.class));
+  }
+
+  @Test
+  void aBlankAnswerToTheFollowUpLeavesTheFirstAnswerStanding() {
+    Document tariff =
+        Document.builder()
+            .text("Tarifstelle AB-08: 12 Euro je Bescheid.")
+            .metadata(Map.of("file_name", "tarif.pdf", "document_id", "doc-7", "chunk_index", 2))
+            .build();
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(result(tariff));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."),
+            answer(""));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).contains("nicht enthalten");
+    assertThat(absenceRecheck("replaced")).isZero();
+  }
+
+  private AgentTurn tariffTurn() {
+    return new AgentTurn(
+        "Wie hoch ist die Gebühr nach Tarifstelle AB-08?",
+        chat,
+        chat.getOrganizationId(),
+        chat.getAuthorId(),
+        Set.of(spaceLibrary, agentLibrary),
+        agentId,
+        "key",
+        List.of(),
+        null,
+        null,
+        MetadataFilter.NONE,
+        System.currentTimeMillis(),
+        null);
+  }
+
+  private double absenceRecheck(String step) {
+    return meters
+        .get("opaa.query.absence_recheck")
+        .tag("mode", "agent")
+        .tag("step", step)
+        .counter()
+        .count();
   }
 
   private AgentTurn turn() {
