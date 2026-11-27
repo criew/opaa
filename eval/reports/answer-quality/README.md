@@ -19,8 +19,8 @@ export OPAA_EVAL_CHAT_API_KEY=...        # nur, wenn der Endpunkt einen Schlüss
 Der Embedding-Teil braucht Docker (Testcontainer) oder ein Host-Ollama mit `nomic-embed-text:v1.5`;
 das Chat-Modell ist ein beliebiger OpenAI-kompatibler Endpunkt (Adresse, Modell, Schlüssel und
 Temperatur wie beim Prompt-Injection-Testsatz, siehe `eval/README.md`). Ohne Modellschlüssel misst
-`-Dopaa.eval.answerQuality.skipAnswers=true` nur die Kontextebene (ohne Teilfragen-Zerlegung, weil
-kein Chat-Modell läuft).
+`-Dopaa.eval.answerQuality.skipAnswers=true` nur die Kontextebene. Die Kontextmessung läuft in beiden
+Modi ohne Teilfragen-Zerlegung, damit der deklarierte Zustand in beiden dasselbe bedeutet.
 
 ## Bericht
 
@@ -28,7 +28,7 @@ kein Chat-Modell läuft).
 
 | Feld | Inhalt |
 |---|---|
-| `runConfiguration` | Modell, Endpunkt ohne Anmeldedaten, Temperatur, Embedding-Modell, Beginn, Dauer, Manifest-Prüfsumme, Fallzahl, `answersSkipped` |
+| `runConfiguration` | Modell, Endpunkt ohne Anmeldedaten, Temperatur, Embedding-Modell, Beginn, Dauer, Manifest-Prüfsumme, Fallzahl, `answersSkipped`, `queryDecompositionEnabled` |
 | `context` | je Frage (auch jede Kennungs-Variante) `documentInContext`, `evidenceInOnePassage` und die Dokumente im Kontext |
 | `answerSummary` | je Klasse `cases`, `passed`, `refusals` (Fehlanzeige), `caveats` (Hinweis), `wrongReferences`, `valuesMissing` |
 | `answers` | je Fall das Urteil und die Antwort im Wortlaut |
