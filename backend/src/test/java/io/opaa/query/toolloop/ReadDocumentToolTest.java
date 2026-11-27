@@ -69,8 +69,8 @@ class ReadDocumentToolTest {
         tool.call(args("{\"dokument\":\"doc-1\",\"abschnitt\":3,\"umfang\":\"umgebung\"}"), run);
 
     assertThat(outcome.modelText())
-        .contains("doc-1#2 | akte.pdf】\nFundort: Teil 3 von 5\n")
-        .contains("doc-1#4 | akte.pdf】\nFundort: Teil 5 von 5\n");
+        .contains("doc-1#2 | akte.pdf】\nStellung: Teil 3 von 5\n")
+        .contains("doc-1#4 | akte.pdf】\nStellung: Teil 5 von 5\n");
   }
 
   @Test

@@ -86,7 +86,7 @@ class SearchKnowledgeToolTest {
 
     ToolCallOutcome outcome = tool.call(args("{\"frage\":\"Frist Antrag\"}"), run);
 
-    assertThat(outcome.modelText()).contains("\nFundort: Teil 1 von 12\n");
+    assertThat(outcome.modelText()).contains("\nStellung: Teil 1 von 12\n");
   }
 
   @Test

@@ -8,7 +8,9 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.SourceTypes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +67,25 @@ class DocumentRepositoryIntegrationTest {
     assertThat(documentRepository.findS3BucketsByLibraryId(UUID.randomUUID())).isEmpty();
   }
 
+  @Test
+  void theChunkCountsOfTheNamedDocumentsComeInOneQueryAndAnUnknownIdIsAbsent() {
+    KnowledgeLibrary library = library("Gebührenordnung");
+    Document first = save(library, "s3://gebuehren/ab-08.pdf");
+    Document second = save(library, "s3://gebuehren/ab-09.pdf");
+    jdbcTemplate.update("UPDATE documents SET chunk_count = 12 WHERE id = ?", first.getId());
+    jdbcTemplate.update("UPDATE documents SET chunk_count = 1 WHERE id = ?", second.getId());
+
+    assertThat(
+            documentRepository
+                .findChunkCountsByIdIn(List.of(first.getId(), second.getId(), UUID.randomUUID()))
+                .stream()
+                .collect(
+                    Collectors.toMap(
+                        DocumentRepository.DocumentChunkCount::getId,
+                        DocumentRepository.DocumentChunkCount::getChunkCount)))
+        .containsOnly(Map.entry(first.getId(), 12), Map.entry(second.getId(), 1));
+  }
+
   private KnowledgeLibrary library(String name) {
     KnowledgeLibrary library =
         libraryRepository.save(
@@ -81,10 +102,10 @@ class DocumentRepositoryIntegrationTest {
     return library;
   }
 
-  private void save(KnowledgeLibrary library, String filePath) {
+  private Document save(KnowledgeLibrary library, String filePath) {
     Document document = new Document(filePath, filePath, "text/plain", 1L, SourceTypes.S3);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
-    documentRepository.save(document);
+    return documentRepository.save(document);
   }
 }

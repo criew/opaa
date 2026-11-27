@@ -3,7 +3,6 @@ package io.opaa.query.answer;
 import io.opaa.common.ContentFence;
 import io.opaa.common.PromptText;
 import io.opaa.format.chunk.ChunkMetadataKeys;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -13,7 +12,7 @@ import org.springframework.ai.document.Document;
 /**
  * The retrieved passages as marked data: one block whose markers carry an id fresh per request, one
  * section per passage with its head lines inside - the document, the citation marker and, where
- * known, the Fundort with the passage's place in its document ("Teil 3 von 12"). Everything a
+ * known, the Fundort and the passage's place in its document ("Teil 3 von 12"). Everything a
  * document controls - text, file name and Fundort - is cleaned first, so no passage can close the
  * block, open a section, forge a head line or a citation marker, or smuggle a role token or an
  * invisible character into the prompt.
@@ -49,7 +48,10 @@ public final class DocumentBlock {
   /** A line that starts like the head line of a section, with any space and either colon. */
   private static final Pattern HEAD_LINE =
       Pattern.compile(
-          "(?im)^([\\s\\p{Z}]*)(Dokument|Zitiermarke|Fundort)([\\s\\p{Z}]*)([:\\uFF1A])");
+          "(?im)^([\\s\\p{Z}]*)(Dokument|Zitiermarke|Fundort|Stellung)([\\s\\p{Z}]*)([:\\uFF1A])");
+
+  /** The longest Fundort a head names, in code points including the closing ellipsis. */
+  static final int MAX_LOCATION_CHARS = 160;
 
   private DocumentBlock() {}
 
@@ -112,38 +114,49 @@ public final class DocumentBlock {
         + "\nZitiermarke: "
         + String.format(CITATION_FORMAT, documentId, chunkIndex, fileName)
         + "\n"
-        + foundAt(chunk, documentId, chunkIndex, partCounts)
+        + foundAt(chunk)
+        + placeIn(documentId, chunkIndex, partCounts)
         + clean(chunk.getText() == null ? "" : chunk.getText())
         + "\n"
         + SECTION.close(id);
   }
 
   /**
-   * The {@code Fundort:} line with its newline - the stored Fundort and "Teil x von n", joined by "
-   * · " -, or nothing when neither is known.
+   * The {@code Fundort:} line with its newline - the stored Fundort, cut to {@link
+   * #MAX_LOCATION_CHARS} - or nothing when the chunk has none.
    */
-  private static String foundAt(
-      Document chunk, String documentId, String chunkIndex, Map<String, Integer> partCounts) {
-    List<String> parts = new ArrayList<>(2);
+  private static String foundAt(Document chunk) {
     Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
-    if (location != null) {
-      String cleaned = cleanName(location.toString());
-      if (!cleaned.isEmpty()) {
-        parts.add(cleaned);
-      }
+    String cleaned = location == null ? "" : cleanName(location.toString());
+    if (cleaned.isEmpty()) {
+      return "";
     }
+    if (cleaned.codePointCount(0, cleaned.length()) > MAX_LOCATION_CHARS) {
+      cleaned =
+          cleaned.substring(0, cleaned.offsetByCodePoints(0, MAX_LOCATION_CHARS - 1)).strip() + "…";
+    }
+    return "Fundort: " + cleaned + "\n";
+  }
+
+  /**
+   * The {@code Stellung:} line with its newline - "Teil x von n" from {@code chunkIndex} and the
+   * count of its document - or nothing without a count or with an index outside it. A line of its
+   * own, so no Fundort text can stand in for it.
+   */
+  private static String placeIn(
+      String documentId, String chunkIndex, Map<String, Integer> partCounts) {
     Integer total = partCounts.get(documentId);
-    if (total != null) {
-      try {
-        int index = Integer.parseInt(chunkIndex);
-        if (index >= 0 && index < total) {
-          parts.add("Teil " + (index + 1) + " von " + total);
-        }
-      } catch (NumberFormatException e) {
-        // a chunk without an integral index has no place to name
-      }
+    if (total == null) {
+      return "";
     }
-    return parts.isEmpty() ? "" : "Fundort: " + String.join(" · ", parts) + "\n";
+    try {
+      int index = Integer.parseInt(chunkIndex);
+      return index >= 0 && index < total
+          ? "Stellung: Teil " + (index + 1) + " von " + total + "\n"
+          : "";
+    } catch (NumberFormatException e) {
+      return "";
+    }
   }
 
   /**
