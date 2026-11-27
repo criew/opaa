@@ -468,6 +468,30 @@ describe('PdfViewer', () => {
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
     })
 
+    // regression guard for #3897: a passage centred near the top of its page keeps naming that page
+    it('names the page of the passage it opened at until the view is scrolled away', async () => {
+      await open({ pageFrom: 2, pageTo: 2, quoteStart: 'Das Modul indexing' })
+      const page = renderedPage(['Das Modul indexing verwaltet die Dokumentenaufnahme'])
+      const span = page.querySelector('span')!
+      // 50 px into page 2; centred, the reading line a quarter down still lies on page 1
+      span.getBoundingClientRect = () =>
+        rect({ left: 400, top: 1050 - container().scrollTop, width: 300, height: 20 })
+      scrollIntoView.mockImplementation(() => {
+        container().scrollTop = 1050 - 300
+      })
+
+      fire('textlayerrendered', { pageNumber: 2, source: { div: page } })
+      fireEvent.scroll(container())
+      fire('updateviewarea', {})
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+
+      // scrolled by a script or the browser's search, without an input on the view
+      container().scrollTop = 2480
+      fireEvent.scroll(container())
+      fire('updateviewarea', {})
+      expect(screen.getByText('Seite 3 von 3')).toBeInTheDocument()
+    })
+
     it('reaches the last page and its entry at the end, though they never scroll up far', async () => {
       pdf.pages = [0, 1, 2].map(() => ({ left: 0, width: 600, height: 300 }))
       pdf.outline = [

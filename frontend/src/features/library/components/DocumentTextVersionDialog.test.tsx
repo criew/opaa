@@ -196,7 +196,6 @@ describe('DocumentTextVersionDialog', () => {
       block.parentElement!.getBoundingClientRect = () =>
         ({ top: top - content.scrollTop, left: 0, width: 600, height: 100 }) as DOMRect
     }
-    fireEvent.wheel(content)
     content.scrollTop = 650
     fireEvent.scroll(content)
 
