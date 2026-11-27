@@ -149,19 +149,15 @@ ein Jahr, Voreinstellung drei, Obergrenze zehn Jahre, mit automatischer Löschun
 
 ### 14. Belegbarkeit heißt deterministische Belegvalidierung
 
-Jeder Beleg einer Antwort wird gegen die für diese Antwort abgerufenen Fundstellen geprüft
-(Dokument-Kennung, Abschnittsnummer, Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet,
-nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapparat darüber
-(Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
-nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
-Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
-ausgeschlossen. Die Antwortregeln, für Chat und Agenten ein gemeinsamer Text, stellen die Antwort
-aus den Fundstellen an den Anfang und erlauben danach höchstens einen Absatz Einschränkung. „Nicht
-enthalten“ sagt das Modell nur, wenn keine Fundstelle etwas zur Frage beiträgt; eine Teilantwort
-nennt nur den offenen Rest. Eine Annahme der Frage stellt es nur gegen eine widersprechende
-Fundstelle richtig, und zu einer Zahl übernimmt es die Bezugsgröße der Quelle. Begründung: Eine
-pauschale Fehlanzeige oder ein angehängter Vorbehalt verschweigt Belegtes und wiegt für die Person
-so schwer wie eine unbelegte Aussage. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
+Jeder Beleg einer Antwort wird gegen die abgerufenen Fundstellen geprüft (Dokument-Kennung,
+Abschnittsnummer, Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet, nicht entfernt.
+Ein Verweigerungsapparat darüber (Verweigerung ohne Beleg, Schalter am Space, Deckungsprüfung) ist
+entschieden nicht gebaut. Die Antwortregeln, ein Text für Chat und Agenten, verlangen zuerst die
+Antwort aus den Fundstellen, danach höchstens einen Absatz zu Lücken; „nicht enthalten“ nur, wenn
+keine Fundstelle beiträgt; eine Prämisse nur gegen eine widersprechende Fundstelle richtigstellen.
+Begründung: Fehlende Belege sind im Belegfenster sichtbar, ein erfundener Beleg ist durch die
+Validierung ausgeschlossen, und eine pauschale Fehlanzeige verschweigt Belegtes. Siehe
+[Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
 
 ### 15. Nachweis der Organisationsgrenze
 

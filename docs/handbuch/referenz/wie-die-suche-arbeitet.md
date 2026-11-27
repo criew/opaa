@@ -37,14 +37,13 @@ Aufzählung an einer Chunk-Grenze nicht abreißt.
 
 Das Chat-Modell bekommt die Chunks, die **Anweisung des Space**, die Gesprächsnotiz und den Verlauf.
 Es soll nur wiedergeben, was die Dokumente tragen, und jede Quelle mit einer Zitiermarke belegen.
-Die Antwort aus den Dokumenten kommt zuerst, eine Einschränkung höchstens in einem Absatz danach;
-eine Teilantwort nennt nur den offenen Rest. „In den vorliegenden Dokumenten nicht enthalten“ sagt
-es nur, wenn kein Chunk etwas zur Frage beiträgt. Eine Annahme der Frage stellt es nur richtig,
-wenn ein Dokument ihr widerspricht, und zu einer Zahl nennt es die Bezugsgröße aus dem Dokument
-(Einheit, Zeile und Spalte, Zeitraum, Bezugsobjekt). Agenten antworten nach denselben Regeln.
-Der Text der Dokumente
-steht als Material, nicht als Anweisung im Prompt; ganz verhindern lässt sich eine untergeschobene
-Anweisung nicht, das hängt am Modell.
+Die Antwort aus den Dokumenten kommt zuerst, samt Bedingungen und Ausnahmen; ein Hinweis auf Lücken
+folgt höchstens in einem Absatz danach. „In den vorliegenden Dokumenten nicht enthalten“ sagt es
+nur, wenn kein Chunk etwas zur Frage beiträgt. Eine Annahme der Frage stellt es nur richtig, wenn
+ein Dokument ihr widerspricht. Zu Beträgen, Quoten, Schwellen und Fristen nennt es die Bezugsgröße
+aus dem Dokument. Agenten antworten nach denselben Regeln, eine Agenten-Anweisung kann aber die Form
+vorgeben. Der Text der Dokumente steht als Material, nicht als Anweisung im Prompt; ganz verhindern
+lässt sich eine untergeschobene Anweisung nicht, das hängt am Modell.
 
 Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
 je Teilfrage, Rerank-Modell, falls an. Titel und Gesprächsnotiz eines Chats kosten je einen

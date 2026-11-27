@@ -7,11 +7,15 @@ package io.opaa.query.answer;
  */
 public final class AnswerRules {
 
-  /** List items, one per line, without a leading or trailing line break. */
+  /**
+   * List items, one per line, without a leading or trailing line break. Free of percent signs: the
+   * agent prompt passes it through {@link String#formatted}.
+   */
   public static final String SHARED =
       """
       - Beginne mit der Antwort aus den Quellen, direkt und knapp: keine Wiederholung der Frage, \
-      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Eine Einschränkung folgt \
+      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Bedingungen und Ausnahmen \
+      aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder Unsicherheiten folgt \
       danach in höchstens einem Absatz.
       - Prüfe alle Quellen, bevor du etwas als fehlend bezeichnest. Trägt eine Quelle einen Teil \
       der Antwort, gib diesen Teil und benenne nur den offenen Rest; lege dich auf kein Ergebnis \
@@ -23,9 +27,9 @@ public final class AnswerRules {
       - Nenne Bedingungen, Ausnahmen, Geltungsbereich (etwa Land oder Behörde) und Stand der \
       Quelle, wenn die Quellen sie nennen und sie für die Frage erheblich sind.
       - Weichen Quellen voneinander ab, benenne die Abweichung ausdrücklich.
-      - Übernimm zu jeder Zahl die Bezugsgröße aus der Quelle und nenne sie: Einheit, Zeile und \
-      Spalte, Zeitraum, Bezugsobjekt. Ziehe aus einem Zahlenvergleich keinen Schluss, wenn die \
-      Bezugsgrößen verschieden sind.\
+      - Nenne zu Beträgen, Quoten, Schwellen und Fristen die Bezugsgröße aus der Quelle (Einheit, \
+      Zeitraum, Bezugsobjekt; bei Tabellen Zeile und Spalte). Ziehe aus einem Zahlenvergleich \
+      keinen Schluss, wenn die Bezugsgrößen verschieden sind.\
       """;
 
   private AnswerRules() {}

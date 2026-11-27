@@ -229,7 +229,8 @@ class AnswerGenerationServiceTest {
       Gesprächsverlauf oder die Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder \
       Vermutung.
       - Beginne mit der Antwort aus den Quellen, direkt und knapp: keine Wiederholung der Frage, \
-      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Eine Einschränkung folgt \
+      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Bedingungen und Ausnahmen \
+      aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder Unsicherheiten folgt \
       danach in höchstens einem Absatz.
       - Prüfe alle Quellen, bevor du etwas als fehlend bezeichnest. Trägt eine Quelle einen Teil \
       der Antwort, gib diesen Teil und benenne nur den offenen Rest; lege dich auf kein Ergebnis \
@@ -241,9 +242,9 @@ class AnswerGenerationServiceTest {
       - Nenne Bedingungen, Ausnahmen, Geltungsbereich (etwa Land oder Behörde) und Stand der \
       Quelle, wenn die Quellen sie nennen und sie für die Frage erheblich sind.
       - Weichen Quellen voneinander ab, benenne die Abweichung ausdrücklich.
-      - Übernimm zu jeder Zahl die Bezugsgröße aus der Quelle und nenne sie: Einheit, Zeile und \
-      Spalte, Zeitraum, Bezugsobjekt. Ziehe aus einem Zahlenvergleich keinen Schluss, wenn die \
-      Bezugsgrößen verschieden sind.
+      - Nenne zu Beträgen, Quoten, Schwellen und Fristen die Bezugsgröße aus der Quelle (Einheit, \
+      Zeitraum, Bezugsobjekt; bei Tabellen Zeile und Spalte). Ziehe aus einem Zahlenvergleich \
+      keinen Schluss, wenn die Bezugsgrößen verschieden sind.
 
       ZITIERREGELN (verbindlich):
       - Jeder Kontextabschnitt beginnt mit den Zeilen „Dokument: …“ und „Zitiermarke: …“.
@@ -644,8 +645,8 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * The answer rules - only what the passages carry, the answer first and at most one paragraph of
-   * limitation after it, "not contained" only when no passage contributes, a premise corrected only
+   * The answer rules - only what the passages carry, the answer first and at most one paragraph on
+   * gaps after it, "not contained" only when no passage contributes, a premise corrected only
    * against a source, deviations named and the reference value taken over from the source.
    */
   @Test
@@ -674,7 +675,8 @@ class AnswerGenerationServiceTest {
         .contains("nur richtig, wenn eine Quelle ihr ausdrücklich widerspricht")
         .contains("Abweichung")
         .contains("Bezugsgröße aus der Quelle")
-        .contains("Zeile und Spalte, Zeitraum, Bezugsobjekt")
+        .contains("Einheit, Zeitraum, Bezugsobjekt; bei Tabellen Zeile und Spalte")
+        .contains("Bedingungen und Ausnahmen aus den Quellen gehören in die Antwort")
         .contains("Geltungsbereich")
         .contains(AnswerRules.SHARED);
   }
