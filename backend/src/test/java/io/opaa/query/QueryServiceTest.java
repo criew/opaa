@@ -62,6 +62,7 @@ import io.opaa.observability.QueryEmbeddingTime;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
+import io.opaa.query.absence.AbsenceRecheck;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
@@ -165,6 +166,12 @@ class QueryServiceTest {
   private QueryService queryService;
 
   private final AgentTurnHandler agentTurnHandler = mock(AgentTurnHandler.class);
+
+  /**
+   * Finds nothing to recheck unless a test says otherwise; its own rules are AbsenceRecheckTest's.
+   */
+  private final AbsenceRecheck absenceRecheck = mock(AbsenceRecheck.class);
+
   private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -238,7 +245,8 @@ class QueryServiceTest {
         mock(MetadataFilterValidator.class),
         promptService,
         neighborChunkExpansion,
-        agentTurnHandler);
+        agentTurnHandler,
+        absenceRecheck);
   }
 
   /**
@@ -3409,7 +3417,177 @@ class QueryServiceTest {
   }
 
   /** A stream reader that takes everything and keeps nothing. */
-  private static final class RecordingListener implements AnswerStreamListener {
+  /** An answer claiming that something is missing is checked once against the search scope. */
+  @Nested
+  class AbsenceRecheckOfTheAnswer {
+
+    private static final String QUESTION = "Wie hoch ist die Gebühr nach Tarifstelle AB-08?";
+    private static final String CLAIM =
+        "Die Gebühr nach Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten.";
+    private static final String CORRECTED = "Die Gebühr nach Tarifstelle AB-08 beträgt 12 Euro.";
+
+    private final Document retrieved =
+        Document.builder()
+            .text("Die Gebührenordnung gilt für alle Anträge.")
+            .metadata(Map.of("file_name", "gebuehren.md", "document_id", "doc-1"))
+            .score(0.9)
+            .build();
+
+    private final Document found =
+        Document.builder()
+            .text("Tarifstelle AB-08: 12 Euro je Bescheid.")
+            .metadata(Map.of("file_name", "tarif.md", "document_id", "doc-2", "chunk_index", 4))
+            .score(0.5)
+            .build();
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void anAnswerClaimingAnAbsenceIsGivenOnceMoreWithTheNewPassagesOfTheScope() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(response(CLAIM), response(CORRECTED));
+      when(absenceRecheck.additionalPassages(
+              eq(QueryMetrics.Mode.RAG),
+              eq(QUESTION),
+              eq(CLAIM),
+              eq(Set.of(readableLibraryId)),
+              any(),
+              argThat(context -> context.size() == 1)))
+          .thenReturn(List.of(found));
+
+      QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
+
+      assertThat(result.answer()).isEqualTo(CORRECTED);
+      ArgumentCaptor<List<Document>> chunks = ArgumentCaptor.forClass(List.class);
+      verify(answerGenerationService, times(2))
+          .generateAnswer(any(), chunks.capture(), any(), any(), anyBoolean(), anyBoolean(), any());
+      assertThat(chunks.getAllValues().get(0)).containsExactly(retrieved);
+      assertThat(chunks.getAllValues().get(1)).containsExactly(retrieved, found);
+      verify(absenceRecheck).replaced(QueryMetrics.Mode.RAG);
+      // the window loses the first answer before the second is written
+      verify(chatMemory).clear(any());
+    }
+
+    @Test
+    void theAnswerGivenOnceMoreIsNotRecheckedAgainEvenWhenItStillClaimsAnAbsence() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(response(CLAIM), response(CLAIM));
+      when(absenceRecheck.additionalPassages(any(), any(), any(), any(), any(), any()))
+          .thenReturn(List.of(found));
+
+      QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
+
+      assertThat(result.answer()).isEqualTo(CLAIM);
+      verify(absenceRecheck, times(1)).additionalPassages(any(), any(), any(), any(), any(), any());
+      verify(answerGenerationService, times(2))
+          .generateAnswer(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any());
+    }
+
+    @Test
+    void aBlankSecondAnswerLeavesTheFirstOneStanding() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(response(CLAIM), response(" "));
+      when(absenceRecheck.additionalPassages(any(), any(), any(), any(), any(), any()))
+          .thenReturn(List.of(found));
+
+      QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
+
+      assertThat(result.answer()).isEqualTo(CLAIM);
+      verify(absenceRecheck, never()).replaced(any());
+    }
+
+    @Test
+    void withoutNewPassagesTheFirstAnswerStays() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(response(CLAIM));
+
+      QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
+
+      assertThat(result.answer()).isEqualTo(CLAIM);
+      verify(answerGenerationService, times(1))
+          .generateAnswer(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any());
+      verify(absenceRecheck, never()).replaced(any());
+      verify(chatMemory, never()).clear(any());
+    }
+
+    @Test
+    void aQuestionWithoutSearchScopeIsNotRechecked() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(libraryAccessService.readableLibraryIds(currentUserId, organizationId))
+          .thenReturn(Set.of());
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(response(CLAIM));
+
+      queryService.query(QUESTION, null, caller, true, List.of());
+
+      verifyNoInteractions(absenceRecheck);
+    }
+
+    @Test
+    void aStreamedSecondAnswerReplacesTheFirstAtItsFirstText() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.streamAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any(), any()))
+          .thenAnswer(streamed(CLAIM))
+          .thenAnswer(streamed(CORRECTED));
+      when(absenceRecheck.additionalPassages(any(), any(), any(), any(), any(), any()))
+          .thenReturn(List.of(found));
+      List<String> events = new ArrayList<>();
+      AnswerStreamListener reader =
+          new RecordingListener() {
+            @Override
+            public void provisional(String text, boolean replace) {
+              events.add((replace ? "reset:" : "delta:") + text);
+            }
+          };
+
+      QueryResult result =
+          queryService.query(
+              QUESTION, null, caller, true, List.of(), MetadataFilter.NONE, null, reader);
+
+      assertThat(result.answer()).isEqualTo(CORRECTED);
+      assertThat(events)
+          .containsExactly(
+              "delta:Die Gebühr",
+              "delta:" + CLAIM.substring("Die Gebühr".length()),
+              "reset:Die Gebühr",
+              "delta:" + CORRECTED.substring("Die Gebühr".length()));
+    }
+
+    private org.mockito.stubbing.Answer<ChatResponse> streamed(String text) {
+      return invocation -> {
+        AnswerStreamListener listener = invocation.getArgument(7);
+        listener.started();
+        listener.provisional("Die Gebühr", false);
+        listener.provisional(text.substring("Die Gebühr".length()), false);
+        return response(text);
+      };
+    }
+
+    private ChatResponse response(String text) {
+      return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
+    }
+  }
+
+  private static class RecordingListener implements AnswerStreamListener {
 
     @Override
     public void started() {}

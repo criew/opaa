@@ -99,6 +99,23 @@ public class QueryMetrics {
     }
   }
 
+  /**
+   * How far the recheck of an answer claiming that something is missing from the sources got; the
+   * {@code step} tag. Each later step is counted together with the earlier ones.
+   */
+  public enum AbsenceRecheckStep {
+    /** The answer claims that something is not in the sources. */
+    DETECTED,
+    /** The question's key terms were searched again within the search scope. */
+    SEARCHED,
+    /** That search found passages the answer had not seen, and the answer was given once more. */
+    REPLACED;
+
+    String tag() {
+      return name().toLowerCase(Locale.ROOT);
+    }
+  }
+
   private static final String STATUS_SUCCESS = "success";
   private static final String STATUS_ERROR = "error";
   private static final String STATUS_REJECTED = "rejected";
@@ -126,6 +143,9 @@ public class QueryMetrics {
   private final Counter prunedDecompositionCounter;
   private final Counter failedDecompositionCounter;
   private final Counter noSearchDecompositionCounter;
+
+  private final Map<Mode, Map<AbsenceRecheckStep, Counter>> absenceRecheckCounters =
+      new EnumMap<>(Mode.class);
 
   /** One counter per Belegstand level; anonymous, it carries no person, chat or space. */
   private final Map<EvidenceLevel, Counter> evidenceCounters = new EnumMap<>(EvidenceLevel.class);
@@ -225,6 +245,19 @@ public class QueryMetrics {
         Counter.builder("opaa.query.decomposition.no-search")
             .description("Query decompositions that found nothing to search for")
             .register(meterRegistry);
+    for (Mode mode : Mode.values()) {
+      Map<AbsenceRecheckStep, Counter> steps = new EnumMap<>(AbsenceRecheckStep.class);
+      for (AbsenceRecheckStep step : AbsenceRecheckStep.values()) {
+        steps.put(
+            step,
+            Counter.builder("opaa.query.absence_recheck")
+                .tag("mode", mode.tag())
+                .tag("step", step.tag())
+                .description("Answers claiming that something is missing from the sources")
+                .register(meterRegistry));
+      }
+      absenceRecheckCounters.put(mode, steps);
+    }
     for (EvidenceLevel level : EvidenceLevel.values()) {
       evidenceCounters.put(
           level,
@@ -353,5 +386,10 @@ public class QueryMetrics {
     if (level != null) {
       evidenceCounters.get(level).increment();
     }
+  }
+
+  /** One answer of {@code mode} reached {@code step} of the recheck of its absence claim. */
+  public void recordAbsenceRecheck(Mode mode, AbsenceRecheckStep step) {
+    absenceRecheckCounters.get(mode).get(step).increment();
   }
 }

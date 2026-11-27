@@ -32,6 +32,7 @@ import io.opaa.observability.QueryEmbeddingTime;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
+import io.opaa.query.absence.AbsenceRecheck;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
@@ -79,6 +80,10 @@ import org.springframework.stereotype.Service;
  * <p>A message the decomposition found nothing to search for is searched like any other; only the
  * answer is told, so that it does not claim to have found nothing. That signal depends on the
  * message alone, never on what the caller may read.
+ *
+ * <p>An answer that claims something is missing from the sources is checked once by {@link
+ * AbsenceRecheck} against the same scope and filter; passages found there that the answer had not
+ * seen are added and the answer is given once more, never a third time.
  */
 @Service
 public class QueryService {
@@ -108,6 +113,7 @@ public class QueryService {
   private final PromptService promptService;
   private final NeighborChunkExpansion neighborChunkExpansion;
   private final AgentTurnHandler agentTurnHandler;
+  private final AbsenceRecheck absenceRecheck;
 
   public QueryService(
       KnowledgeRetrieval knowledgeRetrieval,
@@ -126,7 +132,8 @@ public class QueryService {
       MetadataFilterValidator metadataFilterValidator,
       PromptService promptService,
       NeighborChunkExpansion neighborChunkExpansion,
-      AgentTurnHandler agentTurnHandler) {
+      AgentTurnHandler agentTurnHandler,
+      AbsenceRecheck absenceRecheck) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
     this.searchScopeResolver = searchScopeResolver;
@@ -144,6 +151,7 @@ public class QueryService {
     this.promptService = promptService;
     this.neighborChunkExpansion = neighborChunkExpansion;
     this.agentTurnHandler = agentTurnHandler;
+    this.absenceRecheck = absenceRecheck;
   }
 
   /**
@@ -479,6 +487,7 @@ public class QueryService {
           long generationStarted = System.nanoTime();
           AnswerStreamListener timedListener =
               answerListener == null ? null : clock.timeToFirstToken(answerListener);
+          List<Message> windowBeforeAnswer = chatMemory.get(conversationKey);
           ChatResponse chatResponse =
               answerListener == null
                   ? answerGenerationService.generateAnswer(
@@ -500,6 +509,64 @@ public class QueryService {
                       timedListener);
           metrics.recordStage(
               QueryMetrics.Stage.GENERATE, Duration.ofNanos(System.nanoTime() - generationStarted));
+          // tokens of the answer call that was paid for but is not the one returned
+          int firstAnswerTokens = 0;
+          // An answer bound to the passages that claims something is missing is checked once
+          // against the search scope; new passages found there make the one further answer.
+          List<Document> recheckPassages =
+              searchScope.isEmpty() || !searchNeeded
+                  ? List.of()
+                  : absenceRecheck.additionalPassages(
+                      QueryMetrics.Mode.RAG,
+                      question,
+                      ChatResponses.text(chatResponse),
+                      searchScope,
+                      metadataFilter,
+                      relevantChunks);
+          if (!recheckPassages.isEmpty()) {
+            ChatResponse firstResponse = chatResponse;
+            List<Document> firstChunks = relevantChunks;
+            List<Message> windowAfterFirst = chatMemory.get(conversationKey);
+            firstAnswerTokens = ChatResponses.totalTokens(chatResponse);
+            restoreWindow(conversationKey, windowBeforeAnswer);
+            List<Document> extended = new ArrayList<>(relevantChunks);
+            extended.addAll(recheckPassages);
+            relevantChunks = extended;
+            long secondGenerationStarted = System.nanoTime();
+            ChatResponse secondResponse =
+                answerListener == null
+                    ? answerGenerationService.generateAnswer(
+                        question,
+                        relevantChunks,
+                        conversationKey,
+                        noteTexts(notePoints, null),
+                        searched,
+                        searchNeeded,
+                        spaceInstruction)
+                    : answerGenerationService.streamAnswer(
+                        question,
+                        relevantChunks,
+                        conversationKey,
+                        noteTexts(notePoints, null),
+                        searched,
+                        searchNeeded,
+                        spaceInstruction,
+                        AbsenceRecheck.replacing(answerListener));
+            metrics.recordStage(
+                QueryMetrics.Stage.GENERATE,
+                Duration.ofNanos(System.nanoTime() - secondGenerationStarted));
+            if (ChatResponses.text(secondResponse).isBlank()) {
+              // a blank second answer would replace a real one with nothing
+              restoreWindow(conversationKey, windowAfterFirst);
+              relevantChunks = firstChunks;
+              chatResponse = firstResponse;
+              // the tokens of both calls are counted either way
+              firstAnswerTokens = ChatResponses.totalTokens(secondResponse);
+            } else {
+              chatResponse = secondResponse;
+              absenceRecheck.replaced(QueryMetrics.Mode.RAG);
+            }
+          }
 
           String answer =
               CitationMarkerRepair.repair(ChatResponses.text(chatResponse), relevantChunks);
@@ -517,7 +584,7 @@ public class QueryService {
 
           long durationMs = System.currentTimeMillis() - startTime;
           String model = ChatResponses.model(chatResponse);
-          int tokenCount = ChatResponses.totalTokens(chatResponse);
+          int tokenCount = firstAnswerTokens + ChatResponses.totalTokens(chatResponse);
           AnswerCompleteness completeness = ChatResponses.completeness(chatResponse);
           if (completeness != AnswerCompleteness.COMPLETE) {
             log.warn(
@@ -775,6 +842,17 @@ public class QueryService {
         .filter(point -> onlyKind == null || point.kind() == onlyKind)
         .map(ChatNotePoint::text)
         .toList();
+  }
+
+  /**
+   * Puts the conversation window back to {@code before}, the state before the first answer of this
+   * turn, so that the answer given once more after an absence recheck is the only one it keeps.
+   */
+  private void restoreWindow(String conversationKey, List<Message> before) {
+    chatMemory.clear(conversationKey);
+    if (!before.isEmpty()) {
+      chatMemory.add(conversationKey, before);
+    }
   }
 
   /**

@@ -23,10 +23,13 @@ import io.opaa.query.AgentTurn;
 import io.opaa.query.AgentTurnHandler;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
+import io.opaa.query.absence.AbsenceFollowUp;
+import io.opaa.query.absence.AbsenceRecheck;
 import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.answer.ConversationWindowMessages;
+import io.opaa.query.answer.DocumentBlock;
 import io.opaa.query.citation.AnswerEvidenceAssessor;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
@@ -133,6 +136,7 @@ class AgentToolLoop implements AgentTurnHandler {
   private final AgentRunLogWriter runLogWriter;
   private final ActiveAnswerStreams activeAnswerStreams;
   private final Clock clock;
+  private final AbsenceRecheck absenceRecheck;
 
   /**
    * Pings the readers of this instance's streamed runs while their run works, one daemon thread for
@@ -164,7 +168,8 @@ class AgentToolLoop implements AgentTurnHandler {
       ObjectMapper objectMapper,
       AgentRunLogWriter runLogWriter,
       ActiveAnswerStreams activeAnswerStreams,
-      Clock clock) {
+      Clock clock,
+      AbsenceRecheck absenceRecheck) {
     this.specResolver = specResolver;
     this.toolSwitches = toolSwitches;
     this.registry = registry;
@@ -184,6 +189,7 @@ class AgentToolLoop implements AgentTurnHandler {
     this.runLogWriter = runLogWriter;
     this.activeAnswerStreams = activeAnswerStreams;
     this.clock = clock;
+    this.absenceRecheck = absenceRecheck;
   }
 
   @Override
@@ -435,6 +441,15 @@ class AgentToolLoop implements AgentTurnHandler {
         break;
       }
     }
+    if (phase != AgentPrompt.PlanPhase.PLAN
+        && run.question() == null
+        && run.limitReached() == null) {
+      ChatResponse rechecked = recheckAbsence(turn, run, client, system, history, response);
+      if (rechecked != null) {
+        tokens += ChatResponses.totalTokens(rechecked);
+        response = rechecked;
+      }
+    }
 
     // A run that works a confirmed plan off but answers without a single tool call has put a new
     // plan to the person instead of researching: it ends as a plan again, so it can be confirmed.
@@ -546,6 +561,48 @@ class AgentToolLoop implements AgentTurnHandler {
         evidence,
         generatedFiles,
         record);
+  }
+
+  /**
+   * The answer once more when {@code response} claims something is missing and the run's scope
+   * holds passages with the question's key terms that no step handed the model ({@link
+   * AbsenceRecheck}): they follow the answer as a message in the same loop, and the model answers
+   * once more without tools. {@code null} when there is nothing to recheck.
+   */
+  private ChatResponse recheckAbsence(
+      AgentTurn turn,
+      AgentRun run,
+      ChatClient client,
+      String system,
+      List<Message> history,
+      ChatResponse response) {
+    if (response.getResult() == null || response.getResult().getOutput() == null) {
+      return null;
+    }
+    List<Document> fresh =
+        absenceRecheck.additionalPassages(
+            QueryMetrics.Mode.AGENT,
+            turn.question(),
+            ChatResponses.text(response),
+            run.searchScope(),
+            run.metadataFilter(),
+            run.passages());
+    if (fresh.isEmpty()) {
+      return null;
+    }
+    run.addRecheckPassages(fresh);
+    List<Message> asked = new ArrayList<>(history);
+    asked.add(response.getResult().getOutput());
+    asked.add(new UserMessage(AbsenceFollowUp.render(DocumentBlock.render(run.blockId(), fresh))));
+    run.checkpoint();
+    signal(turn, AnswerStreamListener::idle);
+    ChatResponse rechecked = run.modelCall(() -> call(client, system, asked, List.of(), Map.of()));
+    if (ChatResponses.text(rechecked).isBlank()) {
+      // a blank second answer would replace a real one with nothing
+      return null;
+    }
+    absenceRecheck.replaced(QueryMetrics.Mode.AGENT);
+    return rechecked;
   }
 
   /**

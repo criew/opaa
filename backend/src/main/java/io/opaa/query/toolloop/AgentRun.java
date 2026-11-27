@@ -268,6 +268,14 @@ public final class AgentRun {
     return candidates.stream().filter(passage -> seen.add(passageKey(passage))).toList();
   }
 
+  /**
+   * Hands the model {@code recheckPassages} outside a step: the passages of the absence recheck,
+   * citable like those of a search from then on. They do not count against the volume limit.
+   */
+  synchronized void addRecheckPassages(List<Document> recheckPassages) {
+    passages.addAll(recheckPassages);
+  }
+
   /** The characters the run may still collect before it reaches its volume limit. */
   synchronized long remainingChars() {
     return Math.max(0, limits.maxCollectedChars() - collectedChars);

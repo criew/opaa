@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.query.absence.AbsenceRecheckProperties;
 import io.opaa.query.answer.ConversationMemoryConfiguration;
 import io.opaa.query.filter.MetadataFilterProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -11,5 +12,5 @@ import org.springframework.context.annotation.Configuration;
  * ConversationMemoryConfiguration}.
  */
 @Configuration
-@EnableConfigurationProperties(MetadataFilterProperties.class)
+@EnableConfigurationProperties({MetadataFilterProperties.class, AbsenceRecheckProperties.class})
 public class QueryConfiguration {}

@@ -153,6 +153,12 @@ tracing:
   #     ports: [{ port: 4318, protocol: TCP }]
   egress: []
 
+# Recheck of an answer that claims something is missing from the sources: the key terms of the
+# question are searched once more within the same scope, and new passages lead to one further
+# answer. false switches it off.
+absenceRecheck:
+  enabled: true
+
 # Load limits of the transcription model role (dictation in the chat). Switch, endpoint, model, key
 # and language are set by the system administration under Modelle > Spracheingabe. Recordings are
 # passed through, never stored.

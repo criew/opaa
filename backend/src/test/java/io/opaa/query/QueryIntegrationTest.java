@@ -83,6 +83,7 @@ class QueryIntegrationTest {
   @Autowired private RetrievalContextFactory retrievalContextFactory;
   @Autowired private SearchScopeResolver searchScopeResolver;
   @Autowired private ChatSourceAssembler chatSourceAssembler;
+  @Autowired private io.opaa.query.absence.AbsenceRecheck absenceRecheck;
   @Autowired private CitationParser citationParser;
   @Autowired private CitationValidator citationValidator;
   @Autowired private LibraryAccessService libraryAccessService;
@@ -1070,7 +1071,8 @@ class QueryIntegrationTest {
         neighborChunkExpansion,
         turn -> {
           throw new AssertionError("no agent in this test");
-        });
+        },
+        absenceRecheck);
   }
 
   /**
