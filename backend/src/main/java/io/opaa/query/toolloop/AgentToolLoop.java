@@ -39,12 +39,14 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -107,6 +109,13 @@ class AgentToolLoop implements AgentTurnHandler {
   /** The answer of a plan run whose model wrote no plan. */
   static final String NO_PLAN =
       "Der Agent hat keinen Plan vorgelegt. Bitte stellen Sie die Frage erneut.";
+
+  /**
+   * The answer of a run that ended on its own without the model writing any text; the turn keeps
+   * the completeness {@code EMPTY}, so no Belegstand is assessed for it.
+   */
+  static final String NO_ANSWER =
+      "Der Agent hat keine Antwort formuliert. Bitte stellen Sie die Frage erneut.";
 
   /** The answer of a run that reached a limit before the model wrote any text. */
   static final String NO_ANSWER_AT_LIMIT =
@@ -456,8 +465,8 @@ class AgentToolLoop implements AgentTurnHandler {
     String text = endState == EndState.ASK_USER ? run.question() : ChatResponses.text(response);
     if (text.isBlank() && endState == EndState.PLAN) {
       text = NO_PLAN;
-    } else if (text.isBlank() && endState != EndState.COMPLETED) {
-      text = NO_ANSWER_AT_LIMIT;
+    } else if (text.isBlank()) {
+      text = endState == EndState.COMPLETED ? NO_ANSWER : NO_ANSWER_AT_LIMIT;
     }
     // The answer is shown as provisional while its citations are validated and the turn is kept.
     String provisional = text;
@@ -474,12 +483,22 @@ class AgentToolLoop implements AgentTurnHandler {
     boolean asked = endState == EndState.ASK_USER || endState == EndState.PLAN;
     AnswerCompleteness completeness =
         asked ? AnswerCompleteness.COMPLETE : ChatResponses.completeness(response);
-    List<String> searchQueries =
-        run.steps().stream()
-            .filter(step -> ToolNames.SEARCH_KNOWLEDGE.equals(step.tool()))
-            .map(AgentRunRecord.Step::detail)
-            .filter(detail -> detail != null)
-            .toList();
+    // Each search is a sub-query of the assessment: a confirmed citation covers every search that
+    // found its document, as the retrieval's attribution does for a decomposed question.
+    List<AgentRun.SearchStep> searches = run.searches();
+    List<String> searchQueries = searches.stream().map(AgentRun.SearchStep::query).toList();
+    Map<String, Set<Integer>> subQueriesByDocument = new HashMap<>();
+    for (int i = 0; i < searches.size(); i++) {
+      int subQuery = i + 1;
+      searches
+          .get(i)
+          .documents()
+          .forEach(
+              document ->
+                  subQueriesByDocument
+                      .computeIfAbsent(document, key -> new TreeSet<>())
+                      .add(subQuery));
+    }
     AnswerEvidence evidence =
         asked
             ? null
@@ -489,7 +508,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 !passages.isEmpty(),
                 true,
                 searchQueries,
-                Map.of(),
+                subQueriesByDocument,
                 completeness);
     AgentRunRecord record =
         new AgentRunRecord(

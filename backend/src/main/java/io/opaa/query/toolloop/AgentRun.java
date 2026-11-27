@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,7 @@ public final class AgentRun {
 
   private final List<Document> passages = new ArrayList<>();
   private final List<AgentRunRecord.Step> steps = new ArrayList<>();
+  private final List<SearchStep> searches = new ArrayList<>();
   private final List<AgentStepLogEntry> trace = new ArrayList<>();
   private final Map<String, Integer> callsPerTool = new HashMap<>();
   private final Map<Class<?>, RunResource> resources = new LinkedHashMap<>();
@@ -191,6 +193,11 @@ public final class AgentRun {
       callsPerTool.merge(toolName, 1, Integer::sum);
       collectedChars += outcome.modelText() == null ? 0 : outcome.modelText().length();
       passages.addAll(outcome.passages());
+      if (ToolNames.SEARCH_KNOWLEDGE.equals(toolName) && outcome.detail() != null) {
+        Set<String> documents = new LinkedHashSet<>();
+        outcome.passages().forEach(passage -> documents.add(ChunkGroupingKey.of(passage)));
+        searches.add(new SearchStep(outcome.detail(), Set.copyOf(documents)));
+      }
       index = steps.size();
       steps.add(step);
     }
@@ -314,6 +321,11 @@ public final class AgentRun {
     return List.copyOf(passages);
   }
 
+  /** Every search that ran with a sub-question, in order, with the documents it found. */
+  synchronized List<SearchStep> searches() {
+    return List.copyOf(searches);
+  }
+
   synchronized List<AgentRunRecord.Step> steps() {
     return List.copyOf(steps);
   }
@@ -352,4 +364,10 @@ public final class AgentRun {
   synchronized AgentRunStamp stamp() {
     return stamp;
   }
+
+  /**
+   * One search of the run: the sub-question it ran and the documents ({@link ChunkGroupingKey}) of
+   * every passage it handed the model, a passage an earlier step already delivered included.
+   */
+  record SearchStep(String query, Set<String> documents) {}
 }
