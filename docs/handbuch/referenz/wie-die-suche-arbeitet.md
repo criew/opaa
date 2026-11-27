@@ -32,7 +32,10 @@ flowchart LR
 
 Vor der Antwort bekommt jeder Treffer seine **Nachbar-Chunks** dazu, damit eine Tabelle oder
 Aufzählung an einer Chunk-Grenze nicht abreißt. Liegt ein Treffer in einer kleinen Tabelle, kommt
-die **ganze Tabelle** dazu, damit Zeilen und Spalten ihren Bezug behalten.
+die **ganze Tabelle** dazu, damit Zeilen und Spalten ihren Bezug behalten. Jeder Chunk nennt dem
+Modell dazu seinen Fundort (Seite, Abschnitt oder Tabellenblatt mit Zeilen, soweit bekannt) und seine
+Stellung im Dokument, etwa „Teil 3 von 12“. So erkennt das Modell, dass ein Dokument mehr enthält als
+den gezeigten Ausschnitt.
 
 ## Die Antwort
 

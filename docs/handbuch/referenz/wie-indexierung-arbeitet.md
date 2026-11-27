@@ -40,7 +40,7 @@ fertig war, bleibt indiziert.
 - **Chunks:** Der Text wird entlang seiner Gliederung zerlegt, nach Überschriften, Seiten, Folien
   oder Zeilen. Kein Text geht wegen seiner Länge verloren; zu lange Abschnitte werden geteilt,
   Kleinstabschnitte zusammengelegt. Jeder Chunk trägt eine Ortsangabe wie „S. 3 · Abschn. Fristen“,
-  die im Beleg erscheint.
+  die im Beleg erscheint und die auch das Modell im Kopf jeder Fundstelle liest.
 - **Bereinigung:** Unsichtbare Zeichen, die Text vor dem Auge verbergen können, entfernt opaa;
   Wendungen wie „ignoriere alle vorherigen Anweisungen“ bleiben, werden aber im Laufprotokoll als
   „Auffällige Muster“ gezählt. Ein Treffer ist ein Hinweis, kein Beweis.

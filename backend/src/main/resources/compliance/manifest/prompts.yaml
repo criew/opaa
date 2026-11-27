@@ -14,7 +14,7 @@ prompts:
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "9bae3b1bfc13bb298c3ca55688fb9bc278748cbcf8f14a70fe36f35b1b8cc299"
+    sha256: "99e2b700c384f635a6987a1babca06bdbe607ad718bd87bbc6809101859ab4ce"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
@@ -63,7 +63,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "8b44a5824cc17dd0f917e97fb3f92c1b43610f158f2e6d2e5952b27cceea25cf"
+    sha256: "8f8fa1ceefa30cbd5a946f4a2c3203f3d52fbdf88ebad385ec8a7a690d5f138a"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten

@@ -144,8 +144,11 @@ final class ChatAttachmentPassages {
       return Selection.NONE;
     }
     long total = all.stream().mapToLong(chunk -> chunk.text().length()).sum();
+    Map<UUID, Integer> partCounts = new HashMap<>();
+    all.forEach(chunk -> partCounts.merge(chunk.attachmentId(), 1, Integer::sum));
     if (total <= inlineMaxChars) {
-      return new Selection(all.stream().map(chunk -> passage(chunk, byId)).toList(), false);
+      return new Selection(
+          all.stream().map(chunk -> passage(chunk, byId, partCounts)).toList(), false);
     }
     List<ChatAttachmentChunkStore.Chunk> chosen = excerpts(all, question, excerptMaxChars);
     Map<UUID, Integer> order = new HashMap<>();
@@ -153,7 +156,8 @@ final class ChatAttachmentPassages {
     chosen.sort(
         Comparator.comparing((ChatAttachmentChunkStore.Chunk c) -> order.get(c.attachmentId()))
             .thenComparingInt(ChatAttachmentChunkStore.Chunk::index));
-    return new Selection(chosen.stream().map(chunk -> passage(chunk, byId)).toList(), true);
+    return new Selection(
+        chosen.stream().map(chunk -> passage(chunk, byId, partCounts)).toList(), true);
   }
 
   private static List<ChatAttachmentChunkStore.Chunk> excerpts(
@@ -248,11 +252,18 @@ final class ChatAttachmentPassages {
     return tokens;
   }
 
+  /**
+   * The passage of {@code chunk}; it carries the number of its attachment's chunks itself as {@code
+   * chunk_count} (read by {@code DocumentPartCounts}), since an attachment has no document row.
+   */
   private static Document passage(
-      ChatAttachmentChunkStore.Chunk chunk, Map<UUID, ChatAttachment> attachments) {
+      ChatAttachmentChunkStore.Chunk chunk,
+      Map<UUID, ChatAttachment> attachments,
+      Map<UUID, Integer> partCounts) {
     Map<String, Object> metadata = new HashMap<>(chunk.metadata());
     metadata.put("document_id", chunk.attachmentId().toString());
     metadata.put("chunk_index", chunk.index());
+    metadata.put("chunk_count", partCounts.get(chunk.attachmentId()));
     metadata.put("file_name", attachments.get(chunk.attachmentId()).getFileName());
     metadata.put(ATTACHMENT_METADATA_KEY, true);
     return new Document(chunk.attachmentId() + "#" + chunk.index(), chunk.text(), metadata);

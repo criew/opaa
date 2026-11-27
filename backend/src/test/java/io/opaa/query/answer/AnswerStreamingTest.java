@@ -58,7 +58,12 @@ class AnswerStreamingTest {
     chatMemory = MessageWindowChatMemory.builder().build();
     activeAnswerStreams = new ActiveAnswerStreams();
     activeAnswerStreams.start();
-    service = new AnswerGenerationService(activeChatModelResolver, chatMemory, activeAnswerStreams);
+    service =
+        new AnswerGenerationService(
+            activeChatModelResolver,
+            chatMemory,
+            activeAnswerStreams,
+            org.mockito.Mockito.mock(DocumentPartCounts.class));
   }
 
   @Test
