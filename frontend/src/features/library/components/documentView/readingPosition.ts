@@ -69,7 +69,8 @@ export function horizontalOffset({
  * by wheel, touch, keyboard, scrollbar, the browser's search or a script - but not on an input
  * that scrolls nothing (a click into the text). The returned function tells it that the view has
  * just scrolled itself: its position at that moment does not count as the reader's. `attachKey`
- * re-attaches the listener once the scrolling element is mounted anew.
+ * re-attaches the listener once the scrolling element is mounted anew. The browser moving the
+ * view itself (scroll anchoring, a smaller window) counts as the reader's scroll too.
  */
 export function useUserScroll(
   ref: RefObject<HTMLElement | null>,

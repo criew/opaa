@@ -336,10 +336,14 @@ export default function PdfViewer({
     const viewer = viewerRef.current
     if (!viewer) return
     viewer.currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, viewer.currentScale * factor))
+    // pdf.js keeps the place in view while zooming: the current place stays
+    scrolledByView()
   }
 
   function fitWidth() {
-    if (viewerRef.current) viewerRef.current.currentScaleValue = 'page-width'
+    if (!viewerRef.current) return
+    viewerRef.current.currentScaleValue = 'page-width'
+    scrolledByView()
   }
 
   function goTo(node: OutlineNode) {

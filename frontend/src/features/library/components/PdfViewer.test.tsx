@@ -449,7 +449,9 @@ describe('PdfViewer', () => {
       expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
 
-      // a click into the page that scrolls nothing keeps the choice
+      // neither the view's own scroll event nor a click into the page that scrolls nothing
+      // releases the choice
+      fireEvent.scroll(container())
       fireEvent.pointerDown(container())
       fire('updateviewarea', {})
       expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
@@ -481,6 +483,18 @@ describe('PdfViewer', () => {
       })
 
       fire('textlayerrendered', { pageNumber: 2, source: { div: page } })
+      fireEvent.scroll(container())
+      fire('updateviewarea', {})
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+
+      // zooming keeps the place: pdf.js scrolls, but the passage's page stays the current one
+      Object.defineProperty(pdf.viewer!, 'currentScale', {
+        get: () => 1,
+        set: () => {
+          container().scrollTop = 800
+        },
+      })
+      await userEvent.click(screen.getByRole('button', { name: 'Vergrößern' }))
       fireEvent.scroll(container())
       fire('updateviewarea', {})
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()

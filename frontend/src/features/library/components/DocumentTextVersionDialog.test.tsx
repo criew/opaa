@@ -186,6 +186,9 @@ describe('DocumentTextVersionDialog', () => {
     await user.click(entry('Folie 4'))
     expect(entry('Folie 4')).toHaveAttribute('aria-current', 'location')
     expect(entry('Folie 1')).not.toHaveAttribute('aria-current')
+    // the scroll event of the view's own jump keeps the choice
+    fireEvent.scroll(screen.getByTestId('text-version-content'))
+    expect(entry('Folie 4')).toHaveAttribute('aria-current', 'location')
 
     // each passage, heading included, 100 px tall; the view 400 px, its reading line at 100 px
     const content = screen.getByTestId('text-version-content')
