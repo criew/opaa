@@ -225,19 +225,26 @@ class AnswerGenerationServiceTest {
       Projektinformationen.
 
       ANTWORTREGELN:
-      - Gib zu Sachfragen nur wieder, was die Kontextdokumente, der Gesprächsverlauf oder die \
-      Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder Vermutung.
-      - Fehlt etwas in den Kontextdokumenten, sage, dass es in den vorliegenden Dokumenten nicht \
-      enthalten ist, und nicht, dass es das nicht gibt. Fehlt ein Teil der Grundlage, benenne \
-      die Lücke und lege dich nicht auf ein Ergebnis fest, das von ihr abhängt.
+      - Gib zu Sachfragen nur wieder, was die Kontextdokumente (deine Quellen), der \
+      Gesprächsverlauf oder die Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder \
+      Vermutung.
+      - Beginne mit der Antwort aus den Quellen, direkt und knapp: keine Wiederholung der Frage, \
+      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Erhebliche Bedingungen und \
+      Ausnahmen aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder \
+      Unsicherheiten folgt danach in höchstens einem Absatz.
+      - Prüfe alle Quellen, bevor du etwas als fehlend bezeichnest. Trägt eine Quelle einen Teil \
+      der Antwort, gib diesen Teil und benenne nur den offenen Rest; lege dich auf kein Ergebnis \
+      fest, das von ihm abhängt. Nur wenn keine Quelle etwas zur Frage beiträgt, sage, dass es in \
+      den vorliegenden Dokumenten nicht enthalten ist, und nicht, dass es das nicht gibt.
+      - Stelle eine Annahme der Frage nur richtig, wenn eine Quelle ihr ausdrücklich widerspricht, \
+      und belege diese Stelle.
       - Ziehe eine spezifische Regel einer allgemeinen Formulierung vor.
       - Nenne Bedingungen, Ausnahmen, Geltungsbereich (etwa Land oder Behörde) und Stand der \
-      Quelle, wenn die Kontextdokumente sie nennen und sie für die Frage erheblich sind.
-      - Weichen Kontextdokumente voneinander ab, benenne die Abweichung ausdrücklich.
-      - Nenne bei Schwellen, Quoten und Fristen die Bezugsgröße. Ziehe aus einem Zahlenvergleich \
+      Quelle, wenn die Quellen sie nennen und sie für die Frage erheblich sind.
+      - Weichen Quellen voneinander ab, benenne die Abweichung ausdrücklich.
+      - Nenne zu Beträgen, Quoten, Schwellen und Fristen die Bezugsgröße aus der Quelle (Einheit, \
+      Zeitraum, Bezugsobjekt; bei Tabellen Zeile und Spalte). Ziehe aus einem Zahlenvergleich \
       keinen Schluss, wenn die Bezugsgrößen verschieden sind.
-      - Beantworte die Frage direkt und knapp: keine Wiederholung der Frage, keine Einleitungs- \
-      oder Schlussfloskeln, nichts Unerhebliches.
 
       ZITIERREGELN (verbindlich):
       - Jeder Kontextabschnitt beginnt mit den Zeilen „Dokument: …“ und „Zitiermarke: …“.
@@ -290,7 +297,7 @@ class AnswerGenerationServiceTest {
 
       Belege jede Aussage aus den Kontextdokumenten mit der Zitiermarke ihres Abschnitts, \
       unverändert aus der Zeile „Zitiermarke:“ übernommen, ohne Link, Klammer oder Zusatz darum. \
-      Was die Kontextdokumente nicht enthalten, benenne als nicht enthalten, statt es zu ergänzen.
+      Ergänze nichts, was die Kontextdokumente nicht enthalten.
 
       ---
 
@@ -638,8 +645,9 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * The answer rules - only what the passages carry, a gap named as missing from the documents
-   * rather than filled or denied, deviations and differing reference values named.
+   * The answer rules - only what the passages carry, the answer first and at most one paragraph on
+   * gaps after it, "not contained" only when no passage contributes, a premise corrected only
+   * against a source, deviations named and the reference value taken over from the source.
    */
   @Test
   void theAnswerRulesKeepTheAnswerToThePassagesAndNameGapsAndDeviations() {
@@ -661,9 +669,27 @@ class AnswerGenerationServiceTest {
         .contains("Allgemeinwissen")
         .contains("der Gesprächsverlauf oder die Gesprächsnotiz")
         .contains("in den vorliegenden Dokumenten nicht enthalten")
+        .contains("Nur wenn keine Quelle etwas zur Frage beiträgt")
+        .contains("Beginne mit der Antwort aus den Quellen")
+        .contains("höchstens einem Absatz")
+        .contains("nur richtig, wenn eine Quelle ihr ausdrücklich widerspricht")
         .contains("Abweichung")
-        .contains("Bezugsgröße")
-        .contains("Geltungsbereich");
+        .contains("Bezugsgröße aus der Quelle")
+        .contains("Einheit, Zeitraum, Bezugsobjekt; bei Tabellen Zeile und Spalte")
+        .contains("Erhebliche Bedingungen und Ausnahmen aus den Quellen gehören in die Antwort")
+        .contains("Geltungsbereich")
+        .contains(AnswerRules.SHARED);
+  }
+
+  /**
+   * The reminder after the passages repeats no "not contained" instruction: next to the last
+   * passage it would turn a partial answer into a blanket statement that nothing was found.
+   */
+  @Test
+  void theCitationReminderAsksForNothingBeyondThePassagesWithoutInvitingAFindingOfAbsence() {
+    assertThat(AnswerGenerationService.CITATION_REMINDER)
+        .contains("Ergänze nichts, was die Kontextdokumente nicht enthalten.")
+        .doesNotContain("benenne als nicht enthalten");
   }
 
   /**

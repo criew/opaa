@@ -162,7 +162,10 @@ der Chat besteht, nicht aus technischen Rohdaten.
 Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
 
 1. **Feste Regeln** im Systemvorspann: Rolle, Beleg- und Zitierregeln, die Regel, dass gekennzeichnete
-   Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe.
+   Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe. Die Antwortregeln zu Lücken,
+   Prämissen und Bezugsgrößen sind dieselben wie im Chat und stammen aus einem gemeinsamen Text
+   (`AnswerRules.SHARED`); nur die Belegregel benennt, was hier die Quellen sind. So antworten Chat
+   und Agent auf dieselbe Frage nicht nach unterschiedlichen Lückenregeln.
 2. **Anweisung des Agenten** als gekennzeichneter Block, angehängt, nie als Ersatz. Sie darf Ton,
    Form und Vorgehen bestimmen, nicht die Antwortsprache. Sie ist kein Beleg und keine Quelle.
 3. **Anweisung des Space** ([ADR-0043](0043-anweisung-je-space.md), Entscheidung 6), wenn vorhanden.
