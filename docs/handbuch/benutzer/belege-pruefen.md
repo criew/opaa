@@ -36,6 +36,14 @@ Betreff, Absender, Empfängern, Datum und Text. Andere Office-Dateien, sehr gro�
 ohne Textteil öffnen als Textfassung an der Passage; ein kurzer Hinweis sagt dann, warum.
 Confluence-Seiten öffnen an der Quelle.
 
+**Die Gliederung** steht links unter der Karte, wenn das Dokument Überschriften hat: bei PDFs die
+Lesezeichen, bei Word-Dateien die Absätze in einer Überschriften-Formatvorlage, bei Markdown die
+Überschriften, in der Textfassung (etwa ODT oder HTML) die beim Einlesen erkannten Abschnitte. Ein
+Klick springt zur Überschrift; hervorgehoben ist der Abschnitt, den Sie gerade lesen. Tiefere Ebenen
+klappen Sie mit dem Pfeil davor auf. Das Symbol über dem Dokument blendet die Gliederung aus und
+wieder ein, auf dem Smartphone steht sie in der aufklappbaren Leiste. Ein Dokument ohne Überschriften
+hat keine Gliederung.
+
 Bei einem gescannten PDF stammt der Text aus der Texterkennung; Beleg und Ansicht tragen dann den
 Hinweis „Maschinell erkannt, maßgeblich ist das Original“.
 „Dokument öffnen“ zeigt den unveränderten Scan und zieht einen Rahmen um die zitierte Stelle,
