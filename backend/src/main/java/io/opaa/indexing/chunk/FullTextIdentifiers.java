@@ -158,19 +158,19 @@ public final class FullTextIdentifiers {
    * A letter-digit code in any of its spellings - {@code AB08}, {@code AB-08}, {@code AB–08},
    * {@code ab_08}, {@code AB 08}, {@code AB.08} - all reduced to one lexeme. Directly joined or
    * joined by hyphen, en dash or underscore, any letter block counts (groups 1 and 2). Joined by a
-   * space, a no-break space or a dot, only two or more uppercase letters that are not {@link
-   * #SPACED_CODE_STOPWORDS} count (groups 3 and 4), and not when a space and a further run of three
-   * digits ({@code FAX 0711 123456}) or "Uhr" follow: lowercase, "ab 08 Uhr" is prose. Neither
-   * block may continue into a letter, a digit or a separator with a further letter or digit, so a
-   * longer chain ({@code AB-08-15}) or a version ({@code v2.1}) is never shortened to a code it
-   * does not name.
+   * space, a no-break space or a dot, only two to six uppercase letters that are not {@link
+   * #SPACED_CODE_STOPWORDS} and one to three digits count (groups 3 and 4), and not before "Uhr": a
+   * year ({@code STAND 2024}), an area code ({@code FAX 0711}) and lowercase prose ("ab 08 Uhr")
+   * stay text. Neither block may continue into a letter, a digit or a separator with a further
+   * letter or digit, so a longer chain ({@code AB-08-15}), a version ({@code v2.1}) or a time
+   * ({@code AB 18:00}) is never shortened to a code it does not name.
    */
   private static final Pattern LETTER_DIGIT_CODE =
       Pattern.compile(
           "(?<![\\p{L}\\p{N}])(?<![\\p{L}\\p{N}][-_./\u2013])"
               + "(?:([A-Za-z]{1,6})[-_\u2013]?(\\d{1,6})"
-              + "|([A-Z]{2,6})[ \u00A0.](\\d{1,6})(?![ \u00A0]\\d{3})(?![ \u00A0]+(?i:uhr)\\b))"
-              + "(?![\\p{L}\\p{N}])(?![-_./,\u2013][\\p{L}\\p{N}])");
+              + "|([A-Z]{2,6})[ \u00A0.](\\d{1,3})(?![ \u00A0]+(?i:uhr)\\b))"
+              + "(?![\\p{L}\\p{N}])(?![-_./,:\u2013][\\p{L}\\p{N}])");
 
   /**
    * Uppercase words that a space or dot joins to a number in ordinary all-caps prose ({@code UM 12
@@ -183,7 +183,8 @@ public final class FullTextIdentifiers {
           "IN", "MIT", "NACH", "ODER", "PER", "SEIT", "UM", "UND", "VOM", "VON", "ZU", "ZUM", "ZUR",
           "UHR", "NR", "NUMMER", "ABS", "ART", "SEITE", "TEIL", "KAP", "ANLAGE", "KW", "TAG",
           "TAGE", "JAHR", "MONAT", "WOCHE", "JAN", "FEB", "MRZ", "APR", "MAI", "JUNI", "JULI",
-          "AUG", "SEP", "SEPT", "OKT", "NOV", "DEZ", "TEL", "FAX", "STAND", "VERSION");
+          "AUG", "SEP", "SEPT", "OKT", "NOV", "DEZ", "JANUAR", "MAERZ", "APRIL", "AUGUST", "TEL",
+          "FAX", "STAND", "VERSION", "ABSATZ", "SATZ", "ZIFFER");
 
   /**
    * A maximal run of letters, digits and underscores - the unit a field name is recognized in. A

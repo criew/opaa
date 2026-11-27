@@ -478,7 +478,7 @@ class FullTextIdentifiersTest {
         .contains("xkzab08", "xkzab09");
     assertThat(FullTextIdentifiers.extract("Was kostet AB08?")).contains("xkzab08");
     assertThat(FullTextIdentifiers.extract("COVID-19")).contains("xkzcovid19");
-    assertThat(FullTextIdentifiers.extract("DIN 5008")).contains("xkzdin5008");
+    assertThat(FullTextIdentifiers.extract("DIN-5008")).contains("xkzdin5008");
   }
 
   @Test
@@ -574,7 +574,9 @@ class FullTextIdentifiersTest {
             "AB-08\n12",
             "Tarifstelle AB08 1 Stunde",
             "AB 08 40,00 EUR",
-            "AB 08\t2 Stück")) {
+            "AB 08\t2 Stück",
+            "AB 08 150,00 EUR",
+            "AB 08 250 Stück")) {
       assertThat(FullTextIdentifiers.extract(text)).as(text).contains("xkzab08");
     }
   }
@@ -587,7 +589,20 @@ class FullTextIdentifiersTest {
   void uppercaseProseAndSingleSpacedLettersProduceNoCode() {
     for (String text :
         List.of(
-            "AB 08 UHR", "UM 12 UHR", "SEITE 3 VON 12", "STAND MAI 2024", "KW 12", "A 1", "B.2")) {
+            "AB 08 UHR",
+            "UM 12 UHR",
+            "SEITE 3 VON 12",
+            "STAND MAI 2024",
+            "KW 12",
+            "A 1",
+            "B.2",
+            "1. APRIL 2024",
+            "JANUAR 2024",
+            "STAND APRIL 2024",
+            "ABSATZ 2",
+            "SATZ 1 ZIFFER 3",
+            "AB 18:00",
+            "AB18:00")) {
       assertThat(codeLexemes(text)).as(text).isEmpty();
     }
     assertThat(codeLexemes("A1")).containsExactly("xkza1");

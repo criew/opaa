@@ -230,13 +230,15 @@ Zweitens wird die Schwäche dort, wo der Pfad seinen Zweck erfüllt, kaum wirksa
 Kennung ist der richtige Abschnitt meist der einzige, der die Zeichenfolge überhaupt enthält.
 
 Gegen den zweiten Punkt ist zusätzlich vorgesorgt: Paragrafenverweise, Aktenzeichen, Dienstanweisungs-
-und Formularnummern, Erlass- und Drucksachennummern sowie Kennungen aus Buchstaben und Ziffern werden
-**zusätzlich als unzerlegte Kennungen** geführt und höher gewichtet als Fließtext. Ohne das gewönne ein Abschnitt, der die Wörter der Frage nur
-oft genug wiederholt, gegen den einen Abschnitt, der die gesuchte Kennung tatsächlich führt — genau die
-Schwäche von `ts_rank`. Dabei ist gleichgültig, ob das Dokument die Kennung hinter einem Schlüsselwort
+und Formularnummern, Erlass- und Drucksachennummern sowie Kennungen aus Buchstaben und Ziffern
+werden **zusätzlich als unzerlegte Kennungen** geführt und höher gewichtet als Fließtext. Ohne das
+gewönne ein Abschnitt, der die Wörter der Frage nur oft genug wiederholt, gegen den einen Abschnitt,
+der die gesuchte Kennung tatsächlich führt — genau die Schwäche von `ts_rank`. Dabei ist gleichgültig, ob das Dokument die Kennung hinter einem Schlüsselwort
 nennt („mit dem Aktenzeichen BAU-DA-2/2024") und die Frage sie nackt („Was regelt die Dienstanweisung
 BAU-DA-2/2024?") — beide Schreibweisen führen auf dieselbe Kennung. Ebenso führen „AB08", „AB-08",
-„AB 08", „ab_08" und „AB.08" auf eine Kennung.
+„AB 08", „ab_08" und „AB.08" auf eine Kennung; mit Leerzeichen oder Punkt gilt das nur für zwei bis
+sechs Großbuchstaben und ein bis drei Ziffern, damit „SEITE 3“, „JANUAR 2024“ oder „ab 8 Uhr“ Text
+bleiben.
 
 **Wann diese Grenze relevant wird:** Wenn Fragen mit exakten Kennungen die falsche Fundstelle liefern,
 ist sie der erste Verdacht. Ob der Wechsel auf eine echte BM25-Erweiterung nötig ist, wird gemessen und
