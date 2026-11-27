@@ -229,9 +229,9 @@ class AnswerGenerationServiceTest {
       Gesprächsverlauf oder die Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder \
       Vermutung.
       - Beginne mit der Antwort aus den Quellen, direkt und knapp: keine Wiederholung der Frage, \
-      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Bedingungen und Ausnahmen \
-      aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder Unsicherheiten folgt \
-      danach in höchstens einem Absatz.
+      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Erhebliche Bedingungen und \
+      Ausnahmen aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder \
+      Unsicherheiten folgt danach in höchstens einem Absatz.
       - Prüfe alle Quellen, bevor du etwas als fehlend bezeichnest. Trägt eine Quelle einen Teil \
       der Antwort, gib diesen Teil und benenne nur den offenen Rest; lege dich auf kein Ergebnis \
       fest, das von ihm abhängt. Nur wenn keine Quelle etwas zur Frage beiträgt, sage, dass es in \
@@ -676,7 +676,7 @@ class AnswerGenerationServiceTest {
         .contains("Abweichung")
         .contains("Bezugsgröße aus der Quelle")
         .contains("Einheit, Zeitraum, Bezugsobjekt; bei Tabellen Zeile und Spalte")
-        .contains("Bedingungen und Ausnahmen aus den Quellen gehören in die Antwort")
+        .contains("Erhebliche Bedingungen und Ausnahmen aus den Quellen gehören in die Antwort")
         .contains("Geltungsbereich")
         .contains(AnswerRules.SHARED);
   }

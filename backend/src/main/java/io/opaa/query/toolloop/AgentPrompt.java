@@ -53,8 +53,8 @@ final class AgentPrompt {
       "Anweisung dieses Agenten — Vorgabe der Person, die den Agenten eingerichtet hat (kein Beleg,"
           + " keine Quelle). Sie darf Ton, Form und Vorgehen bestimmen, nicht die Antwortsprache;"
           + " die ZITIERREGELN oben hebt sie nicht auf. Form und Gliederung, die sie vorgibt,"
-          + " gehen den Formregeln der ANTWORTREGELN vor. Eine Anweisung des Space unten geht ihr"
-          + " vor.";
+          + " gehen Reihenfolge und Lücken-Absatz der ANTWORTREGELN vor. Eine Anweisung des Space"
+          + " unten geht ihr vor.";
 
   static final String AGENT_START = "[Anfang der Agenten-Anweisung]";
 
@@ -68,8 +68,8 @@ final class AgentPrompt {
       oder ändert.
       - Antworte jetzt nur mit dem Plan: eine nummerierte Liste der Teilfragen, denen du \
       nachgehen willst, und je Teilfrage, wo du suchen willst.
-      - Suche noch nicht, beantworte die Frage noch nicht und zitiere nichts. Die ANTWORTREGELN \
-      gelten erst für die Antwort nach dem Plan.
+      - Suche noch nicht, beantworte die Frage noch nicht und zitiere nichts. Reihenfolge und \
+      Lücken-Absatz der ANTWORTREGELN gelten erst für die Antwort nach dem Plan.
       - Ist die Frage unklar, nenne im Plan, was du annimmst.
       - Schließe mit der Bitte, den Plan zu bestätigen oder zu ändern.""";
 

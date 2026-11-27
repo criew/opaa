@@ -39,8 +39,10 @@ class AgentPromptTest {
 
     assertThat(AgentPrompt.AGENT_HEADER)
         .contains(
-            "Form und Gliederung, die sie vorgibt, gehen den Formregeln der ANTWORTREGELN vor");
-    assertThat(AgentPrompt.PLAN_RULES).contains("Die ANTWORTREGELN gelten erst für die Antwort");
+            "Form und Gliederung, die sie vorgibt, gehen Reihenfolge und Lücken-Absatz der"
+                + " ANTWORTREGELN vor");
+    assertThat(AgentPrompt.PLAN_RULES)
+        .contains("Reihenfolge und Lücken-Absatz der ANTWORTREGELN gelten erst für die Antwort");
     assertThat(system).contains(AgentPrompt.AGENT_HEADER).contains(AgentPrompt.PLAN_RULES);
   }
 }

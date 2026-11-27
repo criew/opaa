@@ -14,9 +14,9 @@ public final class AnswerRules {
   public static final String SHARED =
       """
       - Beginne mit der Antwort aus den Quellen, direkt und knapp: keine Wiederholung der Frage, \
-      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Bedingungen und Ausnahmen \
-      aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder Unsicherheiten folgt \
-      danach in höchstens einem Absatz.
+      keine Einleitungs- oder Schlussfloskeln, nichts Unerhebliches. Erhebliche Bedingungen und \
+      Ausnahmen aus den Quellen gehören in die Antwort; ein Hinweis auf Lücken oder \
+      Unsicherheiten folgt danach in höchstens einem Absatz.
       - Prüfe alle Quellen, bevor du etwas als fehlend bezeichnest. Trägt eine Quelle einen Teil \
       der Antwort, gib diesen Teil und benenne nur den offenen Rest; lege dich auf kein Ergebnis \
       fest, das von ihm abhängt. Nur wenn keine Quelle etwas zur Frage beiträgt, sage, dass es in \
