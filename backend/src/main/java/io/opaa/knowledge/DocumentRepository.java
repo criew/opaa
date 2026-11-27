@@ -289,6 +289,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   }
 
   /**
+   * The recorded chunk count of every row in {@code ids}, in one query; an id without a row is
+   * absent. Backs the "Teil x von n" of a passage head in the answer prompt.
+   */
+  @Query("select d.id as id, d.chunkCount as chunkCount from Document d where d.id in :ids")
+  List<DocumentChunkCount> findChunkCountsByIdIn(@Param("ids") Collection<UUID> ids);
+
+  interface DocumentChunkCount {
+    UUID getId();
+
+    int getChunkCount();
+  }
+
+  /**
    * The attachment rows of every parent in {@code parentDocumentIds}, ordered by {@code filePath}
    * (which embeds the extraction-order index for mail attachments, ADR-0022 Entscheidung 2) - backs
    * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion, called once per

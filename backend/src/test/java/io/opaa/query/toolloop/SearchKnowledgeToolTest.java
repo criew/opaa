@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
+import io.opaa.query.answer.DocumentPartCounts;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.retrieval.RetrievalPipelineResult;
@@ -39,7 +40,9 @@ class SearchKnowledgeToolTest {
   private final KnowledgeRetrieval retrieval = mock(KnowledgeRetrieval.class);
   private final NeighborChunkExpansion expansion = mock(NeighborChunkExpansion.class);
   private final MetadataFilterValidator validator = mock(MetadataFilterValidator.class);
-  private final SearchKnowledgeTool tool = new SearchKnowledgeTool(retrieval, expansion, validator);
+  private final DocumentPartCounts partCounts = mock(DocumentPartCounts.class);
+  private final SearchKnowledgeTool tool =
+      new SearchKnowledgeTool(retrieval, expansion, validator, partCounts);
 
   private final UUID ownLibrary = UUID.randomUUID();
   private final UUID otherOwnLibrary = UUID.randomUUID();
@@ -74,6 +77,16 @@ class SearchKnowledgeToolTest {
     assertThat(outcome.modelText())
         .contains(run.blockId())
         .contains("【source: doc-1#0 | merkblatt.pdf】");
+  }
+
+  @Test
+  void theHeadOfAFoundPassageNamesItsPlaceInTheDocument() {
+    when(partCounts.of(List.of(passage))).thenReturn(Map.of("doc-1", 12));
+    AgentRun run = AgentRuns.run(Set.of(ownLibrary));
+
+    ToolCallOutcome outcome = tool.call(args("{\"frage\":\"Frist Antrag\"}"), run);
+
+    assertThat(outcome.modelText()).contains("\nFundort: Teil 1 von 12\n");
   }
 
   @Test

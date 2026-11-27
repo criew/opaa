@@ -4,6 +4,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.query.answer.DocumentBlock;
+import io.opaa.query.answer.DocumentPartCounts;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
@@ -39,14 +40,17 @@ class SearchKnowledgeTool implements AgentTool {
   private final KnowledgeRetrieval knowledgeRetrieval;
   private final NeighborChunkExpansion neighborChunkExpansion;
   private final MetadataFilterValidator metadataFilterValidator;
+  private final DocumentPartCounts documentPartCounts;
 
   SearchKnowledgeTool(
       KnowledgeRetrieval knowledgeRetrieval,
       NeighborChunkExpansion neighborChunkExpansion,
-      MetadataFilterValidator metadataFilterValidator) {
+      MetadataFilterValidator metadataFilterValidator,
+      DocumentPartCounts documentPartCounts) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.neighborChunkExpansion = neighborChunkExpansion;
     this.metadataFilterValidator = metadataFilterValidator;
+    this.documentPartCounts = documentPartCounts;
   }
 
   @Override
@@ -103,7 +107,9 @@ class SearchKnowledgeTool implements AgentTool {
     String body =
         passages.isEmpty()
             ? NO_HITS
-            : (fresh.isEmpty() ? "" : DocumentBlock.render(run.blockId(), fresh))
+            : (fresh.isEmpty()
+                    ? ""
+                    : DocumentBlock.render(run.blockId(), fresh, documentPartCounts.of(fresh)))
                 + (repeated == 0 ? "" : repeatedNote(repeated, fresh.isEmpty()));
     ToolCallResult outcome =
         narrowing.ignored()

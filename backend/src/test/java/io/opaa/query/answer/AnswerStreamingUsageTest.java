@@ -72,7 +72,10 @@ class AnswerStreamingUsageTest {
   void aStreamedAnswerAsksForItsUsageAndCountsIt() {
     AnswerGenerationService service =
         new AnswerGenerationService(
-            resolver(), MessageWindowChatMemory.builder().build(), new ActiveAnswerStreams());
+            resolver(),
+            MessageWindowChatMemory.builder().build(),
+            new ActiveAnswerStreams(),
+            org.mockito.Mockito.mock(DocumentPartCounts.class));
 
     service.streamAnswer(
         "Was kostet der Ausweis?",

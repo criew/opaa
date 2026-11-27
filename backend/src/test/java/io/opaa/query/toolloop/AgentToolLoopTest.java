@@ -156,8 +156,13 @@ class AgentToolLoopTest {
     List<AgentTool> tools =
         new ArrayList<>(
             List.of(
-                new SearchKnowledgeTool(retrieval, expansion, validator),
-                new ReadDocumentTool(chunkLookup),
+                new SearchKnowledgeTool(
+                    retrieval,
+                    expansion,
+                    validator,
+                    mock(io.opaa.query.answer.DocumentPartCounts.class)),
+                new ReadDocumentTool(
+                    chunkLookup, mock(io.opaa.query.answer.DocumentPartCounts.class)),
                 new AskUserTool()));
     tools.addAll(extraTools);
     ToolRegistry registry = new ToolRegistry(tools);

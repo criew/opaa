@@ -1,9 +1,11 @@
 package io.opaa.query.toolloop;
 
 import io.opaa.query.answer.DocumentBlock;
+import io.opaa.query.answer.DocumentPartCounts;
 import io.opaa.retrieval.context.NeighborChunkLookup;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -61,9 +63,11 @@ class ReadDocumentTool implements AgentTool {
       """;
 
   private final NeighborChunkLookup lookup;
+  private final DocumentPartCounts documentPartCounts;
 
-  ReadDocumentTool(NeighborChunkLookup lookup) {
+  ReadDocumentTool(NeighborChunkLookup lookup, DocumentPartCounts documentPartCounts) {
     this.lookup = lookup;
+    this.documentPartCounts = documentPartCounts;
   }
 
   @Override
@@ -125,9 +129,10 @@ class ReadDocumentTool implements AgentTool {
     List<Document> passages = new ArrayList<>();
     long used = 0;
     boolean truncated = whole && loaded.size() >= MAX_SECTIONS;
+    Map<String, Integer> partCounts = loaded.isEmpty() ? Map.of() : documentPartCounts.of(loaded);
     for (Document chunk : loaded) {
       // Counted as the model reads it, so the run's volume holds what the call adds to it.
-      int length = DocumentBlock.render(run.blockId(), List.of(chunk)).length();
+      int length = DocumentBlock.render(run.blockId(), List.of(chunk), partCounts).length();
       if (used + length > budget) {
         truncated = true;
         break;
@@ -144,7 +149,9 @@ class ReadDocumentTool implements AgentTool {
           0,
           List.of());
     }
-    String body = DocumentBlock.render(run.blockId(), passages) + (truncated ? TRUNCATED_NOTE : "");
+    String body =
+        DocumentBlock.render(run.blockId(), passages, partCounts)
+            + (truncated ? TRUNCATED_NOTE : "");
     return new ToolCallOutcome(body, ToolCallResult.SUCCESS, detail, passages.size(), passages);
   }
 

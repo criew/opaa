@@ -31,7 +31,10 @@ flowchart LR
 | Vervollständigung | holt zu einem schon gefundenen Dokument weitere Chunks nach. Ab Werk aus; den Zusammenhang liefern die Nachbar-Chunks |
 
 Vor der Antwort bekommt jeder Treffer seine **Nachbar-Chunks** dazu, damit eine Tabelle oder
-Aufzählung an einer Chunk-Grenze nicht abreißt.
+Aufzählung an einer Chunk-Grenze nicht abreißt. Jeder Chunk nennt dem Modell dazu seinen Fundort
+(Seite, Abschnitt oder Tabellenblatt mit Zeilen, soweit bekannt) und seine Stellung im Dokument,
+etwa „Teil 3 von 12“. So erkennt das Modell, dass ein Dokument mehr enthält als den gezeigten
+Ausschnitt.
 
 ## Die Antwort
 

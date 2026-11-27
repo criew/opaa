@@ -2,16 +2,21 @@ package io.opaa.query.answer;
 
 import io.opaa.common.ContentFence;
 import io.opaa.common.PromptText;
+import io.opaa.format.chunk.ChunkMetadataKeys;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.ai.document.Document;
 
 /**
  * The retrieved passages as marked data: one block whose markers carry an id fresh per request, one
- * section per passage with its head lines inside. Everything a document controls - text and file
- * name - is cleaned first, so no passage can close the block, open a section, forge a head line or
- * a citation marker, or smuggle a role token or an invisible character into the prompt.
+ * section per passage with its head lines inside - the document, the citation marker and, where
+ * known, the Fundort with the passage's place in its document ("Teil 3 von 12"). Everything a
+ * document controls - text, file name and Fundort - is cleaned first, so no passage can close the
+ * block, open a section, forge a head line or a citation marker, or smuggle a role token or an
+ * invisible character into the prompt.
  */
 public final class DocumentBlock {
 
@@ -43,7 +48,8 @@ public final class DocumentBlock {
 
   /** A line that starts like the head line of a section, with any space and either colon. */
   private static final Pattern HEAD_LINE =
-      Pattern.compile("(?im)^([\\s\\p{Z}]*)(Dokument|Zitiermarke)([\\s\\p{Z}]*)([:\\uFF1A])");
+      Pattern.compile(
+          "(?im)^([\\s\\p{Z}]*)(Dokument|Zitiermarke|Fundort)([\\s\\p{Z}]*)([:\\uFF1A])");
 
   private DocumentBlock() {}
 
@@ -52,10 +58,24 @@ public final class DocumentBlock {
     return ContentFence.newId();
   }
 
-  /** The block over {@code chunks}, in their order; an empty list gives an empty block. */
+  /**
+   * The block over {@code chunks}, in their order, without part counts; an empty list gives an
+   * empty block.
+   */
   public static String render(String id, List<Document> chunks) {
+    return render(id, chunks, Map.of());
+  }
+
+  /**
+   * The block over {@code chunks}, in their order; {@code partCounts} maps a {@code document_id} to
+   * the number of parts of its document ({@link DocumentPartCounts}). A passage whose document has
+   * no count, or whose index lies outside it, names no "Teil x von n".
+   */
+  public static String render(String id, List<Document> chunks, Map<String, Integer> partCounts) {
     String sections =
-        chunks.stream().map(chunk -> section(id, chunk)).collect(Collectors.joining("\n\n"));
+        chunks.stream()
+            .map(chunk -> section(id, chunk, partCounts))
+            .collect(Collectors.joining("\n\n"));
     return BLOCK.open(id) + "\n" + (sections.isEmpty() ? "" : sections + "\n") + BLOCK.close(id);
   }
 
@@ -81,7 +101,7 @@ public final class DocumentBlock {
     return BLOCK.open(id) + "\n" + (body.isEmpty() ? "" : body + "\n") + BLOCK.close(id);
   }
 
-  private static String section(String id, Document chunk) {
+  private static String section(String id, Document chunk, Map<String, Integer> partCounts) {
     String fileName =
         cleanName(chunk.getMetadata().getOrDefault("file_name", "unknown").toString());
     String documentId = cleanName(chunk.getMetadata().getOrDefault("document_id", "").toString());
@@ -92,9 +112,38 @@ public final class DocumentBlock {
         + "\nZitiermarke: "
         + String.format(CITATION_FORMAT, documentId, chunkIndex, fileName)
         + "\n"
+        + foundAt(chunk, documentId, chunkIndex, partCounts)
         + clean(chunk.getText() == null ? "" : chunk.getText())
         + "\n"
         + SECTION.close(id);
+  }
+
+  /**
+   * The {@code Fundort:} line with its newline - the stored Fundort and "Teil x von n", joined by "
+   * · " -, or nothing when neither is known.
+   */
+  private static String foundAt(
+      Document chunk, String documentId, String chunkIndex, Map<String, Integer> partCounts) {
+    List<String> parts = new ArrayList<>(2);
+    Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+    if (location != null) {
+      String cleaned = cleanName(location.toString());
+      if (!cleaned.isEmpty()) {
+        parts.add(cleaned);
+      }
+    }
+    Integer total = partCounts.get(documentId);
+    if (total != null) {
+      try {
+        int index = Integer.parseInt(chunkIndex);
+        if (index >= 0 && index < total) {
+          parts.add("Teil " + (index + 1) + " von " + total);
+        }
+      } catch (NumberFormatException e) {
+        // a chunk without an integral index has no place to name
+      }
+    }
+    return parts.isEmpty() ? "" : "Fundort: " + String.join(" · ", parts) + "\n";
   }
 
   /**

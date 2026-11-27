@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.answer.DocumentBlock;
+import io.opaa.query.answer.DocumentPartCounts;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -34,7 +35,8 @@ class ReadDocumentToolTest {
 
   private final io.opaa.retrieval.context.NeighborChunkLookup lookup =
       mock(io.opaa.retrieval.context.NeighborChunkLookup.class);
-  private final ReadDocumentTool tool = new ReadDocumentTool(lookup);
+  private final DocumentPartCounts partCounts = mock(DocumentPartCounts.class);
+  private final ReadDocumentTool tool = new ReadDocumentTool(lookup, partCounts);
   private final UUID library = UUID.randomUUID();
 
   @Test
@@ -54,6 +56,21 @@ class ReadDocumentToolTest {
         .contains(run.blockId())
         .contains("【source: doc-1#2 | akte.pdf】")
         .contains("【source: doc-1#4 | akte.pdf】");
+  }
+
+  @Test
+  void eachSectionReadNamesItsPartOfTheDocument() {
+    AgentRun run = runThatFound(chunk("doc-1", 3, "Fundstelle"));
+    List<Document> loaded = List.of(chunk("doc-1", 2, "davor"), chunk("doc-1", 4, "danach"));
+    when(lookup.findRange("doc-1", 1, 5, Set.of(library))).thenReturn(loaded);
+    when(partCounts.of(loaded)).thenReturn(Map.of("doc-1", 5));
+
+    ToolCallOutcome outcome =
+        tool.call(args("{\"dokument\":\"doc-1\",\"abschnitt\":3,\"umfang\":\"umgebung\"}"), run);
+
+    assertThat(outcome.modelText())
+        .contains("doc-1#2 | akte.pdf】\nFundort: Teil 3 von 5\n")
+        .contains("doc-1#4 | akte.pdf】\nFundort: Teil 5 von 5\n");
   }
 
   @Test
