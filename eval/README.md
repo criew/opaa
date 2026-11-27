@@ -134,8 +134,8 @@ Zwei Ebenen, beide ohne Modellurteil:
   [`reports/answer-quality/README.md`](reports/answer-quality/README.md). Der Lauf misst nur, ohne
   Baseline und Schwelle.
 
-Der Workflow `retrieval-regression.yml` führt die Kontextebene als Job `answer-quality` mit (nächtlich,
-per `workflow_dispatch` und per Label `evaluation`, ohne Chat-Modell); er berichtet in Job-Zusammenfassung,
+Der Workflow `answer-quality.yml` führt die Kontextebene aus (nächtlich, per `workflow_dispatch` und bei
+einem Pull Request, der ihre Pfade ändert; ohne Chat-Modell und ohne die Retrieval-Matrix); er berichtet in Job-Zusammenfassung,
 Artefakt und PR-Kommentar und schlägt nur bei einer verletzten Voraussetzung fehl, nicht an einer Abweichung
 vom deklarierten Zustand.
 

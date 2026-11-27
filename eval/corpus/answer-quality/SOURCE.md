@@ -62,13 +62,15 @@ selbst, mit festen ZIP-Zeitstempeln: Zwei Läufe erzeugen byte-identische Dateie
 | `tags` | `long_document`, `identifier_variants`, `table_title_row`, `table_row_column`, `table_late_row`, `pdf`, `docx_table` |
 | `expected_state` | der zuletzt akzeptierte Zustand je Ebene, mit Datum und Grund |
 
-`table_checks` prüfen je Tabelle, dass der Chunk der letzten Datenzeile die Kopfzellen trägt.
+`table_checks` messen je Tabelle, ob der Chunk der letzten Datenzeile die Kopfzellen trägt; der Test
+schreibt das Ergebnis in den Bericht der Formatebene, beurteilt wird es über die Fälle der Tabelle
+(`expected_state.format`).
 
 Die Antwort wird vor der Prüfung normalisiert (`AnswerQualityAnswers#clean`): Zitiermarken entfernt,
 Tausendertrenner und `,00` entfernt (`1.000,00 €` liest als `1000 Euro`), `€`/`EUR` als `Euro`, `%` als
-`Prozent`, Mitternacht als `24 Uhr`. Fehlanzeige-Muster zählen nur dort allein, wo sie die Quellen
-nennen (`in den Quellen`) oder die Antwort verweigern; allgemeine Wendungen („nicht enthalten“) zählen
-nur in einer Antwort ohne den erwarteten Wert.
+`Prozent`, Mitternacht als `24 Uhr`. Eine Fehlanzeige zählt nur in einer Antwort ohne den
+erwarteten Wert (`MISSING_CLAIM`): Wendungen wie „steht nicht in den Unterlagen“, „kann ich nicht
+beantworten“ oder „keine Angaben“ sagen in einer Antwort mit dem Wert etwas über etwas anderes.
 
 ## Ebenen und Zustände
 

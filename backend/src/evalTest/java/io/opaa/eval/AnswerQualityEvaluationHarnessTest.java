@@ -154,10 +154,9 @@ class AnswerQualityEvaluationHarnessTest {
     registry.add("spring.ai.openai.embedding.base-url", () -> ollamaEndpoint() + "/v1");
     registry.add("spring.ai.openai.embedding.model", () -> EMBEDDING_MODEL);
     registry.add("spring.ai.vectorstore.pgvector.dimensions", () -> EMBEDDING_DIMENSIONS);
-    // A context-only run has no chat model, so the sub-question decomposition cannot run.
-    if (skipAnswers()) {
-      registry.add("opaa.query.query-decomposition-enabled", () -> "false");
-    }
+    // Both modes measure the context without the sub-question decomposition: a context-only run
+    // has no chat model for it, and the declared context state must mean the same in both.
+    registry.add("opaa.query.query-decomposition-enabled", () -> "false");
     registry.add(
         "opaa.indexing.filesystem.allowlist", () -> corpusWorkingDir.toAbsolutePath().toString());
   }
@@ -239,7 +238,8 @@ class AnswerQualityEvaluationHarnessTest {
                 Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
                 CorpusManifest.sha256Hex(manifestFile),
                 cases.size(),
-                skip),
+                skip,
+                false),
             List.copyOf(context),
             AnswerQualityAnswers.summarize(answers),
             answers.stream().map(AnswerQualityReport::answerResult).toList(),

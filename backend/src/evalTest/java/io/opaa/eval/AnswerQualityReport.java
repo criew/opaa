@@ -41,7 +41,8 @@ record AnswerQualityReport(
       double durationSeconds,
       String corpusManifestSha256,
       int caseCount,
-      boolean answersSkipped) {}
+      boolean answersSkipped,
+      boolean queryDecompositionEnabled) {}
 
   /**
    * What reached the prompt context for one spelling of a case's question: {@code
@@ -128,6 +129,7 @@ record AnswerQualityReport(
     sb.append(
         row("Endpunkt", c.chatEndpoint() == null ? "Ollama-Testcontainer" : c.chatEndpoint()));
     sb.append(row("Temperatur", c.temperature()));
+    sb.append(row("Teilfragen-Zerlegung", c.queryDecompositionEnabled() ? "an" : "aus"));
     sb.append(row("Embedding-Modell", c.embeddingModel()));
     sb.append(row("Beginn", c.runStart()));
     sb.append(row("Dauer", String.format(Locale.ROOT, "%.0f s", c.durationSeconds())));

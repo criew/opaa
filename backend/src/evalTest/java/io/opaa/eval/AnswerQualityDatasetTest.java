@@ -403,7 +403,7 @@ class AnswerQualityDatasetTest {
     AnswerQualityReport report =
         new AnswerQualityReport(
             new AnswerQualityReport.RunConfiguration(
-                "m", null, "0", "e", "t", 1.0, "sha", 1, false),
+                "m", null, "0", "e", "t", 1.0, "sha", 1, false, false),
             context,
             AnswerQualityAnswers.summarize(answers),
             answers.stream().map(AnswerQualityReport::answerResult).toList(),

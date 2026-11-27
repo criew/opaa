@@ -47,4 +47,4 @@ kein Chat-Modell läuft).
    den Generator laufen lassen.
 
 Der Lauf misst nur: Er scheitert an einer verletzten Voraussetzung (Manifest, Indizierung), nie an
-einer Quote. Kein CI-Job ruft ihn auf.
+einer Quote. Der Antwortlauf mit Modell hat keinen CI-Job; die Kontextebene läuft als Workflow `answer-quality.yml`.

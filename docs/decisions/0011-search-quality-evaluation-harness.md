@@ -94,7 +94,7 @@ erfordert einen neuen Baseline-Lauf.
 Restrisiken: Der HNSW-Index (`spring.ai.vectorstore.pgvector.index-type`) ist approximativ; die
 Toleranz muss Schwankungen abfedern, oder der Indextyp wird für die Evaluierung konfigurierbar
 gemacht; der Messvertrag führt ihn als `pgvectorIndexType` (ADR-0012). Die Retrieval-Harnesse messen nur Retrieval, die Antwortqualität misst nur Muster auf einer Stichprobe; was eine
-Demo- oder Betriebsinstanz mit anderem Embedding- oder Chat-Modell erlebt, belegt er nicht.
+Demo- oder Betriebsinstanz mit anderem Embedding- oder Chat-Modell erlebt, belegen sie nicht.
 
 ## Verworfene Alternativen
 
