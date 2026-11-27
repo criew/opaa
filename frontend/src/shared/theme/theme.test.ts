@@ -332,6 +332,29 @@ describe('createAppTheme', () => {
     )
   })
 
+  // regression guard: the chat's send button is an icon on the action surface; with a house
+  // colour in the dark scheme it used to sit on the lightened text accent with a white icon.
+  test.each([
+    ['light', undefined],
+    ['dark', undefined],
+    ['light', '#1153EE'],
+    ['dark', '#1153EE'],
+    ['dark', '#E30613'],
+  ] as const)(
+    'actionSurface carries its label in %s with house colour %s',
+    (mode, primaryColor) => {
+      const { actionSurface } = createAppTheme(
+        mode,
+        primaryColor ? { primaryColor } : undefined,
+      ).palette
+      for (const surface of [actionSurface.main, actionSurface.hover, actionSurface.press]) {
+        expect(getContrastRatio(actionSurface.contrastText, surface)).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    },
+  )
+
   test('the opaa standard branding colour and the token accent are the same value', () => {
     expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[700].toUpperCase())
   })

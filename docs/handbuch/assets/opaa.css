@@ -41,6 +41,7 @@
 }
 
 [data-md-color-scheme=slate]{
+  --md-primary-fg-color:#1B1E40;
   --md-default-fg-color:#FFFFFF;
   --md-default-fg-color--light:#C9DBF2;
   --md-default-fg-color--lighter:#A9B6D6;

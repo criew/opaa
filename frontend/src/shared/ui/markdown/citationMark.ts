@@ -11,7 +11,7 @@ export interface CitationMarkColors {
   tint: string
   /** The resting digit - the accent, moved just far enough to reach 4.5:1 on {@link tint}. */
   text: string
-  /** Hover/tooltip state: the pressed accent surface, which carries white at >= 4.5:1. */
+  /** Hover/tooltip state: the pressed accent surface, which carries its label at >= 4.5:1. */
   filledSurface: string
   filledText: string
 }
@@ -19,8 +19,7 @@ export interface CitationMarkColors {
 /**
  * The mark's colours for one theme. The digit is small text, so both states hold 4.5:1: the
  * accent text role is only guaranteed on the plain grounds, not on its own tint, and the accent
- * as a surface carries white at 3.07:1 in the dark scheme - hence the derived text colour and the
- * pressed surface.
+ * itself is no surface for the label - hence the derived text colour and the pressed surface.
  */
 export function citationMarkColors(theme: Theme): CitationMarkColors {
   const ground = theme.palette.background.default

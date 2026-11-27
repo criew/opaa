@@ -39,9 +39,15 @@ declare module '@mui/material/styles' {
   interface Palette {
     /** Desk, paper and passage mark of the document view (guidelines 2.3). */
     documentView: DocumentViewRoles
+    /**
+     * The filled action surface and its label (accent-surface/accent-fg, guidelines 2.2) for
+     * controls that are no contained Button but must look like one, such as the chat's send button.
+     */
+    actionSurface: { main: string; hover: string; press: string; contrastText: string }
   }
   interface PaletteOptions {
     documentView?: DocumentViewRoles
+    actionSurface?: { main: string; hover: string; press: string; contrastText: string }
   }
 }
 
@@ -72,9 +78,9 @@ export function focusFrameStyle(color: string) {
  */
 function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   const brandColor = branding?.primaryColor
-  // The OPAA standard colour counts as "not configured": the backend resolves branding
+  // The opaa standard colour counts as "not configured": the backend resolves branding
   // field by field, so an unconfigured deployment still delivers blue-700 - but that value means
-  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-500
+  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-400
   // dark). Only a genuinely different operator colour overrides the roles.
   // OPAA_BRANDING.primaryColor mirrors blue[700]; theme.test.ts pins that equivalence.
   if (!brandColor || brandColor.toUpperCase() === blue[700].toUpperCase()) {
@@ -182,6 +188,12 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         },
         divider: roles.border,
         documentView: isDark ? documentViewDark : documentViewLight,
+        actionSurface: {
+          main: accentSurface,
+          hover: accentHover,
+          press: accentPress,
+          contrastText: accentFg,
+        },
         text: {
           primary: roles.fg1,
           secondary: roles.fg2,

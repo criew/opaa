@@ -58,11 +58,11 @@ Mittelblau erreicht 7,41:1, deshalb ist Mittelblau die Aktionsfläche im hellen 
 | Name     | Wert      | Verwendung                                                 |
 | -------- | --------- | ---------------------------------------------------------- |
 | Navy-950 | `#151731` | Schreibtisch der Dokumentansicht dunkel, Überlagerungen    |
-| Navy-900 | `#1B1E40` | erhöhte Fläche dunkel, globale Leiste hell, Überlagerungen |
+| Navy-900 | `#1B1E40` | globale Leiste hell, Karte der Dokumentansicht dunkel      |
 | Navy-800 | `#242855` | Dunkelblau: Primärtext hell, Seitengrund dunkel            |
-| Navy-700 | `#2F335E` | Standardrahmen dunkel, Aktivkachel der Rail, Tooltip hell  |
-| Navy-600 | `#3E4269` | betonter Rahmen dunkel, Tooltip dunkel                     |
-| Navy-500 | `#666888` | Grenzfälle, Diagramme                                      |
+| Navy-700 | `#2F335E` | Aktivkachel der Rail, Tooltip hell                         |
+| Navy-600 | `#3E4269` | Standardrahmen dunkel, Tooltip dunkel                      |
+| Navy-500 | `#666888` | betonter Rahmen dunkel, Diagramme                          |
 
 **Grau** (kühl, um das Grau `#555A78` des Markenkonzepts): `#E7E8EC` (100), `#CFD1D9` (200),
 `#AAACBC` (300), `#80839A` (400), `#555A78` (500), `#3F4468` (600), `#30345E` (700),
@@ -85,8 +85,8 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 | Rolle            | Bedeutung                                                        | Hell                | Dunkel               |
 | ---------------- | ---------------------------------------------------------------- | ------------------- | -------------------- |
 | `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Navy-800 `#242855`   |
-| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | `#2A2E5E`            |
-| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF3FB`     | `#2F3466`            |
+| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | `#2F3466`            |
+| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF3FB`     | `#2A2E5E`            |
 | `fg-1`           | Primärtext                                                       | Navy-800 `#242855`  | Weiß `#FFFFFF`       |
 | `fg-2`           | Sekundärtext                                                     | Grau-600 `#3F4468`  | `#C9DBF2`            |
 | `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#555A78`  | `#A9B6D6`            |
@@ -107,8 +107,10 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 `frontend/src/shared/theme/tokens.ts` (`SignalTones`).
 
 Das dunkle Schema steht auf Dunkelblau, nicht auf neutralem Grau: Es spiegelt die Logofassung für
-dunkle Flächen (Style Guide des Marketings): Seitengrund Dunkelblau, Karten eine Stufe heller
-(`#2F3466`), Texte Weiß und `#C9DBF2`. Gefüllte Schaltflächen sind **weiß mit dunkelblauer
+dunkle Flächen (Style Guide des Marketings): Seitengrund Dunkelblau, Karten (`bg-2`) eine Stufe
+heller (`#2F3466`), gedämpfte Flächen (`bg-3`) dazwischen, Texte Weiß und `#C9DBF2`. Der
+Zwischenton `#2A2E5E` steht nicht im Style Guide; er hält Eingabefelder und Tabellenköpfe von
+Seite und Karte auseinander. Gefüllte Schaltflächen sind **weiß mit dunkelblauer
 Schrift**, weil Mittelblau auf Dunkelblau nur 1,9:1 erreicht. Hellblau selbst erreicht auf
 Dunkelblau 4,53:1, auf den Karten aber nur 3,79:1; der Akzent als Text ist deshalb Blau-400
 (mindestens 4,73:1 auf allen dunklen Flächen), Hellblau bleibt Linien und Icons vorbehalten.
@@ -222,12 +224,13 @@ E2E-Suite misst die gescannten Seiten (#2493).
 Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
 deshalb wird er bei dunklem Text heller statt dunkler. Im hellen Schema tragen Gefahr, Warnung
 und Erfolg Weiß, ihr Hover ist dunkler (`danger-hover` `#901E22` mit 8,77:1); im dunklen Schema
-tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF7A80` mit 6,96:1)
-(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination —
-Weiß erreicht auf Blau-500 (Hellblau) nur 3,07:1; gefüllte Flächen liegen deshalb auf
-`accent-surface` (Blau-700, 7,41:1), und das helle Schema führt `accent` selbst als Blau-700,
-damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Navy-950 = 5,71:1, auf
-Navy-800 = 4,53:1). Ausnahme: `fg-3` in `navyRoles` erfüllt das nicht gegen `bg-3` (siehe 2.2) —
+tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF8287` mit 5,83:1)
+(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination;
+gefüllte Flächen liegen deshalb auf `accent-surface`: hell Blau-700 mit Weiß (7,41:1), dunkel
+Weiß mit Navy-800 (13,9:1). Das helle Schema führt `accent` selbst als Blau-700, damit Akzent-Text
+auf Weiß 4,5:1 hält; das dunkle führt Blau-400 (5,65:1 auf `bg-1`, 4,73:1 auf `bg-2`). Ein
+Bedienelement, das wie eine gefüllte Schaltfläche aussieht, aber keine ist (Senden-Knopf des
+Chats), nimmt die Palette `actionSurface`, nie `primary.main`. Ausnahme: `fg-3` in `navyRoles` erfüllt das nicht gegen `bg-3` (siehe 2.2) —
 dort ist `fg-3` als Text ausgeschlossen, nicht nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ---
@@ -468,15 +471,16 @@ Zeile, nicht ihr Text.
 
 | Variante           | Ruhe                                      | Hover                      | Aktiv            |
 | ------------------ | ----------------------------------------- | -------------------------- | ---------------- |
-| Primär             | `accent-surface`-Fläche, `accent-fg`-Text | Blau-800 (−8 % Helligkeit) | Blau-900 (−16 %) |
+| Primär             | `accent-surface`-Fläche, `accent-fg`-Text | hell Blau-800, dunkel `#E3EAF6` | hell Blau-900, dunkel `#C9DBF2` |
 | Sekundär           | `bg-1` mit `border-strong`                | `bg-2`                     | `bg-3`           |
 | Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
 Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
 Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche:
 der Anlege-Knopf oder „Speichern". Was nur ein Panel oder einen Dialog öffnet („Einstellungen"), ist
-sekundär; stehen zwei Handlungen gleichen Rangs auf einer Seite, ist nur die dringlichere primär. Auf Navy-Flächen gilt die
-Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
+sekundär; stehen zwei Handlungen gleichen Rangs auf einer Seite, ist nur die dringlichere primär. Auf den
+Navy-Flächen von Anmeldeseite und Rail im hellen Schema bleibt die Primärfläche Blau-700 mit Weiß
+(`navyRoles`, `railRoles`). Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
 rote Primärfläche als Standardaktion. Einzige Ausnahme ist die Handlung einer Bestätigung im Ton
 `danger` (5.10).
 
@@ -827,13 +831,13 @@ bricht es um (`MetaBadge wrap`), statt abgeschnitten zu werden. Geprüft in
 `frontend/src/shared/ui/badgeShape.test.tsx` und `labels.test.ts`.
 
 **Kontrast** (2.4): `fg-2` auf der Fläche des Etiketts erreicht hell 9,21:1 (`bg-1`), 8,66:1
-(`bg-2`) und 8,19:1 (`bg-3`), dunkel 7,43:1, 6,69:1 und 6,15:1. Auf den Flächen, auf denen
+(`bg-2`) und 8,19:1 (`bg-3`), dunkel 9,93:1, 8,28:1 und 8,98:1. Auf den Flächen, auf denen
 Etiketten tatsächlich stehen: überfahrene Tabellenzeile (`bg-2`) wie oben; MUI-Hovertönung über
-`bg-1` hell 8,45:1, dunkel 6,28:1, über `bg-3` hell 7,48:1, dunkel 4,86:1; Akzent-Auswahltönung
-von `ListItemButton` und `MenuItem` über `bg-1` hell 8,22:1, dunkel 6,27:1, gewählt und
-überfahren hell 7,81:1, dunkel 5,51:1. Ausgenommen ist die Auswahltönung über `bg-3` (gewählt
-und überfahren dunkel nur 4,37:1, neutrales `action.selected` 3,70:1): Dort steht kein Etikett;
-wer eins dorthin setzt, weist den Kontrast im PR nach. Der Umriss in `border-strong` ist Schmuck,
+`bg-1` hell 8,45:1, dunkel 7,76:1, über `bg-3` hell 7,48:1, dunkel 7,10:1; Akzent-Auswahltönung
+von `ListItemButton` und `MenuItem` über `bg-1` hell 8,22:1, dunkel 7,53:1, gewählt und
+überfahren hell 7,81:1, dunkel 6,48:1. Die Auswahltönung über `bg-3` erreicht dunkel gewählt und
+überfahren 6,06:1, neutrales `action.selected` 5,52:1; wer im hellen Schema ein Etikett dorthin
+setzt, weist den Kontrast im PR nach. Der Umriss in `border-strong` ist Schmuck,
 kein Erkennungsmerkmal — das Wort macht das Etikett erkennbar, deshalb gilt für ihn keine
 3:1-Anforderung.
 
@@ -842,7 +846,7 @@ kein Erkennungsmerkmal — das Wort macht das Etikett erkennbar, deshalb gilt f�
 `bg-1`, `border`, Radius md, Schatten der Ebene 2/3, Einträge 14 px mit 8–12 px Innenabstand,
 Hover `bg-2`, zerstörende Einträge in Gefahr-Text am Ende, durch Trennlinie abgesetzt.
 Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 gegen `bg-2` und
-4,64:1 gegen `bg-3`, im dunklen Schema 6,86:1 / 6,18:1 / 5,68:1 (#2150).
+4,64:1 gegen `bg-3`, im dunklen Schema 5,56:1 / 4,63:1 / 5,02:1 (#2150).
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
 
 **Weitere Aktionen hinter „⋯".** Seltenere Aktionen einer Zeile, Kachel oder Detailseite öffnet
@@ -1018,8 +1022,8 @@ beantwortet jede Liste mit 502, `slow` verzögert jede lesende Anfrage um drei S
 Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und `accent` in einem
 Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
 Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
-Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit weißer Ziffer (`accent`
-selbst trüge Weiß im Dunkelschema nur mit 3,07:1); die Ziffer der ruhenden Marke rückt, wo die
+Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit `accent-fg` als Ziffer (hell
+Weiß auf Blau-900, dunkel Navy-800 auf `#C9DBF2`; `accent` selbst ist keine Fläche für die Ziffer); die Ziffer der ruhenden Marke rückt, wo die
 Tönung sie unter 4,5:1 drückt, wie jeder Akzenttext vom Grund weg, und ein Tooltip nennt je Fundstelle
 Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts

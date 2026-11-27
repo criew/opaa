@@ -177,6 +177,15 @@ export function deriveAccentText(accent: string, backgrounds: readonly string[])
   return candidate
 }
 
+/** The ground of `grounds` on which `color` reaches the lowest contrast. */
+function leastFavourable(color: string, grounds: readonly string[]): string {
+  return grounds.reduce((worst, ground) =>
+    (contrastRatio(color, ground) ?? Infinity) < (contrastRatio(color, worst) ?? Infinity)
+      ? ground
+      : worst,
+  )
+}
+
 export interface ContrastCheck {
   /** German label of what was compared, for the warning text. */
   label: string
@@ -189,7 +198,7 @@ export interface ContrastCheck {
  * The three checks that decide whether an accent colour is usable in this design system, both
  * schemes included (guidelines: "Beide Schemata sind gleichermaßen verbindlich"):
  *
- * 1. Button label on the accent surface - `accentFg` is white in both schemes. The
+ * 1. Button label on the accent surface - a house colour always carries white there. The
  *    filled surface is {@link deriveAccentSurface}'s bounded darkening of the configured colour,
  *    so this check evaluates what will actually render; it only fails when even the darkened
  *    surface cannot carry white text. Text threshold.
@@ -217,13 +226,13 @@ export function checkAccentContrast(accent: string): ContrastCheck[] {
       {
         label: 'Akzentfarbe als Text im hellen Schema',
         foreground: deriveAccentText(accent, hellerGrund),
-        background: lightRoles.bg3,
+        background: leastFavourable(deriveAccentText(accent, hellerGrund), hellerGrund),
         required: TEXT_CONTRAST_MINIMUM,
       },
       {
         label: 'Akzentfarbe als Text im dunklen Schema',
         foreground: deriveAccentText(accent, dunklerGrund),
-        background: darkRoles.bg3,
+        background: leastFavourable(deriveAccentText(accent, dunklerGrund), dunklerGrund),
         required: TEXT_CONTRAST_MINIMUM,
       },
     ]

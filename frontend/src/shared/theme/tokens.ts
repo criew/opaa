@@ -9,7 +9,8 @@
 /**
  * Accent and action color scale ("Blau"), derived from the brand concept's two blues: 500 is
  * Hellblau (`#009DDB`, accent lines and large type - white on it reaches only 3.07:1), 700 is
- * Mittelblau (`#0055A4`, accent text in the light scheme and every filled action surface).
+ * Mittelblau (`#0055A4`, accent text and filled action surface of the light scheme; the dark scheme
+ * fills actions white, because Mittelblau reaches only 1.9:1 on Dunkelblau).
  */
 export const blue = {
   50: '#EBF7FC',
@@ -57,7 +58,8 @@ export const smoke = '#EEF3FB'
 
 /**
  * Tones of a signal colour (guidelines 2.2), mapped onto MUI's main/dark/light. `main` is also a
- * text colour: >= 4.5:1 against bg-1..3 of its scheme; bg-1 is the text on every tone.
+ * text colour: >= 4.5:1 against bg-1..3 of the light, dark and rail schemes; bg-1 is the text on
+ * every tone.
  */
 export interface SignalTones {
   main: string
@@ -139,15 +141,15 @@ export interface SchemeRoles {
   fg3: string
   /**
    * Action, reference, active state - as text and indicator colour. Replaceable via branding.
-   * Proven >= 4.5:1 against bg-1..3 of its own scheme: blue-700 in the light scheme, blue-500
+   * Proven >= 4.5:1 against bg-1..3 of its own scheme: blue-700 in the light scheme, blue-400
    * in the dark one, blue-300 on the lighter navy steps of sidebar and rail.
    */
   accent: string
-  /** Text on accent surfaces. */
+  /** Text on accent surfaces: white on blue-700, Dunkelblau on the dark scheme's white surface. */
   accentFg: string
   /**
-   * Filled action surfaces (contained buttons, filled primary chips): blue-700 in every
-   * scheme, so accentFg (white) reaches >= 4.5:1 on it - blue-500 only reaches 3.07:1.
+   * Filled action surfaces (contained buttons, filled primary chips), proven >= 4.5:1 under
+   * accentFg: blue-700 in the light role sets, white in the dark scheme.
    */
   accentSurface: string
   /** Accent surface hover state (-8% lightness of the surface, sampled). */
@@ -203,10 +205,11 @@ export const lightRoles: SchemeRoles = {
 }
 
 export const darkRoles: SchemeRoles = {
-  // Mirrors the logo on dark grounds: Dunkelblau is the page, cards sit one step lighter.
+  // Mirrors the logo on dark grounds: Dunkelblau is the page, cards (bg-2) are the style guide's
+  // #2F3466, muted surfaces (bg-3) sit between the two.
   bg1: navy[800],
-  bg2: '#2A2E5E',
-  bg3: '#2F3466',
+  bg2: '#2F3466',
+  bg3: '#2A2E5E',
   fg1: white,
   fg2: '#C9DBF2',
   fg3: '#A9B6D6',
