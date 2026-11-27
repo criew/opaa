@@ -51,15 +51,15 @@ daraus abgeleitet.
 | 400   | `#33B1E2` | 900   | `#00386C` _(Gedrückt)_                                  |
 
 Weiß auf Hellblau erreicht nur 3,07:1: **Hellblau ist nie Fläche unter weißer Schrift.** Weiß auf
-Mittelblau erreicht 7,41:1, deshalb ist Mittelblau die Aktionsfläche in allen Schemata.
+Mittelblau erreicht 7,41:1, deshalb ist Mittelblau die Aktionsfläche im hellen Schema; im dunklen ist sie Weiß (2.2).
 
 **Navy** (Dunkelblau) — Struktur- und Textfarbe:
 
 | Name     | Wert      | Verwendung                                                 |
 | -------- | --------- | ---------------------------------------------------------- |
-| Navy-950 | `#151731` | Seitengrund im dunklen Schema                              |
+| Navy-950 | `#151731` | Schreibtisch der Dokumentansicht dunkel, Überlagerungen    |
 | Navy-900 | `#1B1E40` | erhöhte Fläche dunkel, globale Leiste hell, Überlagerungen |
-| Navy-800 | `#242855` | Dunkelblau: Primärtext hell, gedämpfte Fläche dunkel       |
+| Navy-800 | `#242855` | Dunkelblau: Primärtext hell, Seitengrund dunkel            |
 | Navy-700 | `#2F335E` | Standardrahmen dunkel, Aktivkachel der Rail, Tooltip hell  |
 | Navy-600 | `#3E4269` | betonter Rahmen dunkel, Tooltip dunkel                     |
 | Navy-500 | `#666888` | Grenzfälle, Diagramme                                      |
@@ -72,9 +72,9 @@ Mittelblau erreicht 7,41:1, deshalb ist Mittelblau die Aktionsfläche in allen S
 (Hellblaugrau: gedämpfte Fläche, Trennlinien).
 
 **Semantik:** Gefahr, Warnung und Erfolg sind Rollen je Schema (`danger`, `warning`, `success`,
-siehe 2.2), weil sie auch als Textfarbe dienen. Gefahr: Hell `#CE2C31`, Dunkel `#FF6369` (#2150;
+siehe 2.2), weil sie auch als Textfarbe dienen. Gefahr: Hell `#CE2C31`, Dunkel `#FF7A80` (#2150;
 der frühere gemeinsame Wert `#E5484D` erreichte als Text auf Weiß nur 3,91:1). Warnung: Hell
-`#8F5A00`, Dunkel `#F5B83D`; Erfolg: Hell `#11774F`, Dunkel `#16B77B` (#2493; die früher in
+`#8F5A00`, Dunkel `#F5B83D`; Erfolg: Hell `#11774F`, Dunkel `#38C18F` (#2493; die früher in
 beiden Schemata gemeinsamen Werte `#F5B83D` und `#16B77B` erreichten als Text auf Weiß nur
 1,78:1 bzw. 2,59:1).
 
@@ -84,31 +84,34 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 
 | Rolle            | Bedeutung                                                        | Hell                | Dunkel               |
 | ---------------- | ---------------------------------------------------------------- | ------------------- | -------------------- |
-| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Navy-950 `#151731`   |
-| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | Navy-900 `#1B1E40`   |
-| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF3FB`     | Navy-800 `#242855`   |
+| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Navy-800 `#242855`   |
+| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | `#2A2E5E`            |
+| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF3FB`     | `#2F3466`            |
 | `fg-1`           | Primärtext                                                       | Navy-800 `#242855`  | Weiß `#FFFFFF`       |
-| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3F4468`  | `#C8C9D4`            |
-| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#555A78`  | `#A3A5B8`            |
-| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0055A4`  | Blau-500 `#009DDB`   |
-| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0055A4`  | Blau-700 `#0055A4`   |
-| `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Weiß                 |
-| `border`         | Standardrahmen                                                   | Grau-100 `#E7E8EC`  | Navy-700 `#2F335E`   |
-| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CFD1D9`  | Navy-600 `#3E4269`   |
-| `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF6369`            |
-| `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF7A80`            |
-| `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF8287`            |
+| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3F4468`  | `#C9DBF2`            |
+| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#555A78`  | `#A9B6D6`            |
+| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0055A4`  | Blau-400 `#33B1E2`   |
+| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0055A4`  | Weiß `#FFFFFF`       |
+| `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Navy-800 `#242855`   |
+| `border`         | Standardrahmen                                                   | Grau-100 `#E7E8EC`  | Navy-600 `#3E4269`   |
+| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CFD1D9`  | Navy-500 `#666888`   |
+| `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF7A80`            |
+| `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF8287`            |
+| `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF9095`            |
 | `warning`        | Warnung: folgenreich, aber umkehrbar (Text, Icon, Kante, Fläche) | `#8F5A00`           | `#F5B83D`            |
-| `success`        | Erfolg: abgeschlossen, in Ordnung (Text, Icon, Punkt, Fläche)    | `#11774F`           | `#16B77B`            |
+| `success`        | Erfolg: abgeschlossen, in Ordnung (Text, Icon, Punkt, Fläche)    | `#11774F`           | `#38C18F`            |
 
 `warning` und `success` führen wie `danger` je eine Hover- und eine hellere Stufe (MUI `dark` und
 `light`): Warnung hell `#6B4300`/`#9A6100`, dunkel `#F7C35D`/`#F8CC73`; Erfolg hell
-`#0B5A3B`/`#0E7A52`, dunkel `#38C18F`/`#5BCB9F`. Die Werte stehen in
+`#0B5A3B`/`#0E7A52`, dunkel `#5BCB9F`/`#7DD5B1`. Die Werte stehen in
 `frontend/src/shared/theme/tokens.ts` (`SignalTones`).
 
 Das dunkle Schema steht auf Dunkelblau, nicht auf neutralem Grau: Es spiegelt die Logofassung für
-dunkle Flächen. Die Texte sind Weiß und dessen Abstufungen, der Akzent ist Hellblau; er erreicht
-auf Navy-800 (`bg-3`) 4,53:1 und auf den dunkleren Stufen mehr.
+dunkle Flächen (Style Guide des Marketings): Seitengrund Dunkelblau, Karten eine Stufe heller
+(`#2F3466`), Texte Weiß und `#C9DBF2`. Gefüllte Schaltflächen sind **weiß mit dunkelblauer
+Schrift**, weil Mittelblau auf Dunkelblau nur 1,9:1 erreicht. Hellblau selbst erreicht auf
+Dunkelblau 4,53:1, auf den Karten aber nur 3,79:1; der Akzent als Text ist deshalb Blau-400
+(mindestens 4,73:1 auf allen dunklen Flächen), Hellblau bleibt Linien und Icons vorbehalten.
 
 `fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#80839A`) erreicht gegen
 Weiß nur 3,73:1 — unter der 4,5:1-Anforderung für Fließtext (2.4). Grau-500 erreicht 6,73:1 gegen

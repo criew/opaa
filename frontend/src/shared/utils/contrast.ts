@@ -130,10 +130,11 @@ const ACCENT_TEXT_STEP = 0.08
 
 /**
  * Bounded like {@link ACCENT_SURFACE_MAX_STEPS}, and for the same reason: an accent that needs
- * more than six steps is no longer the colour the operator chose. It is returned as far as it got,
- * and {@link checkAccentContrast} says so in the branding form.
+ * more steps is no longer the colour the operator chose. Nine steps, because the dark scheme's
+ * cards (bg-3) are a lighter Dunkelblau: the opaa Mittelblau itself needs eight there. Beyond
+ * that the colour is returned as far as it got, and {@link checkAccentContrast} says so.
  */
-const ACCENT_TEXT_MAX_STEPS = 6
+const ACCENT_TEXT_MAX_STEPS = 9
 
 /**
  * The accent colour **as text** for one scheme: the colour itself when it already reaches

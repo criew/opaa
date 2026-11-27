@@ -69,14 +69,14 @@ export interface SignalTones {
 
 /** Danger tones of the light schemes; the main tone is >= 4.5:1 against white, off-white, smoke. */
 const dangerLight: SignalTones = { main: '#CE2C31', hover: '#901E22', soft: '#D23B40' }
-/** Danger tones of the dark grounds; the main tone is >= 4.5:1 against navy-950..800. */
-const dangerDark: SignalTones = { main: '#FF6369', hover: '#FF7A80', soft: '#FF8287' }
+/** Danger tones of the dark grounds; the main tone is >= 4.5:1 against the dark scheme's card. */
+const dangerDark: SignalTones = { main: '#FF7A80', hover: '#FF8287', soft: '#FF9095' }
 /** Light-scheme amber: the dark grounds' amber reaches only 1.78:1 as text on white. */
 const warningLight: SignalTones = { main: '#8F5A00', hover: '#6B4300', soft: '#9A6100' }
 const warningDark: SignalTones = { main: '#F5B83D', hover: '#F7C35D', soft: '#F8CC73' }
 /** Light-scheme green: the dark grounds' green reaches only 2.59:1 as text on white. */
 const successLight: SignalTones = { main: '#11774F', hover: '#0B5A3B', soft: '#0E7A52' }
-const successDark: SignalTones = { main: '#16B77B', hover: '#38C18F', soft: '#5BCB9F' }
+const successDark: SignalTones = { main: '#38C18F', hover: '#5BCB9F', soft: '#7DD5B1' }
 
 /**
  * Marker behind matched words (search hits), the same pale amber in both schemes; translucent, so
@@ -203,20 +203,23 @@ export const lightRoles: SchemeRoles = {
 }
 
 export const darkRoles: SchemeRoles = {
-  bg1: navy[950],
-  bg2: navy[900],
-  bg3: navy[800],
+  // Mirrors the logo on dark grounds: Dunkelblau is the page, cards sit one step lighter.
+  bg1: navy[800],
+  bg2: '#2A2E5E',
+  bg3: '#2F3466',
   fg1: white,
-  fg2: '#C8C9D4',
-  fg3: '#A3A5B8',
-  // Hellblau reaches 4.53:1 on navy-800 (bg-3) and more on the darker grounds.
-  accent: blue[500],
-  accentFg: white,
-  accentSurface: blue[700],
-  accentHover: blue[800],
-  accentPress: blue[900],
-  border: navy[700],
-  borderStrong: navy[600],
+  fg2: '#C9DBF2',
+  fg3: '#A9B6D6',
+  // blue[400], not Hellblau: Hellblau reaches 4.53:1 on the page but only 3.79:1 on cards,
+  // and accent is also a text colour. blue[400] keeps >= 4.73:1 on every dark surface.
+  accent: blue[400],
+  // Filled actions are white with Dunkelblau text: Mittelblau reaches only 1.9:1 on Dunkelblau.
+  accentFg: navy[800],
+  accentSurface: white,
+  accentHover: '#E3EAF6',
+  accentPress: '#C9DBF2',
+  border: navy[600],
+  borderStrong: navy[500],
   danger: dangerDark.main,
   dangerHover: dangerDark.hover,
   dangerSoft: dangerDark.soft,
