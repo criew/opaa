@@ -7,13 +7,14 @@ prompts:
       Block mit Kennung je Anfrage, mit dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.answer.AnswerGenerationService
+      - io.opaa.query.answer.AnswerRules
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "1641942805a2aef568eeec580c0f273eaa45c1ad751a86a6d48c075febb45e15"
+    sha256: "b129380f3c31eec181513e3252723c742ba59b1f5068b1d79fe63ea447b5d295"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
@@ -48,6 +49,7 @@ prompts:
       dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.toolloop.AgentPrompt
+      - io.opaa.query.answer.AnswerRules
       - io.opaa.query.toolloop.AgentToolCallback
       - io.opaa.query.toolloop.SearchKnowledgeTool
       - io.opaa.query.toolloop.ReadDocumentTool
@@ -61,7 +63,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "9c601b2bf6f31a13843da35c79722d27b4f6e3dc9876e867122e38396533aeea"
+    sha256: "6bca34a96db73d21f299e60c872eb1cf2337ffce683d86503a315dc8062e3a36"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten

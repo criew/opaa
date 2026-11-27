@@ -2,6 +2,7 @@ package io.opaa.query.toolloop;
 
 import io.opaa.common.PromptText;
 import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.AnswerRules;
 import io.opaa.query.answer.PassageRules;
 import io.opaa.query.answer.SpaceInstructionBlock;
 import io.opaa.retrieval.ConversationNoteBlock;
@@ -26,11 +27,14 @@ final class AgentPrompt {
 
       ANTWORTREGELN:
       - Stütze Sachaussagen nur auf Textstellen, die ein Werkzeugaufruf in diesem Lauf geliefert \
-      hat, oder auf den Gesprächsverlauf. Ergänze nichts aus Allgemeinwissen oder Vermutung.
+      hat (deine Quellen), oder auf den Gesprächsverlauf. Ergänze nichts aus Allgemeinwissen oder \
+      Vermutung.
       - Suche mit search_knowledge, bevor du inhaltlich antwortest; zerlege eine umfangreiche \
       Aufgabe in Teilfragen und suche für jede.
-      - Fehlt etwas in den Textstellen, sage, dass es in den vorliegenden Dokumenten nicht \
-      enthalten ist.
+      """
+          + AnswerRules.SHARED
+          + """
+
 
       ZITIERREGELN (verbindlich):
       - Jede Textstelle beginnt mit den Zeilen „Dokument: …“ und „Zitiermarke: …“.

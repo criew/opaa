@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
+Akzeptiert · zuletzt geändert 2026-11-27 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
 
 ## Kontext
 
@@ -155,7 +155,13 @@ nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapp
 (Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
 nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
 Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
-ausgeschlossen. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
+ausgeschlossen. Die Antwortregeln, für Chat und Agenten ein gemeinsamer Text, stellen die Antwort
+aus den Fundstellen an den Anfang und erlauben danach höchstens einen Absatz Einschränkung. „Nicht
+enthalten“ sagt das Modell nur, wenn keine Fundstelle etwas zur Frage beiträgt; eine Teilantwort
+nennt nur den offenen Rest. Eine Annahme der Frage stellt es nur gegen eine widersprechende
+Fundstelle richtig, und zu einer Zahl übernimmt es die Bezugsgröße der Quelle. Begründung: Eine
+pauschale Fehlanzeige oder ein angehängter Vorbehalt verschweigt Belegtes und wiegt für die Person
+so schwer wie eine unbelegte Aussage. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
 
 ### 15. Nachweis der Organisationsgrenze
 
