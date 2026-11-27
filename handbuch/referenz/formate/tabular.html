@@ -4366,7 +4366,7 @@
 
 
 <h1 id="format-tabellen-xlsx-csv-ods">Format: Tabellen (XLSX, CSV, ODS)<a class="headerlink" href="#format-tabellen-xlsx-csv-ods" title="Permanent link">&para;</a></h1>
-<p>Pipeline <code>tabular</code>, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht
+<p>Pipeline <code>tabular</code>, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht
 im Kapitel <a href="../wie-indexierung-arbeitet.html">Wissensbibliotheken</a>, Abschnitt 5.</p>
 <h2 id="1-zulassung">1. Zulassung<a class="headerlink" href="#1-zulassung" title="Permanent link">&para;</a></h2>
 <table>
@@ -4423,7 +4423,13 @@ im Kapitel <a href="../wie-indexierung-arbeitet.html">Wissensbibliotheken</a>, A
 <h2 id="3-struktur-und-chunks">3. Struktur und Chunks<a class="headerlink" href="#3-struktur-und-chunks" title="Permanent link">&para;</a></h2>
 <p>Je Tabellenblatt (bei CSV: die eine Tabelle):</p>
 <ol>
-<li>Die <strong>erste nicht-leere Zeile ist die Kopfzeile</strong>.</li>
+<li>Die <strong>erste nicht-leere Zeile ist die Kopfzeile</strong>. Ausnahme <strong>Titelzeile</strong>: Haben die ersten
+   nicht-leeren Zeilen (höchstens drei) genau eine belegte Zelle und die Zeile danach mindestens
+   zwei, sind sie der Titel der Tabelle, auch über verbundenen Zellen oder Leerzeilen; die Zeile
+   danach ist die Kopfzeile. Dafür müssen ab der Kopfzeile mindestens so viele Zeilen folgen, wie
+   es Titelzeilen gibt, und mindestens die Hälfte davon zwei oder mehr Zellen belegen. Mehrere
+   Titelzeilen werden mit „ – " verbunden. Eine einspaltige Liste, auch mit vereinzelt belegter
+   zweiter Spalte, behält ihre erste Zeile als Kopfzeile.</li>
 <li>Die Datenzeilen werden zu <strong>Gruppen von höchstens 50 Zeilen</strong> zusammengefasst. Eine Gruppe
    endet früher, wenn die nächste Zeile den Chunk über die Zielgröße <code>chunk-target-characters</code>
    brächte. Sind Kontext- und Kopfzeile allein schon länger als die halbe Zielgröße (eine sehr
@@ -4442,7 +4448,15 @@ Personalausweis | 37,00 EUR | § 1 PAuswGebV
 Reisepass | 60,00 EUR | § 15 PassV
 …
 </code></pre></div>
-<p>Bei CSV heißt die Kontextzeile „Tabelle: …" mit einem aus dem Dateinamen abgeleiteten Namen.</p>
+<p>Bei CSV heißt die Kontextzeile „Tabelle: …" mit einem aus dem Dateinamen abgeleiteten Namen.
+Hat die Tabelle eine Titelzeile, steht deren Text als Tabellenname in der Kontextzeile, bei XLSX
+und ODS statt des Blattnamens, bei CSV statt des Dateinamens:</p>
+<div class="highlight"><pre><span></span><code>Blatt: Gebühren · Tabelle: Gebührenordnung 2026
+Kennung | Leistung | Gebühr
+AB-08 | Beglaubigung | 12,00 EUR
+</code></pre></div>
+<p>Bei der Erkennung des CSV-Trennzeichens zählen bis zu drei führende Zeilen nicht mit, die sich mit
+keinem Kandidaten teilen lassen (Titelzeilen ohne Trennzeichen).</p>
 <p>Kontextzeile und Kopfzeile zusammen werden vor jedem Chunk auf die halbe Zielgröße gekürzt
 (mindestens 500 Zeichen, bei 4.000 Zeichen also 2.000), damit eine sehr breite Tabelle ihre
 Kopfzeile nicht in jedem Chunk vollständig wiederholt. Ist die Kopfzeile länger, steht sie einmal
@@ -4482,8 +4496,19 @@ verloren gehen.</p>
 <td>Blatt (nicht bei CSV), erste und letzte Zeile, Zitat von Anfang und Ende</td>
 <td>Blatt <code>Gebühren</code>, Zeilen <code>12</code>–<code>61</code></td>
 </tr>
+<tr>
+<td>Tabelle (<code>table</code>)</td>
+<td>laufende Nummer der Tabelle im Dokument und Zeichen aller ihrer Chunks zusammen; gleich an jedem Chunk der Tabelle</td>
+<td><code>{"id": 1, "characters": 2480}</code></td>
+</tr>
 </tbody>
 </table>
+<p>Über <code>table</code> lädt die Antwort eine kleine Tabelle ganz, wenn die Suche einen ihrer Chunks trifft
+(<code>OPAA_QUERY_NEIGHBOR_CHUNKS_WHOLE_TABLE_MAX_CHARACTERS</code>, <a href="../konfiguration.html">Konfiguration</a>).</p>
+<p><strong>Altbestand.</strong> Mit einer Pipeline-Version unter 6 indizierte Tabellen tragen eine Titelzeile noch
+als Kopfzeile und kein Feld <code>table</code>; eine kleine Tabelle kommt dann nur mit ihren Nachbar-Chunks in
+die Antwort. Der Indexstatus zeigt „Nachzug ausstehend", der Pipeline-Nachzug für <code>tabular</code> mit
+<code>belowVersion</code> 6 holt beides nach (<a href="../../administration/suche-und-indexierung.html#bestand-nachziehen">Bestand nachziehen</a>).</p>
 <p>Zeilennummern sind 1-basiert wie in der Tabellenkalkulation.</p>
 <p><strong>Dokumenteigenschaften:</strong> Bei XLSX Titel, Erstell- und Änderungsdatum aus den
 Dokumenteigenschaften der Datei (<code>docProps/core.xml</code>), wie bei DOCX. CSV und ODS liefern keine; für
@@ -4558,7 +4583,8 @@ verarbeitet keine externen XML-Entitäten.</p>
 <ul>
 <li>Formeln als solche; es zählt der gespeicherte Wert</li>
 <li>Zellkommentare, Diagramme, Pivot-Tabellen, benannte Bereiche</li>
-<li>Verbundzellen werden nicht aufgelöst, ausgeblendete Zeilen und Blätter nicht unterschieden</li>
+<li>Verbundzellen werden nicht aufgelöst (eine verbundene Titelzeile zählt als eine belegte Zelle),
+  ausgeblendete Zeilen und Blätter nicht unterschieden</li>
 <li>Zellformatierung als Signal (Fettdruck, Farbe)</li>
 <li>Excel-„Tabellen" als Objekte; Blattname und Tabellenname sind dasselbe</li>
 </ul>
