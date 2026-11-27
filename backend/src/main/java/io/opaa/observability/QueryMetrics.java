@@ -9,6 +9,7 @@ import java.io.InterruptedIOException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -245,7 +246,8 @@ public class QueryMetrics {
         Counter.builder("opaa.query.decomposition.no-search")
             .description("Query decompositions that found nothing to search for")
             .register(meterRegistry);
-    for (Mode mode : Mode.values()) {
+    // only the modes that answer from passages; an answer without a search is never rechecked
+    for (Mode mode : List.of(Mode.RAG, Mode.AGENT)) {
       Map<AbsenceRecheckStep, Counter> steps = new EnumMap<>(AbsenceRecheckStep.class);
       for (AbsenceRecheckStep step : AbsenceRecheckStep.values()) {
         steps.put(
@@ -388,8 +390,14 @@ public class QueryMetrics {
     }
   }
 
-  /** One answer of {@code mode} reached {@code step} of the recheck of its absence claim. */
+  /**
+   * One answer of {@code mode} reached {@code step} of the recheck of its absence claim; {@link
+   * Mode#NO_SEARCH} has no series and counts nowhere.
+   */
   public void recordAbsenceRecheck(Mode mode, AbsenceRecheckStep step) {
-    absenceRecheckCounters.get(mode).get(step).increment();
+    Map<AbsenceRecheckStep, Counter> steps = absenceRecheckCounters.get(mode);
+    if (steps != null) {
+      steps.get(step).increment();
+    }
   }
 }

@@ -289,6 +289,9 @@ class QueryServiceTest {
     // #525 default: no chatId given (or it does not resolve to a chat the caller authored) runs
     // the query ephemerally, exactly as before persisted chats existed.
     lenient().when(chatService.findOwnedChat(any(), any())).thenReturn(Optional.empty());
+    lenient()
+        .when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+        .thenReturn(new AbsenceRecheck.Outcome(null, 0, List.of()));
   }
 
   /**
@@ -3449,14 +3452,14 @@ class QueryServiceTest {
       when(answerGenerationService.generateAnswer(
               any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
           .thenReturn(response(CLAIM), response(CORRECTED));
-      when(absenceRecheck.additionalPassages(
+      when(absenceRecheck.recheck(
               eq(QueryMetrics.Mode.RAG),
               eq(QUESTION),
               eq(CLAIM),
               eq(Set.of(readableLibraryId)),
               any(),
               argThat(context -> context.size() == 1)))
-          .thenReturn(List.of(found));
+          .thenReturn(newPassage());
 
       QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
 
@@ -3479,13 +3482,13 @@ class QueryServiceTest {
       when(answerGenerationService.generateAnswer(
               any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
           .thenReturn(response(CLAIM), response(CLAIM));
-      when(absenceRecheck.additionalPassages(any(), any(), any(), any(), any(), any()))
-          .thenReturn(List.of(found));
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenReturn(newPassage());
 
       QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
 
       assertThat(result.answer()).isEqualTo(CLAIM);
-      verify(absenceRecheck, times(1)).additionalPassages(any(), any(), any(), any(), any(), any());
+      verify(absenceRecheck, times(1)).recheck(any(), any(), any(), any(), any(), any());
       verify(answerGenerationService, times(2))
           .generateAnswer(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any());
     }
@@ -3498,8 +3501,8 @@ class QueryServiceTest {
       when(answerGenerationService.generateAnswer(
               any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
           .thenReturn(response(CLAIM), response(" "));
-      when(absenceRecheck.additionalPassages(any(), any(), any(), any(), any(), any()))
-          .thenReturn(List.of(found));
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenReturn(newPassage());
 
       QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
 
@@ -3548,8 +3551,8 @@ class QueryServiceTest {
               any(), any(), any(), any(), anyBoolean(), anyBoolean(), any(), any()))
           .thenAnswer(streamed(CLAIM))
           .thenAnswer(streamed(CORRECTED));
-      when(absenceRecheck.additionalPassages(any(), any(), any(), any(), any(), any()))
-          .thenReturn(List.of(found));
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenReturn(newPassage());
       List<String> events = new ArrayList<>();
       AnswerStreamListener reader =
           new RecordingListener() {
@@ -3572,6 +3575,121 @@ class QueryServiceTest {
               "delta:" + CORRECTED.substring("Die Gebühr".length()));
     }
 
+    @Test
+    void aFailingRecheckLeavesTheFirstAnswerStanding() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(response(CLAIM));
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenThrow(new IllegalStateException("search failed"));
+
+      QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
+
+      assertThat(result.answer()).isEqualTo(CLAIM);
+      verify(answerGenerationService, times(1))
+          .generateAnswer(any(), any(), any(), any(), anyBoolean(), anyBoolean(), any());
+    }
+
+    @Test
+    void aSecondStreamFailingAfterItsFirstTextKeepsTheFirstAnswerAndItsWindow() {
+      List<Message> windowAfterFirst =
+          List.of(new UserMessage(QUESTION), new AssistantMessage(CLAIM));
+      // the retrieval and the turn read the window before the answer, the recheck after it
+      when(chatMemory.get(any())).thenReturn(List.of(), List.of(), windowAfterFirst);
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.streamAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any(), any()))
+          .thenAnswer(streamed(CLAIM))
+          .thenAnswer(
+              invocation -> {
+                AnswerStreamListener listener = invocation.getArgument(7);
+                listener.provisional("Die Gebühr", false);
+                throw new IllegalStateException("stream broke");
+              });
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenReturn(newPassage());
+
+      QueryResult result =
+          queryService.query(
+              QUESTION,
+              null,
+              caller,
+              true,
+              List.of(),
+              MetadataFilter.NONE,
+              null,
+              new RecordingListener());
+
+      assertThat(result.answer()).isEqualTo(CLAIM);
+      assertThat(result.sources()).extracting(ChatSource::getFileName).doesNotContain("tarif.md");
+      verify(chatMemory).add(any(), eq(windowAfterFirst));
+      verify(absenceRecheck, never()).replaced(any());
+    }
+
+    @Test
+    void aReaderThatWentAwayDuringTheSecondAnswerEndsTheTurn() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(retrieved));
+      when(answerGenerationService.streamAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any(), any()))
+          .thenAnswer(streamed(CLAIM))
+          .thenThrow(new AnswerReaderGoneException(new IOException("Broken pipe")));
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenReturn(newPassage());
+
+      assertThatThrownBy(
+              () ->
+                  queryService.query(
+                      QUESTION,
+                      null,
+                      caller,
+                      true,
+                      List.of(),
+                      MetadataFilter.NONE,
+                      null,
+                      new RecordingListener()))
+          .isInstanceOf(AnswerReaderGoneException.class);
+    }
+
+    @Test
+    void theDocumentOfTheRecheckCoversTheSubQueryWhoseTermsItCarries() {
+      when(chatMemory.get(any())).thenReturn(List.of());
+      when(queryDecompositionService.decompose(
+              argThat(context -> context != null && QUESTION.equals(context.question())), eq(3)))
+          .thenReturn(Optional.of(List.of("Frist für Anträge", "Gebühr nach Tarifstelle AB-08")));
+      Document deadline =
+          Document.builder()
+              .text("Die Frist für Anträge beträgt einen Monat.")
+              .metadata(Map.of("file_name", "frist.md", "document_id", "doc-a"))
+              .score(0.9)
+              .build();
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+          .thenReturn(List.of(deadline));
+      String corrected =
+          "Die Frist beträgt einen Monat 【source: doc-a#0 | frist.md】. Nach Tarifstelle AB-08"
+              + " sind es 12 Euro 【source: doc-2#4 | tarif.md】.";
+      when(answerGenerationService.generateAnswer(
+              any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+          .thenReturn(
+              response(
+                  "Die Frist beträgt einen Monat 【source: doc-a#0 | frist.md】. Die Gebühr nach"
+                      + " Tarifstelle AB-08 ist in den Dokumenten nicht enthalten."),
+              response(corrected));
+      when(absenceRecheck.recheck(any(), any(), any(), any(), any(), any()))
+          .thenReturn(newPassage());
+
+      QueryResult result = queryService.query(QUESTION, null, caller, true, List.of());
+
+      assertThat(result.answer()).isEqualTo(corrected);
+      assertThat(result.evidence().uncoveredSubQueries()).isEmpty();
+      assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    }
+
     private org.mockito.stubbing.Answer<ChatResponse> streamed(String text) {
       return invocation -> {
         AnswerStreamListener listener = invocation.getArgument(7);
@@ -3584,6 +3702,10 @@ class QueryServiceTest {
 
     private ChatResponse response(String text) {
       return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
+    }
+
+    private AbsenceRecheck.Outcome newPassage() {
+      return new AbsenceRecheck.Outcome("AB-08 gebühr tarifstelle", 1, List.of(found));
     }
   }
 

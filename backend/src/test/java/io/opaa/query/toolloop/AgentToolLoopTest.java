@@ -118,6 +118,11 @@ class AgentToolLoopTest {
       new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
   private final Document passageOne = passage("doc-1", "regeln.pdf");
   private final Document passageTwo = passage("doc-2", "fristen.pdf");
+  private final Document tariffPassage =
+      Document.builder()
+          .text("Tarifstelle AB-08: 12 Euro je Bescheid.")
+          .metadata(Map.of("file_name", "tarif.pdf", "document_id", "doc-7", "chunk_index", 2))
+          .build();
 
   private AgentRunSpec spec =
       new AgentRunSpec(
@@ -186,7 +191,12 @@ class AgentToolLoopTest {
         activeStreams,
         Clock.fixed(NOW, ZoneOffset.UTC),
         new AbsenceRecheck(
-            retrieval, expansion, new AbsenceRecheckProperties(true, 4), queryMetrics));
+            retrieval,
+            expansion,
+            new CitationParser(),
+            new CitationValidator(),
+            new AbsenceRecheckProperties(true, 4),
+            queryMetrics));
   }
 
   @Test
@@ -1481,6 +1491,80 @@ class AgentToolLoopTest {
     assertThat(absenceRecheck("detected")).isEqualTo(1.0);
     assertThat(absenceRecheck("searched")).isEqualTo(1.0);
     assertThat(absenceRecheck("replaced")).isZero();
+  }
+
+  @Test
+  void theRecheckSearchIsAStepOfTheRunAndASearchQueryOfItsEvidence() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(result(tariffPassage));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."),
+            answer("Nach Tarifstelle AB-08 sind es 12 Euro 【source: doc-7#2 | tarif.pdf】."));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::tool, AgentRunRecord.Step::hits)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(ToolNames.SEARCH_KNOWLEDGE, 1),
+            org.assertj.core.groups.Tuple.tuple(ToolNames.SEARCH_KNOWLEDGE, 1));
+    assertThat(result.agentRun().steps().get(1).detail()).startsWith("AB-08 ");
+    ArgumentCaptor<List<AgentStepLogEntry>> trace = ArgumentCaptor.captor();
+    verify(runLogWriter).writeSteps(any(), any(), trace.capture());
+    assertThat(trace.getValue()).hasSize(2);
+  }
+
+  @Test
+  void aFailingFollowUpCallLeavesTheFirstAnswerStanding() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenReturn(result(tariffPassage));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."))
+        .thenThrow(new IllegalStateException("model failed"));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).contains("nicht enthalten");
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    ArgumentCaptor<List<Document>> passages = ArgumentCaptor.captor();
+    verify(sourceAssembler).assemble(passages.capture(), anyList(), any());
+    assertThat(passages.getValue()).doesNotContain(tariffPassage);
+    assertThat(absenceRecheck("replaced")).isZero();
+  }
+
+  @Test
+  void aFailingRecheckSearchLeavesTheFirstAnswerStanding() {
+    when(retrieval.retrieveAsGiven(
+            argThat((String query) -> query.startsWith("AB-08 ")), anySet(), any()))
+        .thenThrow(new IllegalStateException("search failed"));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."));
+
+    QueryResult result = loop().handle(tariffTurn());
+
+    assertThat(result.answer()).contains("nicht enthalten");
+    verify(chatModel, times(2)).call(any(Prompt.class));
+  }
+
+  @Test
+  void aRunWithoutTheSearchToolIsNotRechecked() {
+    switchedOn = Set.of();
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            answer("Die Tarifstelle AB-08 ist in den vorliegenden Dokumenten nicht enthalten."));
+
+    loop().handle(tariffTurn());
+
+    verifyNoInteractions(retrieval);
+    verify(chatModel, times(1)).call(any(Prompt.class));
   }
 
   @Test

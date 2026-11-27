@@ -509,64 +509,31 @@ public class QueryService {
                       timedListener);
           metrics.recordStage(
               QueryMetrics.Stage.GENERATE, Duration.ofNanos(System.nanoTime() - generationStarted));
-          // tokens of the answer call that was paid for but is not the one returned
-          int firstAnswerTokens = 0;
           // An answer bound to the passages that claims something is missing is checked once
           // against the search scope; new passages found there make the one further answer.
-          List<Document> recheckPassages =
+          RecheckedAnswer rechecked =
               searchScope.isEmpty() || !searchNeeded
-                  ? List.of()
-                  : absenceRecheck.additionalPassages(
-                      QueryMetrics.Mode.RAG,
-                      question,
-                      ChatResponses.text(chatResponse),
+                  ? new RecheckedAnswer(chatResponse, relevantChunks, 0, subQueriesByDocument)
+                  : recheckAbsence(
+                      new AnswerCall(
+                          question,
+                          conversationKey,
+                          noteTexts(notePoints, null),
+                          searched,
+                          searchNeeded,
+                          spaceInstruction,
+                          answerListener),
+                      chatResponse,
+                      relevantChunks,
+                      windowBeforeAnswer,
                       searchScope,
                       metadataFilter,
-                      relevantChunks);
-          if (!recheckPassages.isEmpty()) {
-            ChatResponse firstResponse = chatResponse;
-            List<Document> firstChunks = relevantChunks;
-            List<Message> windowAfterFirst = chatMemory.get(conversationKey);
-            firstAnswerTokens = ChatResponses.totalTokens(chatResponse);
-            restoreWindow(conversationKey, windowBeforeAnswer);
-            List<Document> extended = new ArrayList<>(relevantChunks);
-            extended.addAll(recheckPassages);
-            relevantChunks = extended;
-            long secondGenerationStarted = System.nanoTime();
-            ChatResponse secondResponse =
-                answerListener == null
-                    ? answerGenerationService.generateAnswer(
-                        question,
-                        relevantChunks,
-                        conversationKey,
-                        noteTexts(notePoints, null),
-                        searched,
-                        searchNeeded,
-                        spaceInstruction)
-                    : answerGenerationService.streamAnswer(
-                        question,
-                        relevantChunks,
-                        conversationKey,
-                        noteTexts(notePoints, null),
-                        searched,
-                        searchNeeded,
-                        spaceInstruction,
-                        AbsenceRecheck.replacing(answerListener));
-            metrics.recordStage(
-                QueryMetrics.Stage.GENERATE,
-                Duration.ofNanos(System.nanoTime() - secondGenerationStarted));
-            if (ChatResponses.text(secondResponse).isBlank()) {
-              // a blank second answer would replace a real one with nothing
-              restoreWindow(conversationKey, windowAfterFirst);
-              relevantChunks = firstChunks;
-              chatResponse = firstResponse;
-              // the tokens of both calls are counted either way
-              firstAnswerTokens = ChatResponses.totalTokens(secondResponse);
-            } else {
-              chatResponse = secondResponse;
-              absenceRecheck.replaced(QueryMetrics.Mode.RAG);
-            }
-          }
+                      searchQueries,
+                      subQueriesByDocument);
+          chatResponse = rechecked.response();
+          relevantChunks = rechecked.chunks();
+          subQueriesByDocument = rechecked.subQueriesByDocument();
+          int firstAnswerTokens = rechecked.discardedTokens();
 
           String answer =
               CitationMarkerRepair.repair(ChatResponses.text(chatResponse), relevantChunks);
@@ -842,6 +809,107 @@ public class QueryService {
         .filter(point -> onlyKind == null || point.kind() == onlyKind)
         .map(ChatNotePoint::text)
         .toList();
+  }
+
+  /** What the answer call of {@link #query} was asked with, to ask it once more. */
+  private record AnswerCall(
+      String question,
+      String conversationKey,
+      List<String> note,
+      boolean searched,
+      boolean searchNeeded,
+      String spaceInstruction,
+      AnswerStreamListener listener) {}
+
+  /**
+   * The answer the turn keeps after the absence recheck, with its passages, the tokens of a call
+   * whose answer it does not keep, and the sub-query attribution including the new passages.
+   */
+  private record RecheckedAnswer(
+      ChatResponse response,
+      List<Document> chunks,
+      int discardedTokens,
+      Map<String, Set<Integer>> subQueriesByDocument) {}
+
+  /**
+   * Answers once more when {@code first} claims an absence the scope contradicts ({@link
+   * AbsenceRecheck}). Whatever fails after the first answer - the recheck search, the second call,
+   * its stream - leaves the first answer standing with the window it wrote, unless the reader went
+   * away or the instance stops; so does a blank second answer. The kept turn always carries the
+   * answer returned here, also when the reader was already shown text of the second one.
+   */
+  private RecheckedAnswer recheckAbsence(
+      AnswerCall call,
+      ChatResponse first,
+      List<Document> chunks,
+      List<Message> windowBeforeAnswer,
+      Set<UUID> searchScope,
+      MetadataFilter metadataFilter,
+      List<String> searchQueries,
+      Map<String, Set<Integer>> subQueriesByDocument) {
+    RecheckedAnswer keepFirst = new RecheckedAnswer(first, chunks, 0, subQueriesByDocument);
+    List<Message> windowAfterFirst = chatMemory.get(call.conversationKey());
+    boolean windowReset = false;
+    try {
+      AbsenceRecheck.Outcome outcome =
+          absenceRecheck.recheck(
+              QueryMetrics.Mode.RAG,
+              call.question(),
+              ChatResponses.text(first),
+              searchScope,
+              metadataFilter,
+              chunks);
+      if (outcome.passages().isEmpty()) {
+        return keepFirst;
+      }
+      List<Document> extended = new ArrayList<>(chunks);
+      extended.addAll(outcome.passages());
+      restoreWindow(call.conversationKey(), windowBeforeAnswer);
+      windowReset = true;
+      long started = System.nanoTime();
+      ChatResponse second =
+          call.listener() == null
+              ? answerGenerationService.generateAnswer(
+                  call.question(),
+                  extended,
+                  call.conversationKey(),
+                  call.note(),
+                  call.searched(),
+                  call.searchNeeded(),
+                  call.spaceInstruction())
+              : answerGenerationService.streamAnswer(
+                  call.question(),
+                  extended,
+                  call.conversationKey(),
+                  call.note(),
+                  call.searched(),
+                  call.searchNeeded(),
+                  call.spaceInstruction(),
+                  AbsenceRecheck.replacing(call.listener()));
+      metrics.recordStage(
+          QueryMetrics.Stage.GENERATE, Duration.ofNanos(System.nanoTime() - started));
+      if (ChatResponses.text(second).isBlank()) {
+        // a blank second answer would replace a real one with nothing
+        restoreWindow(call.conversationKey(), windowAfterFirst);
+        return new RecheckedAnswer(
+            first, chunks, ChatResponses.totalTokens(second), subQueriesByDocument);
+      }
+      absenceRecheck.replaced(QueryMetrics.Mode.RAG);
+      return new RecheckedAnswer(
+          second,
+          extended,
+          ChatResponses.totalTokens(first),
+          AbsenceRecheck.attributed(subQueriesByDocument, searchQueries, outcome.passages()));
+    } catch (RuntimeException e) {
+      if (AbsenceRecheck.mustPropagate(e)) {
+        throw e;
+      }
+      log.warn("Absence recheck failed, the first answer stands: {}", e.getClass().getSimpleName());
+      if (windowReset) {
+        restoreWindow(call.conversationKey(), windowAfterFirst);
+      }
+      return keepFirst;
+    }
   }
 
   /**

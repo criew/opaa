@@ -3,6 +3,7 @@ package io.opaa.query.toolloop;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
+import io.opaa.chat.AgentRunRecord.StepStatus;
 import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
@@ -441,16 +442,6 @@ class AgentToolLoop implements AgentTurnHandler {
         break;
       }
     }
-    if (phase != AgentPrompt.PlanPhase.PLAN
-        && run.question() == null
-        && run.limitReached() == null) {
-      ChatResponse rechecked = recheckAbsence(turn, run, client, system, history, response);
-      if (rechecked != null) {
-        tokens += ChatResponses.totalTokens(rechecked);
-        response = rechecked;
-      }
-    }
-
     // A run that works a confirmed plan off but answers without a single tool call has put a new
     // plan to the person instead of researching: it ends as a plan again, so it can be confirmed.
     // Only once in a row and only when it could search, so a confirmation never loops.
@@ -461,6 +452,18 @@ class AgentToolLoop implements AgentTurnHandler {
             && run.toolCalls() == 0
             && run.question() == null
             && run.limitReached() == null;
+    // A finished answer that claims something is missing is checked once against the run's scope.
+    if (searchOffered
+        && !replannedWithoutWork
+        && phase != AgentPrompt.PlanPhase.PLAN
+        && run.question() == null
+        && run.limitReached() == null) {
+      ChatResponse rechecked = recheckAbsence(turn, run, client, system, history, response);
+      if (rechecked != null) {
+        tokens += ChatResponses.totalTokens(rechecked);
+        response = rechecked;
+      }
+    }
     EndState endState =
         phase == AgentPrompt.PlanPhase.PLAN || replannedWithoutWork
             ? EndState.PLAN
@@ -567,7 +570,9 @@ class AgentToolLoop implements AgentTurnHandler {
    * The answer once more when {@code response} claims something is missing and the run's scope
    * holds passages with the question's key terms that no step handed the model ({@link
    * AbsenceRecheck}): they follow the answer as a message in the same loop, and the model answers
-   * once more without tools. {@code null} when there is nothing to recheck.
+   * once more without tools. The search is kept as a step of the run. {@code null} - the first
+   * answer stands - when there is nothing to recheck, the second answer is blank, or anything after
+   * the first answer fails; a reader that went away, a stopped run and a shutdown still end it.
    */
   private ChatResponse recheckAbsence(
       AgentTurn turn,
@@ -579,30 +584,62 @@ class AgentToolLoop implements AgentTurnHandler {
     if (response.getResult() == null || response.getResult().getOutput() == null) {
       return null;
     }
-    List<Document> fresh =
-        absenceRecheck.additionalPassages(
-            QueryMetrics.Mode.AGENT,
-            turn.question(),
-            ChatResponses.text(response),
-            run.searchScope(),
-            run.metadataFilter(),
-            run.passages());
-    if (fresh.isEmpty()) {
+    try {
+      long started = clock.millis();
+      AbsenceRecheck.Outcome outcome =
+          absenceRecheck.recheck(
+              QueryMetrics.Mode.AGENT,
+              turn.question(),
+              ChatResponses.text(response),
+              run.searchScope(),
+              run.metadataFilter(),
+              run.passages());
+      if (outcome.searched()) {
+        StepStatus status = outcome.passages().isEmpty() ? StepStatus.EMPTY : StepStatus.DONE;
+        run.recordStep(
+            new AgentRunRecord.Step(
+                ToolNames.SEARCH_KNOWLEDGE,
+                outcome.searchQuery(),
+                outcome.passages().size(),
+                status));
+        run.traceStep(
+            ToolNames.SEARCH_KNOWLEDGE,
+            status.name(),
+            outcome.passages().size(),
+            clock.millis() - started,
+            null);
+      }
+      if (outcome.passages().isEmpty()) {
+        return null;
+      }
+      List<Message> asked = new ArrayList<>(history);
+      asked.add(response.getResult().getOutput());
+      asked.add(
+          new UserMessage(
+              AbsenceFollowUp.render(DocumentBlock.render(run.blockId(), outcome.passages()))));
+      run.checkpoint();
+      signal(turn, AnswerStreamListener::idle);
+      ChatResponse rechecked =
+          run.modelCall(() -> call(client, system, asked, List.of(), Map.of()));
+      if (ChatResponses.text(rechecked).isBlank()) {
+        // a blank second answer would replace a real one with nothing
+        return null;
+      }
+      run.addRecheckPassages(outcome.passages());
+      absenceRecheck.replaced(QueryMetrics.Mode.AGENT);
+      return rechecked;
+    } catch (RuntimeException e) {
+      if (AbsenceRecheck.mustPropagate(e)) {
+        throw e;
+      }
+      // a stopped run or a shutdown under the call ends the run as it would without the recheck
+      run.checkpoint();
+      log.warn(
+          "Absence recheck of agent run {} failed, the first answer stands: {}",
+          run.runId(),
+          e.getClass().getSimpleName());
       return null;
     }
-    run.addRecheckPassages(fresh);
-    List<Message> asked = new ArrayList<>(history);
-    asked.add(response.getResult().getOutput());
-    asked.add(new UserMessage(AbsenceFollowUp.render(DocumentBlock.render(run.blockId(), fresh))));
-    run.checkpoint();
-    signal(turn, AnswerStreamListener::idle);
-    ChatResponse rechecked = run.modelCall(() -> call(client, system, asked, List.of(), Map.of()));
-    if (ChatResponses.text(rechecked).isBlank()) {
-      // a blank second answer would replace a real one with nothing
-      return null;
-    }
-    absenceRecheck.replaced(QueryMetrics.Mode.AGENT);
-    return rechecked;
   }
 
   /**

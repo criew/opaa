@@ -41,14 +41,18 @@ nicht enthalten“ benennen und jede Quelle mit einer Zitiermarke belegen. Der T
 steht als Material, nicht als Anweisung im Prompt; ganz verhindern lässt sich eine untergeschobene
 Anweisung nicht, das hängt am Modell.
 
-**Fehlanzeigen prüft opaa nach.** Sagt die Antwort, etwas stehe nicht in den Dokumenten, etwa „zur
-Tarifstelle AB-08 liegen keine Angaben vor“, sucht opaa die Kennungen und Schlüsselbegriffe der
-Frage noch einmal im selben Suchbereich, mit denselben Rechten und Filtern. Findet es Textstellen,
-die diese Begriffe enthalten und die die Antwort noch nicht kannte, antwortet das Modell genau einmal
-neu mit ihnen; die neue Antwort ersetzt die erste, auch während sie im Chat entsteht. Ohne solche
-Stellen bleibt die Antwort. Erkannt wird die Fehlanzeige an festen deutschen und englischen
-Formulierungen, ohne weiteren Modellaufruf. Im Agentenlauf bekommt das Modell die Stellen als
-Nachfrage im laufenden Lauf. Abschalten lässt sich das mit `OPAA_QUERY_ABSENCE_RECHECK_ENABLED`.
+**Fehlanzeigen prüft opaa nach.** Sagt die Antwort, etwas stehe nicht in den Dokumenten, etwa „die
+Gebühr der Tarifstelle AB-08 ist in den Dokumenten nicht enthalten“, sucht opaa die Kennungen und
+Schlüsselbegriffe der Frage noch einmal im selben Suchbereich, mit denselben Rechten und Filtern.
+Findet es Textstellen, die diese Begriffe enthalten und die die Antwort noch nicht kannte, antwortet
+das Modell genau einmal neu mit ihnen; die neue Antwort ersetzt die erste, auch während sie im Chat
+entsteht. Ohne solche Stellen, bei einem Fehler der Nachprüfung oder einer leeren neuen Antwort
+bleibt die erste. Erkannt wird die Fehlanzeige an festen deutschen und englischen Formulierungen,
+die sich auf die Dokumente beziehen, ohne weiteren Modellaufruf. Nachgeprüft wird nur, wenn sie den
+Kern trifft: Ihr Satz nennt einen Begriff der Frage, oder die Antwort hat keinen bestätigten Beleg.
+Eine Randbemerkung in einer sonst belegten Antwort bleibt, wie sie ist. Im Agentenlauf bekommt das
+Modell die Stellen als Nachfrage im laufenden Lauf, und die Nachsuche steht als Schritt im Lauf.
+Abschalten lässt sich das mit `OPAA_QUERY_ABSENCE_RECHECK_ENABLED`.
 
 Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
 je Teilfrage, Rerank-Modell, falls an; nach einer Fehlanzeige einmal mehr Embedding- und

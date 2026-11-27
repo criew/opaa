@@ -12,11 +12,16 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.query.answer.ActiveAnswerStreams;
+import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
+import io.opaa.query.citation.CitationParser;
+import io.opaa.query.citation.CitationValidator;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,15 +59,68 @@ class AbsenceRecheckTest {
     when(retrieval.retrieveAsGiven(eq("AB-08 gebühr tarifstelle"), eq(scope), eq(filter)))
         .thenReturn(result(unrelated, seen, fresh));
 
-    List<Document> passages =
-        recheck(true)
-            .additionalPassages(
-                QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of(seen));
+    AbsenceRecheck.Outcome outcome =
+        recheck(true).recheck(QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of(seen));
 
-    assertThat(passages).containsExactly(fresh);
+    assertThat(outcome.passages()).containsExactly(fresh);
+    assertThat(outcome.searchQuery()).isEqualTo("AB-08 gebühr tarifstelle");
+    assertThat(outcome.hits()).isEqualTo(3);
     assertThat(count("rag", "detected")).isEqualTo(1);
     assertThat(count("rag", "searched")).isEqualTo(1);
     assertThat(count("rag", "replaced")).isZero();
+  }
+
+  @Test
+  void aSideRemarkInACitedAnswerIsNoClaimAboutTheQuestion() {
+    String answer =
+        "Tarifstelle AB-08 steht in Anlage 2 【source: doc-1#0 | doc-1.pdf】. Wann die Tabelle"
+            + " zuletzt geändert wurde, ist in den Quellen nicht enthalten.";
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.searched()).isFalse();
+    verifyNoInteractions(retrieval);
+    assertThat(count("rag", "detected")).isZero();
+  }
+
+  @Test
+  void aSideRemarkCountsWhenTheAnswerCitesNothingValid() {
+    when(retrieval.retrieveAsGiven(any(), any(), any())).thenReturn(result(fresh));
+    String answer = "Wann die Tabelle zuletzt geändert wurde, ist in den Quellen nicht enthalten.";
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.passages()).containsExactly(fresh);
+  }
+
+  @Test
+  void aCitedAnswerWhoseClaimNamesTheQuestionIsRechecked() {
+    when(retrieval.retrieveAsGiven(any(), any(), any())).thenReturn(result(fresh));
+    String answer =
+        "Anlage 2 nennt die Tarifstellen 【source: doc-1#0 | doc-1.pdf】. Die Gebühr der"
+            + " Tarifstelle AB-08 ist in den Quellen nicht enthalten.";
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.passages()).containsExactly(fresh);
+  }
+
+  @Test
+  void aFailingSearchLeavesTheAnswerAsItIs() {
+    when(retrieval.retrieveAsGiven(any(), any(), any()))
+        .thenThrow(new IllegalStateException("search failed"));
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true).recheck(QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of());
+
+    assertThat(outcome.searched()).isTrue();
+    assertThat(outcome.passages()).isEmpty();
   }
 
   @Test
@@ -71,12 +129,11 @@ class AbsenceRecheckTest {
     when(retrieval.retrieveAsGiven(any(), any(), any())).thenReturn(result(fresh));
     when(expansion.expand(List.of(fresh), scope)).thenReturn(List.of(fresh, neighbour, seen));
 
-    List<Document> passages =
+    AbsenceRecheck.Outcome outcome =
         recheck(true)
-            .additionalPassages(
-                QueryMetrics.Mode.AGENT, QUESTION, CLAIM, scope, filter, List.of(seen));
+            .recheck(QueryMetrics.Mode.AGENT, QUESTION, CLAIM, scope, filter, List.of(seen));
 
-    assertThat(passages).containsExactly(fresh, neighbour);
+    assertThat(outcome.passages()).containsExactly(fresh, neighbour);
   }
 
   @Test
@@ -92,19 +149,36 @@ class AbsenceRecheckTest {
 
     assertThat(
             recheck(true)
-                .additionalPassages(
-                    QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of()))
+                .recheck(QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of())
+                .passages())
         .hasSize(4);
   }
 
   @Test
-  void anAnswerWithoutAClaimIsNotSearched() {
-    List<Document> passages =
-        recheck(true)
-            .additionalPassages(
-                QueryMetrics.Mode.RAG, QUESTION, "Es sind 12 Euro.", scope, filter, List.of());
+  void aShortAbbreviationAloneDoesNotSingleOutAPassage() {
+    when(retrieval.retrieveAsGiven(any(), any(), any()))
+        .thenReturn(result(passage("doc-4", 0, "Die DSGVO gilt für alle Verfahren.")));
 
-    assertThat(passages).isEmpty();
+    assertThat(
+            recheck(true)
+                .recheck(
+                    QueryMetrics.Mode.RAG,
+                    "Welche Löschfrist gilt nach der DSGVO für Bauakten?",
+                    "Die Löschfrist ist in den Quellen nicht enthalten.",
+                    scope,
+                    filter,
+                    List.of())
+                .passages())
+        .isEmpty();
+  }
+
+  @Test
+  void anAnswerWithoutAClaimIsNotSearched() {
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, "Es sind 12 Euro.", scope, filter, List.of());
+
+    assertThat(outcome.searched()).isFalse();
     verifyNoInteractions(retrieval);
     assertThat(count("rag", "detected")).isZero();
   }
@@ -113,9 +187,9 @@ class AbsenceRecheckTest {
   void switchedOffNothingIsSearched() {
     assertThat(
             recheck(false)
-                .additionalPassages(
-                    QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of()))
-        .isEmpty();
+                .recheck(QueryMetrics.Mode.RAG, QUESTION, CLAIM, scope, filter, List.of())
+                .searched())
+        .isFalse();
     verifyNoInteractions(retrieval);
   }
 
@@ -123,9 +197,8 @@ class AbsenceRecheckTest {
   void anEmptyScopeOrAQuestionWithoutKeyTermsIsDetectedButNotSearched() {
     AbsenceRecheck recheck = recheck(true);
 
-    recheck.additionalPassages(QueryMetrics.Mode.RAG, QUESTION, CLAIM, Set.of(), filter, List.of());
-    recheck.additionalPassages(
-        QueryMetrics.Mode.RAG, "Und was ist mit dem?", CLAIM, scope, filter, List.of());
+    recheck.recheck(QueryMetrics.Mode.RAG, QUESTION, CLAIM, Set.of(), filter, List.of());
+    recheck.recheck(QueryMetrics.Mode.RAG, "Und was ist mit dem?", CLAIM, scope, filter, List.of());
 
     verifyNoInteractions(retrieval);
     assertThat(count("rag", "detected")).isEqualTo(2);
@@ -133,10 +206,35 @@ class AbsenceRecheckTest {
   }
 
   @Test
-  void countsTheReplacedAnswer() {
+  void countsTheReplacedAnswerAndHasNoSeriesWithoutASearch() {
     recheck(true).replaced(QueryMetrics.Mode.AGENT);
+    recheck(true).replaced(QueryMetrics.Mode.NO_SEARCH);
 
     assertThat(count("agent", "replaced")).isEqualTo(1);
+    assertThat(meters.find("opaa.query.absence_recheck").tag("mode", "no_search").counters())
+        .isEmpty();
+  }
+
+  @Test
+  void aReaderThatWentAwayAndAShutdownEndTheTurnAnyOtherFailureDoesNot() {
+    assertThat(AbsenceRecheck.mustPropagate(new AnswerReaderGoneException(new IOException("gone"))))
+        .isTrue();
+    assertThat(AbsenceRecheck.mustPropagate(ActiveAnswerStreams.shuttingDown())).isTrue();
+    assertThat(AbsenceRecheck.mustPropagate(new IllegalStateException("model failed"))).isFalse();
+  }
+
+  @Test
+  void attributesTheNewDocumentsToTheSubQueriesWhoseTermsTheyName() {
+    Map<String, Set<Integer>> attributed =
+        AbsenceRecheck.attributed(
+            Map.of("doc-1", Set.of(1)),
+            List.of("Frist für Anträge", "Gebühr nach Tarifstelle AB-08"),
+            List.of(fresh, passage("doc-5", 0, "Allgemeine Hinweise")));
+
+    assertThat(attributed)
+        .containsEntry("doc-1", Set.of(1))
+        .containsEntry("doc-2", Set.of(2))
+        .containsEntry("doc-5", Set.of(1, 2));
   }
 
   @Test
@@ -154,7 +252,12 @@ class AbsenceRecheckTest {
 
   private AbsenceRecheck recheck(boolean enabled) {
     return new AbsenceRecheck(
-        retrieval, expansion, new AbsenceRecheckProperties(enabled, 4), metrics);
+        retrieval,
+        expansion,
+        new CitationParser(),
+        new CitationValidator(),
+        new AbsenceRecheckProperties(enabled, 4),
+        metrics);
   }
 
   private double count(String mode, String step) {

@@ -11,13 +11,15 @@ import java.util.regex.Pattern;
 /**
  * The key terms of a question, read without a model: identifiers (a token with digits and letters
  * or separators such as {@code AB-08} or {@code 4.2}, a paragraph such as {@code § 34}, an
- * uppercase abbreviation) and content words (five letters or more, or a number of three digits or
- * more, outside a fixed list of question and filler words).
+ * uppercase name of six letters or more) and content words (five letters or more, a number of three
+ * digits or more, or a short uppercase abbreviation such as {@code DSGVO}, outside a fixed list of
+ * question and filler words).
  *
  * <p>A passage {@link #matches} when it contains one of the identifiers, or - for a question
- * without any - at least two of the content words (all of them when there are fewer). A content
- * word matches by its stem, its leading characters without the last three (at least five), so
- * "Gebühr" finds "Gebühren"; an identifier matches only as a whole token.
+ * without any - at least two of the content words (all of them when there are fewer): a short
+ * abbreviation alone is too common to single out a passage. A content word of five characters or
+ * more matches by its stem, its leading characters without the last three (at least five), so
+ * "Gebühr" finds "Gebühren"; a shorter one and an identifier match only as a whole token.
  */
 public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
 
@@ -28,7 +30,8 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
   private static final Pattern TOKEN =
       Pattern.compile("[\\p{L}\\p{N}](?:[\\p{L}\\p{N}./-]*[\\p{L}\\p{N}])?");
   private static final Pattern NUMBER = Pattern.compile("\\p{N}{3,}");
-  private static final Pattern ABBREVIATION = Pattern.compile("\\p{Lu}{2,12}");
+  private static final Pattern NAME = Pattern.compile("\\p{Lu}{6,12}");
+  private static final Pattern SHORT_ABBREVIATION = Pattern.compile("\\p{Lu}{2,5}");
 
   private static final Set<String> STOP_WORDS =
       Set.of(
@@ -187,6 +190,8 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
       String value = token.group();
       if (isIdentifier(value)) {
         identifiers.add(value);
+      } else if (SHORT_ABBREVIATION.matcher(value).matches()) {
+        words.add(value.toLowerCase(Locale.ROOT));
       } else if (NUMBER.matcher(value).matches()) {
         words.add(value);
       } else if (value.codePoints().allMatch(Character::isLetter) && value.length() >= 5) {
@@ -223,8 +228,22 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
       return identifiers.stream()
           .anyMatch(identifier -> containsToken(normalized, normalize(identifier)));
     }
-    long found = words.stream().filter(word -> containsStem(normalized, word)).count();
+    long found = words.stream().filter(word -> containsWord(normalized, word)).count();
     return found >= Math.min(2, words.size());
+  }
+
+  /**
+   * Whether {@code sentence} names any of the key terms at all - one identifier or one content
+   * word: the test whether an absence claim is about the question rather than a side remark.
+   */
+  public boolean mentionedIn(String sentence) {
+    if (sentence == null || sentence.isBlank() || isEmpty()) {
+      return false;
+    }
+    String normalized = normalize(sentence);
+    return identifiers.stream()
+            .anyMatch(identifier -> containsToken(normalized, normalize(identifier)))
+        || words.stream().anyMatch(word -> containsWord(normalized, word));
   }
 
   private static boolean isIdentifier(String token) {
@@ -235,7 +254,7 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
     if (digit && (letter || separator)) {
       return true;
     }
-    return ABBREVIATION.matcher(token).matches();
+    return NAME.matcher(token).matches();
   }
 
   private static String normalize(String text) {
@@ -250,7 +269,10 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
         .find();
   }
 
-  private static boolean containsStem(String text, String word) {
+  private static boolean containsWord(String text, String word) {
+    if (word.length() < 5) {
+      return containsToken(text, word);
+    }
     String stem = word.substring(0, Math.max(Math.min(5, word.length()), word.length() - 3));
     return Pattern.compile("(?<![\\p{L}\\p{N}])" + Pattern.quote(stem)).matcher(text).find();
   }

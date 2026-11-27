@@ -2,6 +2,7 @@ package io.opaa.query.absence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -20,6 +21,10 @@ class AbsenceClaimsTest {
         "Aus den Kontextdokumenten geht die Zuständigkeit nicht hervor.",
         "Die Dokumente nennen den Betrag nicht.",
         "Eine Regelung dazu konnte ich nicht finden.",
+        "Die Frist ist im Dokument nicht enthalten.",
+        "Zur Frist habe ich in den Unterlagen nichts gefunden.",
+        "Für Sondernutzungen findet sich hierzu keine Regelung.",
+        "Zur Zuständigkeit finden sich in den Dokumenten keine Aussagen.",
         "Der Betrag ist 12 Euro. Die Frist ist in den Dokumenten\nnicht geregelt.",
         "The fee is not mentioned in the provided documents.",
         "The sources do not specify a deadline.",
@@ -34,13 +39,27 @@ class AbsenceClaimsTest {
   @ValueSource(
       strings = {
         "Die Gebühr nach Tarifstelle AB-08 beträgt 12 Euro.",
+        "Der Bescheid muss keine Angaben zum Einkommen enthalten 【source: doc-1#0 | a.pdf】.",
+        "Es liegen keine Einwände vor, die Frist beginnt mit Zugang.",
         "Die Mehrwertsteuer ist im Betrag nicht enthalten.",
         "Der Antrag muss nicht schriftlich gestellt werden.",
+        "Aus den Unterlagen geht hervor, dass keine Gebühr anfällt.",
         "Die Quellen nennen eine Frist von einem Monat.",
+        "The form requires no information about income.",
         "The fee is 12 euros according to the documents.",
         ""
       })
   void leavesAnAnswerWithoutSuchAClaimAlone(String answer) {
     assertThat(AbsenceClaims.claimsAbsence(answer)).isFalse();
+  }
+
+  @Test
+  void returnsTheSentencesThatMakeTheClaim() {
+    assertThat(
+            AbsenceClaims.claimSentences(
+                "Die Gebühr beträgt 12 Euro 【source: doc-1#0 | a.pdf】. Wann die Tabelle zuletzt"
+                    + " geändert wurde, ist in den Quellen nicht enthalten."))
+        .containsExactly(
+            "Wann die Tabelle zuletzt geändert wurde, ist in den Quellen nicht enthalten.");
   }
 }

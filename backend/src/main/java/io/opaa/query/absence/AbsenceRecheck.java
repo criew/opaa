@@ -1,16 +1,25 @@
 package io.opaa.query.absence;
 
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.observability.QueryMetrics.AbsenceRecheckStep;
+import io.opaa.query.answer.ActiveAnswerStreams;
+import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
+import io.opaa.query.citation.CitationMarkerRepair;
+import io.opaa.query.citation.CitationParser;
+import io.opaa.query.citation.CitationValidator;
 import io.opaa.retrieval.ChunkGroupingKey;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -20,63 +29,103 @@ import org.springframework.stereotype.Component;
 
 /**
  * Checks an answer that claims something is missing from the sources against the question's search
- * scope. When {@link AbsenceClaims} recognises such a claim, the {@link QuestionKeyTerms} of the
- * question are searched through {@link KnowledgeRetrieval#retrieveAsGiven} - the same pipeline and
- * permission filter as every search, over the scope and filter of the request and never wider. A
- * hit counts only when its text carries the key terms and the answer had not seen it; those hits,
- * with their neighbours, are what the caller answers once more from. The caller asks this at most
- * once per answer, so the recheck never loops.
+ * scope. A claim of {@link AbsenceClaims} counts when it is about the question - its sentence names
+ * a {@link QuestionKeyTerms key term} of the question, or the answer carries no valid citation at
+ * all; a side remark in an otherwise cited answer does not. Then the key terms are searched through
+ * {@link KnowledgeRetrieval#retrieveAsGiven} - the same pipeline and permission filter as every
+ * search, over the scope and filter of the request and never wider. A hit counts only when its text
+ * carries the key terms and the answer had not seen it; those hits, with their neighbours, are what
+ * the caller answers once more from. The caller asks this at most once per answer, so the recheck
+ * never loops, and keeps the first answer when anything after it fails ({@link #mustPropagate}).
  */
 @Component
 public class AbsenceRecheck {
 
   private static final Logger log = LoggerFactory.getLogger(AbsenceRecheck.class);
 
+  /**
+   * What the recheck of one answer did.
+   *
+   * @param searchQuery the key terms searched, {@code null} when nothing was searched
+   * @param hits the hits of that search before any of them was dropped
+   * @param passages the new passages to answer once more from, empty to keep the answer
+   */
+  public record Outcome(String searchQuery, int hits, List<Document> passages) {
+
+    static final Outcome NONE = new Outcome(null, 0, List.of());
+
+    public boolean searched() {
+      return searchQuery != null;
+    }
+  }
+
   private final KnowledgeRetrieval knowledgeRetrieval;
   private final NeighborChunkExpansion neighborChunkExpansion;
+  private final CitationParser citationParser;
+  private final CitationValidator citationValidator;
   private final AbsenceRecheckProperties properties;
   private final QueryMetrics metrics;
 
   public AbsenceRecheck(
       KnowledgeRetrieval knowledgeRetrieval,
       NeighborChunkExpansion neighborChunkExpansion,
+      CitationParser citationParser,
+      CitationValidator citationValidator,
       AbsenceRecheckProperties properties,
       QueryMetrics metrics) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.neighborChunkExpansion = neighborChunkExpansion;
+    this.citationParser = citationParser;
+    this.citationValidator = citationValidator;
     this.properties = properties;
     this.metrics = metrics;
   }
 
   /**
-   * The passages to answer {@code question} once more from, because {@code answer} claims an
-   * absence that the search scope may contradict; empty when the switch is off, the answer claims
-   * nothing missing, the question has no key terms, the scope is empty or the search found nothing
-   * new. {@code context} is everything the answer was given.
+   * Rechecks {@code answer} to {@code question}; {@code context} is everything the answer was
+   * given. {@link Outcome#NONE} when the switch is off or the answer makes no claim about the
+   * question; no passages when the question has no key terms, the scope is empty, the search fails
+   * or finds nothing new.
    */
-  public List<Document> additionalPassages(
+  public Outcome recheck(
       QueryMetrics.Mode mode,
       String question,
       String answer,
       Set<UUID> searchScope,
       MetadataFilter metadataFilter,
       List<Document> context) {
-    if (!properties.enabled() || !AbsenceClaims.claimsAbsence(answer)) {
-      return List.of();
+    if (!properties.enabled()) {
+      return Outcome.NONE;
+    }
+    List<String> claims = AbsenceClaims.claimSentences(answer);
+    if (claims.isEmpty()) {
+      return Outcome.NONE;
+    }
+    QuestionKeyTerms terms = QuestionKeyTerms.of(question);
+    if (claims.stream().noneMatch(terms::mentionedIn) && citesValidly(answer, context)) {
+      return Outcome.NONE;
     }
     metrics.recordAbsenceRecheck(mode, AbsenceRecheckStep.DETECTED);
-    QuestionKeyTerms terms = QuestionKeyTerms.of(question);
     if (terms.isEmpty() || searchScope == null || searchScope.isEmpty()) {
-      return List.of();
+      return Outcome.NONE;
     }
     metrics.recordAbsenceRecheck(mode, AbsenceRecheckStep.SEARCHED);
-    List<Document> hits =
-        knowledgeRetrieval
-            .retrieveAsGiven(
-                terms.searchQuery(),
-                searchScope,
-                metadataFilter == null ? MetadataFilter.NONE : metadataFilter)
-            .chunks();
+    String query = terms.searchQuery();
+    List<Document> hits;
+    try {
+      hits =
+          knowledgeRetrieval
+              .retrieveAsGiven(
+                  query, searchScope, metadataFilter == null ? MetadataFilter.NONE : metadataFilter)
+              .chunks();
+    } catch (RuntimeException e) {
+      if (mustPropagate(e)) {
+        throw e;
+      }
+      log.warn(
+          "Absence recheck search failed, the answer stands: {}", e.getClass().getSimpleName());
+      return new Outcome(query, 0, List.of());
+    }
     Set<String> seen = new HashSet<>();
     context.forEach(passage -> seen.add(key(passage)));
     List<Document> found = new ArrayList<>();
@@ -90,7 +139,7 @@ public class AbsenceRecheck {
     }
     if (found.isEmpty()) {
       log.debug("Absence claim rechecked: {} hit(s), none new with the key terms", hits.size());
-      return List.of();
+      return new Outcome(query, hits.size(), List.of());
     }
     List<Document> passages = new ArrayList<>(found);
     for (Document neighbour : neighborChunkExpansion.expand(found, searchScope)) {
@@ -99,12 +148,57 @@ public class AbsenceRecheck {
       }
     }
     log.debug("Absence claim rechecked: {} new passage(s) for a second answer", passages.size());
-    return List.copyOf(passages);
+    return new Outcome(query, hits.size(), List.copyOf(passages));
   }
 
   /** The answer of {@code mode} was given once more from the passages of the recheck. */
   public void replaced(QueryMetrics.Mode mode) {
     metrics.recordAbsenceRecheck(mode, AbsenceRecheckStep.REPLACED);
+  }
+
+  /**
+   * Whether a failure after the first answer must end the turn rather than leave the first answer
+   * standing: the reader went away or stopped the run, or the instance shuts down.
+   */
+  public static boolean mustPropagate(RuntimeException failure) {
+    return failure instanceof AnswerReaderGoneException
+        || (failure instanceof ServiceUnavailableException unavailable
+            && ActiveAnswerStreams.SHUTTING_DOWN.equals(unavailable.getCode()))
+        || Thread.currentThread().isInterrupted();
+  }
+
+  /**
+   * {@code subQueriesByDocument} with the documents of {@code passages} attributed to the
+   * sub-queries of {@code searchQueries} (1-based) whose key terms their text names, to all of them
+   * when it names none: the recheck searched the key terms of the whole question.
+   */
+  public static Map<String, Set<Integer>> attributed(
+      Map<String, Set<Integer>> subQueriesByDocument,
+      List<String> searchQueries,
+      List<Document> passages) {
+    if (searchQueries.isEmpty() || passages.isEmpty()) {
+      return subQueriesByDocument;
+    }
+    Map<String, Set<Integer>> attributed = new HashMap<>();
+    subQueriesByDocument.forEach(
+        (document, queries) -> attributed.put(document, new LinkedHashSet<>(queries)));
+    for (Document passage : passages) {
+      Set<Integer> queries = new LinkedHashSet<>();
+      for (int i = 1; i <= searchQueries.size(); i++) {
+        if (QuestionKeyTerms.of(searchQueries.get(i - 1)).mentionedIn(passage.getText())) {
+          queries.add(i);
+        }
+      }
+      if (queries.isEmpty()) {
+        for (int i = 1; i <= searchQueries.size(); i++) {
+          queries.add(i);
+        }
+      }
+      attributed
+          .computeIfAbsent(ChunkGroupingKey.of(passage), document -> new LinkedHashSet<>())
+          .addAll(queries);
+    }
+    return attributed;
   }
 
   /**
@@ -144,6 +238,14 @@ public class AbsenceRecheck {
         listener.beforeKeeping();
       }
     };
+  }
+
+  private boolean citesValidly(String answer, List<Document> context) {
+    String repaired = CitationMarkerRepair.repair(answer, context);
+    return citationValidator
+        .validate(citationParser.extractCitations(repaired), context, repaired)
+        .stream()
+        .anyMatch(CitationValidator.ValidatedCitation::valid);
   }
 
   /** One passage once, whatever path found it: its document and chunk index. */
