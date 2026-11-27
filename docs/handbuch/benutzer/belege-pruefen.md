@@ -23,7 +23,10 @@ Daten und Paragrafen? Was durchfällt, heißt **„Beleg nicht bestätigt“** u
 
 Die Antwort eines Agenten trägt zusätzlich die Kennzeichnung „Entwurf“ und einen Stempel mit
 Agent, Fassung, Bibliotheken, Vorlagen und Modell; wie Sie ihn lesen, steht unter
-[Agentenergebnis prüfen](agentenergebnis-pruefen.md). Der Belegstand gilt für sie genauso.
+[Agentenergebnis prüfen](agentenergebnis-pruefen.md). Der Belegstand gilt für sie genauso; jede
+Frage, mit der der Agent gesucht hat, zählt dabei als ein Teil: „Belegt“ heißt, zu jeder dieser
+Fragen zitiert die Antwort ein Dokument, das eine Suche danach gefunden hat. Schreibt der Agent
+keinen Text, steht statt der Antwort ein Hinweis, die Frage erneut zu stellen.
 
 **Im Lesemodus** steht links die Karte „Fundstelle“ mit Fundort, Zitat und „Zur Fundstelle“, rechts
 das Dokument auf hellem Papier, auch im dunklen Farbschema. Die Stelle trägt eine hellblaue Fläche,
