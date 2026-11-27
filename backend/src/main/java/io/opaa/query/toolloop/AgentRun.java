@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,7 @@ public final class AgentRun {
 
   private final List<Document> passages = new ArrayList<>();
   private final List<AgentRunRecord.Step> steps = new ArrayList<>();
+  private final Map<String, Set<String>> documentsBySearch = new LinkedHashMap<>();
   private final List<AgentStepLogEntry> trace = new ArrayList<>();
   private final Map<String, Integer> callsPerTool = new HashMap<>();
   private final Map<Class<?>, RunResource> resources = new LinkedHashMap<>();
@@ -191,6 +193,13 @@ public final class AgentRun {
       callsPerTool.merge(toolName, 1, Integer::sum);
       collectedChars += outcome.modelText() == null ? 0 : outcome.modelText().length();
       passages.addAll(outcome.passages());
+      if (ToolNames.SEARCH_KNOWLEDGE.equals(toolName)
+          && outcome.detail() != null
+          && searchRan(outcome.result())) {
+        Set<String> documents =
+            documentsBySearch.computeIfAbsent(outcome.detail(), query -> new LinkedHashSet<>());
+        outcome.passages().forEach(passage -> documents.add(ChunkGroupingKey.of(passage)));
+      }
       index = steps.size();
       steps.add(step);
     }
@@ -314,6 +323,22 @@ public final class AgentRun {
     return List.copyOf(passages);
   }
 
+  /**
+   * Every sub-question a search ran for, in the order of its first search, with the documents all
+   * searches for it found; a call refused before it searched is not among them.
+   */
+  synchronized List<SearchStep> searches() {
+    return documentsBySearch.entrySet().stream()
+        .map(entry -> new SearchStep(entry.getKey(), Set.copyOf(entry.getValue())))
+        .toList();
+  }
+
+  private static boolean searchRan(ToolCallResult result) {
+    return result == ToolCallResult.SUCCESS
+        || result == ToolCallResult.EMPTY
+        || result == ToolCallResult.ARGUMENT_IGNORED;
+  }
+
   synchronized List<AgentRunRecord.Step> steps() {
     return List.copyOf(steps);
   }
@@ -352,4 +377,10 @@ public final class AgentRun {
   synchronized AgentRunStamp stamp() {
     return stamp;
   }
+
+  /**
+   * One sub-question of the run's searches and the documents ({@link ChunkGroupingKey}) of every
+   * passage its searches handed the model, a passage an earlier step already delivered included.
+   */
+  record SearchStep(String query, Set<String> documents) {}
 }

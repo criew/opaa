@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
+Akzeptiert · zuletzt geändert 2026-11-27 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
 
 ## Kontext
 
@@ -149,13 +149,15 @@ ein Jahr, Voreinstellung drei, Obergrenze zehn Jahre, mit automatischer Löschun
 
 ### 14. Belegbarkeit heißt deterministische Belegvalidierung
 
-Jeder Beleg einer Antwort wird gegen die für diese Antwort abgerufenen Fundstellen geprüft
-(Dokument-Kennung, Abschnittsnummer, Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet,
-nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapparat darüber
-(Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
-nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
-Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
-ausgeschlossen. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
+Jeder Beleg einer Antwort wird gegen die abgerufenen Fundstellen geprüft (Dokument-Kennung,
+Abschnittsnummer, Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet, nicht entfernt.
+Ein Verweigerungsapparat darüber (Verweigerung ohne Beleg, Schalter am Space, Deckungsprüfung) ist
+entschieden nicht gebaut. Die Antwortregeln, ein Text für Chat und Agenten, verlangen zuerst die
+Antwort aus den Fundstellen, danach höchstens einen Absatz zu Lücken; „nicht enthalten“ nur, wenn
+keine Fundstelle beiträgt; eine Prämisse nur gegen eine widersprechende Fundstelle richtigstellen.
+Begründung: Fehlende Belege sind im Belegfenster sichtbar, ein erfundener Beleg ist durch die
+Validierung ausgeschlossen, und eine pauschale Fehlanzeige verschweigt Belegtes. Siehe
+[Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
 
 ### 15. Nachweis der Organisationsgrenze
 

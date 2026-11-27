@@ -449,7 +449,9 @@ describe('PdfViewer', () => {
       expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
 
-      // a click into the page that scrolls nothing keeps the choice
+      // neither the view's own scroll event nor a click into the page that scrolls nothing
+      // releases the choice
+      fireEvent.scroll(container())
       fireEvent.pointerDown(container())
       fire('updateviewarea', {})
       expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
@@ -466,6 +468,42 @@ describe('PdfViewer', () => {
       wheelTo(1300)
       expect(await entry('Abschnitt')).toHaveAttribute('aria-current', 'location')
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+    })
+
+    // regression guard for #3897: a passage centred near the top of its page keeps naming that page
+    it('names the page of the passage it opened at until the view is scrolled away', async () => {
+      await open({ pageFrom: 2, pageTo: 2, quoteStart: 'Das Modul indexing' })
+      const page = renderedPage(['Das Modul indexing verwaltet die Dokumentenaufnahme'])
+      const span = page.querySelector('span')!
+      // 50 px into page 2; centred, the reading line a quarter down still lies on page 1
+      span.getBoundingClientRect = () =>
+        rect({ left: 400, top: 1050 - container().scrollTop, width: 300, height: 20 })
+      scrollIntoView.mockImplementation(() => {
+        container().scrollTop = 1050 - 300
+      })
+
+      fire('textlayerrendered', { pageNumber: 2, source: { div: page } })
+      fireEvent.scroll(container())
+      fire('updateviewarea', {})
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+
+      // zooming keeps the place: pdf.js scrolls, but the passage's page stays the current one
+      Object.defineProperty(pdf.viewer!, 'currentScale', {
+        get: () => 1,
+        set: () => {
+          container().scrollTop = 800
+        },
+      })
+      await userEvent.click(screen.getByRole('button', { name: 'Vergrößern' }))
+      fireEvent.scroll(container())
+      fire('updateviewarea', {})
+      expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+
+      // scrolled by a script or the browser's search, without an input on the view
+      container().scrollTop = 2480
+      fireEvent.scroll(container())
+      fire('updateviewarea', {})
+      expect(screen.getByText('Seite 3 von 3')).toBeInTheDocument()
     })
 
     it('reaches the last page and its entry at the end, though they never scroll up far', async () => {

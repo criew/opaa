@@ -24,25 +24,30 @@ flowchart LR
 | Filter | gesetzte [Metadaten](metadaten.md)-Filter schränken beide Suchwege ein; Dokumente ohne Wert bleiben drin |
 | Teilfragen | das Chat-Modell macht aus der Frage eigenständige Suchanfragen: zwei Themen werden zwei Anfragen, „Und bei Bedürftigkeit?“ wird zur vollständigen Frage |
 | Vektorsuche | findet Chunks mit ähnlicher **Bedeutung** |
-| Volltextsuche | findet die **Wörter**, mit deutscher Wortstammbildung; Paragrafen und Aktenzeichen exakt, sodass „§ 34“ nicht „§ 35“ trifft |
+| Volltextsuche | findet die **Wörter**, mit deutscher Wortstammbildung; Paragrafen und Aktenzeichen exakt, sodass „§ 34“ nicht „§ 35“ trifft. Kennungen aus Buchstaben und Ziffern findet jede Schreibweise: „AB08“, „AB-08“, „AB 08“, „ab_08“ und „AB.08“ treffen einander, „AB-09“ nicht. Mit Leerzeichen oder Punkt zählt das nur ab zwei Großbuchstaben und nicht hinter gängigen Wörtern, „ab 8 Uhr“ oder „SEITE 3“ bleiben Text |
 | Fusion | führt beide Listen nach Rang zusammen; wer in beiden steht, gewinnt |
 | Reranking | ein eigenes Modell liest Frage und Chunk zusammen und ordnet neu. Ab Werk aus, weil es einen eigenen Endpunkt braucht |
 | Relevanzschnitt | schneidet schwache Treffer ab, wenn eingeschaltet |
 | Vervollständigung | holt zu einem schon gefundenen Dokument weitere Chunks nach. Ab Werk aus; den Zusammenhang liefern die Nachbar-Chunks |
 
 Vor der Antwort bekommt jeder Treffer seine **Nachbar-Chunks** dazu, damit eine Tabelle oder
-Aufzählung an einer Chunk-Grenze nicht abreißt. Jeder Chunk nennt dem Modell dazu seinen Fundort
-(Seite, Abschnitt oder Tabellenblatt mit Zeilen, soweit bekannt) und seine Stellung im Dokument,
-etwa „Teil 3 von 12“. So erkennt das Modell, dass ein Dokument mehr enthält als den gezeigten
-Ausschnitt.
+Aufzählung an einer Chunk-Grenze nicht abreißt. Liegt ein Treffer in einer kleinen Tabelle, kommt
+die **ganze Tabelle** dazu, damit Zeilen und Spalten ihren Bezug behalten. Jeder Chunk nennt dem
+Modell dazu seinen Fundort (Seite, Abschnitt oder Tabellenblatt mit Zeilen, soweit bekannt) und seine
+Stellung im Dokument, etwa „Teil 3 von 12“. So erkennt das Modell, dass ein Dokument mehr enthält als
+den gezeigten Ausschnitt.
 
 ## Die Antwort
 
 Das Chat-Modell bekommt die Chunks, die **Anweisung des Space**, die Gesprächsnotiz und den Verlauf.
-Es soll nur wiedergeben, was die Dokumente tragen, Fehlendes als „in den vorliegenden Dokumenten
-nicht enthalten“ benennen und jede Quelle mit einer Zitiermarke belegen. Der Text der Dokumente
-steht als Material, nicht als Anweisung im Prompt; ganz verhindern lässt sich eine untergeschobene
-Anweisung nicht, das hängt am Modell.
+Es soll nur wiedergeben, was die Dokumente tragen, und jede Quelle mit einer Zitiermarke belegen.
+Die Antwort aus den Dokumenten kommt zuerst, samt Bedingungen und Ausnahmen; ein Hinweis auf Lücken
+folgt höchstens in einem Absatz danach. „In den vorliegenden Dokumenten nicht enthalten“ sagt es
+nur, wenn kein Chunk etwas zur Frage beiträgt. Eine Annahme der Frage stellt es nur richtig, wenn
+ein Dokument ihr widerspricht. Zu Beträgen, Quoten, Schwellen und Fristen nennt es die Bezugsgröße
+aus dem Dokument. Agenten antworten nach denselben Regeln, eine Agenten-Anweisung kann aber die Form
+vorgeben. Der Text der Dokumente steht als Material, nicht als Anweisung im Prompt; ganz verhindern
+lässt sich eine untergeschobene Anweisung nicht, das hängt am Modell.
 
 Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
 je Teilfrage, Rerank-Modell, falls an. Titel und Gesprächsnotiz eines Chats kosten je einen

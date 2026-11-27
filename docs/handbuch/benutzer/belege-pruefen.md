@@ -23,7 +23,10 @@ Daten und Paragrafen? Was durchfällt, heißt **„Beleg nicht bestätigt“** u
 
 Die Antwort eines Agenten trägt zusätzlich die Kennzeichnung „Entwurf“ und einen Stempel mit
 Agent, Fassung, Bibliotheken, Vorlagen und Modell; wie Sie ihn lesen, steht unter
-[Agentenergebnis prüfen](agentenergebnis-pruefen.md). Der Belegstand gilt für sie genauso.
+[Agentenergebnis prüfen](agentenergebnis-pruefen.md). Der Belegstand gilt für sie genauso; jede
+Frage, mit der der Agent gesucht hat, zählt dabei als ein Teil: „Belegt“ heißt, zu jeder dieser
+Fragen zitiert die Antwort ein Dokument, das eine Suche danach gefunden hat. Schreibt der Agent
+keinen Text, steht statt der Antwort ein Hinweis, die Frage erneut zu stellen.
 
 **Im Lesemodus** steht links die Karte „Fundstelle“ mit Fundort, Zitat und „Zur Fundstelle“, rechts
 das Dokument auf hellem Papier, auch im dunklen Farbschema. Die Stelle trägt eine hellblaue Fläche,
@@ -35,6 +38,14 @@ erscheinen als Original: Word mit seinem Layout, CSV als Tabelle mit markierter 
 Betreff, Absender, Empfängern, Datum und Text. Andere Office-Dateien, sehr große Dateien und Mails
 ohne Textteil öffnen als Textfassung an der Passage; ein kurzer Hinweis sagt dann, warum.
 Confluence-Seiten öffnen an der Quelle.
+
+**Die Gliederung** steht links unter der Karte, wenn das Dokument Überschriften hat: bei PDFs die
+Lesezeichen, bei Word-Dateien die Absätze in einer Überschriften-Formatvorlage, bei Markdown die
+Überschriften, in der Textfassung (etwa ODT oder HTML) die beim Einlesen erkannten Abschnitte. Ein
+Klick springt zur Überschrift; hervorgehoben ist der Abschnitt, den Sie gerade lesen. Tiefere Ebenen
+klappen Sie mit dem Pfeil davor auf. Das Symbol über dem Dokument blendet die Gliederung aus und
+wieder ein, auf dem Smartphone steht sie in der aufklappbaren Leiste. Ein Dokument ohne Überschriften
+hat keine Gliederung.
 
 Bei einem gescannten PDF stammt der Text aus der Texterkennung; Beleg und Ansicht tragen dann den
 Hinweis „Maschinell erkannt, maßgeblich ist das Original“.

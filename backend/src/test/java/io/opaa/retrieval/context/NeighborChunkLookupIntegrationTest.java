@@ -103,6 +103,52 @@ class NeighborChunkLookupIntegrationTest {
     assertThat(lookup.findRange(document, 0, 10, Set.of())).isEmpty();
   }
 
+  @Test
+  void loadsEveryChunkOfTheRequestedTablesAndNothingElse() {
+    insertTableChunk(document, 0, 1, library, "Tabelle 1 Teil 1");
+    insertTableChunk(document, 1, 1, library, "Tabelle 1 Teil 2");
+    insertTableChunk(document, 2, 2, library, "Tabelle 2");
+    insert(document, 3, library, "ohne Tabelle");
+    insertTableChunk(otherDocument, 0, 1, library, "anderes Dokument");
+    insertTableChunk(otherDocument, 1, 2, library, "anderes Dokument, Tabelle 2");
+
+    Map<ChunkPosition, Document> found =
+        lookup.findTables(
+            List.of(new TableReference(document, 1), new TableReference(otherDocument, 2)),
+            Set.of(library));
+
+    assertThat(found)
+        .containsOnlyKeys(
+            new ChunkPosition(document, 0),
+            new ChunkPosition(document, 1),
+            new ChunkPosition(otherDocument, 1));
+    assertThat(found.get(new ChunkPosition(document, 1)).getText()).isEqualTo("Tabelle 1 Teil 2");
+  }
+
+  @Test
+  void neverLoadsATableWhoseLibraryIsOutsideTheScope() {
+    insertTableChunk(document, 0, 1, foreignLibrary, "fremde Bibliothek");
+
+    assertThat(lookup.findTables(List.of(new TableReference(document, 1)), Set.of(library)))
+        .isEmpty();
+    assertThat(lookup.findTables(List.of(new TableReference(document, 1)), Set.of())).isEmpty();
+  }
+
+  private void insertTableChunk(
+      String documentId, int chunkIndex, int tableId, UUID libraryId, String content) {
+    UUID id = UUID.randomUUID();
+    chunkIds.add(id);
+    String metadata =
+        ("{\"document_id\":\"%s\",\"chunk_index\":%d,\"library_id\":\"%s\","
+                + "\"table\":{\"id\":%d,\"characters\":100}}")
+            .formatted(documentId, chunkIndex, libraryId, tableId);
+    jdbcTemplate.update(
+        "INSERT INTO vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",
+        id,
+        content,
+        metadata);
+  }
+
   private void insert(String documentId, int chunkIndex, UUID libraryId, String content) {
     insertRaw(documentId, String.valueOf(chunkIndex), libraryId, content);
   }

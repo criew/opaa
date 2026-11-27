@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-15
+Akzeptiert · zuletzt geändert 2026-11-27
 
 ## Kontext
 
@@ -104,6 +104,14 @@ damit einen Merker an der Reservierung des Laufs in der Datenbank, den der Lauf 
 liest, gleich welche Instanz den Abbruch angenommen hat. Ein Lebenszeichen alle 10 Sekunden, auch
 während Modell oder Werkzeug arbeiten, hält Proxys offen und deckt einen verlorenen Leser auf.
 
+**Fassungsstempel außerhalb des Chats.** Jede Agentenantwort trägt den einen Wortlaut
+„KI-generierter Entwurf, nicht geprüft“: an der Antwort, beim Kopieren und im Export mit Agent und
+Fassung. Eine Datei nach Vorlage zeigt in jeder Fußzeile nur diese kurze Zeile, damit sie in eine
+Zeile passt; den vollständigen Stempel mit Vorlage, Bibliotheken und Modell trägt sie
+maschinenlesbar in den Dokumenteigenschaften (Art. 50 Abs. 2 KI-VO), so geht er mit der Datei mit,
+ohne die sichtbare Seite zu füllen. Die Bibliotheksnamen gehören zum Stempel; wer die Datei
+weitergibt, gibt sie mit.
+
 **Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
 (`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von
 `opaa_audit_owner`, das Anwendungskonto fügt an und liest, entfernt wird nur über eine Funktion für
@@ -154,7 +162,10 @@ der Chat besteht, nicht aus technischen Rohdaten.
 Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
 
 1. **Feste Regeln** im Systemvorspann: Rolle, Beleg- und Zitierregeln, die Regel, dass gekennzeichnete
-   Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe.
+   Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe. Die Antwortregeln zu Lücken,
+   Prämissen und Bezugsgrößen sind dieselben wie im Chat und stammen aus einem gemeinsamen Text
+   (`AnswerRules.SHARED`); nur die Belegregel benennt, was hier die Quellen sind. So antworten Chat
+   und Agent auf dieselbe Frage nicht nach unterschiedlichen Lückenregeln.
 2. **Anweisung des Agenten** als gekennzeichneter Block, angehängt, nie als Ersatz. Sie darf Ton,
    Form und Vorgehen bestimmen, nicht die Antwortsprache. Sie ist kein Beleg und keine Quelle.
 3. **Anweisung des Space** ([ADR-0043](0043-anweisung-je-space.md), Entscheidung 6), wenn vorhanden.

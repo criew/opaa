@@ -86,6 +86,12 @@ interface Reading {
   node: OutlineNode | null
 }
 
+/** A place the view went to itself, shown as current until the reader scrolls away. */
+interface Pin extends Reading {
+  /** For a passage: where it starts, to find its outline entry once the outline is known. */
+  line?: number
+}
+
 /**
  * The PDF view behind „Dokument öffnen“: pdf.js's own viewer, scrolling continuously from page to
  * page, with the outline as a collapsible table of contents beside it. It opens on the anchor's
@@ -115,9 +121,23 @@ export default function PdfViewer({
   const targetsRef = useRef<OutlineTarget[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [reading, setReading] = useState<Reading>({ page: 1, node: null })
-  // the entry just chosen stays the current one until the reader scrolls on their own
-  const [chosen, setChosen] = useState<OutlineTarget | null>(null)
-  const forgetInput = useUserScroll(containerRef, () => setChosen(null))
+  // the entry just chosen, or the passage just opened, stays the current place until the reader
+  // scrolls on their own
+  const [pinned, setPinned] = useState<Pin | null>(null)
+  const scrolledByView = useUserScroll(containerRef, () => setPinned(null))
+  // the passage's place: its page, and the outline entry above it once the outline is known
+  function pinAt(
+    container: HTMLElement,
+    viewer: PdfJsViewer,
+    pageNumber: number,
+    mark: HTMLElement,
+  ) {
+    scrolledByView()
+    const line = contentRect(mark, container).top
+    const { node } = readingAt(container, viewer, targetsRef.current, line)
+    setPinned({ page: pageNumber, node, line })
+  }
+  const pinPassage = useEffectEvent(pinAt)
   const [scale, setScale] = useState(1)
   // the page the passage starts on; the status names it, not the page scrolled to since
   const [markedPage, setMarkedPage] = useState(1)
@@ -214,6 +234,7 @@ export default function PdfViewer({
                 jumped = true
                 first.scrollIntoView?.({ block: 'center' })
                 alignPage(container, viewer, pageNumber, first)
+                pinPassage(container, viewer, pageNumber, first)
                 setMarkState('framed')
               }
             },
@@ -253,6 +274,7 @@ export default function PdfViewer({
                 jumped = true
                 spans[range[0]].scrollIntoView?.({ block: 'center', inline: 'nearest' })
                 alignPage(container, viewer, pageNumber, spans[range[0]])
+                pinPassage(container, viewer, pageNumber, spans[range[0]])
                 setMarkedPage(pageNumber)
                 setMarkState('marked')
               }
@@ -273,6 +295,11 @@ export default function PdfViewer({
         targetsRef.current = targets
         setOutline(nodes)
         setReading(readingAt(container, viewer, targets))
+        setPinned((pin) =>
+          pin?.line === undefined
+            ? pin
+            : { ...pin, node: readingAt(container, viewer, targets, pin.line).node },
+        )
       } catch (error) {
         if (!cancelled) reportError(error)
       }
@@ -309,10 +336,14 @@ export default function PdfViewer({
     const viewer = viewerRef.current
     if (!viewer) return
     viewer.currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, viewer.currentScale * factor))
+    // pdf.js keeps the place in view while zooming: the current place stays
+    scrolledByView()
   }
 
   function fitWidth() {
-    if (viewerRef.current) viewerRef.current.currentScaleValue = 'page-width'
+    if (!viewerRef.current) return
+    viewerRef.current.currentScaleValue = 'page-width'
+    scrolledByView()
   }
 
   function goTo(node: OutlineNode) {
@@ -320,18 +351,17 @@ export default function PdfViewer({
     const container = containerRef.current
     const target = targetsRef.current.find((candidate) => candidate.node === node)
     if (!viewer || !container || !target) return
-    forgetInput()
     viewer.scrollPageIntoView({ pageNumber: target.pageNumber, destArray: target.destArray })
     alignPage(container, viewer, target.pageNumber, destinationX(viewer, target))
-    setChosen(target)
+    scrolledByView()
+    setPinned({ page: target.pageNumber, node: target.node })
   }
 
   function goToPage(next: number) {
     const viewer = viewerRef.current
     const container = containerRef.current
     if (!viewer || !container) return
-    forgetInput()
-    setChosen(null)
+    setPinned(null)
     viewer.currentPageNumber = next
     alignPage(container, viewer, next)
   }
@@ -341,15 +371,14 @@ export default function PdfViewer({
     const viewer = viewerRef.current
     const container = containerRef.current
     if (!mark || !viewer || !container) return
-    forgetInput()
-    setChosen(null)
     mark.scrollIntoView?.({ block: 'center', inline: 'nearest' })
-    const pageNumber = Number(mark.closest<HTMLElement>('.page')?.dataset.pageNumber)
-    if (pageNumber) alignPage(container, viewer, pageNumber, mark)
+    const pageNumber = Number(mark.closest<HTMLElement>('.page')?.dataset.pageNumber) || markedPage
+    alignPage(container, viewer, pageNumber, mark)
+    pinAt(container, viewer, pageNumber, mark)
   }
 
-  const page = chosen?.pageNumber ?? reading.page
-  const currentNode = chosen ? chosen.node : reading.node
+  const page = pinned?.page ?? reading.page
+  const currentNode = pinned ? pinned.node : reading.node
 
   const numPages = pdf?.numPages ?? 0
   const hasOutline = outline.length > 0
@@ -575,10 +604,14 @@ function contentRect(element: Element, container: HTMLElement) {
 }
 
 /** The page and the outline entry at the reading line of the view. */
-function readingAt(container: HTMLElement, viewer: PdfJsViewer, targets: OutlineTarget[]): Reading {
+function readingAt(
+  container: HTMLElement,
+  viewer: PdfJsViewer,
+  targets: OutlineTarget[],
+  line = readingLine(container),
+): Reading {
   const count = viewer.pagesCount
   if (!count) return { page: 1, node: null }
-  const line = readingLine(container)
   const tops = new Map<number, number>()
   const topOf = (pageNumber: number) => {
     let top = tops.get(pageNumber)

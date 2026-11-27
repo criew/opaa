@@ -1,13 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
-import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import useMediaQuery from '@mui/material/useMediaQuery'
 import Typography from '@mui/material/Typography'
-import { useTheme } from '@mui/material/styles'
-import TocIcon from '@mui/icons-material/Toc'
 import type {
   DocumentTextPassage,
   DocumentTextResponse,
@@ -24,7 +18,9 @@ import useFullScreenDialog from '@/shared/ui/dialog/useFullScreenDialog'
 import ReadingLayout from './documentView/ReadingLayout'
 import DocumentPaper from './documentView/DocumentPaper'
 import { deskScrollSx } from './documentView/styles'
-import { FindingPanel } from './documentView/FindingCard'
+import { levelTree, flattenTree } from './documentView/headingOutline'
+import { OutlinePanel, OutlineToggle } from './documentView/OutlinePanel'
+import { useOutlineOpen } from './documentView/useHeadingNavigation'
 import { passageLabelSx } from './documentView/styles'
 import { anchorPlace, anchorQuote } from './documentView/findingText'
 import { passageBandSx } from './documentView/textMarks'
@@ -70,10 +66,7 @@ export default function DocumentTextVersionDialog({
   preview,
   onClose,
 }: DocumentTextVersionDialogProps) {
-  const theme = useTheme()
-  const wide = useMediaQuery(theme.breakpoints.up('md'))
   const phone = useFullScreenDialog()
-  const [outlineToggled, setOutlineToggled] = useState<boolean | null>(null)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [failure, setFailure] = useState<{ of: TextVersionPreview; message: string } | null>(null)
   const [loadingMore, setLoadingMore] = useState<'before' | 'after' | 'jump' | null>(null)
@@ -95,7 +88,7 @@ export default function DocumentTextVersionDialog({
   const [following, setFollowing] = useState<TextVersionPreview | null>(null)
   // the scrolling element mounts anew with new text and when the layout switches to the phone's
   const scrollerKey = useMemo(() => ({ loaded, phone }), [loaded, phone])
-  const forgetInput = useUserScroll(
+  const scrolledByView = useUserScroll(
     scrollRef,
     () => {
       setFollowing(preview)
@@ -158,6 +151,7 @@ export default function DocumentTextVersionDialog({
     if (keepFromBottom.current != null) {
       container.scrollTop = container.scrollHeight - keepFromBottom.current
       keepFromBottom.current = null
+      scrolledByView()
     }
     const pending = pendingScroll.current
     if (pending) {
@@ -171,8 +165,9 @@ export default function DocumentTextVersionDialog({
       } else if (block) {
         showSection(block)
       }
+      scrolledByView()
     }
-  }, [current])
+  }, [current, scrolledByView])
 
   async function loadWindow(
     range: { from: number; to: number },
@@ -217,7 +212,6 @@ export default function DocumentTextVersionDialog({
 
   function choose(section: DocumentTextSection) {
     if (!preview) return
-    forgetInput()
     setFollowing(null)
     setChosen({ of: preview, section })
     goTo(section.chunkIndex)
@@ -240,6 +234,7 @@ export default function DocumentTextVersionDialog({
     const block = container?.querySelector<HTMLElement>(`[data-chunk-index="${chunkIndex}"]`)
     if (block) {
       showSection(block)
+      scrolledByView()
       return
     }
     void loadWindow({ from: chunkIndex, to: chunkIndex + WINDOW - 1 }, 'jump', chunkIndex)
@@ -266,8 +261,23 @@ export default function DocumentTextVersionDialog({
         : target != null
           ? lastSectionAtOrBefore(sections, target)
           : null
-  // on a phone the outline lives in the unfolding finding bar, without a toggle of its own
-  const outlineOpen = (phone || (outlineToggled ?? wide)) && sections.length > 0
+  // the outline as a tree by level, as beside the other views
+  const loadedSections = current?.sections
+  const sectionNodes = useMemo(
+    () =>
+      levelTree(
+        loadedSections ?? [],
+        (section) => section.level,
+        (section) => section.label,
+      ),
+    [loadedSections],
+  )
+  const nodeOfSection = new Map(flattenTree(sectionNodes).map((node) => [node.value, node]))
+  const {
+    open: outlineOpen,
+    toggleable,
+    toggle: toggleOutline,
+  } = useOutlineOpen(sections.length > 0)
 
   const anchor = preview?.anchor
   const status = {
@@ -276,45 +286,22 @@ export default function DocumentTextVersionDialog({
   }
   const cited = target != null || anchor !== undefined
   const outline = outlineOpen && current && (
-    <FindingPanel>
-      <Box id={OUTLINE_ID} component="nav" aria-label="Gliederung" sx={{ mx: -1, my: -0.5 }}>
-        <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-          {sections.map((section, index) => (
-            <Box component="li" key={index}>
-              <ButtonBase
-                onClick={() => choose(section)}
-                aria-current={section === activeSection ? 'location' : undefined}
-                sx={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  fontSize: fontSize.text,
-                  fontWeight: section === activeSection ? 600 : 400,
-                  bgcolor: section === activeSection ? 'action.selected' : undefined,
-                  py: 0.5,
-                  px: 0.5,
-                  pl: 0.5 + (section.level - 1) * 1.5,
-                  borderRadius: 1,
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                {section.label}
-              </ButtonBase>
-            </Box>
-          ))}
-        </Box>
-        {current.sectionsTruncated && (
-          <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, px: 0.5 }}>
-            Die Gliederung ist gekürzt.
-          </Typography>
-        )}
-      </Box>
-    </FindingPanel>
+    <OutlinePanel
+      id={OUTLINE_ID}
+      nodes={sectionNodes}
+      activeNode={activeSection ? (nodeOfSection.get(activeSection) ?? null) : null}
+      onSelect={(node) => choose(node.value)}
+    >
+      {current.sectionsTruncated && (
+        <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mt: 1, px: 1 }}>
+          Die Gliederung ist gekürzt.
+        </Typography>
+      )}
+    </OutlinePanel>
   )
 
   function jumpToPassage() {
     if (target == null) return
-    forgetInput()
     setFollowing(null)
     setChosen(null)
     setReadAt(null)
@@ -325,6 +312,7 @@ export default function DocumentTextVersionDialog({
     }
     block.scrollIntoView?.({ block: 'center' })
     block.focus({ preventScroll: true })
+    scrolledByView()
   }
 
   return (
@@ -360,18 +348,8 @@ export default function DocumentTextVersionDialog({
             flex: 'none',
           }}
         >
-          {sections.length > 0 && !phone && (
-            <Tooltip title={outlineOpen ? 'Gliederung ausblenden' : 'Gliederung einblenden'}>
-              <IconButton
-                size="small"
-                aria-label="Gliederung"
-                aria-expanded={outlineOpen}
-                aria-controls={outlineOpen ? OUTLINE_ID : undefined}
-                onClick={() => setOutlineToggled(!outlineOpen)}
-              >
-                <TocIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+          {toggleable && (
+            <OutlineToggle open={outlineOpen} controls={OUTLINE_ID} onToggle={toggleOutline} />
           )}
           <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Textfassung – das Layout des Originals wird nicht wiedergegeben.
