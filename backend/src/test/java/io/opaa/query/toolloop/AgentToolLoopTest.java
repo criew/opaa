@@ -248,8 +248,8 @@ class AgentToolLoopTest {
     assertThat(run.stamp().templates()).containsExactly(template);
     assertThat(stamp.documentText(run.agentName(), template))
         .isEqualTo(
-            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage „Bescheid“,"
-                + " Fassung 2 · Bibliotheken: Satzungen · Modell modell-a");
+            "KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Vorlage"
+                + " „Bescheid“, Fassung 2 · Bibliotheken: Satzungen · Modell modell-a");
   }
 
   private static AgentRunSpec named(AgentRunSpec spec, String name) {

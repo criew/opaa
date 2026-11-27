@@ -104,6 +104,14 @@ damit einen Merker an der Reservierung des Laufs in der Datenbank, den der Lauf 
 liest, gleich welche Instanz den Abbruch angenommen hat. Ein Lebenszeichen alle 10 Sekunden, auch
 während Modell oder Werkzeug arbeiten, hält Proxys offen und deckt einen verlorenen Leser auf.
 
+**Fassungsstempel außerhalb des Chats.** Jede Agentenantwort trägt den einen Wortlaut
+„KI-generierter Entwurf, nicht geprüft“: an der Antwort, beim Kopieren und im Export mit Agent und
+Fassung. Eine Datei nach Vorlage zeigt in jeder Fußzeile nur diese kurze Zeile, damit sie in eine
+Zeile passt; den vollständigen Stempel mit Vorlage, Bibliotheken und Modell trägt sie
+maschinenlesbar in den Dokumenteigenschaften (Art. 50 Abs. 2 KI-VO), so geht er mit der Datei mit,
+ohne die sichtbare Seite zu füllen. Die Bibliotheksnamen gehören zum Stempel; wer die Datei
+weitergibt, gibt sie mit.
+
 **Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
 (`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von
 `opaa_audit_owner`, das Anwendungskonto fügt an und liest, entfernt wird nur über eine Funktion für

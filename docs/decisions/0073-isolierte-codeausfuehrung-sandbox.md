@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-15
+Akzeptiert · zuletzt geändert 2026-11-27
 
 ## Kontext
 
@@ -128,8 +128,10 @@ Fehlt ein Wert oder ist er `null`, setzt das Backend eine Liste leer, eine Bedin
 einen leeren Listeneintrag als leeren Text; ein Text bleibt leer, und ein `default` der Vorlage
 greift. Die Tests des Skripts laufen beim Bau des Images; scheitert einer, entsteht kein Image. Im
 Backend rendert nichts eine Vorlage: Jinja dort hieße Template-Injection im Prozess mit allen Daten.
-Ein Stempel- oder Entwurfstext für Fußzeile und Dokumenteigenschaften kommt als Parameter vom
-Backend, nie vom Modell. Scheitert das Skript oder ist die Sandbox nicht erreichbar, bekommt das
+Der Stempel kommt als zwei Parameter vom Backend, nie vom Modell: eine kurze Zeile für jede
+Fußzeile (Entwurfskennzeichnung, Agent, Fassung) und der vollständige Stempel für die
+Dokumenteigenschaften (Kommentar und Thema, ohne die 255-Zeichen-Grenze von python-docx; die
+PDF-Ausgabe übernimmt das Thema). Fehlt die kurze Zeile, steht der Stempel in der Fußzeile. Scheitert das Skript oder ist die Sandbox nicht erreichbar, bekommt das
 Modell eine Meldung und antwortet im Chat; der Lauf endet nicht mit einem Fehler.
 
 ## Konsequenzen

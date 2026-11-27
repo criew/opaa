@@ -58,7 +58,7 @@ describe('checkAccentContrast', () => {
   /**
    * The two scheme checks now evaluate the **derived** text colour, i.e. what
    * actually renders. A very dark blue is lightened in the dark scheme as far as
-   * the six permitted steps reach — if that takes it above the threshold, there is nothing to
+   * the nine permitted steps reach — if that takes it above the threshold, there is nothing to
    * warn about; if it stays below, the check still reports it.
    */
   it('judges the derived text colour of the dark scheme, not the raw accent', () => {
@@ -69,13 +69,13 @@ describe('checkAccentContrast', () => {
     expect(onDark?.required).toBe(TEXT_CONTRAST_MINIMUM)
     // The demo's raw house colour would be below it on the dark ground; the derivation lifts it
     // above, and exactly that is what the check reports - it evaluates what renders.
-    expect(contrastRatio('#1153EE', darkRoles.bg3)).toBeLessThan(TEXT_CONTRAST_MINIMUM)
+    expect(contrastRatio('#1153EE', darkRoles.bg2)).toBeLessThan(TEXT_CONTRAST_MINIMUM)
     expect(onDark?.passes).toBe(true)
   })
 
   /**
-   * The counter-check for the limit: this very dark blue stays below the threshold (3.7:1) even
-   * after the six permitted steps. The derivation then stops, and the form says so -
+   * The counter-check for the limit: this very dark blue stays below the threshold even after the
+   * nine permitted steps. The derivation then stops, and the form says so -
    * instead of lightening the colour beyond recognition or leaving the operator in the dark.
    */
   it('still warns when even the bounded derivation cannot reach the threshold', () => {
@@ -129,7 +129,7 @@ describe('formatContrastRatio', () => {
 
 describe('deriveAccentText', () => {
   const HELLE_GRUENDE = ['#FFFFFF', '#F7F8FA', '#EFF1F4']
-  const DUNKLE_GRUENDE = ['#151731', '#1B1E40', '#242855']
+  const DUNKLE_GRUENDE = [darkRoles.bg1, darkRoles.bg2, darkRoles.bg3]
 
   it('keeps a colour that already reads on every ground of its scheme', () => {
     expect(deriveAccentText('#0055A4', HELLE_GRUENDE)).toBe('#0055A4')
@@ -162,8 +162,9 @@ describe('deriveAccentText', () => {
     const nurSeitengrund = deriveAccentText('#1153EE', [DUNKLE_GRUENDE[0]])
     const alleFlaechen = deriveAccentText('#1153EE', DUNKLE_GRUENDE)
 
-    expect(contrastRatio(nurSeitengrund, DUNKLE_GRUENDE[2])).toBeLessThan(TEXT_CONTRAST_MINIMUM)
-    expect(contrastRatio(alleFlaechen, DUNKLE_GRUENDE[2])).toBeGreaterThanOrEqual(
+    // bg-2, the cards, is the lightest dark ground
+    expect(contrastRatio(nurSeitengrund, DUNKLE_GRUENDE[1])).toBeLessThan(TEXT_CONTRAST_MINIMUM)
+    expect(contrastRatio(alleFlaechen, DUNKLE_GRUENDE[1])).toBeGreaterThanOrEqual(
       TEXT_CONTRAST_MINIMUM,
     )
   })
@@ -171,7 +172,7 @@ describe('deriveAccentText', () => {
   it('stops after the bounded number of steps instead of repainting an extreme colour', () => {
     const text = deriveAccentText('#000033', DUNKLE_GRUENDE)
 
-    expect(contrastRatio(text, DUNKLE_GRUENDE[2])).toBeLessThan(TEXT_CONTRAST_MINIMUM)
+    expect(contrastRatio(text, DUNKLE_GRUENDE[1])).toBeLessThan(TEXT_CONTRAST_MINIMUM)
   })
 
   it('returns unparseable input unchanged', () => {
