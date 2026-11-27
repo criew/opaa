@@ -6,7 +6,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AgentRun, AgentRunStamp } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 
-const DRAFT_NOTICE = 'Entwurf, nicht geprüft'
+const DRAFT_NOTICE = 'KI-generierter Entwurf, nicht geprüft'
 
 function revisionText(stamp: AgentRunStamp): string {
   const current = stamp.currentAgentRevision

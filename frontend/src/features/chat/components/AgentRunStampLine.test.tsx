@@ -29,7 +29,9 @@ describe('AgentRunStampLine', () => {
   it('marks the answer as a draft and names the revision, details on demand', async () => {
     renderWithProviders(<AgentRunStampLine run={RUN} />)
 
-    expect(screen.getByRole('img', { name: 'Entwurf, nicht geprüft' })).toHaveTextContent('Entwurf')
+    expect(
+      screen.getByRole('img', { name: 'KI-generierter Entwurf, nicht geprüft' }),
+    ).toHaveTextContent('Entwurf')
     const toggle = screen.getByRole('button', { name: /Fassung 3/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     // the agent is named once, at the question; the stamp line does not repeat it
@@ -54,7 +56,9 @@ describe('AgentRunStampLine', () => {
 
   it('shows the draft mark alone for a run kept without a stamp', () => {
     renderWithProviders(<AgentRunStampLine run={{ ...RUN, stamp: null }} />)
-    expect(screen.getByRole('img', { name: 'Entwurf, nicht geprüft' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: 'KI-generierter Entwurf, nicht geprüft' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 

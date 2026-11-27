@@ -28,9 +28,10 @@ class AgentRunStampTest {
 
     assertThat(text)
         .isEqualTo(
-            "Entwurf, nicht geprüft · Agent „Prüf hilfe“, Fassung 3 · Vorlage „Be scheid“,"
-                + " Fassung 2 · Bibliotheken: Erl asse · Modell modell a")
+            "KI-generierter Entwurf, nicht geprüft · Agent „Prüf hilfe“, Fassung 3 · Vorlage"
+                + " „Be scheid“, Fassung 2 · Bibliotheken: Erl asse · Modell modell a")
         .doesNotContainPattern("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]");
-    assertThat(stamp.shortText("\u202E")).isEqualTo("Entwurf, nicht geprüft · Agent, Fassung 3");
+    assertThat(stamp.shortText("\u202E"))
+        .isEqualTo("KI-generierter Entwurf, nicht geprüft · Agent, Fassung 3");
   }
 }
