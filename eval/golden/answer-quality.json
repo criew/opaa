@@ -233,14 +233,14 @@
       ],
       "expected_state": {
         "format": {
-          "state": "known_gap",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "known_gap",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -848,14 +848,14 @@
       "wrong_answer": "Ein Gerüst kostet 0,25 Euro je qm und Tag.",
       "expected_state": {
         "format": {
-          "state": "known_gap",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "known_gap",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },
@@ -887,14 +887,14 @@
       "wrong_answer": "Die Außengastronomie kostet 40 Euro je qm und Monat.",
       "expected_state": {
         "format": {
-          "state": "known_gap",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Das Tabellenformat liest die erste nichtleere Zeile als Kopf; hier ist es die Titelzeile. Ab dem zweiten Chunk fehlen die Spaltenköpfe, nur die Titelzeile wird wiederholt."
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
         },
         "context": {
-          "state": "known_gap",
+          "state": "solved",
           "since": "2026-11-27",
-          "reason": "Das Dokument steht im Kontext, aber kein Abschnitt trägt Wert und Bezug gemeinsam: dieselbe Ursache wie auf der Formatebene (Tabellenkopf ab dem zweiten Chunk verloren)."
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
         }
       }
     },

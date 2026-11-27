@@ -64,41 +64,39 @@ export function horizontalOffset({
   return Math.max(0, offset)
 }
 
-/** How long after an input of the reader a scroll still counts as theirs. */
-const INPUT_WINDOW_MS = 1000
-
 /**
- * Calls `onUserScroll` when the view behind `ref` scrolls shortly after the reader's own input -
- * wheel, touch, keyboard, or a press on the view or its scrollbar - but not when only the code
- * scrolls it, nor on an input that scrolls nothing (a click into the text). The returned function
- * forgets a pending input; a view calls it before it scrolls itself. `attachKey` re-attaches the
- * listeners once the scrolling element is mounted.
+ * Calls `onUserScroll` when the view behind `ref` scrolls to a place the view did not put itself -
+ * by wheel, touch, keyboard, scrollbar, the browser's search or a script - but not on an input
+ * that scrolls nothing (a click into the text). The returned function tells it that the view has
+ * just scrolled itself: its position at that moment does not count as the reader's. `attachKey`
+ * re-attaches the listener once the scrolling element is mounted anew. The browser moving the
+ * view itself (scroll anchoring, a smaller window) counts as the reader's scroll too.
  */
 export function useUserScroll(
   ref: RefObject<HTMLElement | null>,
   onUserScroll: () => void,
   attachKey?: unknown,
 ): () => void {
-  const lastInput = useRef(-Infinity)
+  const settled = useRef<{ top: number; left: number } | null>(null)
   const report = useEffectEvent(onUserScroll)
   useEffect(() => {
     const element = ref.current
     if (!element) return
-    const input = () => {
-      lastInput.current = performance.now()
-    }
     const scroll = () => {
-      if (performance.now() - lastInput.current <= INPUT_WINDOW_MS) report()
+      const at = settled.current
+      const unmoved =
+        at !== null &&
+        Math.abs(element.scrollTop - at.top) <= 1 &&
+        Math.abs(element.scrollLeft - at.left) <= 1
+      if (unmoved) return
+      settled.current = null
+      report()
     }
-    const inputs = ['wheel', 'touchmove', 'keydown', 'pointerdown'] as const
-    for (const name of inputs) element.addEventListener(name, input, { passive: true })
     element.addEventListener('scroll', scroll, { passive: true })
-    return () => {
-      for (const name of inputs) element.removeEventListener(name, input)
-      element.removeEventListener('scroll', scroll)
-    }
+    return () => element.removeEventListener('scroll', scroll)
   }, [ref, attachKey])
   return useCallback(() => {
-    lastInput.current = -Infinity
-  }, [])
+    const element = ref.current
+    settled.current = element ? { top: element.scrollTop, left: element.scrollLeft } : null
+  }, [ref])
 }

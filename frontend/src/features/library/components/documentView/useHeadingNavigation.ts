@@ -73,7 +73,7 @@ export function useHeadingNavigation(
     scrollerRef.current = scroller
   }, [headings, scroller])
   // the reader's own scrolling hands the outline back to the reading line
-  const forgetInput = useUserScroll(
+  const scrolledByView = useUserScroll(
     scrollerRef,
     () => {
       pinned.current = null
@@ -128,15 +128,15 @@ export function useHeadingNavigation(
         scroller.getBoundingClientRect().top +
         scroller.scrollTop -
         JUMP_MARGIN_PX
-      forgetInput()
       scroller.scrollTo?.({ top: Math.max(0, top) })
+      scrolledByView()
       pinned.current = element
       setActive(node)
       // focus follows, so keyboard and screen reader continue in the section
       if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '-1')
       element.focus({ preventScroll: true })
     },
-    [scroller, forgetInput],
+    [scroller, scrolledByView],
   )
 
   /**
@@ -145,11 +145,11 @@ export function useHeadingNavigation(
    */
   const follow = useCallback(
     (target: Element) => {
-      forgetInput()
+      scrolledByView()
       pinned.current = target
       refresh.current()
     },
-    [forgetInput],
+    [scrolledByView],
   )
 
   return { active: active && entries.includes(active) ? active : null, goTo, follow }
