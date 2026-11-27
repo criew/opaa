@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   docxHeadingElements,
   docxHeadingLevel,
-  flattenHeadings,
+  flattenTree,
   headingTree,
   markDocxHeadings,
 } from './headingOutline'
@@ -19,7 +19,7 @@ describe('headingTree', () => {
     expect(tree.map((node) => node.title)).toEqual(['A', 'B'])
     expect(tree[0].children.map((node) => node.title)).toEqual(['A.1', 'A.2'])
     expect(tree[0].children[0].children.map((node) => node.title)).toEqual(['A.1.a'])
-    expect(flattenHeadings(tree).map((node) => node.index)).toEqual([0, 1, 2, 3, 4])
+    expect(flattenTree(tree).map((node) => node.index)).toEqual([0, 1, 2, 3, 4])
   })
 
   it('keeps a document opening below level 1 at the top and a skipped level one step deeper', () => {

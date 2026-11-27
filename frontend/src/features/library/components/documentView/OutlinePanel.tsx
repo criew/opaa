@@ -37,16 +37,20 @@ export function OutlinePanel<T extends OutlineTreeNode<T>>({
   nodes,
   activeNode,
   onSelect,
+  children,
 }: {
   id: string
   nodes: T[]
   activeNode: T | null
   onSelect: (node: T) => void
+  /** A note below the tree, such as that it was cut short. */
+  children?: ReactNode
 }) {
   return (
     <FindingPanel>
       <Box id={id} component="nav" aria-label="Gliederung" sx={{ mx: -1 }}>
         <OutlineTree nodes={nodes} activeNode={activeNode} onSelect={onSelect} />
+        {children}
       </Box>
     </FindingPanel>
   )

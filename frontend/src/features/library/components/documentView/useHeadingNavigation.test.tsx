@@ -4,12 +4,14 @@ import { headingTree, type HeadingNode } from './headingOutline'
 import { useHeadingNavigation } from './useHeadingNavigation'
 
 /**
- * A scrolling box 400 px high with headings at fixed offsets in its content: jsdom has no layout,
- * so the boxes report where the headings stand for the current scroll position.
+ * A scrolling box 400 px high over content `height` px high, with headings at fixed offsets in
+ * it: jsdom has no layout, so the boxes report where the headings stand for the current scroll
+ * position.
  */
-function scrollingDocument(offsets: number[]) {
+function scrollingDocument(offsets: number[], height = 4000) {
   const scroller = document.createElement('div')
   Object.defineProperty(scroller, 'clientHeight', { value: 400 })
+  Object.defineProperty(scroller, 'scrollHeight', { value: height })
   Object.defineProperty(scroller, 'scrollTop', { value: 0, writable: true })
   scroller.getBoundingClientRect = () => ({ top: 100 }) as DOMRect
   scroller.scrollTo = ((options: ScrollToOptions) => {
@@ -26,8 +28,18 @@ function scrollingDocument(offsets: number[]) {
   return { scroller, headings }
 }
 
+/** The code scrolls the view: no input of the reader goes before. */
 function scrollTo(scroller: HTMLElement, top: number) {
   act(() => {
+    scroller.scrollTop = top
+    scroller.dispatchEvent(new Event('scroll'))
+  })
+}
+
+/** The reader scrolls the view, here by `input` (wheel, key …). */
+function userScroll(scroller: HTMLElement, top: number, input = 'wheel') {
+  act(() => {
+    scroller.dispatchEvent(new Event(input))
     scroller.scrollTop = top
     scroller.dispatchEvent(new Event('scroll'))
   })
@@ -57,7 +69,6 @@ afterEach(() => {
 })
 
 function setup() {
-  // content 2000 px high: Drei is the last, short section and never reaches the reading line
   const { scroller, headings } = scrollingDocument([0, 500, 900, 1800])
   const hook = renderHook(
     ({ nodes }: { nodes: HeadingNode[] }) => useHeadingNavigation(scroller, nodes, () => headings),
@@ -85,25 +96,34 @@ describe('useHeadingNavigation', () => {
     expect(hook.result.current.active).toBe(ZWEI)
   })
 
+  it('reaches the last, short section once the view scrolls to the end', () => {
+    const { scroller } = scrollingDocument([0, 500, 900, 1800], 2000)
+    const hook = renderHook(() => useHeadingNavigation(scroller, NODES, () => []))
+    expect(hook.result.current.active).toBeNull()
+    const { headings } = { headings: Array.from(scroller.children) as HTMLElement[] }
+    const withHeadings = renderHook(() => useHeadingNavigation(scroller, NODES, () => headings))
+    // the content ends 200 px below Drei: at the end of the view the line reaches the bottom edge
+    userScroll(scroller, 1600)
+    expect(withHeadings.result.current.active).toBe(DREI)
+  })
+
   it('keeps the chosen entry active after a jump until the reader moves the view', () => {
     const { scroller, headings, hook } = setup()
     const spy = vi.spyOn(scroller, 'scrollTo')
 
-    act(() => hook.result.current.goTo(DREI))
+    act(() => hook.result.current.goTo(ZWEI))
 
     // vertically only, 16 px above the heading
-    expect(spy).toHaveBeenCalledWith({ top: 1784 })
-    expect(hook.result.current.active).toBe(DREI)
-    expect(headings[3]).toHaveFocus()
-
-    // the content cannot scroll that far: the view stops short and the line stays above Drei
-    scrollTo(scroller, 1550)
-    expect(hook.result.current.active).toBe(DREI)
-
-    act(() => {
-      scroller.dispatchEvent(new Event('wheel'))
-    })
+    expect(spy).toHaveBeenCalledWith({ top: 884 })
     expect(hook.result.current.active).toBe(ZWEI)
+    expect(headings[2]).toHaveFocus()
+
+    // the code scrolling the view leaves the entry as chosen
+    scrollTo(scroller, 0)
+    expect(hook.result.current.active).toBe(ZWEI)
+    // the reader's own scrolling hands it back to the reading line
+    userScroll(scroller, 0)
+    expect(hook.result.current.active).toBe(EINS)
   })
 
   it('marks the section of the passage the view was brought to, wherever it stands', () => {
@@ -117,9 +137,7 @@ describe('useHeadingNavigation', () => {
     act(() => hook.result.current.follow(passage))
     expect(hook.result.current.active).toBe(EINS_EINS)
     // the reader's own scrolling hands the outline back to the reading line
-    act(() => {
-      scroller.dispatchEvent(new Event('keydown'))
-    })
+    userScroll(scroller, 750, 'keydown')
     expect(hook.result.current.active).toBe(ZWEI)
   })
 

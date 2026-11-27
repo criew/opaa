@@ -17,22 +17,45 @@ export interface FoundHeading {
  * one step deeper, and a document opening at level 2 has its level-2 headings at the top.
  */
 export function headingTree(headings: FoundHeading[]): HeadingNode[] {
-  const roots: HeadingNode[] = []
-  const open: { level: number; node: HeadingNode }[] = []
-  headings.forEach((heading, index) => {
-    const node: HeadingNode = { title: heading.title, index, children: [] }
-    while (open.length > 0 && open[open.length - 1].level >= heading.level) open.pop()
+  const toHeading = (node: LevelNode<{ index: number }>): HeadingNode => ({
+    title: node.title,
+    index: node.value.index,
+    children: node.children.map(toHeading),
+  })
+  return levelTree(
+    headings.map((heading, index) => ({ ...heading, index })),
+    (heading) => heading.level,
+    (heading) => heading.title,
+  ).map(toHeading)
+}
+
+/** An outline entry over a value of its own, such as a section of the Textfassung. */
+export interface LevelNode<V> extends OutlineTreeNode<LevelNode<V>> {
+  value: V
+}
+
+/**
+ * Nests `items` in reading order by their level, as {@link headingTree} does; each entry keeps its
+ * item as `value`.
+ */
+export function levelTree<V>(items: V[], level: (item: V) => number, title: (item: V) => string) {
+  const roots: LevelNode<V>[] = []
+  const open: { level: number; node: LevelNode<V> }[] = []
+  for (const item of items) {
+    const node: LevelNode<V> = { title: title(item), value: item, children: [] }
+    const depth = level(item)
+    while (open.length > 0 && open[open.length - 1].level >= depth) open.pop()
     const parent = open[open.length - 1]
     if (parent) parent.node.children.push(node)
     else roots.push(node)
-    open.push({ level: heading.level, node })
-  })
+    open.push({ level: depth, node })
+  }
   return roots
 }
 
 /** Every entry of `nodes` and their descendants, in reading order. */
-export function flattenHeadings(nodes: HeadingNode[]): HeadingNode[] {
-  return nodes.flatMap((node) => [node, ...flattenHeadings(node.children)])
+export function flattenTree<T extends OutlineTreeNode<T>>(nodes: T[]): T[] {
+  return nodes.flatMap((node) => [node, ...flattenTree(node.children)])
 }
 
 const MARKDOWN_HEADINGS = 'h1, h2, h3, h4, h5, h6'

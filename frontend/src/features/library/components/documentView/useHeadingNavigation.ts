@@ -5,23 +5,23 @@ import useFullScreenDialog from '@/shared/ui/dialog/useFullScreenDialog'
 import {
   docxHeadingElements,
   docxHeadingLevel,
-  flattenHeadings,
+  flattenTree,
   headingTitle,
   headingTree,
   markdownHeadingElements,
   markdownHeadingLevel,
   type HeadingNode,
 } from './headingOutline'
+import { lastAtOrBefore, readingLine, useUserScroll } from './readingPosition'
 
 /**
- * The reading line sits this far down the view: a heading above it opens the section on screen.
- * Half way, so a heading the reader scrolls past counts once it reaches the middle.
+ * The reading line sits this far down the view (see {@link readingLine}): a heading above it opens
+ * the section on screen. Half way, so a heading the reader scrolls past counts once it reaches the
+ * middle.
  */
 const READING_LINE = 0.5
 /** A heading jumped to stands this far below the top edge of the view. */
 const JUMP_MARGIN_PX = 16
-/** What the reader does to move the view; any of it ends the entry fixed by a jump. */
-const USER_SCROLL_EVENTS = ['wheel', 'touchmove', 'keydown', 'pointerdown'] as const
 
 /**
  * The entry whose section holds `target`: the last heading that is `target` or comes before it
@@ -60,16 +60,27 @@ export function useHeadingNavigation(
   nodes: HeadingNode[],
   headings: () => HTMLElement[],
 ) {
-  const entries = useMemo(() => flattenHeadings(nodes), [nodes])
+  const entries = useMemo(() => flattenTree(nodes), [nodes])
   const [active, setActive] = useState<HeadingNode | null>(null)
   // the element the last jump went to; the active entry is its section until the reader scrolls
   const pinned = useRef<Element | null>(null)
   // recomputes the active entry while the view is set up, a no-op before
   const refresh = useRef<() => void>(() => {})
   const headingsRef = useRef(headings)
+  const scrollerRef = useRef<HTMLElement | null>(scroller)
   useEffect(() => {
     headingsRef.current = headings
-  }, [headings])
+    scrollerRef.current = scroller
+  }, [headings, scroller])
+  // the reader's own scrolling hands the outline back to the reading line
+  const forgetInput = useUserScroll(
+    scrollerRef,
+    () => {
+      pinned.current = null
+      refresh.current()
+    },
+    scroller,
+  )
 
   useEffect(() => {
     if (!scroller || entries.length === 0) return
@@ -83,26 +94,17 @@ export function useHeadingNavigation(
         setActive(sectionOf(pinned.current, entries, elements))
         return
       }
-      const line = scroller.getBoundingClientRect().top + scroller.clientHeight * READING_LINE
-      let current: HeadingNode | null = null
-      for (const entry of entries) {
+      const top = scroller.getBoundingClientRect().top - scroller.scrollTop
+      const positioned = entries.flatMap((entry) => {
         const element = elements[entry.index]
-        if (element && element.getBoundingClientRect().top <= line) current = entry
-      }
-      setActive(current)
+        return element ? [{ entry, position: element.getBoundingClientRect().top - top }] : []
+      })
+      setActive(lastAtOrBefore(positioned, readingLine(scroller, READING_LINE))?.entry ?? null)
     }
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update)
     }
-    const release = () => {
-      if (!pinned.current) return
-      pinned.current = null
-      schedule()
-    }
     scroller.addEventListener('scroll', schedule, { passive: true })
-    for (const type of USER_SCROLL_EVENTS) {
-      scroller.addEventListener(type, release, { passive: true })
-    }
     // the outline toggled, the window resized or an image loaded moves headings without a scroll
     const resized = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null
     resized?.observe(scroller)
@@ -114,7 +116,6 @@ export function useHeadingNavigation(
       if (frame) cancelAnimationFrame(frame)
       resized?.disconnect()
       scroller.removeEventListener('scroll', schedule)
-      for (const type of USER_SCROLL_EVENTS) scroller.removeEventListener(type, release)
     }
   }, [scroller, entries])
 
@@ -127,6 +128,7 @@ export function useHeadingNavigation(
         scroller.getBoundingClientRect().top +
         scroller.scrollTop -
         JUMP_MARGIN_PX
+      forgetInput()
       scroller.scrollTo?.({ top: Math.max(0, top) })
       pinned.current = element
       setActive(node)
@@ -134,17 +136,21 @@ export function useHeadingNavigation(
       if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '-1')
       element.focus({ preventScroll: true })
     },
-    [scroller],
+    [scroller, forgetInput],
   )
 
   /**
    * The view was brought to `target` (the cited passage): its section is the active entry, also
    * when the outline is read only after the jump.
    */
-  const follow = useCallback((target: Element) => {
-    pinned.current = target
-    refresh.current()
-  }, [])
+  const follow = useCallback(
+    (target: Element) => {
+      forgetInput()
+      pinned.current = target
+      refresh.current()
+    },
+    [forgetInput],
+  )
 
   return { active: active && entries.includes(active) ? active : null, goTo, follow }
 }

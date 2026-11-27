@@ -16,7 +16,7 @@ interface PdfOutlineProps {
   onSelect: (node: OutlineNode) => void
 }
 
-/** A PDF's outline as a tree; an entry whose destination is missing cannot be chosen. */
+/** A PDF's outline as a tree; an entry whose page does not resolve cannot be chosen. */
 export default function PdfOutline(props: PdfOutlineProps) {
-  return <OutlineTree {...props} isDisabled={(node) => node.dest == null} />
+  return <OutlineTree {...props} isDisabled={(node) => node.page == null} />
 }
