@@ -67,16 +67,21 @@ function setup() {
 }
 
 describe('useHeadingNavigation', () => {
-  it('marks the last heading at or above the reading line, a quarter down the view', () => {
+  it('marks the last heading at or above the reading line, half way down the view', () => {
     const { scroller, hook } = setup()
     expect(hook.result.current.active).toBe(EINS)
 
-    // Eins.Eins at 500 reaches the line at scrollTop 400 (100 px into the 400 px view)
-    scrollTo(scroller, 399)
+    // Eins.Eins at 500 reaches the line at scrollTop 300 (200 px into the 400 px view)
+    scrollTo(scroller, 299)
     expect(hook.result.current.active).toBe(EINS)
-    scrollTo(scroller, 400)
+    scrollTo(scroller, 300)
     expect(hook.result.current.active).toBe(EINS_EINS)
-    scrollTo(scroller, 850)
+  })
+
+  it('marks the section of a passage the view opened at, a third down', () => {
+    const { scroller, hook } = setup()
+    // the passage under Zwei stands a third down, its heading just above it
+    scrollTo(scroller, 780)
     expect(hook.result.current.active).toBe(ZWEI)
   })
 
@@ -92,7 +97,7 @@ describe('useHeadingNavigation', () => {
     expect(headings[3]).toHaveFocus()
 
     // the content cannot scroll that far: the view stops short and the line stays above Drei
-    scrollTo(scroller, 1600)
+    scrollTo(scroller, 1550)
     expect(hook.result.current.active).toBe(DREI)
 
     act(() => {

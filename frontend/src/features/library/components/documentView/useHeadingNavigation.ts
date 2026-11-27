@@ -13,8 +13,11 @@ import {
   type HeadingNode,
 } from './headingOutline'
 
-/** The reading line sits this far down the view: a heading above it opens the section on screen. */
-const READING_LINE = 0.25
+/**
+ * The reading line sits this far down the view: a heading above it opens the section on screen.
+ * Half way, so a passage the view opens at (a third down, or centred) counts to its own section.
+ */
+const READING_LINE = 0.5
 /** A heading jumped to stands this far below the top edge of the view. */
 const JUMP_MARGIN_PX = 16
 /** What the reader does to move the view; any of it ends the entry fixed by a click. */
