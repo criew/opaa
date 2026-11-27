@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/test-utils'
 import type { ChunkAnchor } from '@/shared/api/types'
@@ -8,12 +8,48 @@ import { parseMail } from '../../utils/mailMessage'
 import type { OfficeOriginal } from '../../utils/officeOriginal'
 import OfficeOriginalDialog from './OfficeOriginalDialog'
 
+/**
+ * docx-preview stands in as a parser that hands over the document model and a renderer that
+ * draws its `html` - the paragraphs of the model's body, when the test gives one, with the classes
+ * the view put on them.
+ */
 const docx = vi.hoisted(() => ({
-  renderAsync: vi.fn(),
-  options: null as unknown,
+  parseAsync: vi.fn(),
+  renderDocument: vi.fn(),
+  html: '',
 }))
 
-vi.mock('docx-preview', () => ({ renderAsync: docx.renderAsync }))
+vi.mock('docx-preview', () => ({
+  parseAsync: docx.parseAsync,
+  renderDocument: docx.renderDocument,
+}))
+
+interface FakeParagraph {
+  type: 'paragraph'
+  text: string
+  styleName?: string
+  outlineLevel?: number
+  className?: string
+}
+
+function renderFake(document: { documentPart?: { body: { children: FakeParagraph[] } } }) {
+  const html = document?.documentPart
+    ? '<section class="docx">' +
+      document.documentPart.body.children
+        .map((p) => `<p class="${p.className ?? ''}">${p.text}</p>`)
+        .join('') +
+      '</section>'
+    : docx.html
+  const template = window.document.createElement('template')
+  template.innerHTML = html
+  return Array.from(template.content.childNodes)
+}
+
+function wordModel(paragraphs: Omit<FakeParagraph, 'type'>[]) {
+  return {
+    documentPart: { body: { children: paragraphs.map((p) => ({ type: 'paragraph', ...p })) } },
+  }
+}
 
 const CSV = [
   'Aktenzeichen;Antragsteller;Fällig',
@@ -87,7 +123,9 @@ beforeEach(() => {
       }
     },
   )
-  docx.renderAsync.mockReset()
+  docx.parseAsync.mockReset().mockResolvedValue({})
+  docx.renderDocument.mockReset().mockImplementation(async (model) => renderFake(model))
+  docx.html = ''
 })
 
 afterEach(() => {
@@ -203,17 +241,15 @@ describe('OfficeOriginalDialog', () => {
 
   describe('Word', () => {
     it('renders through docx-preview without embedded HTML, comments, changes and fonts', async () => {
-      docx.renderAsync.mockImplementation(async (_blob, body: HTMLElement) => {
-        body.innerHTML =
-          '<section class="docx"><p>2. Fristen</p><p>Der Verwendungsnachweis ist vorzulegen.</p>' +
-          '<p><a href="javascript:alert(1)">Böse</a> <a href="https://stadt.example/">Gut</a></p></section>'
-      })
+      docx.html =
+        '<section class="docx"><p>2. Fristen</p><p>Der Verwendungsnachweis ist vorzulegen.</p>' +
+        '<p><a href="javascript:alert(1)">Böse</a> <a href="https://stadt.example/">Gut</a></p></section>'
       renderDialog(word({ quoteStart: 'Der Verwendungsnachweis ist vorzulegen.' }))
 
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent('Fundstelle markiert.'),
       )
-      const [, , , options] = docx.renderAsync.mock.calls[0]
+      const [, options] = docx.renderDocument.mock.calls[0]
       expect(options).toMatchObject({
         renderAltChunks: false,
         renderComments: false,
@@ -235,11 +271,9 @@ describe('OfficeOriginalDialog', () => {
     })
 
     it('keeps a VML shape that asks for the whole window inside the document box', async () => {
-      docx.renderAsync.mockImplementation(async (_blob, body: HTMLElement) => {
-        body.innerHTML =
-          '<section class="docx"><p>Frist</p><div><svg style="position:fixed;inset:0;' +
-          'z-index:2147483647"></svg></div></section>'
-      })
+      docx.html =
+        '<section class="docx"><p>Frist</p><div><svg style="position:fixed;inset:0;' +
+        'z-index:2147483647"></svg></div></section>'
       renderDialog(word({ quoteStart: 'Frist' }))
 
       await waitFor(() =>
@@ -250,8 +284,56 @@ describe('OfficeOriginalDialog', () => {
       expect(getComputedStyle(host.parentElement!).overflow).toBe('clip')
     })
 
+    it('lists the heading paragraphs as the outline and jumps to one', async () => {
+      docx.parseAsync.mockResolvedValue(
+        wordModel([
+          { text: '1 Einleitung', styleName: 'berschrift1' },
+          { text: 'Worum es geht.' },
+          { text: '1.1 Zweck', styleName: 'Heading2' },
+          { text: 'Wozu es dient.' },
+          { text: '2 Verfahren', outlineLevel: 0 },
+          { text: 'Wie es abläuft.', outlineLevel: 9 },
+        ]),
+      )
+      const user = userEvent.setup()
+      renderDialog(word())
+
+      await user.click(await screen.findByRole('button', { name: 'Gliederung' }))
+      const outline = screen.getByRole('navigation', { name: 'Gliederung' })
+      expect(
+        within(outline)
+          .getAllByRole('button')
+          .map((b) => b.textContent),
+      ).toEqual(['', '1 Einleitung', '1.1 Zweck', '2 Verfahren'])
+      expect(within(outline).getByRole('button', { name: '1 Einleitung zuklappen' })).toBeVisible()
+
+      const content = screen.getByTestId('office-original-content')
+      const scrollTo = vi.fn()
+      content.scrollTo = scrollTo as unknown as typeof content.scrollTo
+      await user.click(within(outline).getByRole('button', { name: '2 Verfahren' }))
+
+      expect(scrollTo).toHaveBeenCalledWith({ top: expect.any(Number) })
+      expect(within(outline).getByRole('button', { name: '2 Verfahren' })).toHaveAttribute(
+        'aria-current',
+        'location',
+      )
+      const root = screen.getByTestId('docx-original').shadowRoot!
+      expect(root.activeElement).toHaveTextContent('2 Verfahren')
+    })
+
+    it('shows no outline for a Word file without headings', async () => {
+      docx.parseAsync.mockResolvedValue(wordModel([{ text: 'Nur Fließtext.' }]))
+      renderDialog(word())
+
+      await waitFor(() =>
+        expect(screen.getByTestId('docx-original').shadowRoot!.querySelector('p')).not.toBeNull(),
+      )
+      expect(screen.queryByRole('button', { name: 'Gliederung' })).toBeNull()
+      expect(screen.queryByRole('navigation', { name: 'Gliederung' })).toBeNull()
+    })
+
     it('hands a file docx-preview cannot read over to the Textfassung', async () => {
-      docx.renderAsync.mockRejectedValue(new Error('not a zip'))
+      docx.parseAsync.mockRejectedValue(new Error('not a zip'))
       const onUnreadable = vi.fn()
       const original = word({ quoteStart: 'x' })
       renderDialog(original, onUnreadable)
