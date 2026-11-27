@@ -1,5 +1,6 @@
 package io.opaa.query.absence;
 
+import io.opaa.chat.CitationMarker;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.observability.QueryMetrics;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -29,19 +31,22 @@ import org.springframework.stereotype.Component;
 
 /**
  * Checks an answer that claims something is missing from the sources against the question's search
- * scope. A claim of {@link AbsenceClaims} counts when it is about the question - its sentence names
- * a {@link QuestionKeyTerms key term} of the question, or the answer carries no valid citation at
- * all; a side remark in an otherwise cited answer does not. Then the key terms are searched through
- * {@link KnowledgeRetrieval#retrieveAsGiven} - the same pipeline and permission filter as every
- * search, over the scope and filter of the request and never wider. A hit counts only when its text
- * carries the key terms and the answer had not seen it; those hits, with their neighbours, are what
- * the caller answers once more from. The caller asks this at most once per answer, so the recheck
- * never loops, and keeps the first answer when anything after it fails ({@link #mustPropagate}).
+ * scope. A claim of {@link AbsenceClaims} counts when it carries the answer - the answer has no
+ * valid citation, or the claim comes before its first cited sentence; a caveat after a cited answer
+ * does not. Then the {@link QuestionKeyTerms key terms} of the question are searched through {@link
+ * KnowledgeRetrieval#retrieveAsGiven} - the same pipeline and permission filter as every search,
+ * over the scope and filter of the request and never wider. A hit counts only when its text carries
+ * the key terms and the answer had not seen it; those hits, with their neighbours, are what the
+ * caller answers once more from. The caller asks this at most once per answer, so the recheck never
+ * loops, and keeps the first answer when anything after it fails ({@link #mustPropagate}).
  */
 @Component
 public class AbsenceRecheck {
 
   private static final Logger log = LoggerFactory.getLogger(AbsenceRecheck.class);
+
+  /** Stands in for a valid marker: no whitespace or punctuation, so no sentence ends in it. */
+  private static final String VALID_CITATION = "\u3010cited\u3011";
 
   /**
    * What the recheck of one answer did.
@@ -97,14 +102,10 @@ public class AbsenceRecheck {
     if (!properties.enabled()) {
       return Outcome.NONE;
     }
-    List<String> claims = AbsenceClaims.claimSentences(answer);
-    if (claims.isEmpty()) {
+    if (!AbsenceClaims.claimsAbsence(answer) || !claimCarriesTheAnswer(answer, context)) {
       return Outcome.NONE;
     }
     QuestionKeyTerms terms = QuestionKeyTerms.of(question);
-    if (claims.stream().noneMatch(terms::mentionedIn) && citesValidly(answer, context)) {
-      return Outcome.NONE;
-    }
     metrics.recordAbsenceRecheck(mode, AbsenceRecheckStep.DETECTED);
     if (terms.isEmpty() || searchScope == null || searchScope.isEmpty()) {
       return Outcome.NONE;
@@ -240,12 +241,37 @@ public class AbsenceRecheck {
     };
   }
 
-  private boolean citesValidly(String answer, List<Document> context) {
+  /**
+   * Whether the absence claim of {@code answer} is its answer rather than a caveat after it: the
+   * answer carries no valid citation, or a claim comes before its first sentence with a valid
+   * citation. A caveat after a cited answer never counts. Markers are masked before the sentence
+   * split, so the colon inside a marker never cuts a sentence.
+   */
+  private boolean claimCarriesTheAnswer(String answer, List<Document> context) {
     String repaired = CitationMarkerRepair.repair(answer, context);
-    return citationValidator
-        .validate(citationParser.extractCitations(repaired), context, repaired)
-        .stream()
-        .anyMatch(CitationValidator.ValidatedCitation::valid);
+    List<CitationValidator.ValidatedCitation> citations =
+        citationValidator.validate(citationParser.extractCitations(repaired), context, repaired);
+    if (citations.stream().noneMatch(CitationValidator.ValidatedCitation::valid)) {
+      return true;
+    }
+    Matcher marker = CitationMarker.PATTERN.matcher(repaired);
+    StringBuilder masked = new StringBuilder();
+    int index = 0;
+    while (marker.find()) {
+      boolean valid = index < citations.size() && citations.get(index).valid();
+      marker.appendReplacement(masked, valid ? VALID_CITATION : "");
+      index++;
+    }
+    marker.appendTail(masked);
+    for (String sentence : AbsenceClaims.sentences(masked.toString())) {
+      if (AbsenceClaims.isClaim(sentence)) {
+        return true;
+      }
+      if (sentence.contains(VALID_CITATION)) {
+        return false;
+      }
+    }
+    return false;
   }
 
   /** One passage once, whatever path found it: its document and chunk index. */

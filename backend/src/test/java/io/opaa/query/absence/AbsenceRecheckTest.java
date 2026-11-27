@@ -29,6 +29,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ai.document.Document;
 
 class AbsenceRecheckTest {
@@ -97,12 +99,46 @@ class AbsenceRecheckTest {
     assertThat(outcome.passages()).containsExactly(fresh);
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "Weitere Details zur Bearbeitung sind in den Quellen nicht genannt.",
+        "Ob die Frist verlängert werden kann, geht aus den Dokumenten nicht hervor.",
+        "Eine Ermäßigung der Gebühr ist in den Unterlagen nicht geregelt."
+      })
+  void aCaveatAfterACitedAnswerNeverTriggers(String caveat) {
+    String answer = "Die Bearbeitung dauert vier Wochen 【source: doc-1#0 | doc-1.pdf】. " + caveat;
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.searched()).isFalse();
+    verifyNoInteractions(retrieval);
+    assertThat(count("rag", "detected")).isZero();
+  }
+
   @Test
-  void aCitedAnswerWhoseClaimNamesTheQuestionIsRechecked() {
+  void aClaimBeforeTheFirstCitedSentenceIsRechecked() {
     when(retrieval.retrieveAsGiven(any(), any(), any())).thenReturn(result(fresh));
     String answer =
-        "Anlage 2 nennt die Tarifstellen 【source: doc-1#0 | doc-1.pdf】. Die Gebühr der"
-            + " Tarifstelle AB-08 ist in den Quellen nicht enthalten.";
+        "Die Gebühr der Tarifstelle AB-08 ist in den Quellen nicht enthalten. Anlage 2 nennt die"
+            + " Tarifstellen 【source: doc-1#0 | doc-1.pdf】.";
+
+    AbsenceRecheck.Outcome outcome =
+        recheck(true)
+            .recheck(QueryMetrics.Mode.RAG, QUESTION, answer, scope, filter, List.of(seen));
+
+    assertThat(outcome.passages()).containsExactly(fresh);
+    assertThat(count("rag", "detected")).isEqualTo(1);
+  }
+
+  @Test
+  void aClaimWithAStrayCitationInTheSameFirstSentenceIsRechecked() {
+    when(retrieval.retrieveAsGiven(any(), any(), any())).thenReturn(result(fresh));
+    String answer =
+        "Die Gebühr der Tarifstelle AB-08 ist in den Quellen nicht enthalten"
+            + " 【source: doc-1#0 | doc-1.pdf】. Anlage 2 nennt nur die Tarifstellen.";
 
     AbsenceRecheck.Outcome outcome =
         recheck(true)

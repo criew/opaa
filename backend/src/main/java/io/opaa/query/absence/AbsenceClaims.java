@@ -124,13 +124,23 @@ public final class AbsenceClaims {
 
   /** The sentences of {@code answer} that claim something is not in the sources, in order. */
   public static List<String> claimSentences(String answer) {
+    return sentences(answer).stream().filter(AbsenceClaims::isClaim).toList();
+  }
+
+  /** The sentences of {@code answer} in order, each with its whitespace collapsed. */
+  public static List<String> sentences(String answer) {
     if (answer == null || answer.isBlank()) {
       return List.of();
     }
     return Arrays.stream(SENTENCE_END.split(answer))
         .map(sentence -> sentence.replaceAll("[\\s\\p{Z}]+", " ").strip())
-        .filter(sentence -> PATTERNS.stream().anyMatch(p -> p.matcher(sentence).find()))
+        .filter(sentence -> !sentence.isEmpty())
         .toList();
+  }
+
+  /** Whether the single {@code sentence} claims that something is not in the sources. */
+  public static boolean isClaim(String sentence) {
+    return PATTERNS.stream().anyMatch(p -> p.matcher(sentence).find());
   }
 
   private static Pattern pattern(String regex) {

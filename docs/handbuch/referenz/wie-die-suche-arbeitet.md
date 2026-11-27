@@ -48,9 +48,10 @@ Findet es Textstellen, die diese Begriffe enthalten und die die Antwort noch nic
 das Modell genau einmal neu mit ihnen; die neue Antwort ersetzt die erste, auch während sie im Chat
 entsteht. Ohne solche Stellen, bei einem Fehler der Nachprüfung oder einer leeren neuen Antwort
 bleibt die erste. Erkannt wird die Fehlanzeige an festen deutschen und englischen Formulierungen,
-die sich auf die Dokumente beziehen, ohne weiteren Modellaufruf. Nachgeprüft wird nur, wenn sie den
-Kern trifft: Ihr Satz nennt einen Begriff der Frage, oder die Antwort hat keinen bestätigten Beleg.
-Eine Randbemerkung in einer sonst belegten Antwort bleibt, wie sie ist. Im Agentenlauf bekommt das
+die sich auf die Dokumente beziehen, ohne weiteren Modellaufruf. Nachgeprüft wird nur, wenn sie die
+Antwort trägt: Die Antwort hat keinen bestätigten Beleg, oder die Fehlanzeige steht vor dem ersten
+belegten Satz. Ein Vorbehalt nach einer belegten Antwort, etwa „Weitere Details sind in den Quellen
+nicht genannt“, bleibt, wie er ist. Im Agentenlauf bekommt das
 Modell die Stellen als Nachfrage im laufenden Lauf, und die Nachsuche steht als Schritt im Lauf.
 Abschalten lässt sich das mit `OPAA_QUERY_ABSENCE_RECHECK_ENABLED`.
 

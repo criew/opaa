@@ -26,6 +26,14 @@ class QuestionKeyTermsTest {
   }
 
   @Test
+  void anUppercaseQuestionWordIsNoIdentifier() {
+    QuestionKeyTerms terms = QuestionKeyTerms.of("WELCHE FRIST GILT?");
+
+    assertThat(terms.identifiers()).isEmpty();
+    assertThat(terms.words()).doesNotContain("welche");
+  }
+
+  @Test
   void aPassageMatchesByAnIdentifierAsAWholeToken() {
     QuestionKeyTerms terms = QuestionKeyTerms.of("Wie hoch ist die Gebühr nach Tarifstelle AB-08?");
 

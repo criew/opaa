@@ -199,6 +199,10 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
     Matcher token = TOKEN.matcher(PARAGRAPH.matcher(question).replaceAll(" "));
     while (token.find()) {
       String value = token.group();
+      boolean digitless = value.codePoints().noneMatch(Character::isDigit);
+      if (digitless && STOP_WORDS.contains(value.toLowerCase(Locale.ROOT))) {
+        continue;
+      }
       if (isIdentifier(value)) {
         identifiers.add(value);
       } else if (SHORT_ABBREVIATION.matcher(value).matches()) {
