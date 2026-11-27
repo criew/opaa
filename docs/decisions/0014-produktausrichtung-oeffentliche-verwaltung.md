@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
+Akzeptiert · zuletzt geändert 2026-11-27 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
 
 ## Kontext
 
@@ -156,6 +156,16 @@ nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapp
 nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
 Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
 ausgeschlossen. Siehe [Suche](../handbuch/referenz/wie-die-suche-arbeitet.md).
+
+Die Fehlanzeige des Modells („in den vorliegenden Dokumenten nicht enthalten“) wird ebenso
+deterministisch gegengeprüft, nicht verweigert: Eine feste deutsche und englische Musterliste
+erkennt sie, die Kennungen und Schlüsselbegriffe der Frage werden über denselben Suchweg im selben
+Suchbereich mit denselben Rechten und Filtern gesucht, und nur Treffer, deren Text diese Begriffe
+trägt und die die Antwort nicht kannte, gehen in genau eine weitere Antwort; im Agentenlauf als
+Nachfrage im laufenden Lauf ohne Werkzeuge. Ohne solche Treffer bleibt die Antwort. Eine
+Fehlanzeige ist sonst die einzige Aussage, die die Belegvalidierung nicht erreicht, weil sie nichts
+zitiert; der Suchbereich kann sie widerlegen, ohne dass ein Modell über sie urteilt. Eine Schleife
+gibt es nicht, und der Schalter `OPAA_QUERY_ABSENCE_RECHECK_ENABLED` ist ab Werk an.
 
 ### 15. Nachweis der Organisationsgrenze
 

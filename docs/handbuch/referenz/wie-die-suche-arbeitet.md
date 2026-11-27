@@ -41,8 +41,19 @@ nicht enthalten“ benennen und jede Quelle mit einer Zitiermarke belegen. Der T
 steht als Material, nicht als Anweisung im Prompt; ganz verhindern lässt sich eine untergeschobene
 Anweisung nicht, das hängt am Modell.
 
+**Fehlanzeigen prüft opaa nach.** Sagt die Antwort, etwas stehe nicht in den Dokumenten, etwa „zur
+Tarifstelle AB-08 liegen keine Angaben vor“, sucht opaa die Kennungen und Schlüsselbegriffe der
+Frage noch einmal im selben Suchbereich, mit denselben Rechten und Filtern. Findet es Textstellen,
+die diese Begriffe enthalten und die die Antwort noch nicht kannte, antwortet das Modell genau einmal
+neu mit ihnen; die neue Antwort ersetzt die erste, auch während sie im Chat entsteht. Ohne solche
+Stellen bleibt die Antwort. Erkannt wird die Fehlanzeige an festen deutschen und englischen
+Formulierungen, ohne weiteren Modellaufruf. Im Agentenlauf bekommt das Modell die Stellen als
+Nachfrage im laufenden Lauf. Abschalten lässt sich das mit `OPAA_QUERY_ABSENCE_RECHECK_ENABLED`.
+
 Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
-je Teilfrage, Rerank-Modell, falls an. Titel und Gesprächsnotiz eines Chats kosten je einen
+je Teilfrage, Rerank-Modell, falls an; nach einer Fehlanzeige einmal mehr Embedding- und
+Rerank-Modell für die Nachprüfung und, wenn sie neue Textstellen findet, das Chat-Modell für die
+neue Antwort. Titel und Gesprächsnotiz eines Chats kosten je einen
 weiteren Chat-Aufruf, ohne die Antwort zu verzögern.
 
 ## Belege prüfen

@@ -20,6 +20,9 @@
 
 opaa prüft jeden Beleg selbst: Hat die Antwort das Dokument wirklich gesehen, und passen Beträge,
 Daten und Paragrafen? Was durchfällt, heißt **„Beleg nicht bestätigt“** und trägt ein Warnsymbol.
+Sagt eine Antwort, etwas stehe nicht in den Dokumenten, sucht opaa die Begriffe der Frage noch
+einmal in Ihrem Suchbereich; findet es dort neue Stellen, wird die Antwort einmal mit ihnen neu
+geschrieben ([Die Antwort](../referenz/wie-die-suche-arbeitet.md#die-antwort)).
 
 Die Antwort eines Agenten trägt zusätzlich die Kennzeichnung „Entwurf“ und einen Stempel mit
 Agent, Fassung, Bibliotheken, Vorlagen und Modell; wie Sie ihn lesen, steht unter
