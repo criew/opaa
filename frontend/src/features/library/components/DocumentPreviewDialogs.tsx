@@ -21,6 +21,7 @@ export default function DocumentPreviewDialogs({ preview }: DocumentPreviewDialo
       <DocumentTextVersionDialog preview={preview.textVersion} onClose={preview.closeTextVersion} />
       <OfficeOriginalDialog
         original={preview.officeOriginal}
+        pending={preview.pendingOriginal}
         onClose={preview.closeOfficeOriginal}
         onUnreadable={preview.replaceOriginalByTextVersion}
       />

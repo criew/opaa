@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { openDocumentContent, opensAsTextVersion } from '../utils/documentContent'
 import type {
   PdfPreviewResult,
@@ -11,7 +11,28 @@ import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 import { withTextFragment } from '../utils/textFragment'
-import { loadOfficeOriginal, originalFormat, type OfficeOriginal } from '../utils/officeOriginal'
+import {
+  loadOfficeOriginal,
+  originalFormat,
+  type OfficeOriginal,
+  type OriginalFallback,
+} from '../utils/officeOriginal'
+
+/** What an original view shows while its file is fetched: the name and, for the card, the anchor. */
+export interface PendingOriginal {
+  fileName: string
+  anchor?: ChunkAnchor | null
+}
+
+const FALLBACK_NOTICES: Record<OriginalFallback | 'unreadable', (fileName: string) => string> = {
+  'too-large': (fileName) =>
+    `${fileName} ist zu groß für die Originalansicht – die Textfassung wird gezeigt.`,
+  'no-plain-text': (fileName) => `${fileName} hat keinen Textteil – die Textfassung wird gezeigt.`,
+  failed: (fileName) =>
+    `Das Original von ${fileName} konnte nicht geladen werden – die Textfassung wird gezeigt.`,
+  unreadable: (fileName) =>
+    `${fileName} lässt sich nicht als Original darstellen – die Textfassung wird gezeigt.`,
+}
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
@@ -51,6 +72,9 @@ export function useDocumentPreview() {
   const [pdfPreview, setPdfPreview] = useState<PdfPreviewResult | null>(null)
   const [textVersion, setTextVersion] = useState<TextVersionPreview | null>(null)
   const [officeOriginal, setOfficeOriginal] = useState<OfficeOriginal | null>(null)
+  const [pendingOriginal, setPendingOriginal] = useState<PendingOriginal | null>(null)
+  // counts the original fetches; one that is closed or overtaken is not shown when it arrives
+  const originalRequest = useRef(0)
 
   function openTextVersion(document: OpenableDocument) {
     setTextVersion({
@@ -75,18 +99,27 @@ export function useDocumentPreview() {
       window.open(withTextFragment(target, document.anchor), '_blank', 'noopener,noreferrer')
       return
     }
-    // Word, CSV and mail open as themselves; one too large to show, a mail without plain text or
-    // an original that cannot be fetched opens as its Textfassung, which the index still holds
+    // Word, CSV and mail open as themselves, the view loading while the file is fetched; one too
+    // large to show, a mail without plain text or an original that cannot be fetched opens as its
+    // Textfassung, which the index still holds, and a notice says so
     const format = originalFormat(document.fileName)
     if (format) {
-      const original = await loadOfficeOriginal(format, {
+      const request = ++originalRequest.current
+      setPendingOriginal({ fileName: document.fileName, anchor: document.anchor })
+      const outcome = await loadOfficeOriginal(format, {
         documentId: document.id,
         fileName: document.fileName,
         anchor: document.anchor,
         chunkIndex: document.chunkIndex,
-      }).catch(() => null)
-      if (original) setOfficeOriginal(original)
-      else openTextVersion(document)
+      }).catch(() => ({ fallback: 'failed' as const }))
+      if (request !== originalRequest.current) return
+      setPendingOriginal(null)
+      if ('fallback' in outcome) {
+        notify(FALLBACK_NOTICES[outcome.fallback](document.fileName), 'info')
+        openTextVersion(document)
+      } else {
+        setOfficeOriginal(outcome)
+      }
       return
     }
     // a format the browser cannot show opens as its Textfassung; the original is not fetched
@@ -134,9 +167,16 @@ export function useDocumentPreview() {
     textVersion,
     closeTextVersion: () => setTextVersion(null),
     officeOriginal,
-    closeOfficeOriginal: () => setOfficeOriginal(null),
+    /** The original whose file is being fetched; its view shows it loading. */
+    pendingOriginal,
+    closeOfficeOriginal: () => {
+      originalRequest.current++
+      setPendingOriginal(null)
+      setOfficeOriginal(null)
+    },
     /** The original view could not render its file: the Textfassung takes its place. */
     replaceOriginalByTextVersion: (original: OfficeOriginal) => {
+      notify(FALLBACK_NOTICES.unreadable(original.fileName), 'info')
       setOfficeOriginal(null)
       openTextVersion({
         id: original.documentId,

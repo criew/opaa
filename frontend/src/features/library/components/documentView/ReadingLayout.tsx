@@ -138,6 +138,7 @@ function WidthSeparator({
       aria-valuemin={COLUMN_MIN_PX}
       aria-valuemax={COLUMN_MAX_PX}
       aria-valuenow={width}
+      aria-valuetext={`${width} Pixel`}
       tabIndex={0}
       onKeyDown={onKeyDown}
       onPointerDown={(event) => {

@@ -108,6 +108,7 @@ describe('ReadingLayout', () => {
       expect(separator).toHaveAttribute('aria-valuenow', String(COLUMN_DEFAULT_PX))
       expect(separator).toHaveAttribute('aria-valuemin', String(COLUMN_MIN_PX))
       expect(separator).toHaveAttribute('aria-valuemax', String(COLUMN_MAX_PX))
+      expect(separator).toHaveAttribute('aria-valuetext', `${COLUMN_DEFAULT_PX} Pixel`)
       const column = document.getElementById(separator.getAttribute('aria-controls')!)!
       expect(column).toHaveStyle({ width: `${COLUMN_DEFAULT_PX}px` })
 
