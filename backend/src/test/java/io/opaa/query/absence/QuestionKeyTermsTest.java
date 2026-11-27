@@ -2,7 +2,9 @@ package io.opaa.query.absence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class QuestionKeyTermsTest {
 
@@ -47,6 +49,25 @@ class QuestionKeyTermsTest {
 
     assertThat(terms.matches("Für den Bewohnerparkausweis wird eine Gebühr erhoben.")).isTrue();
     assertThat(terms.matches("Die Gebühr für Sondernutzungen")).isFalse();
+  }
+
+  @Test
+  @Timeout(value = 2, unit = TimeUnit.SECONDS, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+  void aLongRunOfParagraphSignsIsReadInLinearTime() {
+    String signs = "§".repeat(200_000);
+
+    QuestionKeyTerms terms = QuestionKeyTerms.of("Was regelt " + signs + " x §§ 34?");
+    QuestionKeyTerms paragraph = QuestionKeyTerms.of("Was regelt § 34?");
+
+    assertThat(paragraph.matches(signs + " " + signs + "x")).isFalse();
+    assertThat(paragraph.mentionedIn(signs + "a" + signs)).isFalse();
+    assertThat(terms.identifiers()).isNotNull();
+    assertThat(QuestionKeyTerms.of(signs + " 34").identifiers()).isEmpty();
+  }
+
+  @Test
+  void aParagraphAfterSeveralSignsIsStillRead() {
+    assertThat(QuestionKeyTerms.of("Was regelt §§ 34?").identifiers()).containsExactly("§ 34");
   }
 
   @Test

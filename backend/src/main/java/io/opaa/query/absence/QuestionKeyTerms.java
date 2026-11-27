@@ -26,7 +26,15 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
   static final int MAX_IDENTIFIERS = 6;
   static final int MAX_WORDS = 8;
 
-  private static final Pattern PARAGRAPH = Pattern.compile("§+\\s*(\\d+[a-z]?)");
+  /** Longest question read; a real question stays far below, a longer one is cut. */
+  static final int MAX_QUESTION_CHARS = 4000;
+
+  /**
+   * A paragraph sign run with its number. Matched only from the first sign of a run and with
+   * possessive quantifiers, so a long run of signs costs linear time, not quadratic.
+   */
+  private static final Pattern PARAGRAPH = Pattern.compile("(?<!§)§++[\\s\\p{Z}]*+(\\d++[a-z]?)");
+
   private static final Pattern TOKEN =
       Pattern.compile("[\\p{L}\\p{N}](?:[\\p{L}\\p{N}./-]*[\\p{L}\\p{N}])?");
   private static final Pattern NUMBER = Pattern.compile("\\p{N}{3,}");
@@ -179,6 +187,9 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
     if (question == null || question.isBlank()) {
       return new QuestionKeyTerms(List.of(), List.of());
     }
+    if (question.length() > MAX_QUESTION_CHARS) {
+      question = question.substring(0, MAX_QUESTION_CHARS);
+    }
     Set<String> identifiers = new LinkedHashSet<>();
     Set<String> words = new LinkedHashSet<>();
     Matcher paragraph = PARAGRAPH.matcher(question);
@@ -259,7 +270,7 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
 
   private static String normalize(String text) {
     return text.toLowerCase(Locale.ROOT)
-        .replaceAll("§+[\\s\\p{Z}]*", "§ ")
+        .replaceAll("(?<!§)§++[\\s\\p{Z}]*+", "§ ")
         .replaceAll("[\\s\\p{Z}]+", " ");
   }
 
