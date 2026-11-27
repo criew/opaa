@@ -3,8 +3,7 @@
 Erzeugt die Dokumente unter `eval/corpus/answer-quality/` samt Manifest und die Fälle
 `eval/golden/answer-quality.json`. Markdown, PDF, DOCX und XLSX schreibt das Skript selbst, ohne
 Fremdbibliothek und mit festen ZIP-Zeitstempeln; zwei Läufe erzeugen byte-identische Ausgabe. Die
-Zustände der Ebene `format` stehen im Skript (`FORMAT_GAPS`), die der Ebene `context` behält es aus
-der bestehenden Golden-Datei. Aufbau: [`../corpus/answer-quality/SOURCE.md`](../corpus/answer-quality/SOURCE.md).
+Zustände beider Ebenen stehen im Skript (`FORMAT_GAPS`, `CONTEXT_GAPS`). Aufbau: [`../corpus/answer-quality/SOURCE.md`](../corpus/answer-quality/SOURCE.md).
 
 ```bash
 python eval/generator/generate_answer_quality_corpus.py
