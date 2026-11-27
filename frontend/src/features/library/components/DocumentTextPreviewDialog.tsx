@@ -71,6 +71,17 @@ export default function DocumentTextPreviewDialog({
   } | null>(null)
   const [paper, setPaper] = useState<HTMLDivElement | null>(null)
   const scroller = useRef<{ content: HTMLElement; range: Range } | null>(null)
+  const [scrollBox, setScrollBox] = useState<HTMLDivElement | null>(null)
+
+  // a Markdown original's outline: its headings, `#` to `######`, on the paper
+  const { nodes: outline, headings } = useRenderedHeadings(
+    previewDocument?.contentType === 'text/markdown' ? paper : null,
+    'markdown',
+    previewDocument,
+  )
+  const navigation = useHeadingNavigation(scrollBox, outline, headings)
+  const { follow } = navigation
+  const outlineState = useOutlineOpen(outline.length > 0)
 
   // The cited passage is marked with the CSS Custom Highlight API, which paints a Range without
   // touching the rendered DOM; the blocks it runs through get the edge stroke by attribute. A ref
@@ -98,7 +109,7 @@ export default function DocumentTextPreviewDialog({
         scroller.current = range ? { content, range } : null
         if (range && !jumped) {
           jumped = true
-          scrollToPassage(content, range)
+          follow(scrollToPassage(content, range))
         }
         setMark({
           of: previewDocument,
@@ -116,10 +127,9 @@ export default function DocumentTextPreviewDialog({
         scroller.current = null
       }
     },
-    [previewDocument],
+    [previewDocument, follow],
   )
 
-  const [scrollBox, setScrollBox] = useState<HTMLDivElement | null>(null)
   const contentRef = useCallback(
     (content: HTMLDivElement | null) => {
       setScrollBox(content)
@@ -131,16 +141,6 @@ export default function DocumentTextPreviewDialog({
     },
     [markPassage],
   )
-
-  // a Markdown original's outline: its headings, `#` to `######`
-  const markdown = previewDocument?.contentType === 'text/markdown'
-  const { nodes: outline, headings } = useRenderedHeadings(
-    markdown ? (paper?.querySelector<HTMLElement>('[data-document-body]') ?? null) : null,
-    'markdown',
-    previewDocument,
-  )
-  const navigation = useHeadingNavigation(scrollBox, outline, headings)
-  const outlineState = useOutlineOpen(outline.length > 0)
 
   const anchor = previewDocument?.anchor
   const current = mark?.of === previewDocument ? mark : null
@@ -184,7 +184,7 @@ export default function DocumentTextPreviewDialog({
           canJump
             ? () => {
                 if (scroller.current)
-                  scrollToPassage(scroller.current.content, scroller.current.range)
+                  follow(scrollToPassage(scroller.current.content, scroller.current.range))
               }
             : undefined
         }
@@ -248,9 +248,9 @@ const OBSERVED: MutationObserverInit = { childList: true, subtree: true, charact
 /**
  * Scrolls `content` so the passage starts in the middle of the view - by the range's own position,
  * since the element around it may be a whole `<pre>` - and moves focus to the block that holds it,
- * so a screen reader continues reading there.
+ * so a screen reader continues reading there. Returns where the passage starts, for the outline.
  */
-function scrollToPassage(content: HTMLElement, range: Range) {
+function scrollToPassage(content: HTMLElement, range: Range): Element {
   const rect = range.getBoundingClientRect?.()
   if (rect) {
     const top = content.getBoundingClientRect().top
@@ -261,6 +261,7 @@ function scrollToPassage(content: HTMLElement, range: Range) {
     if (!block.hasAttribute('tabindex')) block.setAttribute('tabindex', '-1')
     block.focus({ preventScroll: true })
   }
+  return range.startContainer.parentElement ?? content
 }
 
 const BLOCKS = 'p, li, pre, td, th, blockquote, h1, h2, h3, h4, h5, h6'

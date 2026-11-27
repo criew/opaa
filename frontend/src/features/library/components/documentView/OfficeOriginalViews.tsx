@@ -270,6 +270,7 @@ function DocxShadow({
     import('docx-preview')
       .then(async ({ parseAsync, renderDocument }) => {
         const document = await parseAsync(blob, DOCX_RENDER_OPTIONS)
+        if (cancelled) return
         // heading paragraphs carry their level into the rendered page, for the outline
         markDocxHeadings(document)
         const nodes = await renderDocument(document, DOCX_RENDER_OPTIONS)

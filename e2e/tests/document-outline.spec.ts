@@ -2,8 +2,10 @@ import { crc32 } from 'node:zlib'
 import { expect, test } from '../fixtures/auth'
 import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 import { apiAs } from '../fixtures/externalAccess'
+import { askQuestion, startFreshChat } from '../fixtures/chat'
 import { cleanupLibraries, uploadDocument } from '../fixtures/libraries'
 import { createKnowledgeLibraryViaApi } from '../fixtures/promptLibraries'
+import { assignToDefaultSpace } from '../fixtures/spaces'
 import type { Locator, Page } from '@playwright/test'
 
 /**
@@ -13,7 +15,9 @@ import type { Locator, Page } from '@playwright/test'
  *
  * One library with a Word file and a Markdown file of three long chapters each (built in memory)
  * and a Markdown file without headings is created over the API as dev-admin; each is opened from
- * the library's document list.
+ * the library's document list. A second library holds only the Markdown file and is asked about
+ * in the chat, so the file opens at a cited passage: the outline then marks that passage's
+ * section, also after a detour through the outline and back with „Zur Fundstelle“.
  */
 
 const ADMIN = 'dev-admin'
@@ -146,13 +150,19 @@ const FILES = (suffix: string) => ({
   },
 })
 
-async function seedLibrary(suffix: string, createdIds: string[]) {
-  const id = await createKnowledgeLibraryViaApi(ADMIN, { name: `E2E-Gliederung-${suffix}` })
+async function seedLibrary(
+  suffix: string,
+  createdIds: string[],
+  only?: keyof ReturnType<typeof FILES>,
+) {
+  const name = `E2E-Gliederung-${only ? 'Beleg-' : ''}${suffix}`
+  const id = await createKnowledgeLibraryViaApi(ADMIN, { name })
   createdIds.push(id)
   const files = FILES(suffix)
+  const uploads = only ? [files[only]] : Object.values(files)
   const api = await apiAs(ADMIN)
   try {
-    for (const file of Object.values(files)) await uploadDocument(api, id, file)
+    for (const file of uploads) await uploadDocument(api, id, file)
     await expect
       .poll(
         async () => {
@@ -162,11 +172,41 @@ async function seedLibrary(suffix: string, createdIds: string[]) {
         },
         { timeout: 60_000 },
       )
-      .toBe('INDEXED,INDEXED,INDEXED')
+      .toBe(uploads.map(() => 'INDEXED').join(','))
   } finally {
     await api.dispose()
   }
-  return { id, files }
+  return { id, name, files }
+}
+
+/**
+ * The entry marked as current names the section that holds the marked passage: its heading is the
+ * last one before the passage in the document.
+ */
+async function expectPassageSectionActive(view: Locator) {
+  const outline = view.getByRole('navigation', { name: 'Gliederung' })
+  await expect
+    .poll(async () => {
+      const current = await outline.locator('[aria-current="location"]').allTextContents()
+      const expected = await view.getByTestId('document-text-content').evaluate((content) => {
+        type El = {
+          textContent: string | null
+          compareDocumentPosition(other: unknown): number
+        }
+        const root = content as unknown as { querySelector(s: string): El | null }
+        const all = content as unknown as { querySelectorAll(s: string): ArrayLike<El> }
+        const passage = root.querySelector('[data-passage]')
+        if (!passage) return null
+        let section: string | null = null
+        for (const heading of Array.from(all.querySelectorAll('h1, h2, h3, h4, h5, h6'))) {
+          // 4 = DOCUMENT_POSITION_FOLLOWING: the passage comes after this heading
+          if (heading.compareDocumentPosition(passage) & 4) section = heading.textContent
+        }
+        return section
+      })
+      return expected !== null && current.length === 1 && current[0] === expected
+    })
+    .toBe(true)
 }
 
 async function openOriginal(page: Page, libraryId: string, fileName: string): Promise<Locator> {
@@ -250,7 +290,46 @@ test.describe.serial('Gliederung in der Dokumentansicht', () => {
     await expectNoSeriousA11yViolations(page, 'Word-Original mit Gliederung (dunkel)')
   })
 
-  test('3. Ohne Überschriften keine Gliederung', async ({ authenticatedPage: page }) => {
+  test('3. An der Fundstelle: Eintrag ihres Abschnitts, auch nach Sprung und zurück', async ({
+    authenticatedPage: page,
+  }) => {
+    test.setTimeout(120_000)
+    const cited = await seedLibrary(`${Date.now()}`, createdLibraryIds, 'markdown')
+    await assignToDefaultSpace(ADMIN, 'KNOWLEDGE_LIBRARY', cited.id)
+    await startFreshChat(page)
+    const input = page.getByRole('textbox', { name: 'Nachricht eingeben' })
+    await input.fill(`@${cited.name}`)
+    await page.getByRole('option', { name: cited.name }).click()
+    await askQuestion(page, `Was gilt für Anträge? (${Date.now()})`)
+    await page.getByRole('button', { name: 'Belege anzeigen' }).click({ timeout: 30_000 })
+    const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
+    await drawer
+      .getByTestId('evidence-doc')
+      .filter({ hasText: cited.files.markdown.name })
+      .getByRole('button', { name: 'Dokument öffnen' })
+      .click()
+    const view = page.getByRole('dialog', { name: cited.files.markdown.name })
+    await expect(view.getByRole('status').filter({ hasText: 'Fundstelle markiert.' })).toBeAttached(
+      {
+        timeout: 15_000,
+      },
+    )
+    await expectPassageSectionActive(view)
+
+    // a detour to another chapter and back with „Zur Fundstelle“
+    const outline = view.getByRole('navigation', { name: 'Gliederung' })
+    const current = (await outline.locator('[aria-current="location"]').textContent()) ?? ''
+    const other = CHAPTERS.find((chapter) => chapter !== current)!
+    await outline.getByRole('button', { name: other, exact: true }).click()
+    await expect(outline.getByRole('button', { name: other, exact: true })).toHaveAttribute(
+      'aria-current',
+      'location',
+    )
+    await view.getByRole('button', { name: 'Zur Fundstelle' }).click()
+    await expectPassageSectionActive(view)
+  })
+
+  test('4. Ohne Überschriften keine Gliederung', async ({ authenticatedPage: page }) => {
     const view = await openOriginal(page, library.id, library.files.plain.name)
     await expect(
       view.getByText('Satz 1 im Kapitel ohne Überschrift', { exact: false }),

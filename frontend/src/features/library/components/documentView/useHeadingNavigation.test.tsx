@@ -106,6 +106,58 @@ describe('useHeadingNavigation', () => {
     expect(hook.result.current.active).toBe(ZWEI)
   })
 
+  it('marks the section of the passage the view was brought to, wherever it stands', () => {
+    const { scroller, hook } = setup()
+    // a short passage of Eins.Eins with Zwei's heading above the reading line already
+    const passage = document.createElement('p')
+    scroller.insertBefore(passage, scroller.children[2])
+    scrollTo(scroller, 750)
+    expect(hook.result.current.active).toBe(ZWEI)
+
+    act(() => hook.result.current.follow(passage))
+    expect(hook.result.current.active).toBe(EINS_EINS)
+    // the reader's own scrolling hands the outline back to the reading line
+    act(() => {
+      scroller.dispatchEvent(new Event('keydown'))
+    })
+    expect(hook.result.current.active).toBe(ZWEI)
+  })
+
+  it('lets a jump to the passage replace the entry chosen before', () => {
+    const { scroller, hook } = setup()
+    const passage = document.createElement('p')
+    scroller.insertBefore(passage, scroller.children[1])
+
+    act(() => hook.result.current.goTo(DREI))
+    expect(hook.result.current.active).toBe(DREI)
+    act(() => hook.result.current.follow(passage))
+    expect(hook.result.current.active).toBe(EINS)
+  })
+
+  it('marks the passage followed before the outline was read once it is', () => {
+    const { scroller, headings } = scrollingDocument([0, 500, 900, 1800])
+    const passage = document.createElement('p')
+    scroller.insertBefore(passage, headings[3])
+    const hook = renderHook(
+      ({ nodes }: { nodes: HeadingNode[] }) =>
+        useHeadingNavigation(scroller, nodes, () => headings),
+      { initialProps: { nodes: [] as HeadingNode[] } },
+    )
+    act(() => hook.result.current.follow(passage))
+    expect(hook.result.current.active).toBeNull()
+
+    hook.rerender({ nodes: NODES })
+    expect(hook.result.current.active).toBe(ZWEI)
+  })
+
+  it('drops a fixed entry whose target a new rendering replaced', () => {
+    const { scroller, headings, hook } = setup()
+    act(() => hook.result.current.goTo(DREI))
+    headings[3].remove()
+    scrollTo(scroller, 0)
+    expect(hook.result.current.active).toBe(EINS)
+  })
+
   it('has no active entry without headings', () => {
     const { scroller } = scrollingDocument([])
     const hook = renderHook(() => useHeadingNavigation(scroller, [], () => []))

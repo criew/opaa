@@ -15,20 +15,44 @@ import {
 
 /**
  * The reading line sits this far down the view: a heading above it opens the section on screen.
- * Half way, so a passage the view opens at (a third down, or centred) counts to its own section.
+ * Half way, so a heading the reader scrolls past counts once it reaches the middle.
  */
 const READING_LINE = 0.5
 /** A heading jumped to stands this far below the top edge of the view. */
 const JUMP_MARGIN_PX = 16
-/** What the reader does to move the view; any of it ends the entry fixed by a click. */
+/** What the reader does to move the view; any of it ends the entry fixed by a jump. */
 const USER_SCROLL_EVENTS = ['wheel', 'touchmove', 'keydown', 'pointerdown'] as const
 
 /**
+ * The entry whose section holds `target`: the last heading that is `target` or comes before it
+ * in the document, `null` before the first heading.
+ */
+function sectionOf(
+  target: Element,
+  entries: HeadingNode[],
+  elements: HTMLElement[],
+): HeadingNode | null {
+  let found: HeadingNode | null = null
+  for (const entry of entries) {
+    const element = elements[entry.index]
+    if (!element) continue
+    if (
+      element === target ||
+      element.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING
+    ) {
+      found = entry
+    }
+  }
+  return found
+}
+
+/**
  * Keeps an outline of headings in step with the view scrolling in `scroller`: the active entry is
- * the last heading at or above the reading line. A click on an entry scrolls its heading to the
- * top - vertically only, the horizontal position stays - and fixes that entry as the active one
- * until the reader moves the view, so it is marked even where the heading cannot reach the line
- * (the last, short sections). `headings` returns the heading elements, indexed by
+ * the last heading at or above the reading line. A jump fixes the active entry by what it jumped
+ * to until the reader moves the view: {@link goTo} an entry (its heading scrolled to the top,
+ * vertically only) marks that entry, {@link follow} a passage the view was brought to marks the
+ * section holding it - so the outline names the place on screen even where the target cannot
+ * reach the reading line. `headings` returns the heading elements, indexed by
  * {@link HeadingNode.index}; it is asked again each time, as a re-render may replace them.
  */
 export function useHeadingNavigation(
@@ -38,7 +62,10 @@ export function useHeadingNavigation(
 ) {
   const entries = useMemo(() => flattenHeadings(nodes), [nodes])
   const [active, setActive] = useState<HeadingNode | null>(null)
-  const pinned = useRef<HeadingNode | null>(null)
+  // the element the last jump went to; the active entry is its section until the reader scrolls
+  const pinned = useRef<Element | null>(null)
+  // recomputes the active entry while the view is set up, a no-op before
+  const refresh = useRef<() => void>(() => {})
   const headingsRef = useRef(headings)
   useEffect(() => {
     headingsRef.current = headings
@@ -49,11 +76,13 @@ export function useHeadingNavigation(
     let frame = 0
     const update = () => {
       frame = 0
+      const elements = headingsRef.current()
+      // a target replaced by a new rendering no longer fixes anything
+      if (pinned.current && !pinned.current.isConnected) pinned.current = null
       if (pinned.current) {
-        setActive(pinned.current)
+        setActive(sectionOf(pinned.current, entries, elements))
         return
       }
-      const elements = headingsRef.current()
       const line = scroller.getBoundingClientRect().top + scroller.clientHeight * READING_LINE
       let current: HeadingNode | null = null
       for (const entry of entries) {
@@ -74,9 +103,16 @@ export function useHeadingNavigation(
     for (const type of USER_SCROLL_EVENTS) {
       scroller.addEventListener(type, release, { passive: true })
     }
+    // the outline toggled, the window resized or an image loaded moves headings without a scroll
+    const resized = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null
+    resized?.observe(scroller)
+    if (scroller.firstElementChild) resized?.observe(scroller.firstElementChild)
+    refresh.current = schedule
     update()
     return () => {
+      refresh.current = () => {}
       if (frame) cancelAnimationFrame(frame)
+      resized?.disconnect()
       scroller.removeEventListener('scroll', schedule)
       for (const type of USER_SCROLL_EVENTS) scroller.removeEventListener(type, release)
     }
@@ -92,7 +128,7 @@ export function useHeadingNavigation(
         scroller.scrollTop -
         JUMP_MARGIN_PX
       scroller.scrollTo?.({ top: Math.max(0, top) })
-      pinned.current = node
+      pinned.current = element
       setActive(node)
       // focus follows, so keyboard and screen reader continue in the section
       if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '-1')
@@ -101,7 +137,16 @@ export function useHeadingNavigation(
     [scroller],
   )
 
-  return { active: active && entries.includes(active) ? active : null, goTo }
+  /**
+   * The view was brought to `target` (the cited passage): its section is the active entry, also
+   * when the outline is read only after the jump.
+   */
+  const follow = useCallback((target: Element) => {
+    pinned.current = target
+    refresh.current()
+  }, [])
+
+  return { active: active && entries.includes(active) ? active : null, goTo, follow }
 }
 
 /** How a view renders its document, and so where its headings are. */

@@ -77,6 +77,7 @@ export default function OfficeOriginalDialog({
     original,
   )
   const navigation = useHeadingNavigation(scroller, outline, headings)
+  const { follow } = navigation
   const outlineState = useOutlineOpen(outline.length > 0)
 
   // The passage is searched once the content is in the DOM: a table by the anchor's rows where it
@@ -136,7 +137,8 @@ export default function OfficeOriginalDialog({
     scroller.scrollTo?.({ top: scroller.scrollTop + top - scroller.clientHeight / 3 })
     if (!labelBlock.hasAttribute('tabindex')) labelBlock.setAttribute('tabindex', '-1')
     labelBlock.focus({ preventScroll: true })
-  }, [labelBlock])
+    follow(labelBlock)
+  }, [labelBlock, follow])
   useEffect(() => {
     if (!original || !labelBlock || jumped.current === original) return
     jumped.current = original

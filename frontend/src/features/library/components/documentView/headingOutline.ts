@@ -69,7 +69,8 @@ interface DocxParagraph {
 /**
  * Marks the heading paragraphs in a document parsed by docx-preview, before it is rendered, with a
  * class naming their level: a paragraph in a built-in heading style or with an outline level of
- * its own, as the indexing reads it. Word's outline level 9 is body text and stays unmarked.
+ * its own, the rule of the indexing. Two cases differ from it: Word's outline level 9 is body text
+ * and stays unmarked, and a heading inside a content control, which docx-preview unwraps, counts.
  */
 export function markDocxHeadings(document: unknown): void {
   const body = (document as { documentPart?: { body?: { children?: DocxParagraph[] } } })

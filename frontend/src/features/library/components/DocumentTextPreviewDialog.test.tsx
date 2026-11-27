@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
@@ -340,6 +340,35 @@ describe('DocumentTextPreviewDialog', () => {
         'location',
       )
       expect(screen.getByRole('heading', { name: 'Bescheid' })).toHaveFocus()
+    })
+
+    it('marks the section of the cited passage, also after a detour through the outline', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <DocumentTextPreviewDialog
+          previewDocument={{ ...markdownDoc(GUIDE), anchor: { quoteStart: 'Was beizulegen ist.' } }}
+          onClose={vi.fn()}
+        />,
+      )
+      await user.click(await screen.findByRole('button', { name: 'Gliederung' }))
+      const outline = screen.getByRole('navigation', { name: 'Gliederung' })
+      expect(within(outline).getByRole('button', { name: 'Unterlagen' })).toHaveAttribute(
+        'aria-current',
+        'location',
+      )
+
+      await user.click(within(outline).getByRole('button', { name: 'Bescheid' }))
+      expect(within(outline).getByRole('button', { name: 'Bescheid' })).toHaveAttribute(
+        'aria-current',
+        'location',
+      )
+      await user.click(screen.getByRole('button', { name: 'Zur Fundstelle' }))
+      await waitFor(() =>
+        expect(within(outline).getByRole('button', { name: 'Unterlagen' })).toHaveAttribute(
+          'aria-current',
+          'location',
+        ),
+      )
     })
 
     it('shows no outline for a document without headings', () => {
