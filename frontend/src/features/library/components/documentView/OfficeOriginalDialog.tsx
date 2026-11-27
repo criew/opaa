@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import GlobalStyles from '@mui/material/GlobalStyles'
 import ReadingModeDialog from '@/shared/ui/dialog/ReadingModeDialog'
+import LoadingState from '@/shared/ui/states/LoadingState'
+import type { PendingOriginal } from '../../hooks/useDocumentPreview'
 import { downloadBlob } from '../../utils/documentContent'
 import type { OfficeOriginal } from '../../utils/officeOriginal'
 import { NO_ANCHOR_NOTICE, passageRange } from '../../utils/textPassage'
@@ -35,11 +37,14 @@ interface Found {
  */
 export default function OfficeOriginalDialog({
   original,
+  pending = null,
   onClose,
   onUnreadable,
 }: {
-  /** `null` keeps the dialog closed. */
+  /** `null` keeps the dialog closed, unless an original is `pending`. */
   original: OfficeOriginal | null
+  /** An original still being fetched: the dialog opens with its name and shows it loading. */
+  pending?: PendingOriginal | null
   onClose: () => void
   onUnreadable: (original: OfficeOriginal) => void
 }) {
@@ -138,11 +143,11 @@ export default function OfficeOriginalDialog({
 
   return (
     <ReadingModeDialog
-      open={original != null}
+      open={original != null || pending != null}
       onClose={onClose}
-      backLabel={backLabel(anchor)}
+      backLabel={backLabel(original ? anchor : pending?.anchor)}
       titleId={TITLE_ID}
-      title={original?.fileName}
+      title={original?.fileName ?? pending?.fileName}
       titleActions={
         original && (
           <DownloadOriginalButton
@@ -152,47 +157,60 @@ export default function OfficeOriginalDialog({
       }
     >
       <GlobalStyles styles={(theme) => highlightStyles(HIGHLIGHT, theme)} />
-      <ReadingLayout
-        finding={
-          anchor !== undefined
-            ? { place, quote: anchorQuote(anchor, original?.format === 'csv') }
-            : null
-        }
-        status={status}
-        onJump={located ? jump : undefined}
-      >
-        <Box
-          ref={scrollRef}
-          data-testid="office-original-content"
-          role="region"
-          aria-label="Dokument"
-          tabIndex={0}
-          sx={deskScrollSx}
-        >
-          {original?.format === 'docx' ? (
-            <Box sx={{ position: 'relative', pt: { sm: 1 } }} ref={setPaper}>
-              <PassageLabel block={labelBlock} container={paper} />
-              <DocxView
-                blob={original.blob}
-                highlight={HIGHLIGHT}
-                onRendered={(rendered) => setDocxBody({ of: original, body: rendered })}
-                onFailed={() => onUnreadable(original)}
-              />
-            </Box>
-          ) : original ? (
-            <DocumentPaper paperRef={setPaper} wide={original.format === 'csv'} sx={passageBlockSx}>
-              {original.format === 'mail' && <PassageLabel block={labelBlock} container={paper} />}
-              <Box data-document-body="">
-                {original.format === 'csv' ? (
-                  <CsvTableView table={original.table} marked={markedRows} />
-                ) : (
-                  <MailView mail={original.mail} />
-                )}
-              </Box>
-            </DocumentPaper>
-          ) : null}
+      {!original && (
+        <Box sx={{ p: 3 }}>
+          <LoadingState shape="block" />
         </Box>
-      </ReadingLayout>
+      )}
+      {original && (
+        <ReadingLayout
+          finding={
+            anchor !== undefined
+              ? { place, quote: anchorQuote(anchor, original?.format === 'csv') }
+              : null
+          }
+          status={status}
+          onJump={located ? jump : undefined}
+        >
+          <Box
+            ref={scrollRef}
+            data-testid="office-original-content"
+            role="region"
+            aria-label="Dokument"
+            tabIndex={0}
+            sx={deskScrollSx}
+          >
+            {original?.format === 'docx' ? (
+              <Box sx={{ position: 'relative', pt: { sm: 1 } }} ref={setPaper}>
+                <PassageLabel block={labelBlock} container={paper} />
+                <DocxView
+                  blob={original.blob}
+                  highlight={HIGHLIGHT}
+                  onRendered={(rendered) => setDocxBody({ of: original, body: rendered })}
+                  onFailed={() => onUnreadable(original)}
+                />
+              </Box>
+            ) : original ? (
+              <DocumentPaper
+                paperRef={setPaper}
+                wide={original.format === 'csv'}
+                sx={passageBlockSx}
+              >
+                {original.format === 'mail' && (
+                  <PassageLabel block={labelBlock} container={paper} />
+                )}
+                <Box data-document-body="">
+                  {original.format === 'csv' ? (
+                    <CsvTableView table={original.table} marked={markedRows} />
+                  ) : (
+                    <MailView mail={original.mail} />
+                  )}
+                </Box>
+              </DocumentPaper>
+            ) : null}
+          </Box>
+        </ReadingLayout>
+      )}
     </ReadingModeDialog>
   )
 }

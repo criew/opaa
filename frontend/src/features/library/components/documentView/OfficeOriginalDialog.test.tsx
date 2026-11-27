@@ -102,6 +102,20 @@ describe('OfficeOriginalDialog', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('opens loading while the original is fetched, with one status', () => {
+    renderWithProviders(
+      <OfficeOriginalDialog
+        original={null}
+        pending={{ fileName: 'fristenliste.csv', anchor: { rowFrom: 3 } }}
+        onClose={vi.fn()}
+        onUnreadable={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('dialog', { name: 'fristenliste.csv' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Zurück zur Antwort' })).toBeVisible()
+    expect(screen.getAllByRole('status')).toEqual([screen.getByText('Wird geladen').parentElement])
+  })
+
   describe('CSV', () => {
     it('shows the table with its row numbers and marks the rows the anchor names', async () => {
       renderDialog(csv({ rowFrom: 3, rowTo: 3, quoteStart: 'WF-2026-037 | Optik Brandt' }))
@@ -133,6 +147,15 @@ describe('OfficeOriginalDialog', () => {
       )
       expect(screen.getByRole('status')).toHaveTextContent('Fundstelle markiert.')
       expect(screen.getByText('Zeile 4')).toBeVisible()
+    })
+
+    it('marks the row the index numbers, blank lines counted', async () => {
+      const text = 'Aktenzeichen;Antragsteller\r\n\r\nWF-1;Lindner\r\n;\r\nWF-2;Brandt\r\n'
+      renderDialog({ ...csv({ rowFrom: 5, rowTo: 5 }), format: 'csv', table: parseCsv(text) })
+
+      expect(screen.getByRole('row', { name: /WF-2/ })).toHaveAttribute('data-passage-row')
+      expect(screen.getByRole('row', { name: /WF-1/ })).not.toHaveAttribute('data-passage-row')
+      expect(screen.getAllByRole('row')).toHaveLength(3)
     })
 
     it('says so when the rows are not in the table', async () => {
@@ -209,6 +232,22 @@ describe('OfficeOriginalDialog', () => {
       )
       // the document's own styles stay inside its shadow root
       expect(document.querySelector('section.docx')).toBeNull()
+    })
+
+    it('keeps a VML shape that asks for the whole window inside the document box', async () => {
+      docx.renderAsync.mockImplementation(async (_blob, body: HTMLElement) => {
+        body.innerHTML =
+          '<section class="docx"><p>Frist</p><div><svg style="position:fixed;inset:0;' +
+          'z-index:2147483647"></svg></div></section>'
+      })
+      renderDialog(word({ quoteStart: 'Frist' }))
+
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent('Fundstelle markiert.'),
+      )
+      const host = screen.getByTestId('docx-original')
+      expect(host.shadowRoot!.querySelector<SVGElement>('svg')!.style.position).toBe('')
+      expect(getComputedStyle(host.parentElement!).overflow).toBe('clip')
     })
 
     it('hands a file docx-preview cannot read over to the Textfassung', async () => {

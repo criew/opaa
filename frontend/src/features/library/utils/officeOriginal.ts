@@ -1,8 +1,9 @@
 import type { ChunkAnchor } from '@/shared/api/types'
 import { getDocumentContent } from '../api/libraryApi'
-import { parseCsv, type CsvTable } from './csvTable'
+import { decodeCsv, parseCsv, type CsvTable } from './csvTable'
 import { TEXT_PREVIEW_MAX_BYTES } from './documentContent'
 import { parseMail, type MailMessage } from './mailMessage'
+import { declaredUnpackedSize } from './zipSize'
 
 /** The office formats „Dokument öffnen“ shows as themselves rather than as their Textfassung. */
 export type OriginalFormat = 'docx' | 'csv' | 'mail'
@@ -15,14 +16,20 @@ const FORMAT_BY_EXTENSION: Record<string, OriginalFormat> = {
 
 /**
  * Largest original shown as itself, per format; a larger one opens as its Textfassung. A table is
- * rendered row by row, so it gets the text preview's bound; a Word file or a mail carries images
- * and attachments that are not rendered or only decoded on demand.
+ * rendered row by row, so it gets the text preview's bound. A Word file's images are rendered as
+ * data URLs, so their bytes count twice in memory; a mail's attachments are skipped unread.
  */
 export const ORIGINAL_VIEW_MAX_BYTES: Record<OriginalFormat, number> = {
   docx: 10 * 1024 * 1024,
   csv: TEXT_PREVIEW_MAX_BYTES,
   mail: 10 * 1024 * 1024,
 }
+
+/** Largest sum of unpacked sizes a Word file may declare; more is likely a ZIP bomb. */
+export const DOCX_UNPACKED_MAX_BYTES = 50 * 1024 * 1024
+
+/** Why an original opens as its Textfassung instead. */
+export type OriginalFallback = 'too-large' | 'no-plain-text' | 'failed'
 
 interface OriginalBase {
   documentId: string
@@ -47,19 +54,26 @@ export function originalFormat(fileName: string): OriginalFormat | null {
 }
 
 /**
- * Fetches the original through the content endpoint and reads it for its view. `null` where the
- * Textfassung stands in instead: a file above {@link ORIGINAL_VIEW_MAX_BYTES}, a mail without a
- * plain text part. A failed fetch rejects.
+ * Fetches the original through the content endpoint and reads it for its view, or names why the
+ * Textfassung stands in instead: a file above {@link ORIGINAL_VIEW_MAX_BYTES}, a Word file that
+ * declares more than {@link DOCX_UNPACKED_MAX_BYTES} unpacked, a mail without a plain text part.
+ * A failed fetch rejects.
  */
 export async function loadOfficeOriginal(
   format: OriginalFormat,
   document: Omit<OriginalBase, 'blob'>,
-): Promise<OfficeOriginal | null> {
+): Promise<OfficeOriginal | { fallback: OriginalFallback }> {
   const { blob, fileName } = await getDocumentContent(document.documentId)
-  if (blob.size > ORIGINAL_VIEW_MAX_BYTES[format]) return null
+  if (blob.size > ORIGINAL_VIEW_MAX_BYTES[format]) return { fallback: 'too-large' }
   const base = { ...document, fileName: fileName ?? document.fileName, blob }
-  if (format === 'docx') return { ...base, format }
-  if (format === 'csv') return { ...base, format, table: parseCsv(await blob.text()) }
-  const mail = parseMail(new Uint8Array(await blob.arrayBuffer()))
-  return mail ? { ...base, format, mail } : null
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  if (format === 'docx') {
+    const unpacked = declaredUnpackedSize(bytes)
+    return unpacked != null && unpacked > DOCX_UNPACKED_MAX_BYTES
+      ? { fallback: 'too-large' }
+      : { ...base, format }
+  }
+  if (format === 'csv') return { ...base, format, table: parseCsv(decodeCsv(bytes)) }
+  const mail = parseMail(bytes)
+  return mail ? { ...base, format, mail } : { fallback: 'no-plain-text' }
 }

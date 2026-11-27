@@ -46,9 +46,22 @@ export function parseMail(raw: Uint8Array | string): MailMessage | null {
     paragraphs: text
       .replace(/\r\n?/g, '\n')
       .split(/\n[ \t]*\n/)
-      .map((paragraph) => paragraph.replace(/[ \t]+$/gm, '').replace(/^\n+|\n+$/g, ''))
-      .filter((paragraph) => paragraph.trim().length > 0),
+      .map(trimParagraph)
+      .filter((paragraph) => paragraph.length > 0),
   }
+}
+
+/**
+ * Drops trailing blanks of every line and empty lines at both ends, line by line: a regular
+ * expression anchored at line ends backtracks quadratically over a long run of blanks.
+ */
+function trimParagraph(paragraph: string): string {
+  const lines = paragraph.split('\n').map((line) => line.trimEnd())
+  let start = 0
+  let end = lines.length
+  while (start < end && lines[start] === '') start++
+  while (end > start && lines[end - 1] === '') end--
+  return lines.slice(start, end).join('\n')
 }
 
 function binaryString(bytes: Uint8Array): string {

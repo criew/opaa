@@ -143,4 +143,12 @@ describe('parseMail', () => {
     expect(mail?.subject).toBe('<b>x</b>')
     expect(mail?.paragraphs).toEqual(['<script>alert(1)</script>'])
   })
+
+  it('reads a long run of blanks in linear time', () => {
+    const blanks = ' '.repeat(200_000)
+    const started = performance.now()
+    const mail = parseMail(`Subject: x\n\nAnfang${blanks}x${blanks}\nEnde${blanks}`)
+    expect(performance.now() - started).toBeLessThan(500)
+    expect(mail?.paragraphs).toEqual([`Anfang${blanks}x\nEnde`])
+  })
 })

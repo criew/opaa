@@ -5,10 +5,11 @@ import { useTheme } from '@mui/material/styles'
 import { fontSize, fontWeight, shadow } from '@/shared/theme/tokens'
 import LightSurface from '@/shared/ui/LightSurface'
 import type { CsvTable } from '../../utils/csvTable'
+import { confineRenderedDocx } from '../../utils/docxConfinement'
 import { neutralizeLinks } from '../../utils/documentLinks'
 import type { MailMessage } from '../../utils/mailMessage'
 import { passageLabelSx } from './styles'
-import { PASSAGE_BLOCK_ATTR, passageBandSx } from './textMarks'
+import { PASSAGE_BLOCK_ATTR, PASSAGE_FIRST_ATTR, passageBandSx } from './textMarks'
 
 /** Attribute on the table row of a CSV original that holds the cited passage. */
 export const PASSAGE_ROW_ATTR = 'data-passage-row'
@@ -168,7 +169,8 @@ const DOCX_RENDER_OPTIONS = {
 
 /**
  * A Word original rendered by docx-preview into a shadow root of its own, so the document's
- * styles cannot reach the app and the app's cannot reach the document. Links are made safe before
+ * styles cannot reach the app and the app's cannot reach the document; what the document's CSS
+ * could still do to the page is cut off by {@link confineRenderedDocx} and a containing box. Links are made safe before
  * `onRendered` hands over the body to search and mark; a file it cannot read calls `onFailed`.
  */
 export function DocxView({
@@ -218,6 +220,7 @@ function DocxShadow({
     [${PASSAGE_BLOCK_ATTR}]::before { content: ''; position: absolute; left: -12px; top: 0;
       bottom: 0; width: 4px; border-radius: 2px; background: ${edge}; }
     @media (max-width: 599.95px) {
+      section.docx [${PASSAGE_FIRST_ATTR}] { margin-top: 24px !important; }
       .docx-wrapper > section.docx { width: 100% !important; min-height: auto !important;
         padding: 16px !important; box-shadow: none; }
     }
@@ -236,17 +239,39 @@ function DocxShadow({
     const styles = host.ownerDocument.createElement('div')
     const body = host.ownerDocument.createElement('div')
     root.replaceChildren(own, styles, body)
-    // links are made safe as soon as they are inserted, before any event can reach them
+    // links are made safe and styles confined as soon as they are inserted, before any event can
+    // reach them and before the next paint
+    const confine = () => {
+      confineRenderedDocx(styles)
+      confineRenderedDocx(body)
+      neutralizeLinks(body)
+    }
+    // the guard pauses while it works, so its own changes do not call it again
     const guard =
       typeof MutationObserver !== 'undefined'
-        ? new MutationObserver(() => neutralizeLinks(body))
+        ? new MutationObserver(() => {
+            guard?.disconnect()
+            confine()
+            watch()
+          })
         : undefined
-    guard?.observe(body, { childList: true, subtree: true })
+    const watch = () => {
+      guard?.observe(styles, { childList: true, subtree: true, characterData: true })
+      guard?.observe(body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'href'],
+      })
+    }
+    watch()
     import('docx-preview')
       .then(({ renderAsync }) => renderAsync(blob, body, styles, DOCX_RENDER_OPTIONS))
       .then(() => {
         if (cancelled) return
-        neutralizeLinks(body)
+        guard?.disconnect()
+        confine()
+        watch()
         rendered(body)
       })
       .catch(() => {
@@ -259,5 +284,11 @@ function DocxShadow({
     }
   }, [blob, css])
 
-  return <Box ref={hostRef} data-testid="docx-original" />
+  // Paint containment makes this box the containing block of anything fixed below it and clips
+  // what reaches beyond it, whatever the document's CSS asks for.
+  return (
+    <Box sx={{ contain: 'layout paint', overflow: 'clip', isolation: 'isolate' }}>
+      <Box ref={hostRef} data-testid="docx-original" />
+    </Box>
+  )
 }
