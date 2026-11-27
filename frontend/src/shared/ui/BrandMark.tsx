@@ -7,26 +7,26 @@ import { MARK, MARK_ACCENT, WORDMARK } from './brandMarkPaths'
 /** Widest the standard wordmark may be in the 64px rail, leaving the tile its side padding. */
 const RAIL_WORDMARK_WIDTH = 44
 
-/** One outline in the text colour, one in the brand's Hellblau (the accented a, the underline). */
+/** Outlines in the text colour (none for the mark) and in the brand's Hellblau (the a, the underline). */
 function Outline({
   shape,
   height,
   label,
 }: {
-  shape: { width: number; height: number; base: string; accent: string }
+  shape: { x: number; y: number; width: number; height: number; base: string; accent: string }
   height: number
   label?: string
 }) {
   return (
     <Box
       component="svg"
-      viewBox={`0 0 ${shape.width} ${shape.height}`}
+      viewBox={`${shape.x} ${shape.y} ${shape.width} ${shape.height}`}
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
       sx={{ height, width: (height * shape.width) / shape.height, flexShrink: 0, display: 'block' }}
     >
-      <path fill="currentColor" d={shape.base} />
+      {shape.base && <path fill="currentColor" d={shape.base} />}
       <path fill={MARK_ACCENT} d={shape.accent} />
     </Box>
   )
@@ -62,8 +62,8 @@ interface BrandMarkProps {
  *
  * Renders the product name as text next to the logo rather than relying on the logo to carry it:
  * an operator's logo is frequently a wordless emblem, and the name is what a screen reader user and
- * a narrow viewport both need. Where no logo is configured, the OPAA standard mark (the underlined
- * "o") stands next to the name; with the standard name as well, the OPAA wordmark replaces both and
+ * a narrow viewport both need. Where no logo is configured, the opaa standard mark (the Hellblau "a"
+ * with its underline) stands next to the name; with the standard name as well, the opaa wordmark replaces both and
  * carries the name as its accessible label.
  */
 export default function BrandMark({
