@@ -181,32 +181,49 @@ async function seedLibrary(
 
 /**
  * The entry marked as current names the section that holds the marked passage: its heading is the
- * last one before the passage in the document.
+ * last one before the passage in the document - or, where that sits folded, its chapter. Returns
+ * the chapter (level 1) of the passage.
  */
-async function expectPassageSectionActive(view: Locator) {
+async function expectPassageSectionActive(view: Locator): Promise<string> {
   const outline = view.getByRole('navigation', { name: 'Gliederung' })
+  let chapter = ''
   await expect
     .poll(async () => {
       const current = await outline.locator('[aria-current="location"]').allTextContents()
       const expected = await view.getByTestId('document-text-content').evaluate((content) => {
         type El = {
+          tagName: string
           textContent: string | null
           compareDocumentPosition(other: unknown): number
         }
-        const root = content as unknown as { querySelector(s: string): El | null }
-        const all = content as unknown as { querySelectorAll(s: string): ArrayLike<El> }
+        const root = content as unknown as {
+          querySelector(s: string): El | null
+          querySelectorAll(s: string): ArrayLike<El>
+        }
         const passage = root.querySelector('[data-passage]')
         if (!passage) return null
         let section: string | null = null
-        for (const heading of Array.from(all.querySelectorAll('h1, h2, h3, h4, h5, h6'))) {
+        let top: string | null = null
+        const headings = Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+        const topTag = headings.reduce((min, h) => (h.tagName < min ? h.tagName : min), 'H9')
+        for (const heading of headings) {
           // 4 = DOCUMENT_POSITION_FOLLOWING: the passage comes after this heading
-          if (heading.compareDocumentPosition(passage) & 4) section = heading.textContent
+          if (heading.compareDocumentPosition(passage) & 4) {
+            section = heading.textContent
+            if (heading.tagName === topTag) top = heading.textContent
+          }
         }
-        return section
+        return { section, top }
       })
-      return expected !== null && current.length === 1 && current[0] === expected
+      chapter = expected?.top ?? ''
+      return (
+        expected !== null &&
+        current.length === 1 &&
+        (current[0] === expected.section || current[0] === expected.top)
+      )
     })
     .toBe(true)
+  return chapter
 }
 
 async function openOriginal(page: Page, libraryId: string, fileName: string): Promise<Locator> {
@@ -314,12 +331,11 @@ test.describe.serial('Gliederung in der Dokumentansicht', () => {
         timeout: 15_000,
       },
     )
-    await expectPassageSectionActive(view)
+    const chapter = await expectPassageSectionActive(view)
 
     // a detour to another chapter and back with „Zur Fundstelle“
     const outline = view.getByRole('navigation', { name: 'Gliederung' })
-    const current = (await outline.locator('[aria-current="location"]').textContent()) ?? ''
-    const other = CHAPTERS.find((chapter) => chapter !== current)!
+    const other = CHAPTERS.find((title) => title !== chapter)!
     await outline.getByRole('button', { name: other, exact: true }).click()
     await expect(outline.getByRole('button', { name: other, exact: true })).toHaveAttribute(
       'aria-current',

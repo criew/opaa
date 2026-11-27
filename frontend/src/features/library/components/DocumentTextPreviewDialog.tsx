@@ -246,7 +246,7 @@ export default function DocumentTextPreviewDialog({
 const OBSERVED: MutationObserverInit = { childList: true, subtree: true, characterData: true }
 
 /**
- * Scrolls `content` so the passage starts in the middle of the view - by the range's own position,
+ * Scrolls `content` so the passage starts a third down the view - by the range's own position,
  * since the element around it may be a whole `<pre>` - and moves focus to the block that holds it,
  * so a screen reader continues reading there. Returns where the passage starts, for the outline.
  */
@@ -261,7 +261,11 @@ function scrollToPassage(content: HTMLElement, range: Range): Element {
     if (!block.hasAttribute('tabindex')) block.setAttribute('tabindex', '-1')
     block.focus({ preventScroll: true })
   }
-  return range.startContainer.parentElement ?? content
+  // an element boundary points at the child the passage starts with, not at the element itself
+  const node = range.startContainer
+  const start =
+    node.nodeType === Node.ELEMENT_NODE ? (node.childNodes[range.startOffset] ?? node) : node
+  return (start instanceof Element ? start : start.parentElement) ?? content
 }
 
 const BLOCKS = 'p, li, pre, td, th, blockquote, h1, h2, h3, h4, h5, h6'
