@@ -53,12 +53,6 @@ vi.mock('../utils/pdfjs', () => {
     set currentScaleValue(value: string) {
       if (value === 'page-width') this.currentScale = pdf.pageWidthScale
     }
-    linkService = {
-      goToDestination: async (dest: unknown[]) => {
-        const pageNumber = (dest[0] as { num: number }).num
-        pdf.scrollPageIntoView({ pageNumber, destArray: dest })
-      },
-    }
     scrollPageIntoView = pdf.scrollPageIntoView
     get pagesCount() {
       return pdf.pages.length
@@ -138,6 +132,7 @@ function wheelTo(scrollTop: number) {
   const view = container()
   fireEvent.wheel(view)
   view.scrollTop = scrollTop
+  fireEvent.scroll(view)
   fire('updateviewarea', {})
 }
 
@@ -177,6 +172,8 @@ async function open(
   const view = container()
   Object.defineProperty(view, 'clientWidth', { configurable: true, value: 800 })
   Object.defineProperty(view, 'clientHeight', { configurable: true, value: 600 })
+  // the pages and the space below the last one
+  Object.defineProperty(view, 'scrollHeight', { configurable: true, value: pageTop(3) + 80 })
   expect(await screen.findByText('Seite 1 von 3')).toBeInTheDocument()
 }
 
@@ -419,6 +416,7 @@ describe('PdfViewer', () => {
     const OUTLINE: OutlineItem[] = [
       { title: 'Titel', dest: at(1, 0, 1000), items: [] },
       { title: 'Inhalt', dest: at(2, 100, 900), items: [] },
+      { title: 'Abschnitt', dest: at(2, 100, 850), items: [] },
       { title: 'Vorwort', dest: at(2, 100, 400), items: [] },
       {
         title: 'Doppelseite',
@@ -446,9 +444,15 @@ describe('PdfViewer', () => {
     it('marks the entry chosen and its page, then the place the reader scrolls to', async () => {
       await open(undefined as unknown as ChunkAnchor)
 
+      // „Abschnitt“ follows just below „Inhalt“, above the reading line after the jump
       await userEvent.click(await entry('Inhalt'))
       expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+
+      // a click into the page that scrolls nothing keeps the choice
+      fireEvent.pointerDown(container())
+      fire('updateviewarea', {})
+      expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
 
       await userEvent.click(await entry('Vorwort'))
       expect(await entry('Vorwort')).toHaveAttribute('aria-current', 'location')
@@ -460,8 +464,22 @@ describe('PdfViewer', () => {
       expect(screen.getByText('Seite 3 von 3')).toBeInTheDocument()
 
       wheelTo(1300)
-      expect(await entry('Inhalt')).toHaveAttribute('aria-current', 'location')
+      expect(await entry('Abschnitt')).toHaveAttribute('aria-current', 'location')
       expect(screen.getByText('Seite 2 von 3')).toBeInTheDocument()
+    })
+
+    it('reaches the last page and its entry at the end, though they never scroll up far', async () => {
+      pdf.pages = [0, 1, 2].map(() => ({ left: 0, width: 600, height: 300 }))
+      pdf.outline = [
+        { title: 'Anfang', dest: at(1, 0, 300), items: [] },
+        { title: 'Schluss', dest: at(3, 0, 100), items: [] },
+      ]
+      await open(undefined as unknown as ChunkAnchor)
+
+      wheelTo(380)
+
+      expect(screen.getByText('Seite 3 von 3')).toBeInTheDocument()
+      expect(await entry('Schluss')).toHaveAttribute('aria-current', 'location')
     })
 
     it('centres a page that fits and aligns a wider one left, unless the target lies beyond', async () => {

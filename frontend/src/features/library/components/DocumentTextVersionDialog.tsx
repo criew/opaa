@@ -29,7 +29,7 @@ import { passageLabelSx } from './documentView/styles'
 import { anchorPlace, anchorQuote } from './documentView/findingText'
 import { passageBandSx } from './documentView/textMarks'
 import { backLabel } from './documentView/backLabel'
-import { lastAtOrBefore, readingLine, userScrollProps } from './documentView/readingPosition'
+import { lastAtOrBefore, readingLine, useUserScroll } from './documentView/readingPosition'
 import LoadError from '@/shared/ui/states/LoadError'
 import LoadingState from '@/shared/ui/states/LoadingState'
 import EmptyState from '@/shared/ui/states/EmptyState'
@@ -93,6 +93,15 @@ export default function DocumentTextVersionDialog({
   const [readAt, setReadAt] = useState<{ of: TextVersionPreview; chunkIndex: number } | null>(null)
   // the preview whose outline follows the reading line, once its reader scrolled on their own
   const [following, setFollowing] = useState<TextVersionPreview | null>(null)
+  const forgetInput = useUserScroll(
+    scrollRef,
+    () => {
+      setFollowing(preview)
+      setChosen(null)
+      trackReading(true)
+    },
+    loaded,
+  )
 
   useEffect(() => {
     if (!preview) return
@@ -206,19 +215,15 @@ export default function DocumentTextVersionDialog({
 
   function choose(section: DocumentTextSection) {
     if (!preview) return
+    forgetInput()
     setFollowing(null)
     setChosen({ of: preview, section })
     goTo(section.chunkIndex)
   }
 
-  function releaseToScroll() {
-    setFollowing(preview)
-    setChosen(null)
-  }
-
-  function trackReading() {
+  function trackReading(always = false) {
     const container = scrollRef.current
-    if (!container || !preview || following !== preview) return
+    if (!container || !preview || (!always && following !== preview)) return
     const chunkIndex = chunkAtReadingLine(container)
     if (chunkIndex === null) return
     setReadAt((previous) =>
@@ -307,6 +312,7 @@ export default function DocumentTextVersionDialog({
 
   function jumpToPassage() {
     if (target == null) return
+    forgetInput()
     setFollowing(null)
     setChosen(null)
     setReadAt(null)
@@ -396,8 +402,7 @@ export default function DocumentTextVersionDialog({
             aria-label="Dokument"
             tabIndex={0}
             sx={deskScrollSx}
-            onScroll={trackReading}
-            {...userScrollProps(releaseToScroll)}
+            onScroll={() => trackReading()}
           >
             <DocumentPaper>
               {hasBefore && (
@@ -546,10 +551,7 @@ function chunkAtReadingLine(container: HTMLElement): number | null {
         (block.parentElement ?? block).getBoundingClientRect().top - frame + container.scrollTop,
     }),
   )
-  return (
-    lastAtOrBefore(entries, readingLine(container.scrollTop, container.clientHeight))?.chunkIndex ??
-    null
-  )
+  return lastAtOrBefore(entries, readingLine(container))?.chunkIndex ?? null
 }
 
 function lastSectionAtOrBefore(

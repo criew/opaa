@@ -74,7 +74,7 @@ function OutlineEntry({
         )}
         <ButtonBase
           onClick={() => onSelect(node)}
-          disabled={node.dest == null}
+          disabled={node.page == null}
           aria-current={active ? 'location' : undefined}
           sx={{
             fontWeight: active ? 600 : 400,

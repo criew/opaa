@@ -3,11 +3,23 @@ import { horizontalOffset, lastAtOrBefore, readingLine } from './readingPosition
 
 describe('readingLine', () => {
   it('lies a quarter down the view', () => {
-    expect(readingLine(1000, 800)).toBe(1200)
+    expect(readingLine({ scrollTop: 1000, clientHeight: 800, scrollHeight: 5000 })).toBe(1200)
   })
 
   it('lies where a view asks for it', () => {
-    expect(readingLine(1000, 800, 1 / 2)).toBe(1400)
+    expect(readingLine({ scrollTop: 1000, clientHeight: 800, scrollHeight: 5000 }, 1 / 2)).toBe(
+      1400,
+    )
+  })
+
+  it('moves down over the last screen and reaches the bottom at the end', () => {
+    expect(readingLine({ scrollTop: 3800, clientHeight: 800, scrollHeight: 5000 })).toBe(4300)
+    expect(readingLine({ scrollTop: 4200, clientHeight: 800, scrollHeight: 5000 })).toBe(5000)
+  })
+
+  it('starts a quarter down even when the content is barely taller than the view', () => {
+    expect(readingLine({ scrollTop: 0, clientHeight: 800, scrollHeight: 1000 })).toBe(200)
+    expect(readingLine({ scrollTop: 200, clientHeight: 800, scrollHeight: 1000 })).toBe(1000)
   })
 })
 

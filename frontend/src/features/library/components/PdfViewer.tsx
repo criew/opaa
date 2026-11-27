@@ -17,7 +17,7 @@ import {
   horizontalOffset,
   lastAtOrBefore,
   readingLine,
-  userScrollProps,
+  useUserScroll,
 } from './documentView/readingPosition'
 import RecognizedTextPanel from './RecognizedTextPanel'
 import LoadingState from '@/shared/ui/states/LoadingState'
@@ -74,6 +74,12 @@ interface OutlineTarget {
   destArray: unknown[]
 }
 
+/** An outline entry with its destination resolved, where it resolves. */
+interface ResolvedNode extends OutlineNode {
+  children: ResolvedNode[]
+  destination: { pageNumber: number; destArray: unknown[] } | null
+}
+
 /** The page and the outline entry at the reading line; both shown as current. */
 interface Reading {
   page: number
@@ -111,6 +117,7 @@ export default function PdfViewer({
   const [reading, setReading] = useState<Reading>({ page: 1, node: null })
   // the entry just chosen stays the current one until the reader scrolls on their own
   const [chosen, setChosen] = useState<OutlineTarget | null>(null)
+  const forgetInput = useUserScroll(containerRef, () => setChosen(null))
   const [scale, setScale] = useState(1)
   // the page the passage starts on; the status names it, not the page scrolled to since
   const [markedPage, setMarkedPage] = useState(1)
@@ -260,9 +267,9 @@ export default function PdfViewer({
         linkService.setDocument(document)
         setPdf(document)
         const items = (await document.getOutline()) as PdfJsOutlineItem[] | null
-        const targets: OutlineTarget[] = []
-        const nodes = await toOutline(document, items ?? [], targets)
+        const nodes = await toOutline(document, items ?? [])
         if (cancelled) return
+        const targets = outlineTargets(nodes)
         targetsRef.current = targets
         setOutline(nodes)
         setReading(readingAt(container, viewer, targets))
@@ -313,6 +320,7 @@ export default function PdfViewer({
     const container = containerRef.current
     const target = targetsRef.current.find((candidate) => candidate.node === node)
     if (!viewer || !container || !target) return
+    forgetInput()
     viewer.scrollPageIntoView({ pageNumber: target.pageNumber, destArray: target.destArray })
     alignPage(container, viewer, target.pageNumber, destinationX(viewer, target))
     setChosen(target)
@@ -322,6 +330,7 @@ export default function PdfViewer({
     const viewer = viewerRef.current
     const container = containerRef.current
     if (!viewer || !container) return
+    forgetInput()
     setChosen(null)
     viewer.currentPageNumber = next
     alignPage(container, viewer, next)
@@ -332,6 +341,7 @@ export default function PdfViewer({
     const viewer = viewerRef.current
     const container = containerRef.current
     if (!mark || !viewer || !container) return
+    forgetInput()
     setChosen(null)
     mark.scrollIntoView?.({ block: 'center', inline: 'nearest' })
     const pageNumber = Number(mark.closest<HTMLElement>('.page')?.dataset.pageNumber)
@@ -403,7 +413,6 @@ export default function PdfViewer({
           role="region"
           aria-label="Seiten"
           sx={pagesSx}
-          {...userScrollProps(() => setChosen(null))}
         >
           <div className="pdfViewer" />
         </Box>
@@ -569,7 +578,7 @@ function contentRect(element: Element, container: HTMLElement) {
 function readingAt(container: HTMLElement, viewer: PdfJsViewer, targets: OutlineTarget[]): Reading {
   const count = viewer.pagesCount
   if (!count) return { page: 1, node: null }
-  const line = readingLine(container.scrollTop, container.clientHeight)
+  const line = readingLine(container)
   const tops = new Map<number, number>()
   const topOf = (pageNumber: number) => {
     let top = tops.get(pageNumber)
@@ -702,31 +711,36 @@ interface PdfJsOutlineItem {
   items: PdfJsOutlineItem[]
 }
 
-/**
- * The outline with the page each entry points at, where its destination resolves to one; every
- * resolved entry is also added to `targets`, in reading order.
- */
+/** The outline with the page each entry points at, where its destination resolves to one. */
 async function toOutline(
   pdf: PDFDocumentProxy,
   items: PdfJsOutlineItem[],
-  targets: OutlineTarget[],
-): Promise<OutlineNode[]> {
-  const resolved = await Promise.all(
-    items.map(async (item) => ({ item, destination: await resolveDestination(pdf, item.dest) })),
+): Promise<ResolvedNode[]> {
+  return Promise.all(
+    items.map(async (item) => {
+      const [destination, children] = await Promise.all([
+        resolveDestination(pdf, item.dest),
+        toOutline(pdf, item.items ?? []),
+      ])
+      const node: ResolvedNode = {
+        title: item.title,
+        dest: item.dest,
+        page: destination?.pageNumber ?? null,
+        children,
+        destination,
+      }
+      return node
+    }),
   )
-  const nodes: OutlineNode[] = []
-  for (const { item, destination } of resolved) {
-    const node: OutlineNode = {
-      title: item.title,
-      dest: item.dest,
-      page: destination?.pageNumber ?? null,
-      children: [],
-    }
-    if (destination) targets.push({ node, ...destination })
-    node.children = await toOutline(pdf, item.items ?? [], targets)
-    nodes.push(node)
+}
+
+/** The resolved entries of `nodes` and everything below them, in reading order. */
+function outlineTargets(nodes: ResolvedNode[], targets: OutlineTarget[] = []): OutlineTarget[] {
+  for (const node of nodes) {
+    if (node.destination) targets.push({ node, ...node.destination })
+    outlineTargets(node.children, targets)
   }
-  return nodes
+  return targets
 }
 
 async function resolveDestination(

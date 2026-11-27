@@ -190,6 +190,7 @@ describe('DocumentTextVersionDialog', () => {
     // each passage, heading included, 100 px tall; the view 400 px, its reading line at 100 px
     const content = screen.getByTestId('text-version-content')
     Object.defineProperty(content, 'clientHeight', { configurable: true, value: 400 })
+    Object.defineProperty(content, 'scrollHeight', { configurable: true, value: 2000 })
     for (const block of content.querySelectorAll<HTMLElement>('[data-chunk-index]')) {
       const top = Number(block.dataset.chunkIndex) * 100
       block.parentElement!.getBoundingClientRect = () =>
