@@ -176,7 +176,7 @@ export { copyNote } from './copyNote'
  */
 export function agentDraftNote(run: AgentRun | undefined): string | null {
   if (!run) return null
-  const notice = 'Entwurf, nicht geprüft'
+  const notice = 'KI-generierter Entwurf, nicht geprüft'
   if (!run.stamp) return notice
   const agent = run.agentName ? `Agent „${plainNoteText(run.agentName)}“` : 'Agent'
   return `${notice} · ${agent}, Fassung ${run.stamp.agentRevision}`

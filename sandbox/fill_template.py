@@ -13,8 +13,9 @@ Job file (JSON, written by the backend):
     formats              any of "docx", "pdf"
     pdf_deadline_seconds seconds after the script's start by which the PDF must be done, below
                          the script's own time limit
-    stamp                optional text for every footer and the document properties, e.g. a draft
-                         notice; from the backend, never from the model, and never rendered
+    stamp                optional full stamp for the document properties, led by the draft notice
+    footer               optional short line for every footer, e.g. draft notice and agent; the stamp
+                         when missing. Both from the backend, never from the model, never rendered
 
 The data are inserted as text: Jinja evaluates only the tags of the template, never a value, and
 autoescape turns every value into escaped XML text. A template may use only what fields, lists and
@@ -44,7 +45,6 @@ import time
 
 SOFFICE = "/usr/bin/soffice"
 MAX_NAME_CHARS = 80
-MAX_PROPERTY_CHARS = 255
 DEFAULT_PDF_DEADLINE_SECONDS = 30
 FORMATS = ("docx", "pdf")
 
@@ -184,11 +184,12 @@ def render(template_path, data, target):
     template.save(target)
 
 
-def add_stamp(path, stamp):
-    """Appends stamp to every footer definition and writes it to the document properties.
+def add_stamp(path, stamp, footer_line):
+    """Appends footer_line to every footer definition and writes stamp to the document properties.
 
-    Comments keep it in the DOCX; the subject is what the PDF export carries into its own
-    document information, so a PDF shows the stamp in its footer and its properties alike.
+    The footer stays one short visible line; the full stamp is the machine-readable mark. Comments
+    keep it in the DOCX; the subject is what the PDF export carries into its own document
+    information, so a PDF carries the full stamp in its properties as well.
     """
     import docx
 
@@ -203,10 +204,12 @@ def add_stamp(path, stamp):
         for footer in footers:
             # A linked footer writes into the previous section's definition; once is enough.
             if index == 0 or not footer.is_linked_to_previous:
-                footer.add_paragraph(stamp)
-    # python-docx refuses core properties longer than 255 characters; the footer keeps the full stamp.
-    document.core_properties.comments = stamp[:MAX_PROPERTY_CHARS]
-    document.core_properties.subject = stamp[:MAX_PROPERTY_CHARS]
+                footer.add_paragraph(footer_line)
+    # Written on the elements: python-docx's setters refuse more than 255 characters, the format
+    # sets no limit, and the properties are the only place the whole stamp travels with the file.
+    properties = document.core_properties._element
+    properties.get_or_add_description().text = stamp
+    properties.get_or_add_subject().text = stamp
     document.save(path)
 
 
@@ -311,6 +314,7 @@ def fill(job):
     formats = [f for f in job.get("formats") or FORMATS if f in FORMATS] or list(FORMATS)
     base = safe_name(job.get("output_name"))
     stamp = job.get("stamp")
+    footer = job.get("footer")
     files, errors = [], []
     work_dir = tempfile.mkdtemp(prefix="opaa-fill-")
     try:
@@ -326,7 +330,8 @@ def fill(job):
             }
         if isinstance(stamp, str) and stamp.strip():
             try:
-                add_stamp(rendered, stamp.strip())
+                line = footer.strip() if isinstance(footer, str) and footer.strip() else None
+                add_stamp(rendered, stamp.strip(), line or stamp.strip())
             except ValueError:  # a character XML cannot hold; the file is never left unstamped
                 return 2, {
                     "files": [],

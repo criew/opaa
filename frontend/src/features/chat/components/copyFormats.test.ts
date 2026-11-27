@@ -268,9 +268,9 @@ describe('copy note', () => {
     }
 
     expect(noteWithDraft(note, run)).toBe(
-      'Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Hinweis. – opaa, 05.03.2026',
+      'KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3 · Hinweis. – opaa, 05.03.2026',
     )
-    expect(agentDraftNote({ ...run, stamp: null })).toBe('Entwurf, nicht geprüft')
+    expect(agentDraftNote({ ...run, stamp: null })).toBe('KI-generierter Entwurf, nicht geprüft')
     // regression guard: an ordinary answer keeps the note unchanged
     expect(noteWithDraft(note, undefined)).toBe(note)
   })

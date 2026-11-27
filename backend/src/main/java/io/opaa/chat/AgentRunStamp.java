@@ -25,8 +25,8 @@ public record AgentRunStamp(
     List<TemplateRef> templates,
     String model) {
 
-  /** The draft notice an answer and a result file carry. */
-  public static final String DRAFT_NOTICE = "Entwurf, nicht geprüft";
+  /** The draft notice an answer, its copy or export and a result file carry, in one wording. */
+  public static final String DRAFT_NOTICE = "KI-generierter Entwurf, nicht geprüft";
 
   /**
    * Control and format characters and the Unicode line and paragraph breaks: in a name they would
@@ -50,15 +50,20 @@ public record AgentRunStamp(
     return new AgentRunStamp(agentRevision, libraries, more, model);
   }
 
-  /** The draft notice with agent and revision, for a copied or exported answer. */
+  /**
+   * The draft notice with agent and revision: for a copied or exported answer and as the one line
+   * in every footer of a result file, whose document properties carry {@link #documentText} in
+   * full.
+   */
   public String shortText(String agentName) {
     return DRAFT_NOTICE + agentText(agentName);
   }
 
   /**
-   * The stamp as one line for a result file, led by the draft notice: written into its footers and
-   * document properties, so it travels with the file. {@code filled} is the template of this file,
-   * {@code null} for none. Names and model carry no control, format or break characters.
+   * The full stamp as one line for a result file, led by the draft notice: written into its
+   * document properties, so it travels with the file as a machine-readable mark; the footers show
+   * {@link #shortText} only. {@code filled} is the template of this file, {@code null} for none.
+   * Names and model carry no control, format or break characters.
    */
   public String documentText(String agentName, TemplateRef filled) {
     StringBuilder text = new StringBuilder(DRAFT_NOTICE).append(agentText(agentName));

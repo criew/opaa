@@ -167,13 +167,19 @@ test.describe.serial('Agent mit Vorlage: Datei nach Vorlage', () => {
         .filter(([name]) => /^word\/footer\d*\.xml$/.test(name))
         .map(([, text]) => text)
         .join('')
-      expect(footers).toContain('Entwurf, nicht geprüft')
+      expect(footers).toContain('KI-generierter Entwurf, nicht geprüft')
       expect(footers).toContain(AGENT_NAME)
+      // The footer stays short; the full stamp with the template is in the document properties.
+      expect(footers).not.toContain('Vorlage „')
+      const properties = parts.get('docProps/core.xml') ?? ''
+      expect(properties).toContain('KI-generierter Entwurf, nicht geprüft')
+      expect(properties).toContain('Vorlage „')
 
       const pdfDocument = await PDFDocument.load(await attachmentBytes(api, pdf!.id), {
         updateMetadata: false,
       })
       expect(pdfDocument.getPageCount()).toBeGreaterThan(0)
+      expect(pdfDocument.getSubject()).toContain('Vorlage „')
     } finally {
       await api.dispose()
     }
