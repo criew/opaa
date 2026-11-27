@@ -191,7 +191,9 @@ async function expectOutlineNavigation(view: Locator, document: Locator, heading
   const last = CHAPTERS.at(-1)!
   await expect(heading.filter({ hasText: last })).not.toBeInViewport()
 
-  const scrollLeft = await document.evaluate((element) => (element as { scrollLeft: number }).scrollLeft)
+  const scrollLeft = await document.evaluate(
+    (element) => (element as { scrollLeft: number }).scrollLeft,
+  )
   await outline.getByRole('button', { name: last, exact: true }).click()
   await expect(heading.filter({ hasText: last })).toBeInViewport()
   await expect(outline.getByRole('button', { name: last, exact: true })).toHaveAttribute(
@@ -250,7 +252,9 @@ test.describe.serial('Gliederung in der Dokumentansicht', () => {
 
   test('3. Ohne Überschriften keine Gliederung', async ({ authenticatedPage: page }) => {
     const view = await openOriginal(page, library.id, library.files.plain.name)
-    await expect(view.getByText('Satz 1 im Kapitel ohne Überschrift', { exact: false })).toBeVisible()
+    await expect(
+      view.getByText('Satz 1 im Kapitel ohne Überschrift', { exact: false }),
+    ).toBeVisible()
     await expect(view.getByRole('navigation', { name: 'Gliederung' })).toHaveCount(0)
     await expect(view.getByRole('button', { name: 'Gliederung' })).toHaveCount(0)
   })
