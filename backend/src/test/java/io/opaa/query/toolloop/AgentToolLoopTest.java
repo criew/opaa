@@ -337,6 +337,42 @@ class AgentToolLoopTest {
   }
 
   @Test
+  void aSearchRefusedForItsNarrowingIsNoPartTheAnswerMustCover() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Fristen\",\"datum_von\":\"gestern\"}"),
+            toolCall("call-2", "{\"frage\":\"Regeln\"}"),
+            answer("Es gilt die Regel 【source: doc-1#0 | regeln.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::status)
+        .containsExactly(StepStatus.INVALID_ARGUMENTS, StepStatus.DONE);
+    assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    assertThat(result.evidence().uncoveredSubQueries()).isEmpty();
+  }
+
+  @Test
+  void searchesForTheSameQuestionCountAsOnePartCoveredByAnyOfTheirDocuments() {
+    when(retrieval.retrieveAsGiven(eq("Regeln"), anySet(), any()))
+        .thenReturn(result(passageOne), result(passageTwo));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", "{\"frage\":\"Regeln\",\"datum_von\":\"2024-01-01\"}"),
+            answer("Es gilt die Frist 【source: doc-2#0 | fristen.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::status)
+        .containsExactly(StepStatus.DONE, StepStatus.DONE);
+    assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    assertThat(result.evidence().uncoveredSubQueries()).isEmpty();
+  }
+
+  @Test
   void aRunThatEndsWithoutAnyTextAnswersWithAHintAndNoBelegstand() {
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(toolCall("call-1", "{\"frage\":\"Regeln\"}"), answer(""));
