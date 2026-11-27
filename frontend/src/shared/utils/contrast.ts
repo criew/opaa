@@ -130,10 +130,11 @@ const ACCENT_TEXT_STEP = 0.08
 
 /**
  * Bounded like {@link ACCENT_SURFACE_MAX_STEPS}, and for the same reason: an accent that needs
- * more than six steps is no longer the colour the operator chose. It is returned as far as it got,
- * and {@link checkAccentContrast} says so in the branding form.
+ * more steps is no longer the colour the operator chose. Nine steps, because the dark scheme's
+ * cards (bg-3) are a lighter Dunkelblau: the opaa Mittelblau itself needs eight there. Beyond
+ * that the colour is returned as far as it got, and {@link checkAccentContrast} says so.
  */
-const ACCENT_TEXT_MAX_STEPS = 6
+const ACCENT_TEXT_MAX_STEPS = 9
 
 /**
  * The accent colour **as text** for one scheme: the colour itself when it already reaches
@@ -176,6 +177,15 @@ export function deriveAccentText(accent: string, backgrounds: readonly string[])
   return candidate
 }
 
+/** The ground of `grounds` on which `color` reaches the lowest contrast. */
+function leastFavourable(color: string, grounds: readonly string[]): string {
+  return grounds.reduce((worst, ground) =>
+    (contrastRatio(color, ground) ?? Infinity) < (contrastRatio(color, worst) ?? Infinity)
+      ? ground
+      : worst,
+  )
+}
+
 export interface ContrastCheck {
   /** German label of what was compared, for the warning text. */
   label: string
@@ -188,7 +198,7 @@ export interface ContrastCheck {
  * The three checks that decide whether an accent colour is usable in this design system, both
  * schemes included (guidelines: "Beide Schemata sind gleichermaßen verbindlich"):
  *
- * 1. Button label on the accent surface - `accentFg` is white in both schemes. The
+ * 1. Button label on the accent surface - a house colour always carries white there. The
  *    filled surface is {@link deriveAccentSurface}'s bounded darkening of the configured colour,
  *    so this check evaluates what will actually render; it only fails when even the darkened
  *    surface cannot carry white text. Text threshold.
@@ -216,13 +226,13 @@ export function checkAccentContrast(accent: string): ContrastCheck[] {
       {
         label: 'Akzentfarbe als Text im hellen Schema',
         foreground: deriveAccentText(accent, hellerGrund),
-        background: lightRoles.bg3,
+        background: leastFavourable(deriveAccentText(accent, hellerGrund), hellerGrund),
         required: TEXT_CONTRAST_MINIMUM,
       },
       {
         label: 'Akzentfarbe als Text im dunklen Schema',
         foreground: deriveAccentText(accent, dunklerGrund),
-        background: darkRoles.bg3,
+        background: leastFavourable(deriveAccentText(accent, dunklerGrund), dunklerGrund),
         required: TEXT_CONTRAST_MINIMUM,
       },
     ]

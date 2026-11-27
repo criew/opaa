@@ -39,9 +39,15 @@ declare module '@mui/material/styles' {
   interface Palette {
     /** Desk, paper and passage mark of the document view (guidelines 2.3). */
     documentView: DocumentViewRoles
+    /**
+     * The filled action surface and its label (accent-surface/accent-fg, guidelines 2.2) for
+     * controls that are no contained Button but must look like one, such as the chat's send button.
+     */
+    actionSurface: { main: string; hover: string; press: string; contrastText: string }
   }
   interface PaletteOptions {
     documentView?: DocumentViewRoles
+    actionSurface?: { main: string; hover: string; press: string; contrastText: string }
   }
 }
 
@@ -72,14 +78,15 @@ export function focusFrameStyle(color: string) {
  */
 function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   const brandColor = branding?.primaryColor
-  // The OPAA standard colour counts as "not configured": the backend resolves branding
+  // The opaa standard colour counts as "not configured": the backend resolves branding
   // field by field, so an unconfigured deployment still delivers blue-700 - but that value means
-  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-500
+  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-400
   // dark). Only a genuinely different operator colour overrides the roles.
   // OPAA_BRANDING.primaryColor mirrors blue[700]; theme.test.ts pins that equivalence.
   if (!brandColor || brandColor.toUpperCase() === blue[700].toUpperCase()) {
     return {
       accent: roles.accent,
+      accentFg: roles.accentFg,
       accentSurface: roles.accentSurface,
       accentHover: roles.accentHover,
       accentPress: roles.accentPress,
@@ -96,6 +103,8 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
     // unchanged. Now it is moved away from the ground as far as the threshold requires — no
     // further. The surface is not affected (`accentSurface` above).
     accent: deriveAccentText(brandColor, [roles.bg1, roles.bg2, roles.bg3]),
+    // deriveAccentSurface guarantees white on the surface, whatever the scheme's own accentFg.
+    accentFg: white,
     accentSurface,
     accentHover: darken(accentSurface, 0.08),
     accentPress: darken(accentSurface, 0.16),
@@ -122,7 +131,10 @@ export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrid
 
 function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
-  const { accent, accentSurface, accentHover, accentPress } = resolveAccent(roles, branding)
+  const { accent, accentFg, accentSurface, accentHover, accentPress } = resolveAccent(
+    roles,
+    branding,
+  )
   const scrim = isDark ? alpha(navy[950], 0.72) : alpha(navy[900], 0.42)
   // One opaque focus ring for everything interactive, in both schemes (guidelines 4.4). MUI
   // components draw it through `focusVisible` below, which also insets it where a scrolling
@@ -145,7 +157,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         primary: {
           main: accent,
           dark: accentPress,
-          contrastText: roles.accentFg,
+          contrastText: accentFg,
         },
         secondary: {
           main: roles.fg2,
@@ -176,6 +188,12 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         },
         divider: roles.border,
         documentView: isDark ? documentViewDark : documentViewLight,
+        actionSurface: {
+          main: accentSurface,
+          hover: accentHover,
+          press: accentPress,
+          contrastText: accentFg,
+        },
         text: {
           primary: roles.fg1,
           secondary: roles.fg2,
@@ -336,10 +354,10 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 {
                   props: { variant: 'contained', color: 'primary' },
                   style: {
-                    // The filled surface is accentSurface, never the (possibly lighter)
-                    // accent - white label text needs 4.5:1.
+                    // The filled surface is accentSurface, never the accent: its label
+                    // (accentFg) is only guaranteed 4.5:1 there.
                     backgroundColor: accentSurface,
-                    color: roles.accentFg,
+                    color: accentFg,
                     '&:hover': {
                       backgroundColor: accentHover,
                     },
@@ -613,7 +631,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                   props: { variant: 'filled', color: 'primary' },
                   style: {
                     backgroundColor: accentSurface,
-                    color: roles.accentFg,
+                    color: accentFg,
                   },
                 },
               ],
