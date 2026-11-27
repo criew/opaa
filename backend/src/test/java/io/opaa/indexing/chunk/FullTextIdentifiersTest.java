@@ -444,4 +444,114 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("Kontakt: max.muster@example.org"))
         .contains("xmailmaxmusterexampleorg");
   }
+
+  /**
+   * The German analysis chain turns the five spellings of one code into five unrelated lexeme sets
+   * ({@code ab08}; {@code ab}, {@code -08}; {@code ab}, {@code 08}; {@code ab.08}). The code lexeme
+   * is what joins them, on the write and the question side alike.
+   */
+  @Test
+  void everySpellingOfALetterDigitCodeYieldsTheSameLexeme() {
+    for (String spelling :
+        List.of("AB08", "ab08", "AB-08", "ab-08", "AB 08", "ab_08", "AB_08", "AB.08")) {
+      assertThat(FullTextIdentifiers.extract("Gebühr nach Ziffer " + spelling + " der Tabelle"))
+          .as(spelling)
+          .contains("xkzab08");
+    }
+  }
+
+  @Test
+  void aCodeIsRecognizedNextToPunctuation() {
+    assertThat(FullTextIdentifiers.extract("(AB-08)")).contains("xkzab08");
+    assertThat(FullTextIdentifiers.extract("Ziffer AB 08, sonst AB 09."))
+        .contains("xkzab08", "xkzab09");
+    assertThat(FullTextIdentifiers.extract("Was kostet AB08?")).contains("xkzab08");
+    assertThat(FullTextIdentifiers.extract("COVID-19")).contains("xkzcovid19");
+    assertThat(FullTextIdentifiers.extract("DIN 5008")).contains("xkzdin5008");
+  }
+
+  @Test
+  void neighbouringCodesStayApart() {
+    assertThat(FullTextIdentifiers.extract("AB-08"))
+        .doesNotContain("xkzab09", "xkzab8", "xkzabc08");
+    assertThat(FullTextIdentifiers.extract("AB 8")).containsExactly("xkzab8");
+    assertThat(FullTextIdentifiers.extract("ABC08")).containsExactly("xkzabc08");
+  }
+
+  /**
+   * A code is one letter block and one digit block. Where either continues - a longer chain, a
+   * version, a further number group - the match is not shortened to a code it does not name.
+   */
+  @Test
+  void aLongerChainIsNotShortenedToACode() {
+    assertThat(codeLexemes("AB-08-15")).isEmpty();
+    assertThat(codeLexemes("X-AB-08")).isEmpty();
+    assertThat(codeLexemes("v2.1")).isEmpty();
+    assertThat(codeLexemes("OPAA 2.0")).isEmpty();
+    assertThat(codeLexemes("AB08a")).isEmpty();
+    assertThat(codeLexemes("H2O")).isEmpty();
+    assertThat(codeLexemes("FAX 0711 123456")).isEmpty();
+    assertThat(codeLexemes("IBAN DE89 3704 0044 0532 0130 00")).isEmpty();
+  }
+
+  /**
+   * Ordinary words and numbers are never read as a code: a lowercase word before a number with a
+   * space or a dot ("ab 08 Uhr", "um 12") is prose, and a separator of more than one character
+   * ("Abs. 2", "S. 12") is a reference, not a code.
+   */
+  @Test
+  void ordinaryWordsAndNumbersProduceNoCode() {
+    for (String text :
+        List.of(
+            "Die Frist läuft ab 08 Uhr",
+            "Treffen um 12 Uhr am 08.05.2024",
+            "Stand: Mai 2024, Version 2.1",
+            "nach § 12 Abs. 2 Satz 1",
+            "siehe Nr. 5 und S. 12",
+            "Telefon 0711 123456, Tel. 0711-123456",
+            "Java 21 und Windows 11",
+            "Seite 3 von 12, Kapitel 4.2",
+            "ab.08 und um.12",
+            "Bebauungsplan nach BauGB 2017")) {
+      assertThat(codeLexemes(text)).as(text).isEmpty();
+    }
+  }
+
+  @Test
+  void theSameCodeYieldsTheSameLexemeInAChunkAndInAQuestion() {
+    List<String> chunk =
+        FullTextIdentifiers.extract("Die Gebühr nach Tarifstelle AB-08 beträgt 40 Euro.");
+    List<String> question = FullTextIdentifiers.extract("Wie hoch ist die Gebühr ab_08?");
+
+    assertThat(chunk).contains("xkzab08");
+    assertThat(question).contains("xkzab08");
+  }
+
+  /** Codes are structure, never a word form the query path could demote as common. */
+  @Test
+  void aCodeIsNoWordForm() {
+    assertThat(FullTextIdentifiers.analyze("ABCDE 12").wordForms()).doesNotContainKey("xkzabcde12");
+    assertThat(FullTextIdentifiers.analyze("ABCDE 12").all()).contains("xkzabcde12");
+  }
+
+  /** Codes take their place before field names under the lexeme bound. */
+  @Test
+  void codesAreKeptBeforeFieldNames() {
+    StringBuilder text = new StringBuilder();
+    for (int i = 0; i < FullTextIdentifiers.MAX_LEXEMES * 2; i++) {
+      text.append("FELDNAME")
+          .append((char) ('A' + i % 26))
+          .append((char) ('A' + i / 26))
+          .append(' ');
+    }
+    text.append("AB-08");
+
+    assertThat(FullTextIdentifiers.extract(text.toString())).contains("xkzab08");
+  }
+
+  private static List<String> codeLexemes(String text) {
+    return FullTextIdentifiers.extract(text).stream()
+        .filter(lexeme -> lexeme.startsWith("xkz"))
+        .toList();
+  }
 }
