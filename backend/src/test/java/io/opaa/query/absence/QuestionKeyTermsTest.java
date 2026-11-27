@@ -43,6 +43,14 @@ class QuestionKeyTermsTest {
   }
 
   @Test
+  void anAllCapsQuestionWithSharpSIsStillAllCaps() {
+    QuestionKeyTerms terms = QuestionKeyTerms.of("WIE HOCH IST DIE GEBÜHR FÜR DIE STRAßE?");
+
+    assertThat(terms.identifiers()).isEmpty();
+    assertThat(terms.words()).containsExactly("gebühr", "straße");
+  }
+
+  @Test
   void anAllCapsVerbIsNoIdentifier() {
     QuestionKeyTerms terms = QuestionKeyTerms.of("WIE LANGE DAUERT DIE BEARBEITUNG VON AB-08?");
 

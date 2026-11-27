@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
  * uppercase name of six letters or more) and content words (five letters or more, a number of three
  * digits or more, or a short uppercase abbreviation such as {@code DSGVO}, outside a fixed list of
  * question and filler words). In a question written entirely in capitals no word without a digit is
- * read as a name or abbreviation, only as an ordinary word.
+ * read as a name or abbreviation, only as an ordinary word; "ß", which has no common capital, does
+ * not count as lowercase there.
  *
  * <p>A passage {@link #matches} when it contains one of the identifiers, or - for a question
  * without any - at least two of the content words (all of them when there are fewer): a short
@@ -207,7 +208,7 @@ public record QuestionKeyTerms(List<String> identifiers, List<String> words) {
     while (paragraph.find()) {
       identifiers.add("§ " + paragraph.group(1));
     }
-    boolean allCaps = question.codePoints().noneMatch(Character::isLowerCase);
+    boolean allCaps = question.codePoints().noneMatch(cp -> Character.isLowerCase(cp) && cp != 'ß');
     Matcher token = TOKEN.matcher(PARAGRAPH.matcher(question).replaceAll(" "));
     while (token.find()) {
       String value = token.group();
