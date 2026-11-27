@@ -75,6 +75,7 @@ export function useDocumentPreview() {
   const [pendingOriginal, setPendingOriginal] = useState<PendingOriginal | null>(null)
   // counts the original fetches; one that is closed or overtaken is not shown when it arrives
   const originalRequest = useRef(0)
+  const originalAbort = useRef<AbortController | null>(null)
 
   function openTextVersion(document: OpenableDocument) {
     setTextVersion({
@@ -105,13 +106,20 @@ export function useDocumentPreview() {
     const format = originalFormat(document.fileName)
     if (format) {
       const request = ++originalRequest.current
+      originalAbort.current?.abort()
+      const abort = new AbortController()
+      originalAbort.current = abort
       setPendingOriginal({ fileName: document.fileName, anchor: document.anchor })
-      const outcome = await loadOfficeOriginal(format, {
-        documentId: document.id,
-        fileName: document.fileName,
-        anchor: document.anchor,
-        chunkIndex: document.chunkIndex,
-      }).catch(() => ({ fallback: 'failed' as const }))
+      const outcome = await loadOfficeOriginal(
+        format,
+        {
+          documentId: document.id,
+          fileName: document.fileName,
+          anchor: document.anchor,
+          chunkIndex: document.chunkIndex,
+        },
+        abort.signal,
+      ).catch(() => ({ fallback: 'failed' as const }))
       if (request !== originalRequest.current) return
       setPendingOriginal(null)
       if ('fallback' in outcome) {
@@ -171,6 +179,7 @@ export function useDocumentPreview() {
     pendingOriginal,
     closeOfficeOriginal: () => {
       originalRequest.current++
+      originalAbort.current?.abort()
       setPendingOriginal(null)
       setOfficeOriginal(null)
     },

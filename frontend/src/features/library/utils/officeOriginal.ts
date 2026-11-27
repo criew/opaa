@@ -57,18 +57,19 @@ export function originalFormat(fileName: string): OriginalFormat | null {
  * Fetches the original through the content endpoint and reads it for its view, or names why the
  * Textfassung stands in instead: a file above {@link ORIGINAL_VIEW_MAX_BYTES}, a Word file that
  * unpacks to more than {@link DOCX_UNPACKED_MAX_BYTES}, a mail without a plain text part.
- * A failed fetch rejects.
+ * A failed fetch rejects, and so does an aborted `signal` while a Word file is being measured.
  */
 export async function loadOfficeOriginal(
   format: OriginalFormat,
   document: Omit<OriginalBase, 'blob'>,
+  signal?: AbortSignal,
 ): Promise<OfficeOriginal | { fallback: OriginalFallback }> {
   const { blob, fileName } = await getDocumentContent(document.documentId)
   if (blob.size > ORIGINAL_VIEW_MAX_BYTES[format]) return { fallback: 'too-large' }
   const base = { ...document, fileName: fileName ?? document.fileName, blob }
   const bytes = new Uint8Array(await blob.arrayBuffer())
   if (format === 'docx') {
-    return (await unpacksBeyond(bytes, DOCX_UNPACKED_MAX_BYTES))
+    return (await unpacksBeyond(bytes, DOCX_UNPACKED_MAX_BYTES, signal))
       ? { fallback: 'too-large' }
       : { ...base, format }
   }

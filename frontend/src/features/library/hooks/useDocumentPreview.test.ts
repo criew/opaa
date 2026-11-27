@@ -244,8 +244,8 @@ describe('useDocumentPreview', () => {
       })
     })
 
-    it('opens a Word file for docx-preview without reading it', async () => {
-      const blob = original('PK', 'application/octet-stream')
+    it('opens a Word file for docx-preview once its unpacked size is measured', async () => {
+      const blob = new Blob([storedZip({ 'word/document.xml': '<w:document/>' })])
       mockGetDocumentContent.mockResolvedValueOnce({ blob, fileName: 'a.docx' })
       const { result } = renderHook(() => useDocumentPreview())
 
@@ -295,6 +295,12 @@ describe('useDocumentPreview', () => {
             }),
           ]),
         'luege.docx ist zu groß für die Originalansicht – die Textfassung wird gezeigt.',
+      ],
+      [
+        'a Word file whose archive cannot be measured',
+        'kaputt.docx',
+        () => original('PK', 'application/octet-stream'),
+        'kaputt.docx ist zu groß für die Originalansicht – die Textfassung wird gezeigt.',
       ],
       [
         'a mail without a plain text part',
@@ -395,7 +401,7 @@ describe('useDocumentPreview', () => {
 
     it('replaces an original it cannot render by its Textfassung', async () => {
       mockGetDocumentContent.mockResolvedValueOnce({
-        blob: original('PK', 'x'),
+        blob: new Blob([storedZip({ 'word/document.xml': '<w:document/>' })]),
         fileName: 'a.docx',
       })
       const anchor = { quoteStart: 'Frist' }
