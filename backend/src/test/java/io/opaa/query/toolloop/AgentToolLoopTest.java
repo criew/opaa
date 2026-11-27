@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.EvidenceLevel;
 import io.opaa.api.types.ToolCapability;
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
@@ -319,6 +320,88 @@ class AgentToolLoopTest {
             eq(run));
     verify(workspace).release(run.runId());
     assertThat(runs("custom", "completed")).isEqualTo(1.0);
+  }
+
+  @Test
+  void anAnswerCitingADocumentOfEverySearchIsSupported() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", "{\"frage\":\"Fristen\"}"),
+            answer(
+                "Es gilt die Regel 【source: doc-1#0 | regeln.pdf】 mit einer Frist"
+                    + " 【source: doc-2#0 | fristen.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    assertThat(result.evidence().uncoveredSubQueries()).isEmpty();
+  }
+
+  @Test
+  void aSearchNoCitedDocumentWasFoundForLeavesTheAnswerPartiallySupported() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", "{\"frage\":\"Fristen\"}"),
+            answer("Es gilt die Regel 【source: doc-1#0 | regeln.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.PARTIALLY_SUPPORTED);
+    assertThat(result.evidence().uncoveredSubQueries()).containsExactly("Fristen");
+  }
+
+  @Test
+  void aSearchRefusedForItsNarrowingIsNoPartTheAnswerMustCover() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Fristen\",\"datum_von\":\"gestern\"}"),
+            toolCall("call-2", "{\"frage\":\"Regeln\"}"),
+            answer("Es gilt die Regel 【source: doc-1#0 | regeln.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::status)
+        .containsExactly(StepStatus.INVALID_ARGUMENTS, StepStatus.DONE);
+    assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    assertThat(result.evidence().uncoveredSubQueries()).isEmpty();
+  }
+
+  @Test
+  void searchesForTheSameQuestionCountAsOnePartCoveredByAnyOfTheirDocuments() {
+    when(retrieval.retrieveAsGiven(eq("Regeln"), anySet(), any()))
+        .thenReturn(result(passageOne), result(passageTwo));
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"),
+            toolCall("call-2", "{\"frage\":\"Regeln\",\"datum_von\":\"2024-01-01\"}"),
+            answer("Es gilt die Frist 【source: doc-2#0 | fristen.pdf】."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().steps())
+        .extracting(AgentRunRecord.Step::status)
+        .containsExactly(StepStatus.DONE, StepStatus.DONE);
+    assertThat(result.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    assertThat(result.evidence().uncoveredSubQueries()).isEmpty();
+  }
+
+  @Test
+  void aRunThatEndsWithoutAnyTextAnswersWithAHintAndNoBelegstand() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCall("call-1", "{\"frage\":\"Regeln\"}"), answer(""));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    assertThat(result.answer()).isEqualTo(AgentToolLoop.NO_ANSWER);
+    assertThat(result.metadata().answerCompleteness()).isEqualTo(AnswerCompleteness.EMPTY);
+    assertThat(result.evidence()).isNull();
+    verify(chatService)
+        .appendTurn(
+            any(), any(), any(), eq(AgentToolLoop.NO_ANSWER), any(), any(), any(), any(), any());
   }
 
   @Test

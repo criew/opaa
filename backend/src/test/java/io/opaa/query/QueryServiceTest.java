@@ -184,7 +184,7 @@ class QueryServiceTest {
    */
   private NeighborChunkExpansion neighborChunkExpansion =
       new NeighborChunkExpansion(
-          mock(NeighborChunkLookup.class), new NeighborChunkProperties(0, 40000));
+          mock(NeighborChunkLookup.class), new NeighborChunkProperties(0, 40000, 12000));
 
   private final CurrentUser caller =
       CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "User");
@@ -1893,7 +1893,7 @@ class QueryServiceTest {
     when(lookup.find(any(), eq(Set.of(readableLibraryId))))
         .thenReturn(Map.of(new ChunkPosition("doc-1", 4), neighbour));
     neighborChunkExpansion =
-        new NeighborChunkExpansion(lookup, new NeighborChunkProperties(1, 40000));
+        new NeighborChunkExpansion(lookup, new NeighborChunkProperties(1, 40000, 12000));
     queryService =
         newQueryService(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);

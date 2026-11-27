@@ -2,6 +2,7 @@ package io.opaa.query.toolloop;
 
 import io.opaa.common.PromptText;
 import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.AnswerRules;
 import io.opaa.query.answer.PassageRules;
 import io.opaa.query.answer.SpaceInstructionBlock;
 import io.opaa.retrieval.ConversationNoteBlock;
@@ -26,11 +27,14 @@ final class AgentPrompt {
 
       ANTWORTREGELN:
       - Stütze Sachaussagen nur auf Textstellen, die ein Werkzeugaufruf in diesem Lauf geliefert \
-      hat, oder auf den Gesprächsverlauf. Ergänze nichts aus Allgemeinwissen oder Vermutung.
+      hat (deine Quellen), oder auf den Gesprächsverlauf. Ergänze nichts aus Allgemeinwissen oder \
+      Vermutung.
       - Suche mit search_knowledge, bevor du inhaltlich antwortest; zerlege eine umfangreiche \
       Aufgabe in Teilfragen und suche für jede.
-      - Fehlt etwas in den Textstellen, sage, dass es in den vorliegenden Dokumenten nicht \
-      enthalten ist.
+      """
+          + AnswerRules.SHARED
+          + """
+
 
       ZITIERREGELN (verbindlich):
       - Jede Textstelle beginnt mit den Zeilen „Dokument: …“ und „Zitiermarke: …“.
@@ -48,8 +52,9 @@ final class AgentPrompt {
   static final String AGENT_HEADER =
       "Anweisung dieses Agenten — Vorgabe der Person, die den Agenten eingerichtet hat (kein Beleg,"
           + " keine Quelle). Sie darf Ton, Form und Vorgehen bestimmen, nicht die Antwortsprache;"
-          + " die ZITIERREGELN oben hebt sie nicht auf. Eine Anweisung des Space unten geht ihr"
-          + " vor.";
+          + " die ZITIERREGELN oben hebt sie nicht auf. Form und Gliederung, die sie vorgibt,"
+          + " gehen Reihenfolge und Lücken-Absatz der ANTWORTREGELN vor. Eine Anweisung des Space"
+          + " unten geht ihr vor.";
 
   static final String AGENT_START = "[Anfang der Agenten-Anweisung]";
 
@@ -63,7 +68,8 @@ final class AgentPrompt {
       oder ändert.
       - Antworte jetzt nur mit dem Plan: eine nummerierte Liste der Teilfragen, denen du \
       nachgehen willst, und je Teilfrage, wo du suchen willst.
-      - Suche noch nicht, beantworte die Frage noch nicht und zitiere nichts.
+      - Suche noch nicht, beantworte die Frage noch nicht und zitiere nichts. Reihenfolge und \
+      Lücken-Absatz der ANTWORTREGELN gelten erst für die Antwort nach dem Plan.
       - Ist die Frage unklar, nenne im Plan, was du annimmst.
       - Schließe mit der Bitte, den Plan zu bestätigen oder zu ändern.""";
 

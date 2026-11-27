@@ -102,8 +102,9 @@ class FullTextIdentifiersTest {
   void keywordFreeAdministrativeFileNumbersAreRecognized() {
     assertThat(FullTextIdentifiers.extract("Was regelt die Dienstanweisung BAU-DA-2/2024?"))
         .containsExactly("xakzbauda22024");
+    // also a letter-digit code, so KAE07 and KAE 07 reach it as well
     assertThat(FullTextIdentifiers.extract("Wofür wird Formular KAE-07 verwendet?"))
-        .containsExactly("xakzkae07");
+        .containsExactly("xakzkae07", "xkzkae07");
   }
 
   /** Two administrative file numbers differing in one component must not share a lexeme. */
@@ -443,5 +444,175 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("Erlass Nr. 12/2024")).contains("xnr122024");
     assertThat(FullTextIdentifiers.extract("Kontakt: max.muster@example.org"))
         .contains("xmailmaxmusterexampleorg");
+  }
+
+  /**
+   * The German analysis chain turns the five spellings of one code into five unrelated lexeme sets
+   * ({@code ab08}; {@code ab}, {@code -08}; {@code ab}, {@code 08}; {@code ab.08}). The code lexeme
+   * is what joins them, on the write and the question side alike.
+   */
+  @Test
+  void everySpellingOfALetterDigitCodeYieldsTheSameLexeme() {
+    for (String spelling :
+        List.of(
+            "AB08",
+            "ab08",
+            "AB-08",
+            "ab-08",
+            "AB 08",
+            "ab_08",
+            "AB_08",
+            "AB.08",
+            "AB\u00A008",
+            "AB\u201308")) {
+      assertThat(FullTextIdentifiers.extract("Gebühr nach Ziffer " + spelling + " der Tabelle"))
+          .as(spelling)
+          .contains("xkzab08");
+    }
+  }
+
+  @Test
+  void aCodeIsRecognizedNextToPunctuation() {
+    assertThat(FullTextIdentifiers.extract("(AB-08)")).contains("xkzab08");
+    assertThat(FullTextIdentifiers.extract("Ziffer AB 08, sonst AB 09."))
+        .contains("xkzab08", "xkzab09");
+    assertThat(FullTextIdentifiers.extract("Was kostet AB08?")).contains("xkzab08");
+    assertThat(FullTextIdentifiers.extract("COVID-19")).contains("xkzcovid19");
+    assertThat(FullTextIdentifiers.extract("DIN-5008")).contains("xkzdin5008");
+  }
+
+  @Test
+  void neighbouringCodesStayApart() {
+    assertThat(FullTextIdentifiers.extract("AB-08"))
+        .doesNotContain("xkzab09", "xkzab8", "xkzabc08");
+    assertThat(FullTextIdentifiers.extract("AB 8")).containsExactly("xkzab8");
+    assertThat(FullTextIdentifiers.extract("ABC08")).containsExactly("xkzabc08");
+  }
+
+  /**
+   * A code is one letter block and one digit block. Where either continues - a longer chain, a
+   * version, a further number group - the match is not shortened to a code it does not name.
+   */
+  @Test
+  void aLongerChainIsNotShortenedToACode() {
+    assertThat(codeLexemes("AB-08-15")).isEmpty();
+    assertThat(codeLexemes("X-AB-08")).isEmpty();
+    assertThat(codeLexemes("v2.1")).isEmpty();
+    assertThat(codeLexemes("OPAA 2.0")).isEmpty();
+    assertThat(codeLexemes("AB08a")).isEmpty();
+    assertThat(codeLexemes("H2O")).isEmpty();
+    assertThat(codeLexemes("FAX 0711 123456")).isEmpty();
+    assertThat(codeLexemes("ABC 0711 123456")).isEmpty();
+  }
+
+  /**
+   * Ordinary words and numbers are never read as a code: a lowercase word before a number with a
+   * space or a dot ("ab 08 Uhr", "um 12") is prose, and a separator of more than one character
+   * ("Abs. 2", "S. 12") is a reference, not a code.
+   */
+  @Test
+  void ordinaryWordsAndNumbersProduceNoCode() {
+    for (String text :
+        List.of(
+            "Die Frist läuft ab 08 Uhr",
+            "Treffen um 12 Uhr am 08.05.2024",
+            "Stand: Mai 2024, Version 2.1",
+            "nach § 12 Abs. 2 Satz 1",
+            "siehe Nr. 5 und S. 12",
+            "Telefon 0711 123456, Tel. 0711-123456",
+            "Java 21 und Windows 11",
+            "Seite 3 von 12, Kapitel 4.2",
+            "ab.08 und um.12",
+            "Bebauungsplan nach BauGB 2017")) {
+      assertThat(codeLexemes(text)).as(text).isEmpty();
+    }
+  }
+
+  @Test
+  void theSameCodeYieldsTheSameLexemeInAChunkAndInAQuestion() {
+    List<String> chunk =
+        FullTextIdentifiers.extract("Die Gebühr nach Tarifstelle AB-08 beträgt 40 Euro.");
+    List<String> question = FullTextIdentifiers.extract("Wie hoch ist die Gebühr ab_08?");
+
+    assertThat(chunk).contains("xkzab08");
+    assertThat(question).contains("xkzab08");
+  }
+
+  /** Codes are structure, never a word form the query path could demote as common. */
+  @Test
+  void aCodeIsNoWordForm() {
+    assertThat(FullTextIdentifiers.analyze("ABCDE 12").wordForms()).doesNotContainKey("xkzabcde12");
+    assertThat(FullTextIdentifiers.analyze("ABCDE 12").all()).contains("xkzabcde12");
+  }
+
+  /** Codes take their place before field names under the lexeme bound. */
+  @Test
+  void codesAreKeptBeforeFieldNames() {
+    StringBuilder text = new StringBuilder();
+    for (int i = 0; i < FullTextIdentifiers.MAX_LEXEMES * 2; i++) {
+      text.append("FELDNAME")
+          .append((char) ('A' + i % 26))
+          .append((char) ('A' + i / 26))
+          .append(' ');
+    }
+    text.append("AB-08");
+
+    assertThat(FullTextIdentifiers.extract(text.toString())).contains("xkzab08");
+  }
+
+  /**
+   * A table row extracted without cell separators puts the price or quantity right behind the code,
+   * behind a space, a tab or a line break; the code must still be recognized there.
+   */
+  @Test
+  void aCodeFollowedByAnotherNumberIsStillRecognized() {
+    for (String text :
+        List.of(
+            "AB08 40,00 EUR",
+            "AB-08 2 Stück",
+            "AB-08\t40,00",
+            "AB-08\n12",
+            "Tarifstelle AB08 1 Stunde",
+            "AB 08 40,00 EUR",
+            "AB 08\t2 Stück",
+            "AB 08 150,00 EUR",
+            "AB 08 250 Stück")) {
+      assertThat(FullTextIdentifiers.extract(text)).as(text).contains("xkzab08");
+    }
+  }
+
+  /**
+   * In all-caps prose a spaced number behind a common word is a time, page or count, and a single
+   * spaced letter is too weak a block to call a code; both forms stay codes without the space.
+   */
+  @Test
+  void uppercaseProseAndSingleSpacedLettersProduceNoCode() {
+    for (String text :
+        List.of(
+            "AB 08 UHR",
+            "UM 12 UHR",
+            "SEITE 3 VON 12",
+            "STAND MAI 2024",
+            "KW 12",
+            "A 1",
+            "B.2",
+            "1. APRIL 2024",
+            "JANUAR 2024",
+            "STAND APRIL 2024",
+            "ABSATZ 2",
+            "SATZ 1 ZIFFER 3",
+            "AB 18:00",
+            "AB18:00")) {
+      assertThat(codeLexemes(text)).as(text).isEmpty();
+    }
+    assertThat(codeLexemes("A1")).containsExactly("xkza1");
+    assertThat(codeLexemes("A-1")).containsExactly("xkza1");
+    assertThat(codeLexemes("v1")).containsExactly("xkzv1");
+  }
+
+  private static List<String> codeLexemes(String text) {
+    return FullTextIdentifiers.extract(text).stream()
+        .filter(lexeme -> lexeme.startsWith("xkz"))
+        .toList();
   }
 }

@@ -33,5 +33,11 @@ public final class ChunkMetadataKeys {
    */
   public static final String TEXT_RECOGNITION_METADATA_KEY = "text_recognition";
 
+  /**
+   * The table a chunk of a spreadsheet belongs to and its size ({@link ChunkTable}), set by the
+   * tabular format on every chunk of the table.
+   */
+  public static final String TABLE_METADATA_KEY = "table";
+
   private ChunkMetadataKeys() {}
 }
