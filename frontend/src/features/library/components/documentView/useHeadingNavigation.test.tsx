@@ -118,11 +118,11 @@ describe('useHeadingNavigation', () => {
     expect(hook.result.current.active).toBe(ZWEI)
     expect(headings[2]).toHaveFocus()
 
-    // the code scrolling the view leaves the entry as chosen
-    scrollTo(scroller, 0)
+    // the scroll event of the jump itself leaves the entry as chosen
+    scrollTo(scroller, 884)
     expect(hook.result.current.active).toBe(ZWEI)
-    // the reader's own scrolling hands it back to the reading line
-    userScroll(scroller, 0)
+    // scrolling anywhere else - by the reader, the browser's search or a script - hands it back
+    scrollTo(scroller, 0)
     expect(hook.result.current.active).toBe(EINS)
   })
 
@@ -137,7 +137,7 @@ describe('useHeadingNavigation', () => {
     act(() => hook.result.current.follow(passage))
     expect(hook.result.current.active).toBe(EINS_EINS)
     // the reader's own scrolling hands the outline back to the reading line
-    userScroll(scroller, 750, 'keydown')
+    userScroll(scroller, 760, 'keydown')
     expect(hook.result.current.active).toBe(ZWEI)
   })
 

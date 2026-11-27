@@ -88,7 +88,7 @@ export default function DocumentTextVersionDialog({
   const [following, setFollowing] = useState<TextVersionPreview | null>(null)
   // the scrolling element mounts anew with new text and when the layout switches to the phone's
   const scrollerKey = useMemo(() => ({ loaded, phone }), [loaded, phone])
-  const forgetInput = useUserScroll(
+  const scrolledByView = useUserScroll(
     scrollRef,
     () => {
       setFollowing(preview)
@@ -151,6 +151,7 @@ export default function DocumentTextVersionDialog({
     if (keepFromBottom.current != null) {
       container.scrollTop = container.scrollHeight - keepFromBottom.current
       keepFromBottom.current = null
+      scrolledByView()
     }
     const pending = pendingScroll.current
     if (pending) {
@@ -164,8 +165,9 @@ export default function DocumentTextVersionDialog({
       } else if (block) {
         showSection(block)
       }
+      scrolledByView()
     }
-  }, [current])
+  }, [current, scrolledByView])
 
   async function loadWindow(
     range: { from: number; to: number },
@@ -210,7 +212,6 @@ export default function DocumentTextVersionDialog({
 
   function choose(section: DocumentTextSection) {
     if (!preview) return
-    forgetInput()
     setFollowing(null)
     setChosen({ of: preview, section })
     goTo(section.chunkIndex)
@@ -233,6 +234,7 @@ export default function DocumentTextVersionDialog({
     const block = container?.querySelector<HTMLElement>(`[data-chunk-index="${chunkIndex}"]`)
     if (block) {
       showSection(block)
+      scrolledByView()
       return
     }
     void loadWindow({ from: chunkIndex, to: chunkIndex + WINDOW - 1 }, 'jump', chunkIndex)
@@ -300,7 +302,6 @@ export default function DocumentTextVersionDialog({
 
   function jumpToPassage() {
     if (target == null) return
-    forgetInput()
     setFollowing(null)
     setChosen(null)
     setReadAt(null)
@@ -311,6 +312,7 @@ export default function DocumentTextVersionDialog({
     }
     block.scrollIntoView?.({ block: 'center' })
     block.focus({ preventScroll: true })
+    scrolledByView()
   }
 
   return (
