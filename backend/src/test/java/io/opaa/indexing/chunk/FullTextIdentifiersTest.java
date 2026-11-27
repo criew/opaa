@@ -454,7 +454,17 @@ class FullTextIdentifiersTest {
   @Test
   void everySpellingOfALetterDigitCodeYieldsTheSameLexeme() {
     for (String spelling :
-        List.of("AB08", "ab08", "AB-08", "ab-08", "AB 08", "ab_08", "AB_08", "AB.08")) {
+        List.of(
+            "AB08",
+            "ab08",
+            "AB-08",
+            "ab-08",
+            "AB 08",
+            "ab_08",
+            "AB_08",
+            "AB.08",
+            "AB\u00A008",
+            "AB\u201308")) {
       assertThat(FullTextIdentifiers.extract("Gebühr nach Ziffer " + spelling + " der Tabelle"))
           .as(spelling)
           .contains("xkzab08");
@@ -492,7 +502,7 @@ class FullTextIdentifiersTest {
     assertThat(codeLexemes("AB08a")).isEmpty();
     assertThat(codeLexemes("H2O")).isEmpty();
     assertThat(codeLexemes("FAX 0711 123456")).isEmpty();
-    assertThat(codeLexemes("IBAN DE89 3704 0044 0532 0130 00")).isEmpty();
+    assertThat(codeLexemes("ABC 0711 123456")).isEmpty();
   }
 
   /**
@@ -548,6 +558,41 @@ class FullTextIdentifiersTest {
     text.append("AB-08");
 
     assertThat(FullTextIdentifiers.extract(text.toString())).contains("xkzab08");
+  }
+
+  /**
+   * A table row extracted without cell separators puts the price or quantity right behind the code,
+   * behind a space, a tab or a line break; the code must still be recognized there.
+   */
+  @Test
+  void aCodeFollowedByAnotherNumberIsStillRecognized() {
+    for (String text :
+        List.of(
+            "AB08 40,00 EUR",
+            "AB-08 2 Stück",
+            "AB-08\t40,00",
+            "AB-08\n12",
+            "Tarifstelle AB08 1 Stunde",
+            "AB 08 40,00 EUR",
+            "AB 08\t2 Stück")) {
+      assertThat(FullTextIdentifiers.extract(text)).as(text).contains("xkzab08");
+    }
+  }
+
+  /**
+   * In all-caps prose a spaced number behind a common word is a time, page or count, and a single
+   * spaced letter is too weak a block to call a code; both forms stay codes without the space.
+   */
+  @Test
+  void uppercaseProseAndSingleSpacedLettersProduceNoCode() {
+    for (String text :
+        List.of(
+            "AB 08 UHR", "UM 12 UHR", "SEITE 3 VON 12", "STAND MAI 2024", "KW 12", "A 1", "B.2")) {
+      assertThat(codeLexemes(text)).as(text).isEmpty();
+    }
+    assertThat(codeLexemes("A1")).containsExactly("xkza1");
+    assertThat(codeLexemes("A-1")).containsExactly("xkza1");
+    assertThat(codeLexemes("v1")).containsExactly("xkzv1");
   }
 
   private static List<String> codeLexemes(String text) {

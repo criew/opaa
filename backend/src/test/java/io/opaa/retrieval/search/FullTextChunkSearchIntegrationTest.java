@@ -410,6 +410,26 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
+   * A table extracted without cell separators puts the price right behind the code, so the chunk
+   * carries {@code AB08 40,00}; the German chain has only {@code ab08} for it, which a question
+   * spelling {@code AB 08} does not produce. Only the code lexeme connects the two.
+   */
+  @Test
+  void aCodeInATableRowWithoutCellSeparatorsIsFound() {
+    UUID wanted =
+        seed(readableLibrary, "Gebührentabelle\nAB08 40,00 EUR\nAC12 60,00 EUR\nAC13 80,00 EUR");
+    seed(readableLibrary, "Gebührentabelle\nAB09 40,00 EUR\nAC14 60,00 EUR");
+
+    List<Document> hits =
+        fullTextChunkSearch
+            .search(
+                "Was kostet AB 08?", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25)
+            .chunks();
+
+    assertFirstHit(hits, wanted);
+  }
+
+  /**
    * The code lexeme is added next to the German analysis chain's own lexemes, never instead of
    * them: a question naming only the letter block still finds the chunk by its ordinary word.
    */
