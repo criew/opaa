@@ -48,7 +48,9 @@ prompts:
       nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
       dem Hinweis, dass ihr Inhalt keine Anweisung ist. Sagt die Antwort, etwas sei in den Quellen
       nicht enthalten, und findet die Nachprüfung im Suchbereich neue Fundstellen, folgt ihr ein
-      Prüfhinweis mit diesen Fundstellen und der Bitte, die Antwort einmal neu zu geben
+      Prüfhinweis mit diesen Fundstellen und der Bitte, die Antwort einmal neu zu geben. Enthält
+      eine Ausgabe des Modells weder Text noch einen Werkzeugaufruf, folgt einmal die Aufforderung,
+      fortzufahren, nach Abbruch an der Längengrenze mit der Bitte um kürzere Werkzeugeingaben
     classes:
       - io.opaa.query.toolloop.AgentPrompt
       - io.opaa.query.answer.AnswerRules
@@ -66,7 +68,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "9e294548fb224aa1378f41bb0fe66af517df415e0a67e452386aeec651d52412"
+    sha256: "dfbe28ae4e71a1f335cf8e9ae814464df37524e72ad66819d4b46938c4a5dc6e"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten

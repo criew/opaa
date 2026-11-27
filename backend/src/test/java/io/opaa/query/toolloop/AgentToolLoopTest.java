@@ -76,6 +76,8 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -407,6 +409,51 @@ class AgentToolLoopTest {
     verify(chatService)
         .appendTurn(
             any(), any(), any(), eq(AgentToolLoop.NO_ANSWER), any(), any(), any(), any(), any());
+    // the blank answer is followed up once, the second blank one ends the run
+    verify(chatModel, times(3)).call(any(Prompt.class));
+  }
+
+  @Test
+  void aBlankAnswerWithoutAToolCallIsFollowedUpOnceWithTheToolsStillOffered() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(toolCall("call-1", "{\"frage\":\"Regeln\"}"), answer(""), answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.agentRun().endState()).isEqualTo(EndState.COMPLETED);
+    assertThat(result.answer()).isEqualTo("Fertig.");
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(3)).call(prompts.capture());
+    Prompt followUp = prompts.getAllValues().get(2);
+    assertThat(toolsOf(followUp)).isNotEmpty();
+    Message last = followUp.getInstructions().getLast();
+    assertThat(last).isInstanceOf(UserMessage.class);
+    assertThat(last.getText())
+        .isEqualTo(AgentPrompt.afterBlankOutput(false))
+        .doesNotContain(AgentPrompt.CUT_AT_OUTPUT_LIMIT);
+    assertThat(followUp.getInstructions())
+        .noneMatch(
+            m ->
+                m instanceof AssistantMessage a
+                    && a.getText() != null
+                    && a.getText().isBlank()
+                    && !a.hasToolCalls());
+  }
+
+  @Test
+  void aBlankAnswerCutAtTheOutputLimitIsFollowedUpWithTheHintToKeepToolInputsShort() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCall("call-1", "{\"frage\":\"Regeln\"}"), cutAtOutputLimit(), answer("Fertig."));
+
+    QueryResult result = loop().handle(turn());
+
+    assertThat(result.answer()).isEqualTo("Fertig.");
+    ArgumentCaptor<Prompt> prompts = ArgumentCaptor.captor();
+    verify(chatModel, times(3)).call(prompts.capture());
+    assertThat(prompts.getAllValues().get(2).getInstructions().getLast().getText())
+        .isEqualTo(AgentPrompt.afterBlankOutput(true))
+        .contains(AgentPrompt.CUT_AT_OUTPUT_LIMIT);
   }
 
   @Test
@@ -1753,6 +1800,15 @@ class AgentToolLoopTest {
                     .toolCalls(
                         List.of(new AssistantMessage.ToolCall(id, "function", tool, arguments)))
                     .build())));
+  }
+
+  /** What a model returns when its output limit cut off a tool call it was writing. */
+  private static ChatResponse cutAtOutputLimit() {
+    return new ChatResponse(
+        List.of(
+            new Generation(
+                new AssistantMessage(""),
+                ChatGenerationMetadata.builder().finishReason("length").build())));
   }
 
   private static ChatResponse answer(String text) {

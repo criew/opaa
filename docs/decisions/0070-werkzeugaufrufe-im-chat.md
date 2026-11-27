@@ -193,6 +193,15 @@ Systemnachricht mitten im Verlauf lehnen manche Chat-Templates über den OpenAI-
 ([ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md), Entscheidung 1). Das
 Werkzeugergebnis erzeugt die Anwendung ohnehin selbst.
 
+Liefert ein Modellaufruf mit Werkzeugen weder Text noch einen Werkzeugaufruf, endet der Lauf nicht
+sofort. Einmal je Lauf folgt eine kurze Nachricht der Anwendung, die zum Fortfahren auffordert, mit
+weiter angebotenen Werkzeugen; endete die leere Ausgabe an der Längengrenze, bittet sie um kürzere
+Werkzeugeingaben. Die leere Ausgabe selbst kommt nicht in den Verlauf. Begründung: Ein großer
+Werkzeugaufruf, den die Längengrenze abschneidet, oder ein leer beendeter Zug nach Werkzeugergebnissen
+ließe sonst einen Lauf mit vollständiger Recherche ohne Antwort enden. Eine Wiederholung ohne neue
+Nachricht brächte dasselbe Ergebnis. Bleibt auch die zweite Ausgabe leer, endet der Lauf mit dem
+Hinweis, dass keine Antwort formuliert wurde.
+
 ### 6. Erzwungen oder gemessen, und was dafür im Betrieb gilt
 
 | Eigenschaft | Art | Woran sie hängt |

@@ -108,6 +108,29 @@ final class AgentPrompt {
       【 und 】. Liegen Fundstellen vor, ist eine Antwort ohne Zitiermarken unzulässig; erfinde nie \
       eine Zitiermarke.""";
 
+  /**
+   * Opens the message after a working call that returned neither text nor a tool call: the run goes
+   * on once with the tools still offered instead of ending without an answer.
+   */
+  static final String BLANK_OUTPUT =
+      "Deine letzte Ausgabe enthielt weder Text noch einen Werkzeugaufruf.";
+
+  /** Added when the blank output ended at the output limit: a tool call in it was cut off. */
+  static final String CUT_AT_OUTPUT_LIMIT =
+      "Sie wurde an der Längengrenze der Ausgabe abgeschnitten; ein Werkzeugaufruf darin ist"
+          + " verloren. Halte die Eingaben eines Werkzeugaufrufs kürzer, etwa mit knapperen Werten"
+          + " oder weniger Listeneinträgen.";
+
+  /** Closes the message after a blank output. */
+  static final String CONTINUE_TASK =
+      "Setze die Aufgabe jetzt fort: rufe das nächste Werkzeug auf oder antworte im Chat mit dem,"
+          + " was die bisherigen Werkzeugaufrufe geliefert haben.";
+
+  /** The follow-up after a blank output, {@code cut} when it ended at the output limit. */
+  static String afterBlankOutput(boolean cut) {
+    return BLANK_OUTPUT + (cut ? " " + CUT_AT_OUTPUT_LIMIT : "") + " " + CONTINUE_TASK;
+  }
+
   /** What a run does with a plan step. */
   enum PlanPhase {
     /** The agent has no plan step, or ended its last run differently. */

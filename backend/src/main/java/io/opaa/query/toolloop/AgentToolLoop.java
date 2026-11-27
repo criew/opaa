@@ -419,6 +419,7 @@ class AgentToolLoop implements AgentTurnHandler {
 
     int tokens = 0;
     boolean closing = false;
+    boolean followedUpBlank = false;
     ChatResponse response;
     while (true) {
       if (!closing && !clock.instant().isBefore(run.deadline())) {
@@ -433,8 +434,25 @@ class AgentToolLoop implements AgentTurnHandler {
       String callSystem = closing ? system + "\n\n" + AgentPrompt.CLOSING_RULES : system;
       response = run.modelCall(() -> call(client, callSystem, asked, offered, toolContext));
       tokens += ChatResponses.totalTokens(response);
-      if (closing || callbacks.isEmpty() || !response.hasToolCalls()) {
+      if (closing || callbacks.isEmpty()) {
         break;
+      }
+      if (!response.hasToolCalls()) {
+        // A working call with neither text nor a tool call - e.g. a tool call cut off at the
+        // output limit - is followed up once instead of ending the run without an answer.
+        if (followedUpBlank || !ChatResponses.text(response).isBlank()) {
+          break;
+        }
+        followedUpBlank = true;
+        log.warn(
+            "Agent run {} got neither text nor a tool call (finish reason {}), following up once",
+            run.runId(),
+            ChatResponses.finishReason(response));
+        history = new ArrayList<>(history);
+        history.add(
+            new UserMessage(
+                AgentPrompt.afterBlankOutput(ChatResponses.endedAtOutputLimit(response))));
+        continue;
       }
       ToolExecutionResult executed =
           toolCallingManager.executeToolCalls(
