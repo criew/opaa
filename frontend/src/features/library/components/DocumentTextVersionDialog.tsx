@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -93,6 +93,8 @@ export default function DocumentTextVersionDialog({
   const [readAt, setReadAt] = useState<{ of: TextVersionPreview; chunkIndex: number } | null>(null)
   // the preview whose outline follows the reading line, once its reader scrolled on their own
   const [following, setFollowing] = useState<TextVersionPreview | null>(null)
+  // the scrolling element mounts anew with new text and when the layout switches to the phone's
+  const scrollerKey = useMemo(() => ({ loaded, phone }), [loaded, phone])
   const forgetInput = useUserScroll(
     scrollRef,
     () => {
@@ -100,7 +102,7 @@ export default function DocumentTextVersionDialog({
       setChosen(null)
       trackReading(true)
     },
-    loaded,
+    scrollerKey,
   )
 
   useEffect(() => {
