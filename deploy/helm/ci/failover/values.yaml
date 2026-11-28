@@ -1,0 +1,76 @@
+# Value set of the failover test (failover-test.sh, docs/entwicklung/build-und-ci.md): two backend
+# pods spread over the "app" nodes with the migration job, the frontend on the "infra" node, the
+# replicated database of database.yaml over the read-write service of the operator, the originals in
+# the object store outside the cluster, ai-stub as chat and embedding model. The script sets the
+# image and, for the variant with several hosts, OPAA_DB_URL; the signing secret and the two AES
+# keys it generates per run. The other secrets are throwaway test values.
+publicBaseUrl: http://localhost:18280
+database:
+  host: opaa-db-rw.failover-db.svc.cluster.local
+  name: opaa
+  username: opaa
+embedding:
+  baseUrl: http://ai-stub.failover-test.svc.cluster.local:8089
+  model: bge-m3
+bootstrap:
+  initialAdmin:
+    email: systemverwaltung@opaa.example
+    requirePasswordChange: false
+  chatModel:
+    baseUrl: http://ai-stub.failover-test.svc.cluster.local:8089
+    model: qwen2.5:3b
+uploads:
+  store: s3
+  s3:
+    endpoint: http://opaa-failover-s3:9000
+    bucket: opaa-originals
+targetValidation:
+  indexingAllowlist:
+    - opaa-failover-s3
+  modelAllowlist:
+    - ai-stub.failover-test.svc.cluster.local:8089
+  identityProviderAllowlist:
+    - ai-stub.failover-test.svc.cluster.local:8089
+secrets:
+  databasePassword: ci-only-password
+  s3AccessKey: opaa-kind
+  s3SecretKey: opaa-kind-secret
+  initialAdminPassword: E2eMehrinstanzKonto!2026
+backend:
+  image:
+    repository: opaa-failover/backend
+    tag: ci
+    pullPolicy: Never
+  replicas: 2
+  migration:
+    enabled: true
+  databasePoolSize: 5
+  nodeSelector:
+    opaa-failover/app: "true"
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1280Mi
+  # The load generator signs in over plain HTTP, from one client address, with one access token for
+  # the whole run.
+  extraEnv:
+    - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }
+    - { name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL, value: 30m }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS, value: "1000" }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS, value: "2000" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS, value: "50" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS, value: "100" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT, value: "50" }
+frontend:
+  image:
+    repository: opaa-failover/frontend
+    tag: ci
+    pullPolicy: Never
+  nodeSelector:
+    opaa-failover/infra: "true"

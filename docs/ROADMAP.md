@@ -173,10 +173,13 @@ Gebaut; erscheint als erstes stabiles Release `v0.1.0`. Den Stand beschreibt das
   Suchpfad, sobald die Messung aus #3492 sie begründet
   ([ADR-0075](./decisions/0075-ein-datenspeicher-fuer-metadaten-und-abschnitte.md)).
   _(Epic #1439; #3808)_
-- **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation und Umschaltung,
-  getrennte Netzbereiche für Oberfläche, Anwendung, Indexierung, Daten und Modelle; kein Blau-Grün mit
+- **Hochverfügbarkeit über die Anwendung hinaus** — getrennte Netzbereiche für Oberfläche,
+  Anwendung, Indexierung, Daten und Modelle; Schreibvorgänge von Uploads und Indexierung, die in den
+  Ausfall des Datenbank-Primärservers fallen, wiederholen statt scheitern lassen. Eine replizierte
+  Datenbank mit Umschaltung ist angebunden und erprobt
+  ([Replizierte Datenbank](./handbuch/betrieb/datenbank.md#replizierte-datenbank)); kein Blau-Grün mit
   zweiter Datenbank ([ADR-0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md),
-  Entscheidung 5). _(#3807)_
+  Entscheidung 5). _(#3916)_
 - **Offene Betriebsfragen** — Voreinstellungen für RTO/RPO, Bündelung von Abbildern, Modellgewichten und
   Stückliste für abgeschottete Netze, Zuordnung der Netzsicherheit zwischen zwei Spezifikationen. ⚑
 - **Ablage auf openCode** _(#3041)_

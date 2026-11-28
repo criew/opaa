@@ -1,0 +1,83 @@
+# Replicated database of the failover test (failover-test.sh): a CloudNativePG cluster of two
+# instances on the "db" nodes, the primary and one streaming replica, in the namespace failover-db.
+# The "standard" image of CloudNativePG carries pgvector. The account of opaa is no superuser; the
+# extension and the owner role of the audit tables are prepared the way the handbook asks a database
+# administrator to (betrieb/datenbank.md, "Voraussetzungen einer eigenen PostgreSQL").
+# Test values only; nothing here is a real secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: opaa-db-app
+  namespace: failover-db
+type: kubernetes.io/basic-auth
+stringData:
+  username: opaa
+  password: ci-only-password
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: opaa-db
+  namespace: failover-db
+spec:
+  instances: 2
+  imageName: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
+  # A switchover waits this long for the old primary to stop cleanly before it is shut down hard.
+  switchoverDelay: 60
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "100"
+  bootstrap:
+    initdb:
+      database: opaa
+      owner: opaa
+      secret:
+        name: opaa-db-app
+      postInitApplicationSQL:
+        - CREATE EXTENSION vector
+        - CREATE ROLE opaa_audit_owner NOLOGIN
+        - GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION
+  storage:
+    size: 1Gi
+  affinity:
+    nodeSelector:
+      opaa-failover/db: "true"
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+---
+# One service per instance, for the connection URL with several hosts (targetServerType=primary),
+# the way a list of database servers outside the cluster is addressed; the operator itself offers
+# only the role-following services opaa-db-rw, -ro and -r.
+apiVersion: v1
+kind: Service
+metadata:
+  name: opaa-db-1
+  namespace: failover-db
+spec:
+  selector:
+    cnpg.io/cluster: opaa-db
+    cnpg.io/instanceName: opaa-db-1
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opaa-db-2
+  namespace: failover-db
+spec:
+  selector:
+    cnpg.io/cluster: opaa-db
+    cnpg.io/instanceName: opaa-db-2
+  ports:
+    - port: 5432
+      targetPort: 5432

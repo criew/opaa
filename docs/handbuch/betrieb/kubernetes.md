@@ -114,7 +114,11 @@ Damit ändert sich:
   eine lange Chat-Antwort den Austausch übersteht; ein kleinerer Wert bricht das Rendern ab.
 - **Wartung der Knoten.** Ein PodDisruptionBudget lässt immer nur einen Backend-Pod gleichzeitig
   räumen. `backend.topologySpreadConstraints` oder eine Anti-Affinität in `backend.affinity` verteilt
-  die Pods über Knoten oder Zonen.
+  die Pods über Knoten oder Zonen. Räumt `kubectl drain` einen Knoten, endet sein Backend-Pod
+  geordnet und meldet sich im Instanzregister ab; der andere beantwortet die Anfragen, bis der Ersatz
+  auf einem anderen Knoten bereit ist; mit `whenUnsatisfiable: ScheduleAnyway` darf er auf den
+  Knoten des anderen Pods. Liegt auf dem Knoten auch der Primärserver einer replizierten Datenbank,
+  schaltet ihr Operator vorher um ([Replizierte Datenbank](datenbank.md#was-während-einer-umschaltung-geschieht)).
 - **Datenbankverbindungen.** `backend.databasePoolSize` gilt je Pod; die Grenze für
   `max_connections` nennt [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
 - **Grenzen je Pod.** Welche Grenzen je Pod gelten, steht unter
@@ -865,6 +869,45 @@ Den Verbindungs-URL baut der Chart aus `database.host`, `database.port`, `databa
 `database.sslMode`. Mit `verify-ca` oder `verify-full` prüft das Backend das Serverzertifikat gegen die
 öffentlichen CAs seiner Java-Laufzeit und gegen `extraCACertificates`; eine hauseigene CA der
 Datenbank gehört deshalb dorthin.
+
+**Replizierte Datenbank mit CloudNativePG.** `database.host` ist der Service `<Cluster>-rw` des
+Operators, der immer auf den Primärserver zeigt; welche Adressen sonst passen und was während einer
+Umschaltung geschieht, steht unter [Replizierte Datenbank](datenbank.md#replizierte-datenbank). Die
+Images `ghcr.io/cloudnative-pg/postgresql` mit `standard` im Tag bringen pgvector mit. Die
+Vorbereitung des Datenbankverwalters übernimmt der Cluster bei seiner Anlage:
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: opaa-db
+  namespace: datenbank
+spec:
+  instances: 2
+  imageName: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
+  bootstrap:
+    initdb:
+      database: opaa
+      owner: opaa
+      secret:
+        name: opaa-db-app      # Konto und Passwort von opaa
+      postInitApplicationSQL:
+        - CREATE EXTENSION vector
+        - CREATE ROLE opaa_audit_owner NOLOGIN
+        - GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION
+  storage:
+    size: 20Gi
+```
+
+```yaml
+database:
+  host: opaa-db-rw.datenbank.svc.cluster.local
+```
+
+Das Passwort gehört als `OPAA_DB_PASSWORD` in das Secret von opaa. Eine Verbindungs-URL mit mehreren
+Hosts setzt `OPAA_DB_URL` in `backend.extraEnv`; sie gilt dann für die Pods, den Migrations-Job und
+den wartenden Init-Container und ersetzt den URL aus `database.host`, `database.port`,
+`database.name` und `database.sslMode`.
 
 **Erprobungsdatenbank.** `evaluationDatabase.enabled` startet ein StatefulSet mit dem Image
 `pgvector/pgvector` und einem eigenen Volume. Konto, Datenbankname und Passwort kommen aus

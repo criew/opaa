@@ -272,6 +272,58 @@ In CI läuft `.github/workflows/multi-instance.yml` je Plattform als eigener Job
 Zuruf und an einem PR über das Label `multi-instance-suite`; kein Required Check. Der Speicherbedarf
 liegt je Plattform bei etwa 4–5 GB.
 
+## Umschaltung der Datenbank und Räumen eines Knotens
+
+`deploy/helm/ci/failover-test.sh` erprobt zwei Backend-Instanzen auf einem Cluster mit mehreren
+Knoten und einer replizierten Datenbank, während der Primärserver wechselt oder ein Knoten geräumt
+wird ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md),
+[ADR-0076](../decisions/0076-betriebsarchitekturen-klein-mittel-gross.md)). Nicht Teil der CI: Der
+Aufbau braucht etwa 5 GB Speicher und je Lauf rund vier Minuten; ein Lauf von Hand vor Änderungen an
+Herzschlag, Invalidierungsbus, Sperren der geplanten Läufe, Pool oder Chart genügt.
+
+| Teil | Aufbau |
+|---|---|
+| Cluster | kind mit einer Control Plane und drei Workern (`deploy/helm/ci/failover/kind-config.yaml`) in einem eigenen Docker-Netz `opaa-failover`: `worker` trägt Frontend, Operator und Testdoubles und wird nie geräumt, `worker` und `worker2` die beiden Backend-Pods (`backend.topologySpreadConstraints`, PodDisruptionBudget des Charts), `worker2` und `worker3` die beiden Datenbank-Instanzen |
+| Datenbank | CloudNativePG (Version im Skript, Manifest mit Prüfsumme), Cluster `opaa-db` mit zwei Instanzen, Image `postgresql:18-standard-trixie` mit pgvector, asynchrone Replikation; das Konto von opaa ist kein Superuser, Erweiterung und Rolle `opaa_audit_owner` legt der Cluster an (`deploy/helm/ci/failover/database.yaml`) |
+| Anbindung | `DB_URL=service`: der Service `opaa-db-rw`; `DB_URL=hosts`: `OPAA_DB_URL` mit beiden Instanzen, `targetServerType=primary` und `connectTimeout=2` (`deploy/helm/ci/failover/values-hosts.yaml`); `HOSTS_PARAMS` hängt weitere Treiberparameter an, `RUN_LABEL` benennt die Ergebnisse |
+| Objektspeicher | RustFS als Container `opaa-failover-s3` neben den Knoten, außerhalb des Clusters; Originale und Korpus |
+| Release | der Chart mit `deploy/helm/ci/failover/values.yaml`: zwei Backend-Pods, Migrations-Job, ein Frontend; ai-stub und Mailpit im Namensraum `failover-test` |
+
+Je Lauf (`e2e/failover/tests/failover.spec.ts`) läuft der Lastgenerator der Zwei-Instanzen-Suite
+(`e2e/multi-instance/load.mjs`) durch das Frontend, jede Anmeldung legt eine Mail in die Outbox. Ein
+Indexierungslauf und ein Upload warten bei ai-stub bis zwei Sekunden nach Beginn der Störung, ein
+geplanter Lauf einer Bibliothek wird fünf Sekunden danach fällig. Störungen (`DISTURBANCES`):
+
+| Störung | Auslöser |
+|---|---|
+| `switchover` | geplante Umschaltung auf die Replik, wie `kubectl cnpg promote` |
+| `failover` | `kubectl delete pod --force --grace-period=0` des Primärservers |
+| `drain` | `kubectl drain` von `worker2`, der vorher einen Backend-Pod und den Primärserver trägt |
+
+Festgehalten wird je Lauf in `e2e/failover-results/<Lauf>.json`: Dauer ohne Primärserver,
+Fehlerantworten nach Art und Zeitpunkt, längste Lücke ohne Antwort, Mails erwartet und zugestellt,
+Abrisse der Hörverbindung aus dem Protokoll, Alter des Herzschlags, wartende Anfragen und Timeouts
+des Pools, gescheiterte geplante Läufe, Ergebnis von Indexierung, Upload und geplantem Lauf,
+Instanzregister und ShedLock-Sperren vor und nach der Störung, dazu die WARN- und ERROR-Meldungen
+der Backend-Protokolle. `e2e/failover/summary.mjs` fasst alle Läufe zu einer Tabelle zusammen. Der
+Lauf scheitert, wenn eine Mail fehlt oder doppelt kommt, der geplante Lauf nicht genau einmal läuft,
+eine Instanz sich für tot hält oder die Indexierung nicht abschließt.
+
+```bash
+# aus dem Wurzelverzeichnis; die Images baut der Aufruf nicht
+docker build -f backend/Dockerfile -t opaa-failover/backend:ci .
+docker build -f frontend/Dockerfile -t opaa-failover/frontend:ci .
+(cd e2e && pnpm install)
+deploy/helm/ci/failover-test.sh up            # Cluster, Operator, Datenbank, Objektspeicher, Release
+deploy/helm/ci/failover-test.sh run           # switchover, failover, drain je RUNS=2 Mal
+DB_URL=hosts DISTURBANCES="switchover failover" deploy/helm/ci/failover-test.sh run
+deploy/helm/ci/failover-test.sh down          # Cluster, Container und Netz entfernen
+```
+
+`all` (Vorgabe) verbindet `up`, `run` und `down`, mit `KEEP_CLUSTER=1` ohne `down`. Das Skript nutzt
+eine eigene kubeconfig (`FAILOVER_KUBECONFIG`) und fasst nur Cluster, Container und Netz namens
+`opaa-failover` an.
+
 ## Betrieb ohne Internet
 
 Das Ziel `offline` (`e2e/scripts/offline.mjs`, Szenario unter `e2e/offline/`) belegt, dass die

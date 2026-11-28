@@ -12,3 +12,5 @@ ui-lab/videos/
 test-results-ocr/
 playwright-report-ocr/
 playwright-report-quick-tour/
+test-results-failover/
+failover-results/
