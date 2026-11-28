@@ -3291,6 +3291,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#replizierte-datenbank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replizierte Datenbank
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Replizierte Datenbank">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#was-während-einer-umschaltung-geschieht" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was während einer Umschaltung geschieht
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#volltextsuche-lexikalischer-suchpfad" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4388,6 +4416,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#replizierte-datenbank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replizierte Datenbank
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Replizierte Datenbank">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#was-während-einer-umschaltung-geschieht" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was während einer Umschaltung geschieht
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#volltextsuche-lexikalischer-suchpfad" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4604,6 +4660,112 @@ Instanzen ist die, die ein Rolling Update startet, bevor es eine alte beendet.</
 <p>Mehr öffnet eine Instanz auch unter Last nicht: Sind alle Verbindungen ihres Pools belegt, warten
 weitere Anfragen auf eine freie, höchstens 30 Sekunden, und enden danach mit einem Fehler. Wie viele
 Verbindungen eine Instanz wirklich hält, zeigt <code>pg_stat_activity</code>, gruppiert nach <code>client_addr</code>.</p>
+<h2 id="replizierte-datenbank">Replizierte Datenbank<a class="headerlink" href="#replizierte-datenbank" title="Permanent link">&para;</a></h2>
+<p>Eine PostgreSQL mit Replikation und automatischer Umschaltung, etwa mit dem Operator CloudNativePG
+oder mit Patroni, ist für opaa weiterhin eine Datenbank: Alle Instanzen schreiben und lesen auf dem
+Primärserver, eine Replik nutzt opaa nicht. opaa braucht deshalb eine Adresse, die nach einer
+Umschaltung auf den neuen Primärserver zeigt.</p>
+<table>
+<thead>
+<tr>
+<th>Anbindung</th>
+<th>Adresse</th>
+<th>Wann</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adresse des Primärservers</td>
+<td>ein Name oder eine IP, die der Datenbankbetrieb dem Primärserver nachführt: bei CloudNativePG der Service <code>&lt;Cluster&gt;-rw</code>, bei Patroni etwa eine virtuelle IP oder ein Load Balancer, der nur den Primärserver anspricht</td>
+<td>die Vorgabe; <code>database.host</code> bzw. <code>OPAA_DB_URL</code> bleiben, wie sie sind</td>
+</tr>
+<tr>
+<td>Verbindungs-URL mit mehreren Hosts</td>
+<td><code>jdbc:postgresql://db-1:5432,db-2:5432/opaa?targetServerType=primary&amp;connectTimeout=2&amp;prepareThreshold=0</code> in <code>OPAA_DB_URL</code></td>
+<td>wenn es keine solche Adresse gibt; der Treiber probiert die Hosts der Reihe nach und bleibt bei dem, der Schreibzugriffe annimmt</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Ohne <code>targetServerType=primary</code></strong> nimmt der Treiber den ersten Host, der antwortet, auch eine
+  Replik; jede schreibende Anfrage scheitert dann. Der Wert gehört in jede URL mit mehreren Hosts,
+  <code>prepareThreshold=0</code> ebenso wie in jede andere.</li>
+<li><strong><code>connectTimeout</code></strong> begrenzt, wie lange der Treiber auf einen Host wartet, bevor er den nächsten
+  probiert; ohne den Wert wartet er zehn Sekunden. Ein alter Primärserver, der während einer
+  geplanten Umschaltung keine Verbindung annimmt, verlängerte die längste Lücke ohne Antwort damit
+  in der Messung auf 12 bis 13 Sekunden; mit <code>connectTimeout=2</code> lag sie bei 4 Sekunden, so kurz
+  wie mit der Adresse des Primärservers. Beim Ausfall des Primärservers machte die Anbindung keinen
+  Unterschied.</li>
+<li><strong>Nicht geeignet</strong> sind die Adresse einer einzelnen Instanz, ein Service für Lesezugriffe (bei
+  CloudNativePG <code>&lt;Cluster&gt;-ro</code> und <code>&lt;Cluster&gt;-r</code>) und ein Verbindungs-Proxy im Transaktionsmodus.</li>
+<li><strong>Die Hörverbindung</strong> (Anwendungsname <code>opaa-invalidation-bus</code>) nutzt dieselbe Adresse. Sie
+  braucht wie ohne Replikation eine direkte Verbindung oder einen Proxy im Sitzungsmodus.</li>
+<li><strong><code>max_connections</code></strong> nach <a href="#verbindungen-bei-mehreren-instanzen">Verbindungen bei mehreren Instanzen</a>
+  gilt auf jedem Server, der Primärserver werden kann.</li>
+</ul>
+<h3 id="was-während-einer-umschaltung-geschieht">Was während einer Umschaltung geschieht<a class="headerlink" href="#was-während-einer-umschaltung-geschieht" title="Permanent link">&para;</a></h3>
+<p>Gemessen mit CloudNativePG (zwei Instanzen, asynchrone Replikation), zwei Backend-Instanzen unter
+Last (rund 80 Anfragen je Sekunde) und dem Service <code>&lt;Cluster&gt;-rw</code>, je zwei Läufe:</p>
+<table>
+<thead>
+<tr>
+<th>Anlass</th>
+<th>ohne Primärserver</th>
+<th>längste Lücke ohne Antwort</th>
+<th>Fehlerantworten</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geplante Umschaltung</td>
+<td>3 Sekunden</td>
+<td>5 Sekunden</td>
+<td>2 bis 4</td>
+</tr>
+<tr>
+<td>Räumen des Knotens mit dem Primärserver</td>
+<td>3 bis 4 Sekunden</td>
+<td>6 Sekunden</td>
+<td>4 bis 5</td>
+</tr>
+<tr>
+<td>Ausfall des Primärservers</td>
+<td>21 Sekunden</td>
+<td>20 Sekunden</td>
+<td>3 bis 5</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Fehlerantworten</strong> bekommen nur Anfragen, die im Moment der Umschaltung eine Verbindung zum alten
+  Primärserver benutzten: Sie enden mit <code>500</code>, das Protokoll nennt
+  <code>terminating connection due to administrator command</code> (geplant) oder
+  <code>An I/O error occurred while sending to the backend</code> (Ausfall). Alle übrigen Anfragen warten im
+  Connection Pool, bis der neue Primärserver antwortet, und laufen dann normal weiter. Dauert eine
+  Umschaltung länger als die 30 Sekunden, die eine Anfrage auf eine Verbindung wartet, enden auch
+  die wartenden Anfragen mit einem Fehler. Die Readiness prüft die Datenbank; in den gemessenen
+  Umschaltungen blieben alle Instanzen bereit.</li>
+<li><strong>Änderungen zwischen den Instanzen:</strong> Die Hörverbindung reißt ab, jede Instanz meldet
+  <code>The invalidation bus does not listen</code> und liest Rechte und Einstellungen direkt aus der
+  Datenbank. Sie steht wieder, sobald der neue Primärserver antwortet
+  (<code>Listening on the invalidation bus again</code>): nach einer geplanten Umschaltung nach fünf Sekunden,
+  nach einem Ausfall nach 20 bis 30 Sekunden. Die Meldung
+  <code>Dropping the cache … failed</code> dazwischen ist harmlos: Die Instanz liest den Speicher nach dem
+  Wiederanschluss neu.</li>
+<li><strong>Instanzregister:</strong> Der Herzschlag setzt für die Dauer der Umschaltung aus und liegt weit unter
+  der Frist <code>OPAA_INSTANCE_DEAD_AFTER</code>. Keine Instanz fällt aus dem Register, keine gibt ihre Arbeit
+  ab oder übernimmt fremde.</li>
+<li><strong>Geplante Läufe und Mails:</strong> Ein Termin, der in die Umschaltung fällt, läuft genau einmal; jede
+  Mail der Warteschlange geht genau einmal hinaus. Ein Lauf, der genau in der Umschaltung scheitert,
+  zählt als Fehler (<code>opaa_scheduled_failures_total</code>) und läuft beim nächsten Termin.</li>
+<li><strong>Indexierung und Uploads:</strong> Laufende Indexierungen setzen nach der Umschaltung fort. Ein Dokument
+  oder ein Upload, dessen Schreibvorgang genau in den Ausfall fällt, scheitert dagegen: Das Dokument
+  zählt im Lauf als fehlgeschlagen und wird beim nächsten Lauf erneut gelesen, ein Upload steht auf
+  „Fehlgeschlagen“ und wird neu hochgeladen.</li>
+<li><strong>Asynchrone Replikation:</strong> Fällt der Primärserver aus, fehlen dem neuen die Transaktionen, die
+  er noch nicht empfangen hatte. In den Läufen ging keine verloren; wer das ausschließen muss,
+  schaltet im Datenbankbetrieb synchrone Replikation ein.</li>
+</ul>
 <h2 id="volltextsuche-lexikalischer-suchpfad">Volltextsuche (lexikalischer Suchpfad)<a class="headerlink" href="#volltextsuche-lexikalischer-suchpfad" title="Permanent link">&para;</a></h2>
 <p>Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL, mit der
 <code>german</code>-Konfiguration und einem GIN-Index. Es gibt <strong>kein zweites System</strong>: derselbe Sicherungslauf,

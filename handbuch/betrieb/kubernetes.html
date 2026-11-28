@@ -5889,7 +5889,11 @@ Migrations-Job und einer Originalablage, die jeder Pod sieht:</p>
   eine lange Chat-Antwort den Austausch übersteht; ein kleinerer Wert bricht das Rendern ab.</li>
 <li><strong>Wartung der Knoten.</strong> Ein PodDisruptionBudget lässt immer nur einen Backend-Pod gleichzeitig
   räumen. <code>backend.topologySpreadConstraints</code> oder eine Anti-Affinität in <code>backend.affinity</code> verteilt
-  die Pods über Knoten oder Zonen.</li>
+  die Pods über Knoten oder Zonen. Räumt <code>kubectl drain</code> einen Knoten, endet sein Backend-Pod
+  geordnet und meldet sich im Instanzregister ab; der andere beantwortet die Anfragen, bis der Ersatz
+  auf einem anderen Knoten bereit ist; mit <code>whenUnsatisfiable: ScheduleAnyway</code> darf er auf den
+  Knoten des anderen Pods. Liegt auf dem Knoten auch der Primärserver einer replizierten Datenbank,
+  schaltet ihr Operator vorher um (<a href="datenbank.html#was-während-einer-umschaltung-geschieht">Replizierte Datenbank</a>).</li>
 <li><strong>Datenbankverbindungen.</strong> <code>backend.databasePoolSize</code> gilt je Pod; die Grenze für
   <code>max_connections</code> nennt <a href="datenbank.html#verbindungen-bei-mehreren-instanzen">Verbindungen bei mehreren Instanzen</a>.</li>
 <li><strong>Grenzen je Pod.</strong> Welche Grenzen je Pod gelten, steht unter
@@ -7517,6 +7521,39 @@ Datenbankverwalter und die Wahl eines eigenen Schemas stehen im Kapitel
 <code>database.sslMode</code>. Mit <code>verify-ca</code> oder <code>verify-full</code> prüft das Backend das Serverzertifikat gegen die
 öffentlichen CAs seiner Java-Laufzeit und gegen <code>extraCACertificates</code>; eine hauseigene CA der
 Datenbank gehört deshalb dorthin.</p>
+<p><strong>Replizierte Datenbank mit CloudNativePG.</strong> <code>database.host</code> ist der Service <code>&lt;Cluster&gt;-rw</code> des
+Operators, der immer auf den Primärserver zeigt; welche Adressen sonst passen und was während einer
+Umschaltung geschieht, steht unter <a href="datenbank.html#replizierte-datenbank">Replizierte Datenbank</a>. Die
+Images <code>ghcr.io/cloudnative-pg/postgresql</code> mit <code>standard</code> im Tag bringen pgvector mit. Die
+Vorbereitung des Datenbankverwalters übernimmt der Cluster bei seiner Anlage:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql.cnpg.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cluster</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opaa-db</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">datenbank</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">instances</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">imageName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/cloudnative-pg/postgresql:18-standard-trixie</span>
+<span class="w">  </span><span class="nt">bootstrap</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">initdb</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opaa</span>
+<span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opaa</span>
+<span class="w">      </span><span class="nt">secret</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opaa-db-app</span><span class="w">      </span><span class="c1"># Konto und Passwort von opaa</span>
+<span class="w">      </span><span class="nt">postInitApplicationSQL</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CREATE EXTENSION vector</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CREATE ROLE opaa_audit_owner NOLOGIN</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION</span>
+<span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20Gi</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opaa-db-rw.datenbank.svc.cluster.local</span>
+</code></pre></div>
+<p>Das Passwort gehört als <code>OPAA_DB_PASSWORD</code> in das Secret von opaa. Eine Verbindungs-URL mit mehreren
+Hosts setzt <code>OPAA_DB_URL</code> in <code>backend.extraEnv</code>; sie gilt dann für die Pods, den Migrations-Job und
+den wartenden Init-Container und ersetzt den URL aus <code>database.host</code>, <code>database.port</code>,
+<code>database.name</code> und <code>database.sslMode</code>.</p>
 <p><strong>Erprobungsdatenbank.</strong> <code>evaluationDatabase.enabled</code> startet ein StatefulSet mit dem Image
 <code>pgvector/pgvector</code> und einem eigenen Volume. Konto, Datenbankname und Passwort kommen aus
 <code>database.username</code>, <code>database.name</code> und dem Secret. Sie ist für Erprobungen gedacht:</p>

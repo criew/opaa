@@ -5207,6 +5207,10 @@ sind drei Fragen wichtig:</p>
 <td>Reißt die Hörverbindung, kann ein Zwischenspeicher veraltet sein, bis die Instanz den Abriss bemerkt, in der Regel binnen Sekunden; danach verwirft sie ihn ganz</td>
 </tr>
 <tr>
+<td>Umschaltung der Datenbank</td>
+<td>Schaltet eine replizierte Datenbank auf einen neuen Primärserver um, warten die Anfragen, bis er antwortet; nur die, die gerade eine Verbindung zum alten benutzten, enden mit einem Fehler. Kein Herzschlag läuft ab, und keine Instanz übernimmt fremde Arbeit (<a href="datenbank.html#was-während-einer-umschaltung-geschieht">Replizierte Datenbank</a>)</td>
+</tr>
+<tr>
 <td>Grenzen je Instanz sind eine Rechnung</td>
 <td>Sie gelten über „Grenze der Installation geteilt durch die Zahl der Instanzen“, nicht durch eine gemeinsame Zählung. Verteilen sich die Anfragen ungleich, greift die Grenze auf einer Instanz früher</td>
 </tr>
