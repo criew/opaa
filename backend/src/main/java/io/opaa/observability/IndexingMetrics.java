@@ -102,6 +102,19 @@ public class IndexingMetrics {
         .register(meterRegistry);
   }
 
+  /**
+   * One step in repeating a document's write that lost its database connection: {@code result} is
+   * {@code repeated} (a repetition starts), {@code exhausted} (the connection was lost again with
+   * no attempt left) or {@code not_held} (the run or the upload no longer belonged to the write).
+   */
+  public void recordWriteRepeat(String result) {
+    Counter.builder("opaa.indexing.write.repeats")
+        .tag("result", result)
+        .description("Document writes repeated after a lost database connection, by result")
+        .register(meterRegistry)
+        .increment();
+  }
+
   /** {@code count} chunks one indexed document wrote to the index. */
   public void recordChunks(int count) {
     if (count > 0) {

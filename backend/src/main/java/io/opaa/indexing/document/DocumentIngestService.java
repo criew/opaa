@@ -25,6 +25,7 @@ import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingEventSink;
+import io.opaa.indexing.job.RunAbandonedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilePathLimit;
@@ -133,6 +134,9 @@ public class DocumentIngestService {
   /** Text recognition of a PDF the {@code pdf} format rejected as without text (ADR-0069). */
   private final ScannedDocumentRecognition scannedDocumentRecognition;
 
+  /** Repeats an ingest whose write lost its database connection (ADR-0053, Entscheidung 8). */
+  private final ConnectionLossRetry connectionLossRetry;
+
   public DocumentIngestService(
       DocumentFormatRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -165,7 +169,8 @@ public class DocumentIngestService {
         featureFlags,
         malwareScanService,
         clock,
-        ScannedDocumentRecognition.NONE);
+        ScannedDocumentRecognition.NONE,
+        ConnectionLossRetry.NONE);
   }
 
   public DocumentIngestService(
@@ -184,7 +189,8 @@ public class DocumentIngestService {
       FeatureFlags featureFlags,
       MalwareScanService malwareScanService,
       Clock clock,
-      ScannedDocumentRecognition scannedDocumentRecognition) {
+      ScannedDocumentRecognition scannedDocumentRecognition,
+      ConnectionLossRetry connectionLossRetry) {
     requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
@@ -203,6 +209,7 @@ public class DocumentIngestService {
     this.malwareScanService = malwareScanService;
     this.clock = clock;
     this.scannedDocumentRecognition = scannedDocumentRecognition;
+    this.connectionLossRetry = connectionLossRetry;
   }
 
   /**
@@ -242,20 +249,37 @@ public class DocumentIngestService {
    * attachments already stored do not count a second time. A document indexed with findings of the
    * cleanup after extraction gets one {@code SUSPICIOUS_PATTERNS} entry in the protocol ({@link
    * DocumentIngest#events()}, else that of {@code attachmentAccess}), with counts per class only,
-   * and counts once per class in the library's metric.
+   * and counts once per class in the library's metric. A write that lost its database connection
+   * repeats the whole ingest under {@link ConnectionLossRetry}, as long as the caller still holds
+   * its run or upload; the repeated attempt books nothing, the next one replaces the chunks.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
    *     failure {@link DocumentIngestResult} names
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
-   *     the final update is rethrown after the row was marked {@code FAILED}
+   *     the final update is rethrown after the row was marked {@code FAILED}, one that says the run
+   *     or upload is no longer held without marking anything
    */
   public DocumentIngestResult ingest(DocumentIngest declared, AttachmentAccess attachmentAccess)
       throws IOException {
-    IndexingEventSink events =
-        declared.events() != null
-            ? declared.events()
-            : attachmentAccess == null ? null : attachmentAccess.events();
+    return connectionLossRetry.run(
+        declared,
+        eventsOf(declared, attachmentAccess),
+        repeat -> ingestOnce(declared, attachmentAccess, repeat));
+  }
+
+  private static IndexingEventSink eventsOf(
+      DocumentIngest declared, AttachmentAccess attachmentAccess) {
+    if (declared.events() != null) {
+      return declared.events();
+    }
+    return attachmentAccess == null ? null : attachmentAccess.events();
+  }
+
+  private DocumentIngestResult ingestOnce(
+      DocumentIngest declared, AttachmentAccess attachmentAccess, ConnectionLossRetry.Repeat repeat)
+      throws IOException {
+    IndexingEventSink events = eventsOf(declared, attachmentAccess);
     Map<IngestTextSanitizer.Finding, Integer> findings =
         new EnumMap<>(IngestTextSanitizer.Finding.class);
     DocumentIngest ingest = declared.withCleanNames(findings);
@@ -487,6 +511,10 @@ public class DocumentIngestService {
     } catch (Exception | Error e) {
       // every Error but a process-fatal one is booked, so an upload never stays PENDING after it
       FatalErrors.rethrowIfProcessFatal(e);
+      if (repeat.after(e) || noLongerHeld(e)) {
+        // the next attempt replaces the chunks and settles the row; a lost hold writes nothing
+        throw e;
+      }
       if (!(ingest.reindex() && preservingPreviousChunks)) {
         markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }
@@ -567,6 +595,11 @@ public class DocumentIngestService {
       DocumentIngest ingest, AttachmentAccess attachmentAccess, AutoCloseable workingFile) {
     try {
       ingest(ingest, attachmentAccess);
+    } catch (IngestNoLongerHeldException e) {
+      log.warn(
+          "Stopped processing uploaded document {}: {}",
+          ingest.library().loggedNames().of(ingest.fileName()),
+          e.getMessage());
     } catch (Exception e) {
       LoggedName names = ingest.library().loggedNames();
       log.error("Failed to process uploaded document {}", names.of(ingest.fileName()), names.of(e));
@@ -1031,6 +1064,19 @@ public class DocumentIngestService {
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
     }
+  }
+
+  /**
+   * Whether {@code failure} says the run or the upload is no longer this ingest's, met by a nested
+   * attachment's ingest; the row is then left to whoever holds it now.
+   */
+  private static boolean noLongerHeld(Throwable failure) {
+    for (Throwable t = failure; t != null; t = t.getCause()) {
+      if (t instanceof RunAbandonedException || t instanceof IngestNoLongerHeldException) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

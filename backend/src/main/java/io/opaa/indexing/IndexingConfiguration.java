@@ -18,10 +18,12 @@ import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.ChecksumService;
+import io.opaa.indexing.document.ConnectionLossRetry;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentTextRecognitionStore;
 import io.opaa.indexing.document.TextRecognitionBlocks;
 import io.opaa.indexing.document.TextRecognitionIndexing;
+import io.opaa.indexing.document.WriteRetryProperties;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
@@ -86,7 +88,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
   SourceHttpProperties.class,
   FilesystemProperties.class,
   AttachmentProperties.class,
-  RemoteContentProperties.class
+  RemoteContentProperties.class,
+  WriteRetryProperties.class
 })
 public class IndexingConfiguration {
 
@@ -238,7 +241,9 @@ public class IndexingConfiguration {
       FeatureFlags featureFlags,
       MalwareScanService malwareScanService,
       Clock clock,
-      TextRecognitionIndexing textRecognitionIndexing) {
+      TextRecognitionIndexing textRecognitionIndexing,
+      WriteRetryProperties writeRetryProperties,
+      CurrentInstance currentInstance) {
     return new DocumentIngestService(
         documentPipelineRegistry,
         documentRepository,
@@ -255,7 +260,9 @@ public class IndexingConfiguration {
         featureFlags,
         malwareScanService,
         clock,
-        textRecognitionIndexing);
+        textRecognitionIndexing,
+        new ConnectionLossRetry(
+            writeRetryProperties, documentRepository, currentInstance, indexingMetrics, clock));
   }
 
   @Bean

@@ -591,6 +591,12 @@ opaa:
       debounce: ${OPAA_INDEXING_EVENTS_DEBOUNCE:5s}
       max-pending-keys: ${OPAA_INDEXING_EVENTS_MAX_PENDING_KEYS:500}
       max-deferrals: ${OPAA_INDEXING_EVENTS_MAX_DEFERRALS:120}
+    # How often and how long the ingest of a document or an upload is repeated after its write lost
+    # the database connection, as in a failover of a replicated database (see WriteRetryProperties).
+    write-retry:
+      max-attempts: ${OPAA_INDEXING_WRITE_RETRY_MAX_ATTEMPTS:5}
+      window: ${OPAA_INDEXING_WRITE_RETRY_WINDOW:60s}
+      initial-delay: ${OPAA_INDEXING_WRITE_RETRY_INITIAL_DELAY:1s}
     # DoS-hardening limits for TabularDocumentFormat (XLSX/CSV/ODS) - own property block, own
     # binding prefix, see TabularProperties's own Javadoc for why.
     tabular:

@@ -247,9 +247,14 @@ Last (rund 80 Anfragen je Sekunde) und dem Service `<Cluster>-rw`, je zwei Läuf
   Mail der Warteschlange geht genau einmal hinaus. Ein Lauf, der genau in der Umschaltung scheitert,
   zählt als Fehler (`opaa_scheduled_failures_total`) und läuft beim nächsten Termin.
 - **Indexierung und Uploads:** Laufende Indexierungen setzen nach der Umschaltung fort. Ein Dokument
-  oder ein Upload, dessen Schreibvorgang genau in den Ausfall fällt, scheitert dagegen: Das Dokument
-  zählt im Lauf als fehlgeschlagen und wird beim nächsten Lauf erneut gelesen, ein Upload steht auf
-  „Fehlgeschlagen“ und wird neu hochgeladen.
+  oder ein Upload, dessen Schreibvorgang genau in die Umschaltung fällt, wird nach dem
+  Wiederanschluss noch einmal verarbeitet; das Protokoll nennt
+  `Lost the database connection while storing …`. Wiederholt wird nur, solange der Lauf oder der
+  Upload noch der Instanz gehört, und nur begrenzt (`OPAA_INDEXING_WRITE_RETRY_*`). Dauert der
+  Ausfall länger, zählt das Dokument im Lauf als fehlgeschlagen und wird beim nächsten Lauf erneut
+  gelesen, ein Upload steht auf „Fehlgeschlagen“ und wird neu hochgeladen. Abschnitte, die ein
+  gescheiterter Versuch schon geschrieben hatte, ersetzt der nächste Versuch oder die nächste
+  Verarbeitung desselben Dokuments.
 - **Asynchrone Replikation:** Fällt der Primärserver aus, fehlen dem neuen die Transaktionen, die
   er noch nicht empfangen hatte. In den Läufen ging keine verloren; wer das ausschließen muss,
   schaltet im Datenbankbetrieb synchrone Replikation ein.
