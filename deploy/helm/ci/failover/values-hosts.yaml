@@ -6,7 +6,7 @@
 backend:
   extraEnv:
     - name: OPAA_DB_URL
-      value: jdbc:postgresql://opaa-db-1.failover-db.svc.cluster.local:5432,opaa-db-2.failover-db.svc.cluster.local:5432/opaa?targetServerType=primary&prepareThreshold=0
+      value: jdbc:postgresql://opaa-db-1.failover-db.svc.cluster.local:5432,opaa-db-2.failover-db.svc.cluster.local:5432/opaa?targetServerType=primary&connectTimeout=2&prepareThreshold=0
     - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }
     - { name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL, value: 30m }
     - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS, value: "1000" }

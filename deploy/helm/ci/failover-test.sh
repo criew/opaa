@@ -38,7 +38,7 @@ FRONTEND_IMAGE="${FRONTEND_IMAGE:-opaa-failover/frontend:ci}"
 DISTURBANCES="${DISTURBANCES:-switchover failover drain}"
 RUNS="${RUNS:-2}"
 DB_URL="${DB_URL:-service}"
-HOSTS_URL="jdbc:postgresql://opaa-db-1.failover-db.svc.cluster.local:5432,opaa-db-2.failover-db.svc.cluster.local:5432/opaa?targetServerType=primary&prepareThreshold=0${HOSTS_PARAMS:-}"
+HOSTS_URL="jdbc:postgresql://opaa-db-1.failover-db.svc.cluster.local:5432,opaa-db-2.failover-db.svc.cluster.local:5432/opaa?targetServerType=primary&connectTimeout=2&prepareThreshold=0${HOSTS_PARAMS:-}"
 RUN_LABEL="${RUN_LABEL:-$DB_URL}"
 CORPUS_SIZE="${CORPUS_SIZE:-40}"
 # Newest supported Kubernetes version, as in multi-instance.yml.
@@ -234,7 +234,7 @@ run() {
 
 down() {
   kind delete cluster --name "$CLUSTER" --kubeconfig "$KUBECONFIG" || true
-  docker rm -f "$OBJECT_STORE" >/dev/null 2>&1 || true
+  docker rm -f -v "$OBJECT_STORE" >/dev/null 2>&1 || true
   docker network rm "$NETWORK" >/dev/null 2>&1 || true
   rm -f "$KUBECONFIG" "$secrets_file"
 }
