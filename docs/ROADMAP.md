@@ -50,7 +50,7 @@ Gebaut; erscheint als erstes stabiles Release `v0.1.0`. Den Stand beschreibt das
   hinterlegen; Freischaltung je Integration und Aktionsart, eigene Schreib-Zugangsdaten, menschliche
   Bestätigung im Einzelfall.
 - **Löschverlangen nach Datenschutzrecht** — Löschung greift auf Chunks, Einbettungen, Extrakte und
-  Vorschauen durch (siehe G, Löschrecht nach DSGVO).
+  Vorschauen durch (siehe G, Löschrecht nach DSGVO, zweite Stufe).
 - **Live-Abfrage verbundener Konten und Token-Austausch** — Quellen im Chat ohne Indexierung abfragen;
   Token Exchange (RFC 8693) als fünfte Anmeldeart nur für den Live-Zugriff, Machbarkeit belegt (Spike
   #2174). _(#1747 · ⚑)_
@@ -128,9 +128,9 @@ Gebaut; erscheint als erstes stabiles Release `v0.1.0`. Den Stand beschreibt das
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
-- **Löschrecht nach DSGVO, zweite Stufe** — heute anonymisiert die Systemverwaltung ein deaktiviertes
-  Konto und löscht seine Daten; offen sind Selbstantrag der Person und Löschung über alle abgeleiteten
-  Bestände.
+- **Löschrecht nach DSGVO, zweite Stufe** — heute entfernt die Systemverwaltung den Personenbezug
+  eines gesperrten Kontos und löscht seine persönlichen Daten; offen ist der Selbstantrag der Person
+  als Ablauf.
 - **C5-Nachweispaket** — Verantwortungsmatrix Produkt/Betreiber, Härtungsleitfaden mit
   Referenzkonfiguration, reproduzierbare Builds; bisher nicht vorhanden.
 - **Unabhängige Sicherheitsprüfung** — ab wann und in welchem Umfang. ⚑
