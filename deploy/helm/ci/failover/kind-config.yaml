@@ -1,0 +1,20 @@
+# Cluster of the failover test (failover-test.sh): one control plane and three workers. The roles
+# keep each disturbance to what it is meant to hit: "infra" carries the frontend, the operator and
+# the stand-ins, so no drain takes them away; "app" carries the two backend pods, one per node;
+# "db" carries the two database instances, one per node. opaa-failover-worker2 is both "app" and
+# "db": draining it evicts a backend pod and a database instance at once.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+    labels:
+      opaa-failover/infra: "true"
+      opaa-failover/app: "true"
+  - role: worker
+    labels:
+      opaa-failover/app: "true"
+      opaa-failover/db: "true"
+  - role: worker
+    labels:
+      opaa-failover/db: "true"

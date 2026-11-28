@@ -599,7 +599,7 @@ class ComposePlatform implements Platform {
 }
 
 /** A `kubectl port-forward` kept alive for one target, restarted when its pod went away. */
-class Forward {
+export class Forward {
   private process: ChildProcess | null = null;
   private target = "";
 
@@ -816,6 +816,8 @@ class KindPlatform implements Platform {
             volumeMounts: [{ name: "script", mountPath: "/load" }],
           },
         ],
+        // Keeps the generator off a node a scenario drains.
+        nodeSelector: JSON.parse(process.env.E2E_KIND_LOAD_NODE_SELECTOR ?? "{}"),
         volumes: [{ name: "script", configMap: { name: "load-script" } }],
       },
     };

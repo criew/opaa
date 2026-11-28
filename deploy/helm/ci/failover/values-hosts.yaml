@@ -1,0 +1,16 @@
+# Overlay of the failover test for DB_URL=hosts (failover-test.sh): instead of the read-write
+# service of the operator, a connection URL naming every instance; the driver connects to the one
+# that accepts writes (targetServerType=primary). OPAA_DB_URL in extraEnv overrides the URL the chart
+# builds from database.*, for the pods, the migration job and the waiting init container alike.
+# extraEnv is a list and replaces the one of values.yaml, so it repeats its entries.
+backend:
+  extraEnv:
+    - name: OPAA_DB_URL
+      value: jdbc:postgresql://opaa-db-1.failover-db.svc.cluster.local:5432,opaa-db-2.failover-db.svc.cluster.local:5432/opaa?targetServerType=primary&prepareThreshold=0
+    - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }
+    - { name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL, value: 30m }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS, value: "1000" }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS, value: "2000" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS, value: "50" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS, value: "100" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS_PER_ACCOUNT, value: "50" }
