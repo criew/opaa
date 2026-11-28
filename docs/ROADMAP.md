@@ -166,8 +166,10 @@ Gebaut; erscheint als erstes stabiles Release `v0.1.0`. Den Stand beschreibt das
 
 - **Hardware- und Größenprofile (Sizing)** — Auslegung je Installationsgröße; trägt auch die
   Reranking-Empfehlung (A). _(Epic #3492)_
-- **Getrennte Dienste für große Installationen** — Betriebsarchitektur mit getrennten Speicher-Backends.
-  _(Epic #1439)_
+- **Getrennte Dienste für große Installationen** — Betriebsarchitektur für große Installationen.
+  Getrennte Speicher-Backends sind entschieden: keine Trennung, eine PostgreSQL je Installation; erste
+  Ausbaustufe ist eine Lesereplik für den Suchpfad, sobald die Messung aus #3492 sie begründet
+  (ADR-0075). _(Epic #1439)_
 - **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation, Blau-Grün-Umschaltung,
   getrennte Netzbereiche für Oberfläche, Anwendung, Daten und Modelle.
 - **Offene Betriebsfragen** — Voreinstellungen für RTO/RPO, Bündelung von Abbildern, Modellgewichten und
