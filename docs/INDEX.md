@@ -124,9 +124,10 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 ### J · Betrieb & Deployment
 
 **[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** ·
-**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** ·
+**[ADR-0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md)** · **[Roadmap](./ROADMAP.md)**
 
-Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
+Betriebsarchitekturen klein, mittel und groß mit ihren Hindernissen · Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 
 ### K · Verwaltungs-Spezifika
@@ -200,6 +201,10 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     Fristen und Prüfsummen der System-Prompts
   - [0053](./decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) — Mehrinstanzbetrieb: Aktiv/Aktiv in
     Stufen, koordiniert über Postgres; ersetzt ADR-0021
+  - [0075](./decisions/0075-ein-datenspeicher-fuer-metadaten-und-abschnitte.md) — Ein Datenspeicher
+    für Metadaten und Abschnitte: keine Trennung, Lesereplik als erste Ausbaustufe
+  - [0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md) — Betriebsarchitekturen
+    klein, mittel und groß mit belegten Hindernissen
 
 ### Demo und Vorführung
 

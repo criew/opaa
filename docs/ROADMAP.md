@@ -166,12 +166,17 @@ Gebaut; erscheint als erstes stabiles Release `v0.1.0`. Den Stand beschreibt das
 
 - **Hardware- und Größenprofile (Sizing)** — Auslegung je Installationsgröße; trägt auch die
   Reranking-Empfehlung (A). _(Epic #3492)_
-- **Getrennte Dienste für große Installationen** — Betriebsarchitektur für große Installationen.
-  Getrennte Speicher-Backends sind entschieden: keine Trennung, eine PostgreSQL je Installation; erste
-  Ausbaustufe ist eine Lesereplik für den Suchpfad, sobald die Messung aus #3492 sie begründet
-  (ADR-0075). _(Epic #1439)_
-- **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation, Blau-Grün-Umschaltung,
-  getrennte Netzbereiche für Oberfläche, Anwendung, Daten und Modelle.
+- **Getrennte Dienste für große Installationen** — Architektur „groß“ aus
+  [ADR-0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md): Instanzen nach Rollen für
+  Anfragen und Indexierung; Hindernisse mit Belegen dort. Getrennte Speicher-Backends sind entschieden:
+  keine Trennung, eine PostgreSQL je Installation; erste Ausbaustufe ist eine Lesereplik für den
+  Suchpfad, sobald die Messung aus #3492 sie begründet
+  ([ADR-0075](./decisions/0075-ein-datenspeicher-fuer-metadaten-und-abschnitte.md)).
+  _(Epic #1439; #3808)_
+- **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation und Umschaltung,
+  getrennte Netzbereiche für Oberfläche, Anwendung, Indexierung, Daten und Modelle; kein Blau-Grün mit
+  zweiter Datenbank ([ADR-0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md),
+  Entscheidung 5). _(#3807)_
 - **Offene Betriebsfragen** — Voreinstellungen für RTO/RPO, Bündelung von Abbildern, Modellgewichten und
   Stückliste für abgeschottete Netze, Zuordnung der Netzsicherheit zwischen zwei Spezifikationen. ⚑
 - **Ablage auf openCode** _(#3041)_
