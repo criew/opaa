@@ -108,7 +108,7 @@ async function expectFooterOrder(page: Page) {
 }
 
 /** The danger role per scheme (frontend/src/shared/theme/tokens.ts) as computed by the browser. */
-const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 99, 105)' } as const
+const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 122, 128)' } as const
 
 /**
  * A field in error keeps the danger outline while it holds the focus, in both schemes: focus
