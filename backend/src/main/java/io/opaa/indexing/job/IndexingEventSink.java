@@ -26,4 +26,13 @@ public interface IndexingEventSink {
   default boolean waitsForTextRecognitionSlot() {
     return textRecognitionBudget() != null;
   }
+
+  /**
+   * Ends the caller unless it still holds the run this protocol belongs to - asked before an ingest
+   * is repeated after a lost database connection (ADR-0053, Entscheidung 8). A caller without a run
+   * holds nothing here.
+   *
+   * @throws RunAbandonedException when the run no longer holds its job
+   */
+  default void requireHeld() {}
 }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-11-28 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061, ADR-0064, ADR-0070, [ADR-0071](0071-betriebsbeobachtung.md) und ADR-0072
 
 ## Kontext
@@ -208,6 +208,12 @@ für Spring Framework 7 und Spring Boot 4 gepflegt. Weil ShedLock allein bei ein
   (`… WHERE status = 'RUNNING'` und Besitzerin bzw. Version), nie `findById` + `save`. Bei jedem
   Fortschritt prüft der Lauf seinen Status und endet kooperativ, wenn er aufgegeben oder abgebrochen
   wurde.
+- **Wiederholung nach Verbindungsabriss:** Scheitert der Schreibvorgang eines Dokuments oder Uploads
+  an einer abgerissenen Datenbankverbindung (`DatabaseConnectionLoss`), wiederholt
+  `ConnectionLossRetry` die ganze Aufnahme in neuen Transaktionen, begrenzt nach Zahl und Frist.
+  Vor jeder Wiederholung prüft sie den Besitz: den Lauf wie vor dem Entfernen (`RUNNING`, eigener
+  Heartbeat), den Upload als `PENDING` mit eigener Kennung. Ohne Besitz endet sie, ohne die Zeile
+  noch zu markieren; ein wiederholter Versuch markiert nichts, der nächste ersetzt die Abschnitte.
 - **Arbeitsdateien** liegen in einem Unterverzeichnis je Instanz; ein Sweep räumt das eigene und die
   toter Instanzen.
 - **Neueinbettung:** Start, Abbruch und Besitz über die Zeile in `embedding_index`. Die DDL des

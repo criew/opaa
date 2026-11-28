@@ -52,6 +52,12 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
 
   private final TextRecognitionRunBudget textRecognitionBudget = new TextRecognitionRunBudget();
 
+  /** The run's own job, see {@link IndexingJobService#requireHeld}. */
+  @Override
+  public void requireHeld() {
+    indexingJobService.requireHeld(jobId);
+  }
+
   /** One budget per run: every document and attachment of the run draws from it. */
   @Override
   public TextRecognitionRunBudget textRecognitionBudget() {
