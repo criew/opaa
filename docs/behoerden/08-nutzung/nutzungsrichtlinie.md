@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-11
+stand: 2026-11-27
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -14,11 +14,11 @@ naechste-durchsicht: 2027-04-23
 **Gilt für:** alle Behörden; ob die Personalvertretung zu beteiligen ist, prüft jede Behörde nach
 ihrem Personalvertretungsrecht.
 
-Die Nutzungsrichtlinie sagt den Beschäftigten in einfachen Worten, wie sie OPAA nutzen dürfen: was
+Die Nutzungsrichtlinie sagt den Beschäftigten in einfachen Worten, wie sie opaa nutzen dürfen: was
 nicht hineingehört, wie sie Antworten prüfen und wohin Ergebnisse gehören. Die Behörde erlässt sie
 vor der ersten Nutzung; sie dient zugleich als Hinweis, dass die Antworten von einer KI stammen.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - Welche Daten bei der Nutzung entstehen und wer sie sieht: {{faktenblatt:datenkatalog}},
   {{faktenblatt:rollensicht}}; wohin Daten fließen: {{faktenblatt:datenfluesse}}; wie lange Chats und
@@ -74,8 +74,9 @@ sind Sie verantwortlich.
 - „Stand vom …“: Die Quelle war beim Antworten nicht aktuell.
 - Eine Antwort ersetzt keine Rechtsprüfung, keine Mitzeichnung und keine Entscheidung. [Weitere
   Regeln, etwa zu Bescheiden oder Auskünften an Bürgerinnen und Bürger.]
-- Antworten eines Agenten und Dateien daraus, etwa ein Schreiben nach Vorlage, tragen „Entwurf,
-  nicht geprüft“ mit Agent, Fassung, Bibliotheken und Modell. Prüfen Sie sie wie jede Antwort,
+- Antworten eines Agenten und Dateien daraus, etwa ein Schreiben nach Vorlage, tragen
+  „KI-generierter Entwurf, nicht geprüft“ mit Agent und Fassung; Bibliotheken und Modell stehen an
+  der Antwort und in den Dokumenteigenschaften der Datei. Prüfen Sie sie wie jede Antwort,
   bevor Sie sie weitergeben oder in die Akte nehmen; die Kennzeichnung in der Datei entfernen Sie
   erst, wenn Sie den Inhalt verantworten. [Regel der Behörde, etwa Mitzeichnung bei Schreiben nach
   außen.]
@@ -106,7 +107,7 @@ falsche Fundstellen und technische Fehler: [Stelle].
 [Fachliche Ansprechperson] · [Datenschutzbeauftragte] · [Informationssicherheitsbeauftragte] ·
 [Personalvertretung]
 
-Stand: [Datum] · eingesetzte Version: [OPAA-Version]
+Stand: [Datum] · eingesetzte Version: [opaa-Version]
 
 ---
 

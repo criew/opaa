@@ -29,7 +29,7 @@ Landesdatenschutzbeauftragten des eigenen Bundeslands, jeweils auf deren Website
 der Behörde weiß, welche Liste gilt. Die Listen nennen KI-Verfahren und die Überwachung von Beschäftigten
 regelmäßig. Wer sich gegen eine DSFA entscheidet, schreibt die Begründung auf.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Die Faktenblätter beantworten die Fragen, mit denen jede DSFA beginnt.
 
@@ -60,7 +60,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollzieh
 
 ## Typische Risiken
 
-| Risiko | Was OPAA mitbringt | Was die Behörde festlegt | Bewertung |
+| Risiko | Was opaa mitbringt | Was die Behörde festlegt | Bewertung |
 |---|---|---|---|
 | Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md), Rollenvergabe | [ ] |
 | Fragen und Antworten werden anderen bekannt | Sichtbarkeit und Löschung von Chats ({{faktenblatt:datenkatalog#chats}}) | Regeln der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) | [ ] |
@@ -76,7 +76,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollzieh
 ## Ergebnis festhalten
 
 ```text
-DSFA für:            [Name der Installation], OPAA-Version [Version]
+DSFA für:            [Name der Installation], opaa-Version [Version]
 Erforderlich nach:   [Muss-Liste / eigene Prüfung], Begründung: [ ]
 Restrisiko:          [ ]
 Stellungnahme DSB:   [ ]

@@ -1,6 +1,6 @@
 # Wie die Suche arbeitet
 
-Eine Frage geht nicht einfach „an das Sprachmodell“. OPAA sucht zuerst im Index, und nur die
+Eine Frage geht nicht einfach „an das Sprachmodell“. opaa sucht zuerst im Index, und nur die
 gefundenen Textstücke (Chunks) gehen mit der Frage an das Chat-Modell. Das Modell formuliert, die
 Suche entscheidet: **Was nicht gefunden wurde, kann in keiner Antwort stehen.**
 
@@ -24,30 +24,54 @@ flowchart LR
 | Filter | gesetzte [Metadaten](metadaten.md)-Filter schränken beide Suchwege ein; Dokumente ohne Wert bleiben drin |
 | Teilfragen | das Chat-Modell macht aus der Frage eigenständige Suchanfragen: zwei Themen werden zwei Anfragen, „Und bei Bedürftigkeit?“ wird zur vollständigen Frage |
 | Vektorsuche | findet Chunks mit ähnlicher **Bedeutung** |
-| Volltextsuche | findet die **Wörter**, mit deutscher Wortstammbildung; Paragrafen und Aktenzeichen exakt, sodass „§ 34“ nicht „§ 35“ trifft |
+| Volltextsuche | findet die **Wörter**, mit deutscher Wortstammbildung; Paragrafen und Aktenzeichen exakt, sodass „§ 34“ nicht „§ 35“ trifft. Kennungen aus Buchstaben und Ziffern findet jede Schreibweise: „AB08“, „AB-08“, „AB 08“, „ab_08“ und „AB.08“ treffen einander, „AB-09“ nicht. Mit Leerzeichen oder Punkt zählt das nur ab zwei Großbuchstaben und nicht hinter gängigen Wörtern, „ab 8 Uhr“ oder „SEITE 3“ bleiben Text |
 | Fusion | führt beide Listen nach Rang zusammen; wer in beiden steht, gewinnt |
 | Reranking | ein eigenes Modell liest Frage und Chunk zusammen und ordnet neu. Ab Werk aus, weil es einen eigenen Endpunkt braucht |
 | Relevanzschnitt | schneidet schwache Treffer ab, wenn eingeschaltet |
 | Vervollständigung | holt zu einem schon gefundenen Dokument weitere Chunks nach. Ab Werk aus; den Zusammenhang liefern die Nachbar-Chunks |
 
 Vor der Antwort bekommt jeder Treffer seine **Nachbar-Chunks** dazu, damit eine Tabelle oder
-Aufzählung an einer Chunk-Grenze nicht abreißt.
+Aufzählung an einer Chunk-Grenze nicht abreißt. Liegt ein Treffer in einer kleinen Tabelle, kommt
+die **ganze Tabelle** dazu, damit Zeilen und Spalten ihren Bezug behalten. Jeder Chunk nennt dem
+Modell dazu seinen Fundort (Seite, Abschnitt oder Tabellenblatt mit Zeilen, soweit bekannt) und seine
+Stellung im Dokument, etwa „Teil 3 von 12“. So erkennt das Modell, dass ein Dokument mehr enthält als
+den gezeigten Ausschnitt.
 
 ## Die Antwort
 
 Das Chat-Modell bekommt die Chunks, die **Anweisung des Space**, die Gesprächsnotiz und den Verlauf.
-Es soll nur wiedergeben, was die Dokumente tragen, Fehlendes als „in den vorliegenden Dokumenten
-nicht enthalten“ benennen und jede Quelle mit einer Zitiermarke belegen. Der Text der Dokumente
-steht als Material, nicht als Anweisung im Prompt; ganz verhindern lässt sich eine untergeschobene
-Anweisung nicht, das hängt am Modell.
+Es soll nur wiedergeben, was die Dokumente tragen, und jede Quelle mit einer Zitiermarke belegen.
+Die Antwort aus den Dokumenten kommt zuerst, samt Bedingungen und Ausnahmen; ein Hinweis auf Lücken
+folgt höchstens in einem Absatz danach. „In den vorliegenden Dokumenten nicht enthalten“ sagt es
+nur, wenn kein Chunk etwas zur Frage beiträgt. Eine Annahme der Frage stellt es nur richtig, wenn
+ein Dokument ihr widerspricht. Zu Beträgen, Quoten, Schwellen und Fristen nennt es die Bezugsgröße
+aus dem Dokument. Agenten antworten nach denselben Regeln, eine Agenten-Anweisung kann aber die Form
+vorgeben. Der Text der Dokumente steht als Material, nicht als Anweisung im Prompt; ganz verhindern
+lässt sich eine untergeschobene Anweisung nicht, das hängt am Modell.
 
-Je Frage ruft OPAA nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
-je Teilfrage, Rerank-Modell, falls an. Titel und Gesprächsnotiz eines Chats kosten je einen
+**Fehlanzeigen prüft opaa nach.** Sagt die Antwort, etwas stehe nicht in den Dokumenten, etwa „die
+Gebühr der Tarifstelle AB-08 ist in den Dokumenten nicht enthalten“, sucht opaa die Kennungen und
+Schlüsselbegriffe der Frage noch einmal im selben Suchbereich, mit denselben Rechten und Filtern.
+Findet es Textstellen, die diese Begriffe enthalten und die die Antwort noch nicht kannte, antwortet
+das Modell genau einmal neu mit ihnen; die neue Antwort ersetzt die erste, auch während sie im Chat
+entsteht. Ohne solche Stellen, bei einem Fehler der Nachprüfung oder einer leeren neuen Antwort
+bleibt die erste. Erkannt wird die Fehlanzeige an festen deutschen und englischen Formulierungen,
+die sich auf die Dokumente beziehen, ohne weiteren Modellaufruf. Nachgeprüft wird nur, wenn sie die
+Antwort trägt: Die Antwort hat keinen bestätigten Beleg, oder die Fehlanzeige steht vor oder in dem
+ersten belegten Satz. Ein Vorbehalt nach einer belegten Antwort, etwa „Weitere Details sind in den
+Quellen nicht genannt“, bleibt, wie er ist. Im Agentenlauf bekommt das Modell die Stellen als
+Nachfrage im laufenden Lauf, und die Nachsuche steht als Schritt im Lauf.
+Abschalten lässt sich das mit `OPAA_QUERY_ABSENCE_RECHECK_ENABLED`.
+
+Je Frage ruft opaa nach außen höchstens: Chat-Modell für Teilfragen und Antwort, Embedding-Modell
+je Teilfrage, Rerank-Modell, falls an; nach einer Fehlanzeige einmal mehr Embedding- und
+Rerank-Modell für die Nachprüfung und, wenn sie neue Textstellen findet, das Chat-Modell für die
+neue Antwort. Titel und Gesprächsnotiz eines Chats kosten je einen
 weiteren Chat-Aufruf, ohne die Antwort zu verzögern.
 
 ## Belege prüfen
 
-Den Zitiermarken glaubt OPAA nicht, es prüft sie ohne weiteren Modellaufruf:
+Den Zitiermarken glaubt opaa nicht, es prüft sie ohne weiteren Modellaufruf:
 
 1. **Herkunft:** Zeigt die Marke auf einen Chunk, den die Antwort wirklich gelesen hat?
 2. **Fakt:** Steht ein Betrag, Datum oder Paragraf im Satz vor der Marke so auch im Dokument? Nur

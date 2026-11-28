@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-09 · ergänzt ADR-0011, ADR-0015 und ADR-0036 Entscheidung 7
+Akzeptiert · zuletzt geändert 2026-11-27 · ergänzt ADR-0011, ADR-0015 und ADR-0036 Entscheidung 7
 
 ## Kontext
 
@@ -30,9 +30,22 @@ einzeln messbar noch eine Fundstelle erklärbar.
 
 Der lexikalische Pfad nutzt `tsvector` mit der `german`-Konfiguration und einen GIN-Index auf der
 Chunk-Tabelle. Er wird in derselben Transaktion wie Text und Vektor geschrieben. Kennungen wie
-Paragrafen und Aktenzeichen werden zusätzlich unzerlegt indiziert (Kennungsschutz). OPAA bleibt
-damit bei einem Datenspeicher, mit einer Sicherung, einer Wiederherstellung und einem
-Verschlüsselungsnachweis. Eine Änderung der Aufbereitung folgt ADR-0028.
+Paragrafen und Aktenzeichen werden zusätzlich unzerlegt indiziert (Kennungsschutz). Kennungen aus
+einem Buchstaben- und einem Ziffernblock (`AB08`, `AB-08`, `AB 08`, `ab_08`, `AB.08`) bekommen
+in Index und Anfrage dasselbe zusätzliche Lexem, weil die `german`-Kette jede Schreibweise anders
+zerlegt und sie sich sonst gegenseitig nicht finden. Die Originallexeme bleiben daneben stehen.
+Bindestrich, Halbgeviertstrich und Unterstrich verbinden jeden Buchstabenblock mit bis zu sechs
+Ziffern. Leerzeichen, geschütztes Leerzeichen und Punkt verbinden nur zwei bis sechs
+Großbuchstaben, die kein gängiges Wort der Großschrift sind (`UM`, `SEITE`, `ABSATZ`, `KW`,
+Monatsnamen), mit ein bis drei Ziffern und nicht vor „Uhr“; Jahreszahlen und Vorwahlen bleiben so
+Text. Eine Kennung, deren Block weiterläuft (`AB-08-15`, `v2.1`, `AB 18:00`), wird nicht auf
+eine kürzere verkürzt. Kleingeschriebenes wie „ab 8 Uhr“ ist Prosa, kein Lexem soll Datum,
+Uhrzeit, Versions- oder Rufnummer falsch zusammenführen. Bekannte, hingenommene Grenzen:
+Großschrift-Prosa mit einem Wort außerhalb der Liste vor einer Zahl („STUFE 2“, anders als
+„TEIL 2“) und der Kopf einer IBAN (`DE89`) bilden ein überzähliges Lexem, das nur Rang kostet,
+nie Treffer; eine Kennung mit Leerzeichen und vier oder mehr Ziffern (`AB 1234`) findet nur ihre
+eigene Schreibweise. OPAA bleibt damit bei einem Datenspeicher, mit einer Sicherung, einer
+Wiederherstellung und einem Verschlüsselungsnachweis. Eine Änderung der Aufbereitung folgt ADR-0028.
 
 ### 3. `ts_rank` statt BM25, Eskalation nur gemessen
 

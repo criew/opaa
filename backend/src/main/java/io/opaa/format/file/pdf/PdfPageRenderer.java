@@ -220,17 +220,26 @@ final class PdfPageRenderer {
       if (OperatorName.BEGIN_INLINE_IMAGE.equals(name)) {
         requireInlineImage(operator);
       } else if (OperatorName.SET_GRAPHICS_STATE_PARAMS.equals(name)
+          && operands != null
           && !operands.isEmpty()
           && operands.getFirst() instanceof COSName stateName
           && namedResource(COSName.EXT_G_STATE, stateName) instanceof COSDictionary state) {
         requireGraphicsState(state);
       } else if ((OperatorName.NON_STROKING_COLORSPACE.equals(name)
               || OperatorName.STROKING_COLORSPACE.equals(name))
+          && operands != null
           && !operands.isEmpty()
           && operands.getFirst() instanceof COSName colorSpace) {
         requireResources(namedResource(COSName.COLORSPACE, colorSpace));
       }
       super.processOperator(operator, operands);
+    }
+
+    @Override
+    protected void operatorException(Operator operator, List<COSBase> operands, IOException e)
+        throws IOException {
+      budget.countBrokenOperator();
+      super.operatorException(operator, operands, e);
     }
 
     @Override

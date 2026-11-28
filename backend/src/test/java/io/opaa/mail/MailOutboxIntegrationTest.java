@@ -308,7 +308,7 @@ class MailOutboxIntegrationTest {
             "geheim",
             MailEncryption.NONE,
             "opaa@intern.example",
-            "OPAA"));
+            "opaa"));
   }
 
   private static int freePort() throws IOException {

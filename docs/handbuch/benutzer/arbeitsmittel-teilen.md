@@ -28,7 +28,7 @@ Weggang einzelner Personen.
 ## Für externe KI-Werkzeuge freigeben
 
 Nur Wissensbibliotheken: Wer sie lesen darf, kann sie danach in ein [Zugangstoken](ki-werkzeug-einrichten.md#token-anlegen) aufnehmen und
-aus Werkzeugen wie OpenCode durchsuchen. Fundstellen verlassen damit OPAA und werden im fremden
+aus Werkzeugen wie OpenCode durchsuchen. Fundstellen verlassen damit opaa und werden im fremden
 Werkzeug mit dessen Modell weiterverarbeitet. Das geht erst, wenn die Systemverwaltung externe
 KI-Werkzeuge eingeschaltet hat, und braucht die Rolle *Verwalter*.
 

@@ -1,7 +1,7 @@
 # Agenten betreiben
 
 Ein Agent beantwortet eine Frage in mehreren Schritten: Er ruft Werkzeuge auf, etwa die eigene
-Suche, liest nach und antwortet mit Belegen. Ob das im Haus trägt, hängt weniger an OPAA als am
+Suche, liest nach und antwortet mit Belegen. Ob das im Haus trägt, hängt weniger an opaa als am
 Modell, an dessen Laufzeit und am Weg zwischen Browser und Backend. Dieses Kapitel beschreibt, was
 eine Installation nach dem Update sieht, wie sie Agenten einschaltet, welche Kombinationen aus
 Modell und Laufzeit geprüft sind und wie man Störungen eingrenzt. Bedienung und Einrichtung stehen
@@ -40,7 +40,7 @@ Zum Einschalten, in dieser Reihenfolge:
    ([Agenten einschalten](../administration/agenten.md)).
 3. Das aktive Chat-Modell mit „Werkzeuge prüfen“ und dem Umfang „Gründlich“ messen und das Ergebnis
    übernehmen ([Werkzeuge prüfen](../administration/modelle.md#werkzeuge-prüfen)). Bis dahin weist
-   OPAA jede Frage an einen Agenten mit einem Hinweis ab. Wer das vermeiden will, misst vor dem
+   opaa jede Frage an einen Agenten mit einem Hinweis ab. Wer das vermeiden will, misst vor dem
    Einschalten über die Kommandozeile mit dem Suchwerkzeug der Agenten
    (`-Dopaa.eval.toolCalling.tool=production`, ohne den Schalter misst sie mit einer Attrappe;
    [Modell auf Werkzeugaufrufe messen](modell-endpunkte.md#modell-auf-werkzeugaufrufe-messen)) und
@@ -63,7 +63,7 @@ da. Ein Zurückgehen auf die vorige Version ist dafür nicht nötig.
 ## Geprüfte Kombinationen
 
 Ob ein Modell Werkzeuge verlässlich aufruft, gilt immer einer Kombination aus Modell,
-Quantisierung, Laufzeit und deren Version, nie einem Modell allein. Für Agenten setzt OPAA ein Modell
+Quantisierung, Laufzeit und deren Version, nie einem Modell allein. Für Agenten setzt opaa ein Modell
 mindestens der Klasse Gemma 4 31B voraus. Gemessen und für Agenten als „Fähig“ festgehalten ist
 bisher diese Kombination:
 
@@ -127,7 +127,7 @@ Die Person findet die Kennung, wenn sie die Schritte unter der Antwort aufklappt
 | Antwort mit Schritten im Chat | Antwort, Schritte mit Teilfrage und Trefferzahl, erzeugte Dateien, Laufkennung, Fassungsstempel | nur die Person | wie der Chat |
 | Schrittprotokoll | Werkzeug, Ergebnis, Trefferzahl, Dauer, Abbruchgrund je Schritt; kein Konto, keine Teilfrage | Systemverwaltung mit Laufkennung und Anlass | einstellbar, [Datenschutz einstellen](../administration/datenschutz.md) |
 | Sandboxprotokoll | Ergebnis, Dauer, Zahl der Skripte und Dateien je Sandbox; kein Skript, kein Dateiinhalt | wie Schrittprotokoll | nie länger als das Schrittprotokoll |
-| Betriebsmetriken | Zahl der Agentenläufe nach Ergebnis, getrennt nach mitgeliefertem und angelegten Agenten, Werkzeugaufrufe nach Werkzeug und Ergebnis; ohne Person, Space oder Namen eines Agenten | Betrieb über das Monitoring | wie das Monitoring sie hält |
+| Betriebsmetriken | Zahl und Dauer der Agentenläufe nach Ergebnis und nicht belegbare Quellenangaben, beide getrennt nach mitgeliefertem und angelegten Agenten; Werkzeugaufrufe nach Werkzeug und Ergebnis, abgewiesene Läufe nach Grund, belegte und verfügbare Plätze für gleichzeitige Läufe; ohne Person, Space oder Namen eines Agenten | Betrieb über das Monitoring | wie das Monitoring sie hält |
 | Nachweisprotokoll | jeder Abruf des Schritt- oder Sandboxprotokolls, Anlegen und Ändern von Agenten und Vorlagen; nicht das Aufrufen eines Agenten | Revision | allgemeine Protokollfrist |
 
 Die Auskunft über die Datenerhebung beschreibt diese Bestände Feld für Feld, mit Zweck, Frist und

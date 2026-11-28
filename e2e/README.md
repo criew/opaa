@@ -1,6 +1,6 @@
 # E2E-Suite
 
-Browserbasierte End-to-End-Tests für OPAA mit [Playwright](https://playwright.dev/).
+Browserbasierte End-to-End-Tests für opaa mit [Playwright](https://playwright.dev/).
 
 Architektur- und Modellentscheidungen für diese Suite sind in
 [`docs/decisions/0009-e2e-teststrategie.md`](../docs/decisions/0009-e2e-teststrategie.md)
@@ -190,7 +190,7 @@ Firefox-Build (aktueller Stand), kein echtes ESR.
 
 ## Warum der `dev`-Auth-Modus?
 
-OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
+opaa kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe
 [ADR-0005](../docs/decisions/0005-authentication-strategy.md)). Die Suite läuft auf **`dev`**:
 
 - `dev` authentifiziert jede Anfrage als einen der unter `opaa.auth.dev.users` konfigurierten
@@ -738,7 +738,8 @@ lassen.
   - **5. Ausgeschaltet:** Bei ausgeschalteter Rolle wird ein Scan als „kein extrahierbarer Text“
     abgewiesen.
   - **1. Einrichten:** unter „Modelle → Texterkennung“ Verbindungstest, Einschalten, Speichern.
-    Danach zeigt die Bibliothek „1 Scan wartet auf die Texterkennung“.
+    Danach zeigt die Bibliothek „1 Scan wartet auf die Texterkennung“. Bis dahin hält `ocr-stub`
+    den Scan zurück, sodass kein Nachholdurchgang ihn vorher liest.
   - **2. Hochladen:** Upload in eine neue Bibliothek, das Dokument wird indiziert.
   - **3./4. Frage und Fundstelle (1–3):** je ein Begriff in „…“, sodass ai-stub nur den Abschnitt
     mit der Stelle zitiert. Der Beleg ist als maschinell erkannt gekennzeichnet. „Dokument öffnen“
@@ -1079,7 +1080,7 @@ Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zw
 einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` bleibt bei lokalen Konten,
 überspringt die optionalen Schritte Chat-Modell, Einbettung, Reranking, Spracheingabe,
 Texterkennung, Virenprüfung, E-Mail und Branding und endet mit der Anmeldung des ersten Kontos auf
-der regulären Anmeldeseite unter dem OPAA-Standard. `@mail-filled` trägt `oidc-stub` als
+der regulären Anmeldeseite unter dem opaa-Standard. `@mail-filled` trägt `oidc-stub` als
 Identitätsanbieter ein (Issuer `http://localhost:18095` für den Browser, JWK-Set unter
 `http://oidc-stub:8095/jwks` für das Backend), wählt das Rerank-Modell aus der Liste des
 Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`; `POST …/rerank` bewertet jede Probe) und
@@ -1169,8 +1170,10 @@ unter `demo/seed/e2e-data/text-recognition/`; Herkunft und Neuerzeugung stehen d
   `opaa-ocr`-Lauf daraus gemacht hat. Für jede andere PDF-Datei, etwa die Testseite des
   Verbindungstests, gibt er eine Zeile Text zurück. Ohne den Schlüssel dieses Laufs antwortet er mit
   401, mit anderen Optionen als denen des Backends mit 422. `/control/conversions` auf Port 18094
-  zählt die Umwandlungen. `docker-compose.e2e.yml` erlaubt die Texterkennung im Betrieb
-  (`OPAA_OCR_ENABLED`); die Rolle selbst schaltet nur das Szenario ein und wieder aus.
+  zählt die Umwandlungen. Nach `PUT /control/scan-hold` mit `{"held": true}` beantwortet er jede
+  Umwandlung des Testdokuments mit 429 (überlastet), bis `{"held": false}` folgt; das Backend lässt
+  den Scan dann wartend, ohne ihn zu sperren. `docker-compose.e2e.yml` erlaubt die Texterkennung
+  im Betrieb (`OPAA_OCR_ENABLED`); die Rolle selbst schaltet nur das Szenario ein und wieder aus.
 - **Abnahme mit echtem `opaa-ocr`**: ein eigenes Ziel. Es ist nie Teil von `pnpm test`.
 
 ```bash
@@ -1223,9 +1226,10 @@ führt sie lokal aus (`pnpm test`, siehe oben) oder startet den Workflow per `wo
 Der Job baut Backend- und Frontend-Image zunächst separat mit einem GitHub-Actions-Layer-Cache
 (`docker/build-push-action`, `cache-from/to: type=gha`) und lädt sie lokal, bevor
 `scripts/run-e2e.mjs` mit `E2E_SKIP_BUILD=true` läuft und diese Images wiederverwendet, statt sie
-erneut zu bauen. **Das 10-Minuten-Budget aus #231 bezieht sich auf den Suite-Lauf selbst** (aktuell
-wenige Sekunden), nicht auf den Image-Build davor — der Job hat dafür ein eigenes, großzügigeres
-`timeout-minutes`-Budget.
+erneut zu bauen. Das `timeout-minutes`-Budget des Jobs deckt Image-Build, Chromium-Suite und
+Firefox-Rauchtest gemeinsam ab. Es muss auch einen Image-Build mit kaltem Layer-Cache tragen, wie
+ihn jede Änderung an den Abhängigkeiten auslöst: Der Backend-Build dauert dann Minuten statt
+Sekunden.
 
 Bei Fehlschlägen (inkl. Timeout/Cancel) werden Playwright-HTML-Report, Traces/Screenshots sowie die
 Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen. Jeder fehlgeschlagene

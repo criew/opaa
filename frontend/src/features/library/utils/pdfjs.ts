@@ -1,4 +1,7 @@
-import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
+// pdf.js comes from its legacy build throughout - main module, viewer and worker: the modern build
+// calls Map.getOrInsertComputed and Math.sumPrecise without a fallback, which Chromium before 145
+// lacks; the legacy build ships them as polyfills.
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist/legacy/build/pdf.mjs'
 
 /** Absolute URL of pdf.js's runtime files on the app's own origin (vite.config.ts, pdfjsAssets). */
 function pdfjsAssetUrl(path: string): string {
@@ -22,7 +25,7 @@ export function pdfLoadOptions() {
  * ends it with `destroy()`, which also stops the worker.
  */
 export async function loadPdf(data: ArrayBuffer): Promise<PDFDocumentLoadingTask> {
-  const pdfjs = await import('pdfjs-dist')
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const workerSrc = pdfjsAssetUrl('pdf.worker.min.js')
   if (pdfjs.GlobalWorkerOptions.workerSrc !== workerSrc) {
     pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
@@ -36,8 +39,8 @@ export async function loadPdf(data: ArrayBuffer): Promise<PDFDocumentLoadingTask
  * `globalThis.pdfjsLib`, so that is set before it loads.
  */
 export async function loadPdfViewer() {
-  const pdfjs = await import('pdfjs-dist')
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   ;(globalThis as { pdfjsLib?: unknown }).pdfjsLib = pdfjs
-  const viewer = await import('pdfjs-dist/web/pdf_viewer.mjs')
+  const viewer = await import('pdfjs-dist/legacy/web/pdf_viewer.mjs')
   return { pdfjs, viewer }
 }

@@ -250,7 +250,7 @@ export default function BrandingSettingsPage() {
         <AreaPageHeader
           icon={PaletteOutlinedIcon}
           title="Branding"
-          description="Produktname, Claim, Logo und Akzentfarbe Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
+          description="Produktname, Claim, Logo und Akzentfarbe Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den opaa-Standard wieder her."
         />
 
         <SettingsForm
@@ -262,7 +262,7 @@ export default function BrandingSettingsPage() {
           result={storeError && <Alert severity="error">{storeError}</Alert>}
           secondaryAction={
             <Button variant="outlined" onClick={resetToStandard} disabled={isSaving}>
-              Auf OPAA-Standard zurücksetzen
+              Auf opaa-Standard zurücksetzen
             </Button>
           }
         >

@@ -1,6 +1,6 @@
 # Alarme
 
-Jeder Alarm, den OPAA mitbringt, hat hier seinen Abschnitt: was ausfällt, wer sich kümmert, die drei
+Jeder Alarm, den opaa mitbringt, hat hier seinen Abschnitt: was ausfällt, wer sich kümmert, die drei
 ersten Prüfungen, was nachts reicht und wann man ihn stummschaltet. Die Annotation `runbook_url`
 jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafana kommen, steht unter
 [Dashboards und Alarme](dashboards-und-alarme.md).
@@ -9,14 +9,14 @@ jedes Alarms zeigt auf seinen Abschnitt. Wie die Alarme in Prometheus und Grafan
 
 | `severity` | Bedeutung | Zustellung |
 |---|---|---|
-| `critical` | Personen können OPAA nicht oder kaum benutzen, oder Daten gehen verloren | weckt die Bereitschaft |
+| `critical` | Personen können opaa nicht oder kaum benutzen, oder Daten gehen verloren | weckt die Bereitschaft |
 | `warning` | eine Funktion ist gestört oder wird es bald; Personen merken es noch kaum | Ticket für den nächsten Arbeitstag |
 | `info` | ein schleichender Trend oder ein Einzelereignis zum Nachsehen | Dashboard, keine Benachrichtigung |
 
 Das Label `component` sagt, welcher Bereich betroffen ist, und taugt als Schlüssel für die Verteilung:
-`platform` (Pods, Datenbank, Anmeldung), `chat`, `search`, `model`, `indexing`, `directory`
-(Verzeichnisabgleich), `background` (geplante Läufe, Mails), `audit` (Revisionsprotokoll) und
-`security`. Weckende Alarme stützen sich auf Metriken von OPAA selbst, nicht auf Modellnamen oder
+`platform` (Pods, Datenbank, Anmeldung), `chat`, `search`, `model`, `agent` (Agentenläufe),
+`indexing`, `directory` (Verzeichnisabgleich), `background` (geplante Läufe, Mails), `audit`
+(Revisionsprotokoll) und `security`. Weckende Alarme stützen sich auf Metriken von opaa selbst, nicht auf Modellnamen oder
 Werte eines Anbieters.
 
 Jeder Alarm trägt außerdem `namespace`, den Namespace der Installation (unter Compose `opaa`).
@@ -28,14 +28,14 @@ Jede Gruppe lässt sich abschalten; die Schwellen sind Werte des Charts
 - **Mindestvolumen:** Quoten wie Fehleranteil, leere Suchen oder gescheiterte Mails zählen erst ab
   einer Mindestzahl von Vorgängen im Fenster. Eine einzelne gescheiterte Frage am Sonntagmorgen
   weckt niemanden.
-- **Unlesbare Werte:** Werte, die OPAA aus der Datenbank liest (Warteschlangen, Bestand,
+- **Unlesbare Werte:** Werte, die opaa aus der Datenbank liest (Warteschlangen, Bestand,
   Instanzregister, Sperren, Revisionsprotokoll), sind `NaN`, wenn die Abfrage scheitert oder länger
   als zehn Sekunden braucht. Ein Vergleich mit `NaN` ist nie wahr; Alarme auf diesen Wert schweigen
   deshalb. Das meldet [OpaaMetricUnreadable](#OpaaMetricUnreadable); die Alarme des
   Revisionsprotokolls feuern bei `NaN` selbst. Ausgenommen sind die Texterkennung, solange sie aus
   ist, und private Bibliotheken unter der Mindestgruppengröße: Dort ist `NaN` gewollt.
 - **Fehlende Werte:** Fehlen alle Metriken eines Backends, feuert
-  [OpaaBackendMetricsMissing](#OpaaBackendMetricsMissing); die Alarme auf Werte von OPAA schweigen
+  [OpaaBackendMetricsMissing](#OpaaBackendMetricsMissing); die Alarme auf Werte von opaa schweigen
   dann. Die Alarme des Revisionsprotokolls melden auch eine fehlende Reihe, solange Prometheus das
   Backend erreicht.
 
@@ -48,7 +48,7 @@ Folgen und lässt die Ursache stehen:
 inhibit_rules:
   # Ohne Backend zählt nur noch der Ausfall selbst.
   - source_matchers: [alertname="OpaaBackendNotReady", severity="critical"]
-    target_matchers: [component=~"chat|search|model|indexing|directory|background|audit|security"]
+    target_matchers: [component=~"chat|search|model|agent|indexing|directory|background|audit|security"]
     equal: [namespace]
   - source_matchers: [alertname="OpaaBackendNotReady", severity="critical"]
     target_matchers: [alertname="OpaaBackendMetricsMissing"]
@@ -87,7 +87,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
 ### OpaaBackendMetricsMissing
 
 - **Auswirkung:** Prometheus fragt weniger Backend-Pods ab, als laufen sollen; alle Alarme auf Werte
-  von OPAA sind für diese Pods blind.
+  von opaa sind für diese Pods blind.
 - **Zuständig:** Betrieb der Überwachung.
 - **Prüfen:** 1. Laufen die Pods? 2. `ServiceMonitor` und dessen Labels für den Prometheus.
   3. `metrics.scrapeFrom` und NetworkPolicy zum Management-Port.
@@ -261,7 +261,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
 
 - **Auswirkung:** Kein Pod erreicht den Dienst der Rolle im Label `role`. `critical` für Chat und
   Embedding, solange Fragen gestellt werden: Fragen scheitern. `warning` für Neubewertung,
-  Spracherkennung, Texterkennung und Bildbeschreibung, solange OPAA sie aufruft: die Funktion fällt
+  Spracherkennung, Texterkennung und Bildbeschreibung, solange opaa sie aufruft: die Funktion fällt
   aus, der Rest läuft ([Ausfall eines Modells](modell-endpunkte.md#ausfall-eines-modells)).
 - **Zuständig:** Modellbetreuung.
 - **Prüfen:** 1. Läuft der Modelldienst, ist er aus dem Cluster erreichbar (Ausgangsproxy,
@@ -283,7 +283,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
   ([Eigene Zertifizierungsstelle](kubernetes.md#eigene-zertifizierungsstelle))? 3. Log nach der
   Antwort des Ziels.
 - **Nachts:** reicht am Morgen.
-- **Stummschalten:** nicht; ein dauerhaft entzogener Zugang wird in OPAA entfernt.
+- **Stummschalten:** nicht; ein dauerhaft entzogener Zugang wird in opaa entfernt.
 
 <a id="OpaaOutboundThrottled"></a>
 
@@ -308,6 +308,37 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
   2. Neue Nutzung, etwa externe KI-Werkzeuge? 3. Ist das Budget noch richtig?
 - **Nachts:** nichts.
 - **Stummschalten:** nach einer bewussten Entscheidung für mehr Verbrauch; besser das Budget anheben.
+
+## Agenten
+
+Kein Agentenalarm weckt: Fällt der Agentenpfad aus, beantwortet der gewöhnliche Chat weiter Fragen.
+
+<a id="OpaaAgentWorkspaceSaturated"></a>
+
+### OpaaAgentWorkspaceSaturated
+
+- **Auswirkung:** Alle Plätze für gleichzeitige Agentenläufe sind seit 30 Minuten belegt, oder
+  Agentenanfragen wurden mangels Platz abgewiesen. Personen sehen statt einer Antwort „Gerade arbeiten
+  zu viele Agenten gleichzeitig“. Abweisungen, weil eine Person ihren eigenen Anteil ausschöpft, zählen nicht.
+- **Zuständig:** Betrieb.
+- **Prüfen:** 1. Kurve „Belegung der Agentenplätze“: dauerhaft voll oder nur Spitzen? 2. Laufen
+  Agentenläufe ungewöhnlich lange (Kurve „Dauer der Agentenläufe“)? 3. Reichen Sandbox und Modell für
+  mehr gleichzeitige Läufe, dann `OPAA_AGENT_WORKSPACE_CAPACITY` anheben.
+- **Nachts:** nichts.
+- **Stummschalten:** nach einer bewussten Entscheidung für das Platzlimit.
+
+<a id="OpaaAgentRunErrorRate"></a>
+
+### OpaaAgentRunErrorRate
+
+- **Auswirkung:** Ein großer Teil der Agentenläufe endet mit einem Fehler statt mit einer Antwort.
+  Grenzen, Pläne und Rückfragen zählen nicht als Fehler.
+- **Zuständig:** Modellbetreuung.
+- **Prüfen:** 1. Kurve „Werkzeugaufrufe nach Ergebnis“: scheitert ein Werkzeug, etwa die Sandbox?
+  2. Alarme zum Chat-Modell und zu ausgehenden Aufrufen an `sandbox`. 3. Log nach der Ursache der
+  gescheiterten Läufe.
+- **Nachts:** reicht am Morgen.
+- **Stummschalten:** solange die Agenten bewusst abgeschaltet sind, mit der Gruppe `agent`.
 
 ## Indexierung
 
@@ -437,7 +468,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
 
 ### OpaaAuditPayloadDropped
 
-- **Auswirkung:** OPAA hat Einträge einer Ereignisart (Label `event_type`) ohne Angaben geschrieben,
+- **Auswirkung:** opaa hat Einträge einer Ereignisart (Label `event_type`) ohne Angaben geschrieben,
   die der Ereigniskatalog nicht nennt. Ein Programmfehler; der Vorgang selbst ist durchgeführt.
 - **Zuständig:** Betrieb, Fund an das Projekt melden.
 - **Prüfen:** 1. Log nach „Dropped audit payload keys“. 2. Ereignisart und Version notieren.
@@ -568,7 +599,7 @@ letzten Rezept verdrängt etwa ein kritischer Ausfall der Rolle `chat` nicht die
 - **Auswirkung:** Einträge des Revisionsprotokolls erreichen das Sicherheitsmonitoring verspätet
   ([Ausleitung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
 - **Zuständig:** Betrieb mit dem Betrieb des Sicherheitsmonitorings.
-- **Prüfen:** 1. Erreicht OPAA den Empfänger? 2. Log nach gescheiterten Zustellungen. 3. Offene
+- **Prüfen:** 1. Erreicht opaa den Empfänger? 2. Log nach gescheiterten Zustellungen. 3. Offene
   Transaktionen in `pg_stat_activity`.
 - **Nachts:** reicht am Morgen.
 - **Stummschalten:** während einer angekündigten Wartung des Empfängers.

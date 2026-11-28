@@ -1,9 +1,12 @@
 package io.opaa.query.toolcheck;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelRepository;
+import io.opaa.observability.OutboundMetrics;
+import io.opaa.observability.OutboundTarget;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -29,6 +32,8 @@ import reactor.core.publisher.Flux;
  * progress; the end is written only while the row is still running. Between two cases it stops when
  * the row was given up meanwhile or agents were switched off; a run that hit an error of the
  * endpoint ends the check as failed, never as a measured result. No transaction spans a model call.
+ * Every model call counts as {@code opaa.outbound.requests{target=model_check}}, not as {@code
+ * gen_ai.client.operation}, so a check never shows up as chat traffic (ADR-0071).
  */
 @Component
 class ToolCheckWorker {
@@ -46,6 +51,7 @@ class ToolCheckWorker {
   private final ActiveChatModelResolver chatModels;
   private final TransactionTemplate transactions;
   private final Clock clock;
+  private final OutboundMetrics metrics;
 
   ToolCheckWorker(
       ToolCheckRepository repository,
@@ -53,13 +59,15 @@ class ToolCheckWorker {
       LlmModelRepository models,
       ActiveChatModelResolver chatModels,
       TransactionTemplate transactions,
-      Clock clock) {
+      Clock clock,
+      MeterRegistry meterRegistry) {
     this.repository = repository;
     this.gate = gate;
     this.models = models;
     this.chatModels = chatModels;
     this.transactions = transactions;
     this.clock = clock;
+    this.metrics = new OutboundMetrics(meterRegistry, OutboundTarget.MODEL_CHECK, null);
   }
 
   void run(UUID checkId) {
@@ -87,7 +95,7 @@ class ToolCheckWorker {
     AtomicBoolean givenUp = new AtomicBoolean();
     ChatModel chatModel =
         new HeartbeatChatModel(
-            chatModels.chatModelFor(model, MODEL_CALL_TIMEOUT),
+            new MeteredCheckChatModel(chatModels.chatModelFor(model, MODEL_CALL_TIMEOUT), metrics),
             () -> {
               if (written(() -> repository.beat(checkId)) == 0) {
                 givenUp.set(true);

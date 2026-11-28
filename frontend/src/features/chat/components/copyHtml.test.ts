@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { answerAsHtml } from './copyHtml'
 
 const PAGE = 'https://opaa.example/chat'
-const NOTE = 'Hinweis. – OPAA, 05.03.2026'
+const NOTE = 'Hinweis. – opaa, 05.03.2026'
 
 describe('answerAsHtml', () => {
   test('renders the Markdown and ends with the note in a visible footer', () => {

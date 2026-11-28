@@ -1,0 +1,1071 @@
+{
+  "cases": [
+    {
+      "id": "aq-fn-01",
+      "class": "false_negative",
+      "question": "Wie hoch ist die Müllpauschale auf dem Wochenmarkt?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Müllpauschale",
+        "5 Euro je Markttag und Stand"
+      ],
+      "answer_must_match": [
+        "\\b5\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Die Müllpauschale beträgt 5 Euro je Markttag und Stand. Daneben fallen die Standgebühr von 4,50 Euro je laufendem Meter und Markttag sowie 2,00 Euro je Markttag für den Stromanschluss an.",
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-02",
+      "class": "false_negative",
+      "question": "Innerhalb welcher Frist kann ich Einwendungen gegen die Niederschrift einer Gemeinderatssitzung erheben?",
+      "documents": [
+        "aq-08_geschaeftsordnung-gemeinderat.md"
+      ],
+      "evidence": [
+        "Einwendungen gegen die Niederschrift",
+        "14 Tagen"
+      ],
+      "answer_must_match": [
+        "\\b14\\s*Tage"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Einwendungen gegen die Niederschrift können innerhalb von 14 Tagen nach ihrem Zugang erhoben werden; die Ladungsfrist zu Sitzungen beträgt dagegen 7 Tage.",
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-03",
+      "class": "false_negative",
+      "question": "Bis zu welchem Auftragswert ist nach AB08 eine Direktvergabe ohne Vergleichsangebote zulässig?",
+      "documents": [
+        "aq-02_dienstanweisung-vergabe.md"
+      ],
+      "evidence": [
+        "AB-08",
+        "1.000 Euro netto"
+      ],
+      "answer_must_match": [
+        "\\b1000\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Nach AB-08 sind Direktvergaben bis zu einem Auftragswert von 1.000 Euro netto ohne Vergleichsangebote zulässig. Bis 15.000 Euro netto gilt AB-09 mit mindestens drei Vergleichsangeboten.",
+      "tags": [
+        "identifier_variants"
+      ],
+      "question_variants": [
+        "Bis zu welchem Auftragswert ist nach AB-08 eine Direktvergabe ohne Vergleichsangebote zulässig?",
+        "Bis zu welchem Auftragswert ist nach AB 08 eine Direktvergabe ohne Vergleichsangebote zulässig?",
+        "Bis zu welchem Auftragswert ist nach ab-08 eine Direktvergabe ohne Vergleichsangebote zulässig?"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-04",
+      "class": "false_negative",
+      "question": "Wofür wird das Formular FB-12 verwendet?",
+      "documents": [
+        "aq-03_formularverzeichnis.md"
+      ],
+      "evidence": [
+        "FB12",
+        "Direktvergabe"
+      ],
+      "answer_must_match": [
+        "Direktvergabe"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Das Formular FB12 dokumentiert eine Direktvergabe und ist zusammen mit der Rechnung an die Kämmerei zu geben.",
+      "tags": [
+        "identifier_variants"
+      ],
+      "question_variants": [
+        "Wofür wird das Formular FB12 verwendet?",
+        "Wofür wird das Formular FB 12 verwendet?",
+        "Wofür wird das Formular fb12 verwendet?"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-05",
+      "class": "false_negative",
+      "question": "Welches Amt ist für den Vorgang ZV117 zuständig?",
+      "documents": [
+        "aq-13_zustaendigkeiten.xlsx"
+      ],
+      "evidence": [
+        "ZV-117 | Sondernutzungserlaubnis Straßenfest | Ordnungsamt | Teamleitung | 21",
+        "Kennung",
+        "Amt"
+      ],
+      "answer_must_match": [
+        "Ordnungsamt"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Für den Vorgang ZV-117 (Sondernutzungserlaubnis Straßenfest) ist das Ordnungsamt zuständig; die zuständige Stelle ist die Teamleitung, die Bearbeitungsfrist beträgt 21 Tage.",
+      "tags": [
+        "identifier_variants",
+        "table_late_row"
+      ],
+      "question_variants": [
+        "Welches Amt ist für den Vorgang ZV-117 zuständig?",
+        "Welches Amt ist für den Vorgang ZV 117 zuständig?",
+        "Welches Amt ist für den Vorgang zv-117 zuständig?"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-06",
+      "class": "false_negative",
+      "question": "Wie viele Tage beträgt die Bearbeitungsfrist für ZV-098?",
+      "documents": [
+        "aq-13_zustaendigkeiten.xlsx"
+      ],
+      "evidence": [
+        "ZV-098 | Fundsachenversteigerung | Bürgerbüro | Sachbearbeitung | 9",
+        "Bearbeitungsfrist in Tagen"
+      ],
+      "answer_must_match": [
+        "\\b9\\s*(Kalender|Werk)?tage"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Für ZV-098 (Fundsachenversteigerung, Bürgerbüro) beträgt die Bearbeitungsfrist 9 Tage; bei ZV-117 sind es 21 Tage.",
+      "tags": [
+        "table_late_row"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-07",
+      "class": "false_negative",
+      "question": "Was kostet eine Warenauslage auf dem Gehweg?",
+      "documents": [
+        "aq-11_sondernutzungsentgelte.xlsx"
+      ],
+      "evidence": [
+        "Warenauslage | 3,00 | je qm und Monat | 15",
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
+      ],
+      "answer_must_match": [
+        "\\b3\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Eine Warenauslage kostet 3,00 Euro je qm und Monat, mindestens jedoch 15 Euro. Die Außengastronomie kostet 6,50 Euro je qm und Monat.",
+      "tags": [
+        "table_title_row",
+        "table_late_row"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-08",
+      "class": "false_negative",
+      "question": "Wie viel kostet der Saal im Bürgerhaus für Vereine pro Stunde?",
+      "documents": [
+        "aq-12_raumentgelte.xlsx"
+      ],
+      "evidence": [
+        "Saal | 25 | 85 | 60 | 200",
+        "Vereine (Euro je Stunde)"
+      ],
+      "answer_must_match": [
+        "\\b25\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Der Saal kostet für Vereine 25 Euro je Stunde; für Gewerbe sind es 85 Euro und für Auswärtige 60 Euro je Stunde.",
+      "tags": [
+        "table_row_column"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-09",
+      "class": "false_negative",
+      "question": "Wie lange darf ich eine DVD aus der Bibliothek ausleihen?",
+      "documents": [
+        "aq-09_benutzungsordnung-bibliothek.pdf"
+      ],
+      "evidence": [
+        "DVDs",
+        "7 Tage"
+      ],
+      "answer_must_match": [
+        "\\b7\\s*Tage"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "DVDs und andere Medien können für 7 Tage entliehen werden, Bücher dagegen für 28 Tage. Die Frist lässt sich zweimal um je 14 Tage verlängern.",
+      "tags": [
+        "pdf"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-fn-10",
+      "class": "false_negative",
+      "question": "Was kostet ein Urnenwahlgrab?",
+      "documents": [
+        "aq-10_friedhofsgebuehren.docx"
+      ],
+      "evidence": [
+        "Urnenwahlgrab | 20 | 780",
+        "Gebühr in Euro je Grabstätte"
+      ],
+      "answer_must_match": [
+        "\\b780\\b"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Ein Urnenwahlgrab kostet 780 Euro je Grabstätte bei einer Nutzungsdauer von 20 Jahren; ein Urnenreihengrab kostet 410 Euro.",
+      "tags": [
+        "docx_table"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-01",
+      "class": "needless_caveat",
+      "question": "Wie viele Urlaubstage stehen Beschäftigten pro Jahr zu?",
+      "documents": [
+        "aq-04_urlaubsordnung.md"
+      ],
+      "evidence": [
+        "30 Arbeitstage"
+      ],
+      "answer_must_match": [
+        "\\b30\\b"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Beschäftigte haben Anspruch auf 30 Arbeitstage Erholungsurlaub im Kalenderjahr bei einer Fünftagewoche; schwerbehinderte Beschäftigte erhalten fünf zusätzliche Tage.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-02",
+      "class": "needless_caveat",
+      "question": "Wie früh muss ich meinen Urlaub beantragen?",
+      "documents": [
+        "aq-04_urlaubsordnung.md"
+      ],
+      "evidence": [
+        "mindestens 14 Tage"
+      ],
+      "answer_must_match": [
+        "\\b14\\s*Tage"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Urlaub ist mindestens 14 Tage vor Beginn mit dem Formular FB10 zu beantragen. Die Genehmigung erteilt die Fachbereichsleitung.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-03",
+      "class": "needless_caveat",
+      "question": "Wie hoch ist die Wegstreckenentschädigung, wenn ich für eine Dienstreise mein privates Auto nutze?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "Wegstreckenentschädigung",
+        "0,30 Euro je gefahrenem Kilometer"
+      ],
+      "answer_must_match": [
+        "0,30"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Bei Nutzung des privaten Pkw beträgt die Wegstreckenentschädigung 0,30 Euro je gefahrenem Kilometer. Parkgebühren sind darin nicht enthalten, sie werden gegen Beleg gesondert erstattet.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-04",
+      "class": "needless_caveat",
+      "question": "Wie viel Tagegeld bekomme ich für eine eintägige Dienstreise von neun Stunden?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "mehr als 8 Stunden",
+        "14 Euro"
+      ],
+      "answer_must_match": [
+        "\\b14\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Bei einer Dienstreise von mehr als 8 Stunden werden 14 Euro Tagegeld gezahlt. Bei 24 Stunden Abwesenheit sind es 28 Euro je Kalendertag.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-05",
+      "class": "needless_caveat",
+      "question": "Bis wann muss ich das Bürgerhaus am Samstagabend räumen?",
+      "documents": [
+        "aq-06_nutzungsordnung-buergerhaus.md"
+      ],
+      "evidence": [
+        "Freitagen und Samstagen",
+        "24 Uhr"
+      ],
+      "answer_must_match": [
+        "\\b24\\s*Uhr"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Am Samstag ist das Bürgerhaus bis 24 Uhr nutzbar; an anderen Tagen gilt 22 Uhr. Ab 22 Uhr ist auf die Nachbarschaft Rücksicht zu nehmen.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-06",
+      "class": "needless_caveat",
+      "question": "Wie hoch ist die Geschwisterermäßigung in der Kita?",
+      "documents": [
+        "aq-07_kita-beitragssatzung.md"
+      ],
+      "evidence": [
+        "Geschwisterermäßigung",
+        "50 Prozent"
+      ],
+      "answer_must_match": [
+        "\\b50\\s*Prozent"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Für das zweite und jedes weitere Kind ermäßigt sich der Beitrag um 50 Prozent, wenn es gleichzeitig eine Einrichtung der Gemeinde besucht. Das Mittagessen ist darin nicht enthalten, es kostet 3,20 Euro je Essen.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-07",
+      "class": "needless_caveat",
+      "question": "Wie lange darf ich ein Buch aus der Gemeindebibliothek behalten?",
+      "documents": [
+        "aq-09_benutzungsordnung-bibliothek.pdf"
+      ],
+      "evidence": [
+        "Bücher",
+        "28 Tage"
+      ],
+      "answer_must_match": [
+        "\\b28\\s*Tage"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Bücher werden für 28 Tage entliehen, DVDs und andere Medien für 7 Tage. Eine zweimalige Verlängerung um je 14 Tage ist möglich.",
+      "tags": [
+        "pdf"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-08",
+      "class": "needless_caveat",
+      "question": "An welchen Tagen findet der Wochenmarkt statt?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Mittwoch",
+        "Samstag"
+      ],
+      "answer_must_match": [
+        "Mittwoch",
+        "Samstag"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Der Wochenmarkt findet jeden Mittwoch und jeden Samstag von 7 bis 13 Uhr statt. Fällt ein Markttag auf einen Feiertag, entfällt er.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-09",
+      "class": "needless_caveat",
+      "question": "Wie hoch ist die Monatspauschale für einen Dauerstandplatz auf dem Markt?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Dauerstandplatz",
+        "36 Euro"
+      ],
+      "answer_must_match": [
+        "\\b36\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Für einen Dauerstandplatz beträgt die Monatspauschale 36 Euro je Standplatz; sie ersetzt die Tagesgebühr von 4,50 Euro je laufendem Meter.",
+      "tags": [
+        "long_document"
+      ],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-nc-10",
+      "class": "needless_caveat",
+      "question": "Ich fahre im Herbst mit der Bahn zu einer Dienstreise und übernachte zweimal. Bis zu welchem Betrag werden die Übernachtungskosten erstattet?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "Übernachtungskosten",
+        "80 Euro je Nacht"
+      ],
+      "answer_must_match": [
+        "\\b80\\s*Euro"
+      ],
+      "answer_must_not_match": [],
+      "canonical_answer": "Übernachtungskosten werden gegen Beleg bis zu 80 Euro je Nacht erstattet, bei zwei Nächten also bis zu 160 Euro. Fahrkarten der zweiten Klasse werden ebenfalls gegen Beleg erstattet.",
+      "tags": [],
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-01",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist die Standgebühr auf dem Wochenmarkt je Meter?",
+      "documents": [
+        "aq-01_marktsatzung.md"
+      ],
+      "evidence": [
+        "Standgebühr",
+        "4,50 Euro je laufendem Meter Standfläche und Markttag"
+      ],
+      "answer_must_match": [
+        "4,50?\\s*Euro",
+        "\\b(Markt)?tag\\b"
+      ],
+      "answer_must_not_match": [
+        "\\b36\\s*Euro\\s*(je|pro)\\s*(laufenden?\\s*)?Meter"
+      ],
+      "canonical_answer": "Die Standgebühr beträgt 4,50 Euro je laufendem Meter Standfläche und Markttag. Für einen Dauerstandplatz gilt stattdessen eine Monatspauschale von 36 Euro je Standplatz.",
+      "tags": [
+        "long_document"
+      ],
+      "wrong_answer": "Die Standgebühr beträgt 36 Euro je Meter.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-02",
+      "class": "wrong_reference",
+      "question": "Was kostet das Mittagessen in der Kita?",
+      "documents": [
+        "aq-07_kita-beitragssatzung.md"
+      ],
+      "evidence": [
+        "Mittagessen",
+        "3,20 Euro je Essen"
+      ],
+      "answer_must_match": [
+        "3,20?\\s*Euro",
+        "(je|pro)\\s*(Essen|Mahlzeit|Mittagessen)"
+      ],
+      "answer_must_not_match": [
+        "3,20?\\s*Euro\\s*(je|pro|im)\\s*Monat"
+      ],
+      "canonical_answer": "Das Mittagessen kostet 3,20 Euro je Essen und wird gesondert zum Monatsende abgerechnet; der Beitrag für die Betreuung wird dagegen monatlich erhoben.",
+      "tags": [],
+      "wrong_answer": "Das Mittagessen kostet 3,20 Euro je Monat.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-03",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist der monatliche Kita-Beitrag für ein Kind unter drei Jahren bei 35 Wochenstunden Betreuung?",
+      "documents": [
+        "aq-07_kita-beitragssatzung.md"
+      ],
+      "evidence": [
+        "Kinder unter drei Jahren",
+        "35 Wochenstunden",
+        "285 Euro"
+      ],
+      "answer_must_match": [
+        "\\b285\\s*Euro"
+      ],
+      "answer_must_not_match": [
+        "35\\s*Wochenstunden\\D{0,25}\\b(160|210|360)\\b",
+        "unter\\s+(drei|3)\\s+Jahren\\D{0,60}\\b(120|160|205)\\b"
+      ],
+      "canonical_answer": "Für ein Kind unter drei Jahren beträgt der monatliche Beitrag bei 35 Wochenstunden 285 Euro; bei 25 Wochenstunden sind es 210 Euro, bei 45 Wochenstunden 360 Euro. Ab drei Jahren gelten 160 Euro bei 35 Wochenstunden.",
+      "tags": [],
+      "wrong_answer": "Für ein Kind unter drei Jahren beträgt der Beitrag bei 35 Wochenstunden 160 Euro.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-04",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist die Säumnisgebühr in der Bibliothek?",
+      "documents": [
+        "aq-09_benutzungsordnung-bibliothek.pdf"
+      ],
+      "evidence": [
+        "Säumnisgebühr",
+        "0,50 Euro je Medium und angefangener Woche"
+      ],
+      "answer_must_match": [
+        "0,50?\\s*Euro",
+        "Woche"
+      ],
+      "answer_must_not_match": [
+        "0,50?\\s*Euro\\s*(je|pro)\\s*(Medium\\s*und\\s*)?Tag"
+      ],
+      "canonical_answer": "Die Säumnisgebühr beträgt 0,50 Euro je Medium und angefangener Woche, höchstens aber 10 Euro je Medium.",
+      "tags": [
+        "pdf"
+      ],
+      "wrong_answer": "Die Säumnisgebühr beträgt 0,50 Euro je Tag.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-05",
+      "class": "wrong_reference",
+      "question": "Was kostet die Verlängerung des Nutzungsrechts an einem Wahlgrab?",
+      "documents": [
+        "aq-10_friedhofsgebuehren.docx"
+      ],
+      "evidence": [
+        "Verlängerung",
+        "15 Euro je Jahr"
+      ],
+      "answer_must_match": [
+        "\\b15\\s*Euro",
+        "(je|pro)\\s*Jahr"
+      ],
+      "answer_must_not_match": [
+        "Verlängerung\\w*\\D{0,60}\\b980\\b"
+      ],
+      "canonical_answer": "Die Verlängerung des Nutzungsrechts an einem Wahlgrab kostet 15 Euro je Jahr der Verlängerung, höchstens für 10 Jahre. Das Nutzungsrecht selbst kostet 980 Euro je Grabstätte für 30 Jahre.",
+      "tags": [
+        "docx_table"
+      ],
+      "wrong_answer": "Die Verlängerung des Wahlgrabs kostet 980 Euro.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-06",
+      "class": "wrong_reference",
+      "question": "Was kostet ein Gerüst auf dem Gehweg?",
+      "documents": [
+        "aq-11_sondernutzungsentgelte.xlsx"
+      ],
+      "evidence": [
+        "Gerüst | 0,25 | je qm und Woche | 25",
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
+      ],
+      "answer_must_match": [
+        "0,25\\s*Euro",
+        "Woche"
+      ],
+      "answer_must_not_match": [
+        "0,25\\s*Euro\\s*(je|pro)\\s*(qm|Quadratmeter)\\s*und\\s*(Tag|Monat)"
+      ],
+      "canonical_answer": "Ein Gerüst kostet 0,25 Euro je qm und Woche, mindestens 25 Euro. Ein Bauzaun kostet dagegen 0,40 Euro je lfd. m und Tag.",
+      "tags": [
+        "table_title_row",
+        "table_late_row"
+      ],
+      "wrong_answer": "Ein Gerüst kostet 0,25 Euro je qm und Tag.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-07",
+      "class": "wrong_reference",
+      "question": "Wie viel kostet die Außengastronomie je Quadratmeter?",
+      "documents": [
+        "aq-11_sondernutzungsentgelte.xlsx"
+      ],
+      "evidence": [
+        "Außengastronomie | 6,50 | je qm und Monat | 40",
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
+      ],
+      "answer_must_match": [
+        "6,50?\\s*Euro",
+        "Monat"
+      ],
+      "answer_must_not_match": [
+        "\\b40\\s*Euro\\s*(je|pro)\\s*(qm|Quadratmeter)"
+      ],
+      "canonical_answer": "Die Außengastronomie kostet 6,50 Euro je qm und Monat, mindestens jedoch 40 Euro.",
+      "tags": [
+        "table_title_row",
+        "table_late_row"
+      ],
+      "wrong_answer": "Die Außengastronomie kostet 40 Euro je qm und Monat.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-08",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist die Kaution für das Foyer?",
+      "documents": [
+        "aq-12_raumentgelte.xlsx"
+      ],
+      "evidence": [
+        "Foyer | 15 | 45 | 35 | 100",
+        "Kaution (Euro je Buchung)"
+      ],
+      "answer_must_match": [
+        "\\b100\\s*Euro"
+      ],
+      "answer_must_not_match": [
+        "\\b100\\s*Euro\\s*(je|pro)\\s*Stunde"
+      ],
+      "canonical_answer": "Für das Foyer wird eine Kaution von 100 Euro je Buchung erhoben, unabhängig von der Dauer. Die Nutzung kostet für Vereine 15 Euro je Stunde.",
+      "tags": [
+        "table_row_column"
+      ],
+      "wrong_answer": "Die Kaution für das Foyer beträgt 100 Euro je Stunde.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-09",
+      "class": "wrong_reference",
+      "question": "Was kostet der Saal im Bürgerhaus für Auswärtige pro Stunde?",
+      "documents": [
+        "aq-12_raumentgelte.xlsx"
+      ],
+      "evidence": [
+        "Saal | 25 | 85 | 60 | 200",
+        "Auswärtige (Euro je Stunde)"
+      ],
+      "answer_must_match": [
+        "\\b60\\s*Euro"
+      ],
+      "answer_must_not_match": [
+        "Auswärtige\\w*\\D{0,40}\\b(85|25|200)\\b"
+      ],
+      "canonical_answer": "Für Auswärtige kostet der Saal 60 Euro je Stunde; Vereine zahlen 25 Euro und Gewerbe 85 Euro je Stunde.",
+      "tags": [
+        "table_row_column"
+      ],
+      "wrong_answer": "Auswärtige zahlen für den Saal 85 Euro je Stunde.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-10",
+      "class": "wrong_reference",
+      "question": "Welcher Betrag wird bei einer Stornierung weniger als 14 Tage vor dem Termin fällig?",
+      "documents": [
+        "aq-06_nutzungsordnung-buergerhaus.md"
+      ],
+      "evidence": [
+        "Stornierung",
+        "50 Prozent des vereinbarten Entgelts"
+      ],
+      "answer_must_match": [
+        "\\b50\\s*Prozent",
+        "Entgelt"
+      ],
+      "answer_must_not_match": [
+        "\\b50\\s*Prozent\\s*(der|von)\\s*(der\\s*)?Kaution"
+      ],
+      "canonical_answer": "Bei einer Stornierung weniger als 14 Tage vor dem Termin werden 50 Prozent des vereinbarten Entgelts fällig. Die Kaution von 150 Euro wird in voller Höhe zurückgezahlt.",
+      "tags": [],
+      "wrong_answer": "Fällig werden 50 Prozent der Kaution.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    },
+    {
+      "id": "aq-wr-11",
+      "class": "wrong_reference",
+      "question": "Wie hoch ist das Tagegeld bei einer Dienstreise von 24 Stunden?",
+      "documents": [
+        "aq-05_reisekostenordnung.md"
+      ],
+      "evidence": [
+        "24 Stunden",
+        "28 Euro je Kalendertag"
+      ],
+      "answer_must_match": [
+        "\\b28\\s*Euro"
+      ],
+      "answer_must_not_match": [
+        "\\b14\\s*Euro\\s*(je|pro)\\s*Kalendertag"
+      ],
+      "canonical_answer": "Bei einer Abwesenheit von 24 Stunden beträgt das Tagegeld 28 Euro je Kalendertag; bei mehr als 8 Stunden werden 14 Euro gezahlt.",
+      "tags": [],
+      "wrong_answer": "Das Tagegeld beträgt 14 Euro je Kalendertag.",
+      "expected_state": {
+        "format": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Ein Chunk des Dokuments trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam, der Tabellenkopf stimmt."
+        },
+        "context": {
+          "state": "solved",
+          "since": "2026-11-27",
+          "reason": "Das Dokument steht im Kontext, und ein Abschnitt trägt Wert und Bezug (Einheit, Zeile, Spalte) gemeinsam."
+        }
+      }
+    }
+  ],
+  "table_checks": [
+    {
+      "document": "aq-11_sondernutzungsentgelte.xlsx",
+      "header_cells": [
+        "Nutzungsart",
+        "Entgelt in Euro",
+        "Bezugseinheit"
+      ],
+      "last_row": "Verkaufswagen"
+    },
+    {
+      "document": "aq-12_raumentgelte.xlsx",
+      "header_cells": [
+        "Raum",
+        "Vereine",
+        "Gewerbe",
+        "Auswärtige",
+        "Kaution"
+      ],
+      "last_row": "Küche"
+    },
+    {
+      "document": "aq-13_zustaendigkeiten.xlsx",
+      "header_cells": [
+        "Kennung",
+        "Aufgabe",
+        "Amt",
+        "Bearbeitungsfrist"
+      ],
+      "last_row": "ZV-130"
+    }
+  ]
+}

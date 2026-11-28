@@ -1,6 +1,6 @@
 # Dashboards und Alarme
 
-OPAA bringt Alarme für Prometheus und Dashboards für Grafana mit. Unter Kubernetes bindet der Chart
+opaa bringt Alarme für Prometheus und Dashboards für Grafana mit. Unter Kubernetes bindet der Chart
 beides an die vorhandene Überwachung des Clusters an, unter Docker Compose startet ein Overlay einen
 eigenen Prometheus und ein eigenes Grafana. Was jeder Alarm bedeutet und was zu tun ist, steht unter
 [Alarme](alarme.md); welche Metriken es gibt, unter
@@ -8,7 +8,7 @@ eigenen Prometheus und ein eigenes Grafana. Was jeder Alarm bedeutet und was zu 
 
 ## Dashboards
 
-Die Startseite **„OPAA · Lage“** beantwortet in einem Blick, ob jemand handeln muss: eine Kachel je
+Die Startseite **„opaa · Lage“** beantwortet in einem Blick, ob jemand handeln muss: eine Kachel je
 Baustein (Chat, Suche & Quellen, KI-Modelle, Indexierung, Hintergrund, Plattform, Nachweis, Alarme),
 darunter die Zeit bis zum ersten Wort, die feuernden Alarme, die Version je Pod und was über Nacht
 liegen geblieben ist. Eine Kachel zeigt den Zustand der Alarme ihres Bereichs; nur was keinen Alarm
@@ -26,11 +26,11 @@ Jede Kachel öffnet ihren Bereich:
 
 | Dashboard | Für |
 |---|---|
-| OPAA · Betrieb & Bereitschaft | Bausteine, Antwortzeiten, Fehlerantworten, Heap, Datenbankverbindungen, geplante Läufe, Warteschlangen, Instanzen |
-| OPAA · Indexierung & Konnektoren | Läufe, Rückstände und Verarbeitungsschritte je Konnektortyp, Texterkennung, Neueinbettung |
-| OPAA · Wissensbestand & Bibliotheken | Bestand, Aktualität, Suchen ohne Fundstelle, Belegstand, Speicher, Verzeichnisabgleich |
-| OPAA · KI-Modelle & Kosten | Erreichbarkeit der Modellrollen, Antwortzeit, Drosselung, Tokens und Kosten |
-| OPAA · Sicherheit & Nachweis | Prüfsummenkette, Siegel, Ausleitung, Löschlauf, abgewiesene Anmeldungen, Virenprüfung |
+| opaa · Betrieb & Bereitschaft | Bausteine, Antwortzeiten, Fehlerantworten, Heap, Datenbankverbindungen, geplante Läufe, Warteschlangen, Instanzen, Belegung der Agentenplätze, Abweisungen an Kapazitätsgrenzen |
+| opaa · Indexierung & Konnektoren | Läufe, Rückstände und Verarbeitungsschritte je Konnektortyp, Texterkennung, Neueinbettung |
+| opaa · Wissensbestand & Bibliotheken | Bestand, Aktualität, Suchen ohne Fundstelle, Belegstand, Speicher, Verzeichnisabgleich |
+| opaa · KI-Modelle & Kosten | Erreichbarkeit der Modellrollen, Antwortzeit, Drosselung, Tokens und Kosten, Agentenläufe und Werkzeugaufrufe, Ende der Live-Diktate; die Kachel „KI-Modelle“ zeigt auch die Alarme der Agenten |
+| opaa · Sicherheit & Nachweis | Prüfsummenkette, Siegel, Ausleitung, Löschlauf, abgewiesene Anmeldungen, Virenprüfung |
 
 - **Auswahl oben:** Datenquelle, `namespace` und `host` (eine Instanz oder alle), in einigen
   Bereichen der Konnektortyp oder das Modell.
@@ -76,7 +76,7 @@ metrics:
   kube-prometheus-stack liest sie ohne weiteres Zutun; ein anders eingestellter Sidecar bekommt Label
   und Ordner über die Werte unter `metrics.grafanaDashboards`.
 - **Eigener Hostname:** Grafana gehört auf eine eigene Subdomain, weder unter einen Pfad noch auf
-  einen anderen Port des Hostnamens von OPAA; warum, steht unter [Compose](#compose).
+  einen anderen Port des Hostnamens von opaa; warum, steht unter [Compose](#compose).
 - **Zustellung:** Den Weg zur Bereitschaft legt der Alertmanager des Clusters fest. Eine Route auf
   `severity="critical"` weckt, `warning` geht als Ticket, `info` nirgendwohin; das Label `component`
   verteilt nach Zuständigkeit. Das Rezept gegen Folgealarme steht unter
@@ -96,16 +96,16 @@ echo "OPAA_GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 24)" >> .env
 docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
-Grafana öffnet sich danach unter `http://localhost:3001/` mit der Startseite „OPAA · Lage“. Jeder
+Grafana öffnet sich danach unter `http://localhost:3001/` mit der Startseite „opaa · Lage“. Jeder
 weitere Befehl für diesen Stapel nennt beide Dateien; mit mehreren Instanzen kommt
 `docker-compose.multi.yml` dazu, Prometheus findet `backend-a` und `backend-b` von selbst.
 
 - **Eigene Subdomain:** Grafana bekommt einen eigenen Hostnamen, etwa `https://grafana.example.org/`,
-  den der Reverse-Proxy des Hosts auf den Port von Grafana leitet. Unter derselben Adresse wie OPAA,
+  den der Reverse-Proxy des Hosts auf den Port von Grafana leitet. Unter derselben Adresse wie opaa,
   etwa als Pfad `/grafana/`, teilten beide Origin: Ein Skript in Grafana, ob aus einem Plugin oder
-  einer Lücke, könnte die Sitzung von OPAA lesen und in ihrem Namen handeln. Auch ein anderer Port
-  unter dem Hostnamen von OPAA, etwa `https://opaa.example.org:3001/`, reicht nicht: Cookies
-  unterscheiden keine Ports, ein Skript in Grafana sähe und setzte die Cookies von OPAA.
+  einer Lücke, könnte die Sitzung von opaa lesen und in ihrem Namen handeln. Auch ein anderer Port
+  unter dem Hostnamen von opaa, etwa `https://opaa.example.org:3001/`, reicht nicht: Cookies
+  unterscheiden keine Ports, ein Skript in Grafana sähe und setzte die Cookies von opaa.
   `OPAA_GRAFANA_ROOT_URL` nennt die Adresse, die der Browser sieht; Grafana braucht sie für
   Weiterleitungen und Links.
 - **Netz:** Grafana veröffentlicht `OPAA_GRAFANA_PORT` (Vorgabe `3001`) an `127.0.0.1`; erst
@@ -123,18 +123,18 @@ weitere Befehl für diesen Stapel nennt beide Dateien; mit mehreren Instanzen ko
 - **Alarme:** Prometheus wertet dieselben Regeln aus wie unter Kubernetes; sie erscheinen in den
   Kacheln und der Tabelle „Was feuert gerade?“. **Compose ohne Alertmanager hat keinen
   Zustellweg:** Niemand wird benachrichtigt. Wer Benachrichtigungen braucht, lässt einen eigenen
-  Prometheus mit Alertmanager den Management-Port abfragen oder betreibt OPAA unter Kubernetes.
+  Prometheus mit Alertmanager den Management-Port abfragen oder betreibt opaa unter Kubernetes.
 
-## Was OPAA nicht überwacht
+## Was opaa nicht überwacht
 
-Einige Störungen sieht OPAA selbst nicht; sie gehören in die Überwachung der Plattform:
+Einige Störungen sieht opaa selbst nicht; sie gehören in die Überwachung der Plattform:
 
-- **Zertifikate** am Eingang und bei den Diensten, die OPAA aufruft: Ablauf rechtzeitig melden, etwa
-  über cert-manager oder einen Blackbox-Exporter. OPAA meldet erst die gescheiterten Aufrufe.
+- **Zertifikate** am Eingang und bei den Diensten, die opaa aufruft: Ablauf rechtzeitig melden, etwa
+  über cert-manager oder einen Blackbox-Exporter. opaa meldet erst die gescheiterten Aufrufe.
 - **Sicherung:** Ob Datenbank und Originalablage gesichert wurden, weiß nur das Sicherungswerkzeug
   ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)).
 - **Plattenplatz** der Datenbank, der Originalablage und des Prometheus.
 - **Zeitsynchronisation** von Knoten und Datenbank: Herzschlag, geplante Läufe und Fristen rechnen mit
   der Uhr ([Eine Uhr für alle](mehrere-instanzen.md#eine-uhr-für-alle)).
 - **CrashLoop** und Neustarts von Pods: kube-prometheus-stack bringt dafür eigene Alarme mit; die
-  Alarme von OPAA melden nur bereite Pods gegen das Soll.
+  Alarme von opaa melden nur bereite Pods gegen das Soll.

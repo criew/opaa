@@ -1,5 +1,5 @@
 ---
-stand: 2026-11-11
+stand: 2026-11-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -14,17 +14,17 @@ naechste-durchsicht: 2027-04-23
 **Gilt für:** alle Behörden.
 
 Für ihr Sicherheitskonzept, eine Prüfung der Lieferkette oder eine Vergabe braucht eine Behörde
-Belege, wie das Projekt OPAA absichert. Diese Seite sagt, wo sie stehen; gepflegt werden sie mit dem
+Belege, wie das Projekt opaa absichert. Diese Seite sagt, wo sie stehen; gepflegt werden sie mit dem
 Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizierung und kein Testat.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Nachweis | Was er belegt | Wo er steht |
 |---|---|---|
 | Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/betrieb/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/betrieb/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
 | Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
 | Integrität des Revisionsprotokolls | Prüfsummenkette je Protokollmonat mit Siegel, das an das Sicherheitsmonitoring geht; Prüfweg der Revision je Monat ohne Datenbankzugang | [Prüfsummenkette und Monatssiegel](../../handbuch/betrieb/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel), {{faktenblatt:protokollereignisse#audit-log-month-sealed}} |
-| Agenten und Sandbox | Werkzeuge der Agenten in Rechteklassen: lesend mit den Rechten der aufrufenden Person, isoliert in einer Sandbox ohne Netz und ohne Zugriff auf den Bestand; ein schreibendes Werkzeug gibt es nicht. Code des Modells und das Füllen von Vorlagen laufen nur dort, Ausgaben werden wie ein Upload geprüft; die Isolationsstärke legt die Plattform des Betriebs fest | [Sandbox für Agenten](../../handbuch/betrieb/sandbox.md), [Agenten betreiben](../../handbuch/betrieb/agenten-betreiben.md), [Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection), {{faktenblatt:datenfluesse#code-sandbox}} |
+| Agenten und Sandbox | Werkzeuge der Agenten in Rechteklassen: lesend mit den Rechten der aufrufenden Person, isoliert in einer Sandbox ohne Zugriff auf den Bestand, unter Kubernetes mit einem CNI, das NetworkPolicies durchsetzt, ohne Internetzugang, nur mit Verbindungen vom Sandbox-Dienst und von anderen Sandboxen getrennt, unter Docker Compose ohne Internetzugang, aber gleichzeitige Sandboxen erreichen sich gegenseitig; ein schreibendes Werkzeug gibt es nicht. Code des Modells und das Füllen von Vorlagen laufen nur dort, Ausgaben werden wie ein Upload geprüft; die Isolationsstärke legt die Plattform des Betriebs fest | [Sandbox für Agenten](../../handbuch/betrieb/sandbox.md), [Agenten betreiben](../../handbuch/betrieb/agenten-betreiben.md), [Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection), {{faktenblatt:datenfluesse#code-sandbox}} |
 | Software-Stückliste (SBOM) | woraus jedes Image besteht, auch das optionale Image für Texterkennung mit seinen eingebauten Modellen; Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
 | Prüfung des Codes | Review jeder Änderung vor dem Merge, automatische Prüfungen in jedem Pull Request, wöchentliche Prüfung der Änderungen, Tiefen-Audit zweimal im Jahr und bei Anlass; bisher keine Prüfung durch Dritte | [Wie das Projekt seinen Code prüft](../../../SECURITY.md#wie-das-projekt-seinen-code-prüft), [Prüfrhythmus](../../security-pruefung.md#prüfrhythmus), [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen) |
 | Schwachstellen | Erkennung in Abhängigkeiten und Images, das Image für Texterkennung eingeschlossen; Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
@@ -35,7 +35,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 1. **Härtungstabelle abarbeiten:** jede Zeile umgesetzt oder begründet als nicht zutreffend
    vermerkt; das Ergebnis gehört zum [IT-Grundschutz](grundschutz-modellierung.md)-Check.
-2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Log auf die
+2. **Protokolle einsammeln und aufbewahren.** opaa schreibt das Log auf die
    Standardausgabe; ein Log-Sammler des Betriebs nimmt es dort ab.
 3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md).
 4. **Updates zeitnah einspielen** und vor dem Supportende der eingesetzten Linie wechseln.

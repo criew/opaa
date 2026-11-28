@@ -40,7 +40,7 @@ final class DataFlowDiagram {
     Set<String> usedIds = new HashSet<>(Set.of(OPAA));
     Map<DataFlowEntry, String> nodeIds = new IdentityHashMap<>();
     StringBuilder out = new StringBuilder("flowchart LR\n");
-    out.append("    ").append(OPAA).append("([\"OPAA\"])\n");
+    out.append("    ").append(OPAA).append("([\"opaa\"])\n");
     grouped.forEach(
         (group, entries) -> {
           out.append("    subgraph group_")

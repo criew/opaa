@@ -8,14 +8,14 @@ describe('usePageTitle', () => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
   })
 
-  it('sets "<title> · OPAA" as the document title', () => {
+  it('sets "<title> · opaa" as the document title', () => {
     renderHook(() => usePageTitle('Einstellungen'))
-    expect(document.title).toBe('Einstellungen · OPAA')
+    expect(document.title).toBe('Einstellungen · opaa')
   })
 
   it('falls back to the bare app name without a title', () => {
     renderHook(() => usePageTitle(null))
-    expect(document.title).toBe('OPAA')
+    expect(document.title).toBe('opaa')
   })
 
   it('follows title changes', () => {
@@ -23,7 +23,7 @@ describe('usePageTitle', () => {
       initialProps: { title: 'Gruppen' },
     })
     rerender({ title: 'Wissensbibliotheken' })
-    expect(document.title).toBe('Wissensbibliotheken · OPAA')
+    expect(document.title).toBe('Wissensbibliotheken · opaa')
   })
 
   /** The tab follows the operator's product name, not a compiled-in constant. */
@@ -39,7 +39,7 @@ describe('usePageTitle', () => {
 
   it('follows a branding change without a route change', () => {
     const { rerender } = renderHook(() => usePageTitle('Gruppen'))
-    expect(document.title).toBe('Gruppen · OPAA')
+    expect(document.title).toBe('Gruppen · opaa')
 
     useBrandingStore.setState({
       branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },

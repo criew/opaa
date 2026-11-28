@@ -560,7 +560,7 @@ describe('MessageBubble copy', () => {
     sources: [{ ...citedSource, fileName: '001_personalausweis.md', documentId: 'doc-a' }],
     timestamp: new Date('2026-10-24T10:00:00'),
   }
-  const note = `${OPAA_BRANDING.aiNotice} – OPAA, 24.10.2026`
+  const note = `${OPAA_BRANDING.aiNotice} – opaa, 24.10.2026`
 
   afterEach(() => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
@@ -688,7 +688,7 @@ describe('MessageBubble copy', () => {
   it('leaves direction controls of the branding out of the copied note', async () => {
     const user = userEvent.setup()
     useBrandingStore.setState({
-      branding: { ...OPAA_BRANDING, aiNotice: 'KI-Hinweis\u202E.', productName: 'OP\u202EAA' },
+      branding: { ...OPAA_BRANDING, aiNotice: 'KI-Hinweis\u202E.', productName: 'op\u202Eaa' },
     })
     render(<MessageBubble message={answer} />)
 
@@ -696,7 +696,7 @@ describe('MessageBubble copy', () => {
 
     const copied = await navigator.clipboard.readText()
     expect(copied).not.toMatch(/\u202E/)
-    expect(copied.endsWith('KI-Hinweis. – OPAA, 24.10.2026')).toBe(true)
+    expect(copied.endsWith('KI-Hinweis. – opaa, 24.10.2026')).toBe(true)
   })
 
   it('falls back to plain text with the note when writing the HTML flavour is refused', async () => {

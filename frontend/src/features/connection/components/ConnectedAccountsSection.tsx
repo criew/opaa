@@ -42,7 +42,7 @@ function endsSoon(expiresAt: string | null | undefined): boolean {
 
 /** What connecting at the provider means, as the confirmation says it before leaving OPAA. */
 const AUTHORIZE_CONSEQUENCE =
-  'Sie werden zur Anmeldung beim Anbieter weitergeleitet und stimmen dort zu, dass OPAA Inhalte Ihres Kontos für Ihre privaten Bibliotheken lesen darf. Danach kommen Sie auf diese Seite zurück. Ihre Inhalte und Ihren Kontonamen sehen nur Sie; wann ein Konto verbunden, neu verbunden oder getrennt wurde, steht unter einem Pseudonym statt Ihres Namens im Verbindungsprotokoll der Revision.'
+  'Sie werden zur Anmeldung beim Anbieter weitergeleitet und stimmen dort zu, dass opaa Inhalte Ihres Kontos für Ihre privaten Bibliotheken lesen darf. Danach kommen Sie auf diese Seite zurück. Ihre Inhalte und Ihren Kontonamen sehen nur Sie; wann ein Konto verbunden, neu verbunden oder getrennt wurde, steht unter einem Pseudonym statt Ihres Namens im Verbindungsprotokoll der Revision.'
 
 function quotedNames(names: string[]): string {
   return names.map((name) => `„${name}“`).join(', ')
@@ -381,7 +381,7 @@ export default function ConnectedAccountsSection() {
     <>
       <PageSection
         title="Verbundene Konten"
-        description="Ihre eigenen Zugangsdaten für einen Zugang, etwa ein App-Passwort. OPAA nutzt sie nur für Ihre privaten Bibliotheken; ob Sie ein Konto verbinden, entscheiden Sie selbst."
+        description="Ihre eigenen Zugangsdaten für einen Zugang, etwa ein App-Passwort. opaa nutzt sie nur für Ihre privaten Bibliotheken; ob Sie ein Konto verbinden, entscheiden Sie selbst."
       >
         {error && (
           <LoadError
@@ -396,7 +396,7 @@ export default function ConnectedAccountsSection() {
           <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary' }}>
             Sie haben kein Konto verbunden. Ein verbundenes Konto braucht nur, wer Inhalte aus einem
             eigenen Konto bei einem Anbieter in einer privaten Bibliothek durchsuchen möchte; alles
-            andere in OPAA funktioniert ohne.
+            andere in opaa funktioniert ohne.
           </Typography>
         ) : (
           <Box component="ul" sx={{ m: 0, p: 0 }} aria-label="Ihre verbundenen Konten">

@@ -740,8 +740,8 @@ paths:
       tags: [model]
       summary: Probe a text recognition endpoint, saved or not yet saved (system admin only)
       description: >
-        DOCLING_SERVE: GET {baseUrl}/health, then the conversion of a test page shipped with OPAA
-        with exactly the options OPAA sends in operation (OCR forced, engine RapidOCR, language de,
+        DOCLING_SERVE: GET {baseUrl}/health, then the conversion of a test page shipped with opaa
+        with exactly the options opaa sends in operation (OCR forced, engine RapidOCR, language de,
         tables, JSON output). OPENAI_VISION: GET {baseUrl}/models, then the test page as image to
         {baseUrl}/chat/completions. Never sends content of a library. Key rule and address check as
         for testRerankModel; refused (400 with code BLOCKED) while the operation has switched text
@@ -1571,7 +1571,7 @@ components:
       type: string
       description: >
         How the text recognition role reaches its service. DOCLING_SERVE is the docling-serve API
-        (v1), the OCR container shipped with OPAA or an own docling-serve; OPENAI_VISION is an
+        (v1), the OCR container shipped with opaa or an own docling-serve; OPENAI_VISION is an
         OpenAI-compatible vision model that reads each page as an image.
       enum: [DOCLING_SERVE, OPENAI_VISION]
       example: DOCLING_SERVE

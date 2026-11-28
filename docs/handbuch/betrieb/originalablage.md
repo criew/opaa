@@ -2,11 +2,11 @@
 
 Ein hochgeladenes Dokument wird nicht nur indiziert — sein **Original** bleibt greifbar, damit aus
 einer Fundstelle die Datei wird, die ein Prüfer in die Hand nehmen kann. Die Originalablage ist der
-Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: OPAA schreibt, ersetzt und löscht dort,
+Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: opaa schreibt, ersetzt und löscht dort,
 und nur dort.
 
 Betroffen sind ausschließlich **Uploads**. Dokumente, die über einen Konnektor hereinkommen, bleiben
-Eigentum ihrer Quelle; OPAA liest sie dort und legt keine Kopie an. Wer die Originalablage
+Eigentum ihrer Quelle; opaa liest sie dort und legt keine Kopie an. Wer die Originalablage
 umstellt, ändert nichts an Verzeichnissen, Webverzeichnissen, Feeds, Confluence-Instanzen oder
 S3-Quellen einer Bibliothek.
 
@@ -24,7 +24,7 @@ Welche Rolle die Originalablage neben der Datenbank spielt, steht in der
 | Weg | Wofür | Was der Betrieb tut | Grenzen |
 |---|---|---|---|
 | **Verzeichnis** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | Ein Verzeichnis bereitstellen und einhängen (`OPAA_UPLOAD_STORAGE_PATH_HOST` auf `/app/uploads`) | Wächst mit dem Volume des Wirtsystems; ohne eingehängtes Verzeichnis ist der Bestand beim Neuaufsetzen des Containers weg |
-| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". **`chown` wirkt auf einem CIFS/SMB-Mount nicht** — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (`uid=65532,gid=65532`) oder über den `user:`-Eintrag, siehe [„Nicht-root-Betrieb des Backend-Containers"](docker-compose.md#nicht-root-betrieb-des-backend-containers) |
+| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in opaa nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". **`chown` wirkt auf einem CIFS/SMB-Mount nicht** — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (`uid=65532,gid=65532`) oder über den `user:`-Eintrag, siehe [„Nicht-root-Betrieb des Backend-Containers"](docker-compose.md#nicht-root-betrieb-des-backend-containers) |
 | **Objektspeicher** | Rechenzentrumsbetrieb, große Bestände, Verschlüsselung und Versionierung aus dem Speicher | `OPAA_UPLOAD_STORE=s3` und die `OPAA_UPLOAD_S3_*`-Variablen setzen; Bucket vorher anlegen | Keine Bereichsanfragen beim Download (kein Fortsetzen eines abgebrochenen Downloads); zusätzlicher Platzbedarf für Zwischendateien; ein zweites Sicherungsziel |
 
 Die ersten beiden Wege sind für die Anwendung **derselbe** Weg: Sie sieht ein Verzeichnis und weiß
@@ -85,16 +85,16 @@ gelöscht ist und die Dokumentzeile nicht mehr existiert. Der Zugriff prüft bei
 Verweis, dessen Organisations- oder Bibliotheksteil nicht zum abgerufenen Dokument passt, antwortet
 mit „nicht gefunden" — ununterscheidbar von einem unbekannten Dokument.
 
-Der Bucket **muss vorhanden sein** — OPAA legt keinen an. Ordner darin legt OPAA ebenfalls nicht an:
+Der Bucket **muss vorhanden sein** — opaa legt keinen an. Ordner darin legt opaa ebenfalls nicht an:
 Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.
 
-**Was OPAA am Bucket nicht tut**, und was deshalb der Betrieb dort einstellt: Verschlüsselung
-ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. OPAA setzt keine
+**Was opaa am Bucket nicht tut**, und was deshalb der Betrieb dort einstellt: Verschlüsselung
+ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. opaa setzt keine
 Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. **Empfohlen sind Verschlüsselung ruhender
 Daten und Versionierung**: Versionierung schützt vor einem Überschreiben und vor einem
 fehlgeleiteten Kopierkommando bei der Umstellung.
 
-**Löschen entfernt alle Versionen.** Löscht OPAA ein Original — ein Dokument, eine Bibliothek, ein
+**Löschen entfernt alle Versionen.** Löscht opaa ein Original — ein Dokument, eine Bibliothek, ein
 verwaistes Original, eine private Bibliothek —, entfernt es jede Version des Schlüssels und jeden
 Löschmarker einzeln. Ein versionierter Bucket behält von einem gelöschten Original also nichts
 zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
@@ -103,14 +103,14 @@ zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
 **Rechte für das Löschen von Versionen.** Für einen versionierten Bucket — auch einen, dessen
 Versionierung nur ausgesetzt ist — braucht der Zugangsschlüssel zusätzlich `s3:ListBucketVersions`
 und `s3:DeleteObjectVersion`. Für einen Bucket, der nie versioniert war, genügt statt dieser beiden
-`s3:GetBucketVersioning`: Damit stellt OPAA fest, dass es keine älteren Versionen geben kann. Die
+`s3:GetBucketVersioning`: Damit stellt opaa fest, dass es keine älteren Versionen geben kann. Die
 Liste aller Rechte steht bei `OPAA_UPLOAD_S3_ACCESS_KEY` in der [Variablenliste](../referenz/konfiguration.md).
 **Beim Update** auf diesen Stand die Richtlinie des Zugangsschlüssels um die passenden Rechte
 ergänzen; sonst schließt das Löschen privater Bibliotheken nicht ab (siehe unten).
 
-- **Fehlen die Rechte**, löscht OPAA nur die aktuelle Version; in einem versionierten Bucket bleibt
+- **Fehlen die Rechte**, löscht opaa nur die aktuelle Version; in einem versionierten Bucket bleibt
   das Original dann als ältere Version liegen. Das Löschen einer privaten Bibliothek prüft auch die
-  Versionen und gilt erst als erledigt, wenn dort nachweislich nichts mehr liegt. Kann OPAA weder
+  Versionen und gilt erst als erledigt, wenn dort nachweislich nichts mehr liegt. Kann opaa weder
   die Versionen auflisten noch bestätigen, dass der Bucket nie versioniert war, bleibt die
   Bibliothek zur Löschung vorgemerkt, und jeder Lauf versucht es erneut.
 - **Die Startprüfung** versucht einmal, Versionen aufzulisten. Gelingt das nicht, protokolliert sie
@@ -336,7 +336,7 @@ Vier Dinge unterscheiden diesen Lauf vom ersten:
 - **Die oberste Ebene erreicht er nicht.** Ein Eintrag direkt unter dem Upload-Pfad beziehungsweise
   dem Schlüsselpräfix ist eine Organisation; zu welcher Organisation ein Eintrag gehörte, der keine
   ist, steht nirgends mehr, und ein Lauf innerhalb einer Organisation darf ihn deshalb weder melden
-  noch löschen. Ein solcher Eintrag stammt nicht von OPAA; er findet sich im Abgleich mit
+  noch löschen. Ein solcher Eintrag stammt nicht von opaa; er findet sich im Abgleich mit
   `SELECT id FROM organizations;` und wird von Hand entfernt.
 
 ## Eine laufende Installation auf den Objektspeicher umstellen

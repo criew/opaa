@@ -1,3 +1,16 @@
+# Korpus-Generator: Antwortqualität (Issue #3890)
+
+Erzeugt die Dokumente unter `eval/corpus/answer-quality/` samt Manifest und die Fälle
+`eval/golden/answer-quality.json`. Markdown, PDF, DOCX und XLSX schreibt das Skript selbst, ohne
+Fremdbibliothek und mit festen ZIP-Zeitstempeln; zwei Läufe erzeugen byte-identische Ausgabe. Die
+Zustände beider Ebenen stehen im Skript (`FORMAT_GAPS`, `CONTEXT_GAPS`). Aufbau: [`../corpus/answer-quality/SOURCE.md`](../corpus/answer-quality/SOURCE.md).
+
+```bash
+python eval/generator/generate_answer_quality_corpus.py
+```
+
+---
+
 # Korpus-Generator: Prompt-Injection (Issue #3044)
 
 Erzeugt die präparierten Dokumente unter `eval/corpus/prompt-injection/` samt Manifest und die

@@ -27,6 +27,7 @@ import io.opaa.template.RunTemplates;
 import io.opaa.template.TestDocx;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -319,6 +320,79 @@ class AgentResponsibilityIntegrationTest {
 
   private Agent stored(UUID agent) {
     return agentService.get(agent, admin()).agent();
+  }
+
+  @Test
+  void renamingTheFunctionWhileTheOwnerIsInSuccessionKeepsThePeriodRunning() {
+    lockPeriod.set(1);
+    UUID agent = anAgent("Vermerkhilfe", REFERAT);
+    jdbc.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", administrator);
+    lockRun.runOnce();
+    jdbc.update(
+        "UPDATE asset_responsibilities SET missing_since = missing_since - interval '2 days'"
+            + " WHERE asset_id = ?",
+        agent);
+    Instant started = missingSince(agent);
+    assertThat(started).isNotNull();
+
+    renameFunction(agent, "Referat Z5");
+
+    assertThat(missingSince(agent)).isEqualTo(started);
+    lockRun.runOnce();
+    assertThat(agentService.get(agent, admin()).responsibility().lock().cause())
+        .isEqualTo(AssetLockCause.NO_RESPONSIBLE);
+  }
+
+  @Test
+  void namingAUnitThatActsEndsThePeriodAtOnce() {
+    UUID group = aGroup();
+    UUID agent = anAgent("Fristhilfe", ResponsibleUnit.ofGroup(group));
+    jdbc.update("UPDATE groups SET dissolved = true, dissolved_at = now() WHERE id = ?", group);
+    lockRun.runOnce();
+    assertThat(missingSince(agent)).isNotNull();
+
+    renameFunction(agent, "Referat Z6");
+
+    assertThat(missingSince(agent)).isNull();
+    assertThat(agentService.get(agent, admin()).responsibility().missing()).isFalse();
+  }
+
+  @Test
+  void theCreationEntryNamesTheFirstResponsibleUnit() {
+    UUID group = aGroup();
+    UUID agent = anAgent("Anlegehilfe", REFERAT);
+    UUID template = aTemplate("Anlegevorlage", ResponsibleUnit.ofGroup(group));
+
+    assertThat(creationAfter(agent, "AGENT_CREATED"))
+        .contains("\"name\":\"Anlegehilfe\"", "\"responsibleFunction\":\"Referat Z3\"")
+        .doesNotContain("responsibleGroupId");
+    assertThat(creationAfter(template, "DOCUMENT_TEMPLATE_CREATED"))
+        .contains("\"responsibleGroupId\":\"" + group + "\"")
+        .doesNotContain("responsibleFunction");
+  }
+
+  private String creationAfter(UUID asset, String eventType) {
+    return jdbc.queryForObject(
+        "SELECT CAST(after AS text) FROM audit_log WHERE object_id = ? AND event_type = ?",
+        String.class,
+        asset.toString(),
+        eventType);
+  }
+
+  private void renameFunction(UUID agent, String function) {
+    Agent stored = agentService.get(agent, admin()).agent();
+    agentService.update(
+        agent,
+        new AgentUpdate(
+            stored.getName(), null, stored.configuration(), ResponsibleUnit.ofFunction(function)),
+        admin());
+  }
+
+  private Instant missingSince(UUID asset) {
+    return jdbc.queryForObject(
+        "SELECT missing_since FROM asset_responsibilities WHERE asset_id = ?",
+        Instant.class,
+        asset);
   }
 
   private UUID anAgent(String name, ResponsibleUnit unit) {

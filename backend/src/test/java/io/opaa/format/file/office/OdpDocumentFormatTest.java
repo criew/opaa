@@ -98,15 +98,15 @@ class OdpDocumentFormatTest {
     Path file = tempDir.resolve("beispiel-praesentation.odp");
     writeOdp(
         file,
-        odpSlide(odpFrame("title", "OPAA Testpraesentation") + odpFrame(null, "Willkommen."))
+        odpSlide(odpFrame("title", "opaa Testpraesentation") + odpFrame(null, "Willkommen."))
             + odpSlide(odpFrame("title", "Gebuehren")));
 
     DocumentFormatSource source =
         DocumentFormatSource.ofFile(file, "beispiel-praesentation.odp", ".odp");
 
     assertThat(pipeline.run(source).properties().firstHeading())
-        .isEqualTo("OPAA Testpraesentation");
-    assertThat(pipeline.readProperties(source).firstHeading()).isEqualTo("OPAA Testpraesentation");
+        .isEqualTo("opaa Testpraesentation");
+    assertThat(pipeline.readProperties(source).firstHeading()).isEqualTo("opaa Testpraesentation");
   }
 
   @Test

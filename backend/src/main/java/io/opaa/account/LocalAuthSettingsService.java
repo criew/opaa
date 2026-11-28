@@ -301,7 +301,7 @@ public class LocalAuthSettingsService {
     return new ConflictException(
         "Solange OPAA_PUBLIC_BASE_URL nicht gesetzt ist, kann "
             + flow
-            + " nicht eingeschaltet werden: OPAA könnte keinen Link bauen, den jemand sieht.",
+            + " nicht eingeschaltet werden: opaa könnte keinen Link bauen, den jemand sieht.",
         PUBLIC_BASE_URL_REQUIRED);
   }
 

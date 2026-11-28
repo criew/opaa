@@ -71,8 +71,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_query_context_tokens_*`, `opaa_query_context_truncated_total` | Eingabe-Tokens je Antwortaufruf, soweit der Anbieter sie meldet, und beantwortete Fragen in einem Chat mit mehr Nachrichten als das Gesprächsfenster, bei denen ältere Nachrichten nicht mehr ins Modell gehen |
 | `opaa_query_finish_reason_total` | Antworten nach dem Ende, das das Modell meldet (`reason`: `stop`, `length` an der Ausgabegrenze abgeschnitten, `content_filter`, `tool`, `other`) |
 | `opaa_query_aborted_total` | Chat-Fragen ohne Antwort nach Ursache (`cause`: `client_cancel` Leser gegangen, `timeout` ein Aufruf hat nicht rechtzeitig geantwortet, `error` jeder andere Fehler) |
-| `opaa_model_tokens_total` | Tokens jedes Aufrufs des Chat-Modells nach Zweck (`purpose`: `answer`, `decompose`, `note`, `auxiliary` Titel und Metadaten, `agent`), Art (`token_type`: `input`, `output`) und `model`, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft OPAA mit einer Warnung im Log |
-| `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
+| `opaa_model_tokens_total` | Tokens jedes Aufrufs des Chat-Modells nach Zweck (`purpose`: `answer`, `decompose`, `note`, `auxiliary` Titel und Metadaten, `agent`), Art (`token_type`: `input`, `output`) und `model`, dem Modellnamen aus der Modellverwaltung; höchstens 20 Modellnamen, weitere Reihen verwirft opaa mit einer Warnung im Log |
+| `gen_ai_client_operation_seconds_*` | Dauer jedes Aufrufs von Chat- und Embedding-Modell außer der Werkzeugprüfung nach Operation (`chat`, `embedding`), Anbieter und Modell, mit Buckets; `error` nennt die Fehlerklasse |
 | `gen_ai_client_token_usage_total` | Tokens nach Operation, Modell und Art (`input`, `output`, `total`), ohne Person und Inhalt |
 | `opaa_installation_pending` | `1`, solange die Installation nicht abgeschlossen ist ([Installation](installation.md)) |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Konnektortyp (`connector`, der Schlüssel des Quellentyps klein geschrieben, etwa `confluence`, `sharepoint`, `upload`) und Ergebnis (`processed`, `skipped`, `failed`) |
@@ -96,6 +96,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_outbound_throttled_total` | gedrosselte Antworten (429, 503 mit `Retry-After`) nach Ziel und Pfad; im Hintergrund bremst die Indexierung damit nur, interaktiv wartet eine Person |
 | `opaa_model_role_available` | `1` oder `0` je eingerichteter Modellrolle (`role`: `chat`, `embedding`, `rerank`, `transcription`, `ocr`, `vision`), alle 30 Sekunden aus dem Zustand gelesen, den die Health Groups zeigen, ohne eigenen Modellaufruf. Chat und Embedding gelten als verfügbar, solange der letzte echte Aufruf des Modells der Rolle auf dieser Instanz es erreicht hat, beim Embedding auch die Probe der Health Group; Aufrufe anderer Modelle (etwa eines eigenen Titelmodells) zählen nicht, und erst ein Wechsel des Modells der Rolle setzt den Wert auf `1` zurück; ein Verbindungsabbruch des Abgleichs zwischen den Instanzen ändert ihn nicht. Abgeschaltete oder nicht eingerichtete Rollen haben keine Reihe. **Ein Alarm darauf braucht `for:` und Verkehr:** Ohne Aufruf bleibt der letzte Stand stehen, ein einzelner Fehlschlag kippt den Wert bis zum nächsten erfolgreichen Aufruf |
 | `opaa_transcription_requests_total`, `opaa_transcription_audio_seconds_total` | Aufnahmen der Spracheingabe nach Ergebnis (`success`; `refused` für jede Antwort des Dienstes ohne verwertbaren Text, auch einen Fehlerstatus; `failed`, wenn keine Antwort kam) und Sekunden verarbeiteten Audios; die Sekunden zählen nur, wenn der Transkriptionsdienst die Dauer in seiner Antwort nennt |
+| `opaa_transcription_live_sessions_total` | Live-Diktate nach ihrem Ende (`end`: `done` mit fertigem Text; `installation_busy` abgewiesen, weil alle Plätze belegt sind; `person_busy` abgewiesen, weil die Person schon diktiert; `unavailable` Live-Transkription aus; `upstream` Dienst gestört; `limit`, `idle` und `protocol` an einer Grenze beendet; `client_closed` vom Browser beendet; `transport_error` Verbindung zum Browser gestört). Nach jedem Ende außer `done` schickt der Browser die Aufnahme als Ganzes |
+| `opaa_chat_attachments_rejected_total` | Chat-Anhänge, die ein Speicherkontingent abgewiesen hat, nach Kontingent (`quota`: `account` alle Anhänge eines Kontos, `unbound` noch nicht gesendete Anhänge eines Kontos, `organization` die ganze Organisation); ohne Konto oder Organisation |
 | `opaa_malware_scans_seconds_*` | Dauer und Anzahl der Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)). **Umbenannt:** Bis zu dieser Version hieß die Anzahl `opaa_malware_scans_total`; sie steht jetzt in `opaa_malware_scans_seconds_count`, Abfragen und Alarme auf den alten Namen sind umzustellen |
 | `opaa_malware_signatures_age_seconds` | Alter der Signaturen des Virenscanners, alle fünf Minuten von jeder Instanz beim Dienst erfragt und als UTC gelesen; ohne eingeschaltete Prüfung oder ohne Datum in der Antwort des Dienstes gibt es keine Reihe. Steigt der Wert über einen Tag, aktualisiert der Scanner seine Signaturen nicht |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
@@ -104,7 +106,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_audit_log_oldest_partition_age_seconds`, `opaa_audit_retention_period_months` | Alter des ältesten Protokollmonats und eingestellte Frist; liegt das Alter mehr als zwei Monate über der Frist, löscht die automatische Löschung nicht |
 | `opaa_audit_retention_last_run_age_seconds` | Zeit seit dem Monat des letzten Löschlaufs (am 1. jedes Monats um 03:00); über 35 Tage ist der Lauf ausgeblieben. Die Werte des Revisionsprotokolls liest jede Instanz alle fünf Minuten aus der Datenbank; kann sie einen nicht lesen oder antwortet die Datenbank nicht binnen zehn Sekunden, meldet sie `NaN` und warnt im Log |
 | `opaa_audit_log_horizon_seconds` | Zeit bis zum Ende des letzten angelegten Protokollmonats; danach scheitert jedes Schreiben ins Protokoll |
-| `opaa_audit_payload_dropped_total` | Einträge ins Revisionsprotokoll, aus denen OPAA eine Angabe entfernt hat, die der Ereigniskatalog für die Ereignisart (`event_type`) nicht nennt; jede Ereignisart beginnt beim Start eines Pods bei 0. Jeder Anstieg ist ein Programmfehler, das Log nennt die Angaben ohne ihre Werte |
+| `opaa_audit_payload_dropped_total` | Einträge ins Revisionsprotokoll, aus denen opaa eine Angabe entfernt hat, die der Ereigniskatalog für die Ereignisart (`event_type`) nicht nennt; jede Ereignisart beginnt beim Start eines Pods bei 0. Jeder Anstieg ist ein Programmfehler, das Log nennt die Angaben ohne ihre Werte |
 | `opaa_audit_chain_lag_seconds` | Alter des ältesten Protokolleintrags, den noch kein Kontrollpunkt der Prüfsummenkette abdeckt, `0` ohne offene Einträge, alle fünf Minuten gelesen; der Kettenlauf findet alle zehn Minuten statt, über Stunden wächst der Wert nur, wenn er ausbleibt oder eine offene Transaktion ihn anhält. Beim ersten Start einer großen Installation ist der Wert hoch, bis der Lauf den Bestand mit 50 000 Einträgen je zehn Minuten aufgeholt hat ([Prüfsummenkette](nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)) |
 | `opaa_audit_chain_unsealed_months` | abgeschlossene Protokollmonate ohne Siegel; nach dem Monatswechsel kurz `1`, dauerhaft über `0` heißt, die Kette kommt nicht bis zum Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag `AUDIT_LOG_MONTH_SEALED` noch steht (der Lauf versiegelt ihn nicht neu; `GET /api/v1/audit/chain/{Monat}` nennt ihn `BROKEN`) |
 | `opaa_target_validation_refused_connection_checks_total` | Prüfungen vor einer Verbindung, die abgelehnt wurden, weil in der letzten Minute zu viele verschiedene Hostnamen geprüft wurden; ein Anstieg deutet auf Weiterleitungen auf immer neue Namen ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
@@ -117,10 +119,11 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_self_disclosure_duration_seconds_*`, `opaa_self_disclosure_size_bytes_*`, `opaa_self_disclosure_running` | Dauer, Größe und laufende Selbstauskünfte dieser Instanz, ohne Bezug auf eine Person |
 | `opaa_query_decomposition_fallback_total`, `opaa_query_decomposition_no_search_total` | Rückfälle der Teilfragen-Zerlegung nach Ursache; Nachrichten, in denen nichts zu suchen war |
 | `opaa_agent_runs_total`, `opaa_agent_run_duration_seconds_*` | Agentenläufe nach Art (`kind`: `builtin` für den mitgelieferten, `custom` für angelegte Agenten) und Ergebnis (`completed`, `limit_calls`, `limit_duration`, `limit_volume`, `ask_user` (Rückfrage an die Person), `plan` (Plan zur Bestätigung vorgelegt; die Bestätigung zählt als eigener Lauf), `model_not_capable`, `aborted`, `error`), Dauer mit Buckets; ohne Agentennamen |
-| `opaa_agent_tool_calls_total` | Werkzeugaufrufe nach Werkzeug und Ergebnis (`success`, `empty`, `argument_ignored`, `invalid_arguments`, `unknown_tool`, `denied`, `timeout`, `error`) |
+| `opaa_agent_tool_calls_total` | Werkzeugaufrufe nach Werkzeug (`tool`: `search_knowledge`, `read_document`, `list_sources`, `run_code`, `ask_user`, `fill_template`; `unknown` für ein Werkzeug, das das Modell erfunden hat) und Ergebnis (`success`, `empty`, `argument_ignored`, `invalid_arguments`, `unknown_tool`, `denied`, `timeout`, `error`) |
 | `opaa_agent_workspace_occupied`, `opaa_agent_workspace_capacity`, `opaa_agent_workspace_rejected_total` | belegte und verfügbare Plätze für gleichzeitige Agentenläufe, abgewiesene Läufe nach Grund (`reason`: `full` alle Plätze belegt, `person_limit` Anteil der Person belegt); steigt `full` stetig, `OPAA_AGENT_WORKSPACE_CAPACITY` anheben, steigt `person_limit` stetig, `OPAA_AGENT_WORKSPACE_CAPACITY_PER_PERSON` prüfen |
 | `opaa_agent_citations_unverifiable_total` | Quellenangaben in Agentenantworten, die zu keiner gefundenen Stelle passen; sie erscheinen nicht als Quelle |
 | `opaa_query_evidence_total` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
+| `opaa_query_absence_recheck_total` | Antworten, die sagen, etwas stehe nicht in den Quellen, nach Weg (`mode`: `rag`, `agent`) und Stufe (`step`: `detected` erkannt, `searched` im Suchbereich nachgesucht, `replaced` mit neuen Textstellen neu beantwortet); ohne Person, Chat, Space oder Suchbegriff. Ein hoher Anteil `replaced` an `detected` heißt, die erste Auswahl der Suche verfehlt Stellen, die Kennungen der Frage tragen ([Die Antwort](../referenz/wie-die-suche-arbeitet.md#die-antwort)) |
 | `opaa_chat_search_duration_seconds_*` | Dauer und Anzahl der Chatsuchen, ohne Suchbegriff und Person |
 | `opaa_chat_note_extraction_total` | Verdichtungen der Gesprächsnotiz nach Ausgang (`applied`, `empty`, `failed`, `discarded`, `rejected`) |
 | `opaa_scheduled_last_success`, `opaa_scheduled_expected_interval_seconds`, `opaa_scheduled_failures_total` | je geplantem Lauf (`scheduled_job`, der Name seiner Sperre oder Klasse und Methode): Unix-Zeit des letzten erfolgreichen Laufs auf dieser Instanz, frühestens ihr Start, Abstand zweier Termine und Läufe, die mit einem Fehler endeten. Ein abgeschalteter Lauf hat keine Reihe. Unter der Sperre läuft jeder Termin auf einer Instanz: überfällig ist ein Lauf, wenn `time() - max by (scheduled_job) (opaa_scheduled_last_success)` ein Mehrfaches seines Abstands übersteigt; das gilt auch für einen Lauf, der seit dem Start nie gelang. Als Fehler zählt auch ein Lauf, der einen Fehler selbst abfängt und protokolliert, etwa um mit dem nächsten Eintrag weiterzumachen |
@@ -132,7 +135,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `cache_gets_total`, `cache_evictions_total`, `cache_size` | Treffer und Fehlgriffe (`result`), Verdrängungen und Größe je Zwischenspeicher dieser Instanz nach festem Namen (`cache`), nämlich `asset_grants` und die Adressen der Modellrollen (`rerank_endpoint`, `transcription_endpoint`, `text_recognition_endpoint`); die Trefferquote ist `hit` geteilt durch alle Abrufe. Aus Datenschutzgründen gar nicht gemessen werden die Zwischenspeicher, deren Schlüssel eine Person, ein Token oder ein Gespräch ist: gesperrte Anmeldungen, Gruppenmitgliedschaften, angelegte persönliche Bereiche, Filterwerte der Suche, Kontingente externer Zugänge und das Gesprächsgedächtnis. Ihre Treffer, Fehlgriffe und Größen zeigten, wie viele Personen gerade arbeiten oder ein Gespräch beginnen |
 | `opaa_inventory_libraries`, `opaa_inventory_documents`, `opaa_inventory_chunks`, `opaa_inventory_storage_used_bytes` | Bestand der ganzen Installation nach Art (`kind`: `shared`, `private`), alle 15 Minuten aus der Datenbank gelesen. Die Werte privater Bibliotheken sind `NaN`, solange weniger Personen eine besitzen als die Mindestgruppengröße |
 | `opaa_inventory_storage_limit_bytes`, `opaa_inventory_spaces` | Speichergrenze je geteilter Bibliothek und je Person für private Bibliotheken (`0` ohne Grenze) und Zahl der nicht archivierten geteilten Spaces, ohne persönliche Bereiche |
-| `opaa_auth_logins_total` | abgewiesene Anmeldungen nach `method` und `result`: lokale Konten mit `bad_credentials`, `locked`, `other`; beim Identitätsanbieter (`oidc`) abgewiesene Tokens mit `bad_credentials`, `idp_error`, wenn die Signaturschlüssel (JWKS) des Anbieters nicht abgerufen werden konnten, und `other`. Erfolgreiche Anmeldungen zählt OPAA bei keiner Methode. Ohne Konto, Adresse und Anbieter |
+| `opaa_auth_logins_total` | abgewiesene Anmeldungen nach `method` und `result`: lokale Konten mit `bad_credentials`, `locked`, `other`; beim Identitätsanbieter (`oidc`) abgewiesene Tokens mit `bad_credentials`, `idp_error`, wenn die Signaturschlüssel (JWKS) des Anbieters nicht abgerufen werden konnten, und `other`. Erfolgreiche Anmeldungen zählt opaa bei keiner Methode. Ohne Konto, Adresse und Anbieter |
 | `opaa_external_access_alarms_total` | ausgelöste Alarme für Massenabrufe über den Zugang externer KI-Werkzeuge, ohne Token |
 | `opaa_health_group_status` | Zustand jeder Health-Gruppe nach `health_group`, alle 30 Sekunden gelesen, Gruppen mit Anfragen an einen fremden Dienst wie `upload-store` nur alle fünf Minuten (`NaN`, wenn eine Gruppe nicht binnen zehn Sekunden antwortet): `1` bereit, `0` gestört oder außer Betrieb, `-1` unbekannt. `embedding-model` und `vector-store` kosten bei jeder Prüfung einen Modellaufruf; für sie prüft die Metrik nicht selbst, sondern zeigt das Ergebnis der letzten Prüfung von außen aus den letzten zehn Minuten, ohne eine solche `-1` |
 | `tasks_scheduled_execution_seconds_*` | Dauer und Ausgang der geplanten Läufe nach Methode, mit Buckets |
@@ -150,7 +153,7 @@ meldet sie `NaN` statt eines veralteten Werts und warnt im Log. Ein unvollständ
 Erfolg. Private Bibliotheken erscheinen bei Läufen, letztem Erfolg und Überfälligkeit nur
 zusammengefasst als `connector="private"`; `opaa_indexing_documents_total` zählt ihre Dokumente
 unter dem Quellentyp, installationsweit. Eine Bibliothek ohne erfolgreichen Lauf zählt ab ihrer
-Anlage, nicht ab dem Einschalten des Zeitplans, weil OPAA diesen Zeitpunkt nicht speichert.
+Anlage, nicht ab dem Einschalten des Zeitplans, weil opaa diesen Zeitpunkt nicht speichert.
 
 ### Ausgehende Aufrufe
 
@@ -162,8 +165,8 @@ diese Werte an:
   Live-Transkription), `ocr`, `vision`, `sandbox` (Code-Sandbox),
   `connector` (Quellen und ihre Hilfsaufrufe), `oidc` (Discovery und Schlüssel des
   Identitätsanbieters), `directory` (Verzeichnisdienst), `clamav` (Virenscanner),
-  `original_store` (S3-Ablage der hochgeladenen Originale) und `model_check` (Verbindungstest
-  und Modellsuche der Verwaltung für Chat- und Embedding-Modelle).
+  `original_store` (S3-Ablage der hochgeladenen Originale) und `model_check` (Verbindungstest,
+  Modellsuche und Werkzeugprüfung der Verwaltung für Chat- und Embedding-Modelle).
 - **`kind`:** bei `connector` der Konnektortyp: `confluence`, `dropbox`, `google_drive`,
   `http_directory`, `nextcloud`, `onedrive`, `rss_feed`, `s3`, `sharepoint`, `smb`. Hilfsaufrufe,
   die keinem Konnektor allein gehören, tragen eine feste Zusatzart: `oauth` (Token-Endpunkt einer
@@ -175,7 +178,7 @@ diese Werte an:
 
 So liest man die Werte:
 
-- **`timeout` umfasst Abbrüche.** Bricht OPAA einen Aufruf ab, weil seine Frist abgelaufen ist,
+- **`timeout` umfasst Abbrüche.** Bricht opaa einen Aufruf ab, weil seine Frist abgelaufen ist,
   zählt er als `timeout`, auch wenn eine Unterbrechung den Aufruf beendet. Das gilt ebenso, wenn
   ein Lauf gestoppt wird oder die Instanz herunterfährt; eine Häufung von `timeout` während eines
   Rolling Updates ist deshalb kein Ausfall des Dienstes.
@@ -184,14 +187,16 @@ So liest man die Werte:
   `client_error`. Die Probe der Texterkennung fragt bei docling-serve einen Pfad an, den nicht
   jede Version kennt (404). Solche Werte im Pfad `background` sind kein Alarmgrund.
 - **`model_check` läuft im Pfad `background`,** auch wenn eine Person in der Verwaltung wartet:
-  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen.
-- **Die Live-Transkription zählt nur den Verbindungsaufbau,** einmal je Aufnahme oder Probe;
-  die laufende Sitzung danach zählt nicht. Lehnt der Dienst den Aufbau ab, zählt sein Status.
+  Ein fehlschlagender Test eines Entwurfs soll nicht in die Fehlerquote der Fragen eingehen. Die
+  Aufrufe der Werkzeugprüfung zählen nur hier, nicht unter `gen_ai_*` und nicht für die
+  Erreichbarkeit der Modellrolle.
+- **Die Live-Transkription zählt hier nur den Verbindungsaufbau,** einmal je Aufnahme oder Probe;
+  wie ein Live-Diktat endet, zählt `opaa_transcription_live_sessions_total`. Lehnt der Dienst den Aufbau ab, zählt sein Status.
 - **S3 und SMB** zählen jeden Versuch wie die HTTP-Clients, eine Wiederholung eingeschlossen. Bei
-  S3 erkennt OPAA einen TLS-Fehler nicht gesondert, er erscheint als `io_error`. Bei SMB zählen
+  S3 erkennt opaa einen TLS-Fehler nicht gesondert, er erscheint als `io_error`. Bei SMB zählen
   Anmeldung, Öffnen eines Ordners und jeder Downloadversuch je einmal; ein wiederholter Download
   zählt also je Versuch. Eine Datei über der Größengrenze zählt als `client_error`.
-- **Was OPAA vor dem Senden selbst ablehnt, zählt nicht.** Ein Ziel, das die Zielprüfung sperrt,
+- **Was opaa vor dem Senden selbst ablehnt, zählt nicht.** Ein Ziel, das die Zielprüfung sperrt,
   oder ein Versuch über dem Anfragebudget eines Laufs verlässt die Instanz nicht und erscheint bei
   keinem Ziel.
 
@@ -204,7 +209,7 @@ Compose: [Dashboards und Alarme](dashboards-und-alarme.md), was bei einem Alarm 
 
 ## Ausleitung an ein Sicherheitsmonitoring
 
-OPAA kann sein Revisionsprotokoll laufend an das zentrale Sicherheitsmonitoring (SIEM) der Behörde
+opaa kann sein Revisionsprotokoll laufend an das zentrale Sicherheitsmonitoring (SIEM) der Behörde
 geben, damit Verwaltungshandeln wie Rechteänderungen, Kontosperren oder Zugriffe auf das Protokoll
 dort neben den Ereignissen anderer Fachverfahren erscheint.
 
@@ -216,10 +221,10 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
 - **Was hinausgeht:** je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis,
   Organisation sowie Art und Kennung des betroffenen Objekts und die Version des Ereigniskatalogs. Nie gehen Pseudonyme handelnder oder
   betroffener Personen, Begründungen oder Inhalte hinaus. Den Namen des Objekts (etwa eines Space
-  oder einer Gruppe) sendet OPAA nur mit `OPAA_SIEM_EXPORT_INCLUDE_LABELS`, weil Namen oft Personen
+  oder einer Gruppe) sendet opaa nur mit `OPAA_SIEM_EXPORT_INCLUDE_LABELS`, weil Namen oft Personen
   nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
   Bibliothek, privater Prompt), fehlen Kennung und Name immer. Wer gehandelt hat, klärt nur die
-  anlassbezogene Klärung in OPAA
+  anlassbezogene Klärung in opaa
   ([Administration](../administration/systemrollen.md)).
 - **Lesezugriff:** Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
   nach, sonst nicht. Das ist neben der Revision, der Selbstauskunft und der Prüfsummenkette der
@@ -303,7 +308,7 @@ einer internen Zertifizierungsstelle kommt über `extraCACertificates` in den Ve
 - **Personenbeziehbar über Verknüpfung:** Für sich nennt die Kennung niemanden. Das Zugriffslog
   enthält aber die Client-Adresse, manche Logzeilen des Backends die Kennung eines Kontos und das
   Revisionsprotokoll die handelnde Person; über die Request-ID lassen sich diese Zeilen verbinden.
-  Wie lange die Logs liegen, bestimmt die Log-Sammlung des Betriebs, nicht OPAA; solange das
+  Wie lange die Logs liegen, bestimmt die Log-Sammlung des Betriebs, nicht opaa; solange das
   Zugriffslog liegt, führt jeder Revisionseintrag über die Request-ID zur Client-Adresse. Die
   Muster-Dienstvereinbarung lässt die Verknüpfung nur zur Fehlerbehebung an einer einzelnen
   gemeldeten Anfrage und in der anlassbezogenen Klärung zu; das Revisionsprotokoll wird nur in der
@@ -312,7 +317,7 @@ einer internen Zertifizierungsstelle kommt über `extraCACertificates` in den Ve
   an einen Collector (`OPAA_TRACING_OTLP_ENDPOINT`, Pflicht, sonst bricht der Start ab), über den
   [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy), falls einer eingerichtet ist. Ausgewählt
   wird nur ein kleiner Teil der Anfragen (`OPAA_TRACING_SAMPLING_PROBABILITY`). Einen mitgeschickten
-  `traceparent` verwerfen Frontend und Backend, die Auswahl trifft OPAA über eine selbst erzeugte
+  `traceparent` verwerfen Frontend und Backend, die Auswahl trifft opaa über eine selbst erzeugte
   Trace-ID. Ein Trace endet an der Installation: Kein ausgehender Aufruf an Modelle, Quellen oder
   Mailserver trägt einen `traceparent`, und keine Trace-ID erscheint in den Metriken. Ist das
   Tracing aus, verlässt nichts die Installation.

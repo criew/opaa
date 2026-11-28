@@ -24,7 +24,7 @@ async function resetNotice(page: Page): Promise<void> {
     headers: { [DEV_USER_HEADER]: 'dev-admin' },
     data: {},
   })
-  expect(response.ok()).toBe(true)
+  expect(response.status(), await response.text()).toBe(200)
 }
 
 async function readClipboard(page: Page): Promise<string> {
@@ -118,7 +118,7 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
     const lines = copied.trim().split('\n')
     // the date is the answer's own: today's, or yesterday's for a run over midnight
     const acceptable = (await acceptableNoteDates(page)).map(
-      (date) => `${STANDARD_NOTICE} – OPAA, ${date}`,
+      (date) => `${STANDARD_NOTICE} – opaa, ${date}`,
     )
     expect(acceptable).toContain(lines.at(-1))
     // the note stands in a paragraph of its own, under the answer

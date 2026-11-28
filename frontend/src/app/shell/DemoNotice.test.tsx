@@ -9,7 +9,7 @@ afterEach(() => {
 })
 
 describe('DemoNotice', () => {
-  it('renders nothing when OPAA_DEMO_MODE is off (default OPAA installation)', () => {
+  it('renders nothing when OPAA_DEMO_MODE is off (default opaa installation)', () => {
     const { container } = renderWithProviders(<DemoNotice />)
     expect(container).toBeEmptyDOMElement()
   })

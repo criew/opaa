@@ -20,7 +20,7 @@ const MARKS: Record<
     tone: 'info',
     title: 'Systemvariable',
     decoration: 'underline dotted',
-    legend: 'Systemvariable (gepunktet unterstrichen, füllt OPAA selbst)',
+    legend: 'Systemvariable (gepunktet unterstrichen, füllt opaa selbst)',
   },
   invalid: {
     tone: 'error',

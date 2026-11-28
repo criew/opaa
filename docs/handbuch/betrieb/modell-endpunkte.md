@@ -1,6 +1,6 @@
 # Modelle betreiben
 
-OPAA bringt kein eigenes Sprachmodell mit, sondern ruft Modelle über Endpunkte auf, die das Haus
+opaa bringt kein eigenes Sprachmodell mit, sondern ruft Modelle über Endpunkte auf, die das Haus
 festlegt — im eigenen Rechenzentrum oder bei einem Anbieter. Dieses Kapitel beschreibt, welche
 Modelle es braucht, wie sie angebunden werden und woran es liegt, wenn sie nicht antworten. Wie die
 Modelle in die Suche eingreifen, steht im Kapitel [Suche](../referenz/wie-die-suche-arbeitet.md).
@@ -50,13 +50,13 @@ OPAA_OPENAI_API_KEY=sk-your-key-here
 
 Ein **ausdrücklich leer gesetzter** Wert (`OPAA_OPENAI_BASE_URL=` in einer `.env`) überschreibt die
 Voreinstellung mit einer leeren Zeichenkette und lässt das Backend im Modus `dev` mit einer Meldung
-abbrechen, die die Variable nennt. Außerhalb des Modus `dev` liest OPAA beide Variablen nicht; sind
+abbrechen, die die Variable nennt. Außerhalb des Modus `dev` liest opaa beide Variablen nicht; sind
 sie gesetzt, warnt das Log beim Start.
 
 > **Es gibt keine technische Sperre**, die einen Aufruf außerhalb festgelegter Netzbereiche
 > verhindert. Wer die Voreinstellung ändert, kann jedes erreichbare Ziel eintragen. Wer zusichern
 > muss, dass keine Daten das Haus verlassen, weist die Konfiguration nach und sichert den Netzweg
-> außerhalb von OPAA ab, etwa über Firewall-Regeln oder den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy).
+> außerhalb von opaa ab, etwa über Firewall-Regeln oder den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy).
 > Jede Änderung des Chat-Modells in der Oberfläche ist protokolliert und einer Person zurechenbar.
 
 Wie Ollama im Compose-Stapel oder im Cluster läuft, steht unter
@@ -78,7 +78,7 @@ Modellen abfragen, für Chat-, Embedding-, Rerank-, Transkriptions- und Texterke
 Modellverwaltung bleibt eine schon gespeicherte Adresse unverändert speicher- und testbar, auch wenn
 die Liste ihren Host nicht (mehr) nennt; nur eine neue Adresse muss die Prüfung bestehen. Die
 Installation prüft jede Adresse, auch eine früher gespeicherte. Die Aufrufe im laufenden Betrieb
-prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Nach dem
+prüft opaa nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Nach dem
 Start prüft jede Instanz die gespeicherten Adressen aller Rollen einmal; eine bestandene Prüfung
 bewacht den Namen bis zum Neustart, sodass auch diese Aufrufe nur Adressen außerhalb der gesperrten
 Bereiche erreichen ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Eine
@@ -86,11 +86,11 @@ abgelehnte Adresse steht als Warnung im Log und bleibt unbewacht. Nennt nur die
 Liste der Quellen den Host eines gespeicherten Modells, warnt der Start im Log und nennt den
 Eintrag, der in die Liste der Modelle gehört.
 
-**Was ein Eintrag freigibt.** Ein Eintrag wird nach Name und Port durchgelassen, ohne dass OPAA die
+**Was ein Eintrag freigibt.** Ein Eintrag wird nach Name und Port durchgelassen, ohne dass opaa die
 aufgelöste Adresse prüft: Wer den Namensdienst für diesen Namen kontrolliert, bestimmt, wohin die
 Anfrage geht. Deshalb nur Namen aus der eigenen, vertrauenswürdigen Zone eintragen und Einträge mit
 Port vorziehen. Ein Eintrag gilt für jede Modellrolle auf diesem Host und Port. Einen Namen aus der
-Liste bewacht OPAA nicht; ein späterer Wechsel seiner Namensauflösung fällt deshalb
+Liste bewacht opaa nicht; ein späterer Wechsel seiner Namensauflösung fällt deshalb
 nicht auf, die Absicherung dafür bleibt die Beschränkung des ausgehenden Verkehrs des Backends auf
 Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
 
@@ -103,7 +103,7 @@ Betrieb zählt:
   Antwortdatei, [Installation](installation.md)). Hat sie den Schritt übersprungen, ist kein Modell
   aktiv, und der Chat beantwortet keine Frage, bis die Systemverwaltung eines aktiviert. Im Modus
   `dev` ist es `phi3:mini` unter `OPAA_OPENAI_BASE_URL`, ohne Schlüssel.
-- **Den Schlüssel** verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
+- **Den Schlüssel** verschlüsselt opaa mit `OPAA_SETTINGS_ENCRYPTION_KEY`
   ([Verschlüsselung](#verschlüsselung-der-api-schlüssel-verwalteter-chat-modelle)). Er geht nur an
   denselben Endpunkt (Schema, Host, Port, Pfad); eine Adresse mit Anmeldedaten wird abgelehnt.
 - **Eine interne Adresse** braucht einen Eintrag in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
@@ -112,7 +112,7 @@ Betrieb zählt:
 | Ollama läuft | Basis-Adresse |
 |---|---|
 | im Compose-Stapel | `http://ollama:11434/v1` |
-| auf dem Docker-Host, OPAA im Container | `http://host.docker.internal:11434/v1` |
+| auf dem Docker-Host, opaa im Container | `http://host.docker.internal:11434/v1` |
 | im Kubernetes-Cluster | `http://ollama.<namespace>.svc.cluster.local:11434/v1` |
 | auf demselben Rechner, Backend ohne Container (`./gradlew bootRun`) | `http://localhost:11434/v1` |
 
@@ -122,11 +122,11 @@ unter [Fehlerbilder](#fehlerbilder).
 
 ### Temperatur und maximale Antwortlänge
 
-**Die Temperatur ist optional, „keine Angabe" ist die Voreinstellung.** Ohne Eintrag schickt OPAA
+**Die Temperatur ist optional, „keine Angabe" ist die Voreinstellung.** Ohne Eintrag schickt opaa
 den Parameter nicht mit, und das Modell nimmt seine eigene Voreinstellung. Manche Modelle akzeptieren
 keine andere: Bei neueren Anthropic-Modellen (etwa Claude Haiku 5.5 über die openai-kompatible
 Schnittstelle) lehnt der Anbieter jeden anderen Wert mit HTTP 400 ab, und jede Chat-Anfrage scheitert.
-Weitere Sampling-Parameter (`top_p`, `top_k`) sendet OPAA nie.
+Weitere Sampling-Parameter (`top_p`, `top_k`) sendet opaa nie.
 
 **Die maximale Antwortlänge** (Token) begrenzt die Ausgabe. Bei Modellen mit internem Reasoning zählt
 das Reasoning mit, ohne sichtbar zu werden; ein knapper Wert schneidet die Antwort mitten im Satz ab
@@ -140,13 +140,13 @@ gespeicherten Verlauf.
 
 Manche Anbieter liefern das Nachdenken eines Modells am Anfang des Antworttexts als Block
 `<think>…</think>` oder `<thought>…</thought>`, etwa Gemma 4 über die openai-kompatible Schnittstelle
-von Gemini. OPAA entfernt einen solchen Block bei jedem Aufruf des Chat-Modells, bevor der Text
+von Gemini. opaa entfernt einen solchen Block bei jedem Aufruf des Chat-Modells, bevor der Text
 weiterverarbeitet wird — nur ganz am Anfang. Ist ein führender Block nicht geschlossen, gilt die
 Antwort als leer, und unter ihr erscheint der Hinweis auf die fehlende Antwort.
 
 Bei manchen selbst betriebenen Modellen, etwa DeepSeek-R1 oder Qwen3-Thinking auf einem Server ohne
 Reasoning-Parser, steht das öffnende `<think>` schon in der Anfrage. Die Antwort beginnt dann direkt
-mit dem Denktext und enthält nur das schließende Tag, auf eigener Zeile vor der Antwort. OPAA entfernt
+mit dem Denktext und enthält nur das schließende Tag, auf eigener Zeile vor der Antwort. opaa entfernt
 auch diesen Denktext, bis zum ersten `</think>` im Text — aber nur, wenn dieses allein auf seiner
 Zeile steht, höchstens drei Leerzeichen eingerückt, und davor weder ein öffnendes Tag noch ein
 offener Codeblock steht. Eine Antwort, die das Tag im Satz erwähnt oder in einem Codeblock zitiert,
@@ -163,7 +163,7 @@ Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, API-Sc
 Eingabegrenze ([Installation](installation.md)); überspringt sie den Schritt, legt es später die
 Systemverwaltung fest ([Erstes Modell festlegen](#erstes-modell-festlegen)). Die Prüfung ist eine
 Probeeinbettung: Sie zeigt, dass der Endpunkt das Modell bedient, und ergibt die Zahl der
-Dimensionen, mit der das Modell einbettet. Mit dieser Zahl legt OPAA die Vektorablage an; einstellen
+Dimensionen, mit der das Modell einbettet. Mit dieser Zahl legt opaa die Vektorablage an; einstellen
 muss sie niemand. Ohne Embedding-Modell gibt es keine Vektorablage, und Indexierung, Upload und
 Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist. Danach zeigt die
 Modellverwaltung im Reiter „Einbettung" Modell, Endpunkt, Dimensionen, Eingabegrenze und ob ein
@@ -172,11 +172,11 @@ API-Schlüssel gespeichert ist; dort läuft auch jeder Wechsel.
 `OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
 übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
 auf ([Konfiguration](../referenz/konfiguration.md#entfallene-und-veraltete-variablen)). Den API-Schlüssel
-verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
+verschlüsselt opaa mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
 mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne API-Schlüssel.
 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar.
-OPAA führt ihn deshalb mit Probeeinbettung, Vorschau und ausdrücklicher Bestätigung
+opaa führt ihn deshalb mit Probeeinbettung, Vorschau und ausdrücklicher Bestätigung
 ([Modell wechseln](#modell-wechseln)).
 
 > **Ältere Ollama-Fassungen betten lange Chunks falsch ein.** Sie zerlegen eine Eingabe über 512
@@ -209,7 +209,7 @@ Suchqualität zählt deshalb vor allem, dass das Modell die Sprache der Dokument
 
 Die Dimensionen ermittelt die Probeeinbettung der Installation. Auf einem kleinen Server
 mit `bge-m3` lässt sich der Spitzenbedarf senken, indem das Modell nicht mit der vollen
-Eingabegrenze angelegt wird; OPAA teilt dann längere Chunks
+Eingabegrenze angelegt wird; opaa teilt dann längere Chunks
 ([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
 
 Ein späterer Wechsel des Modells geht über die Neueinbettung, ohne Neuindizierung und ohne
@@ -223,7 +223,7 @@ die Vektorsuche unsichtbar.
 
 > **Beispiel.** Ein Haushaltsplan enthält eine Tabelle voller Zahlen. Ihr Chunk hat nur so viele
 > Zeichen wie die anderen, braucht aber fast dreimal so viele Tokens. Der Endpunkt meldet die
-> Grenze als Tokenzahl, OPAA teilt den Chunk in höchstens halb so lange Teile, und jeder wird
+> Grenze als Tokenzahl, opaa teilt den Chunk in höchstens halb so lange Teile, und jeder wird
 > ganz eingebettet.
 
 Die Zielgröße der Chunks wird in Zeichen eingestellt (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`), die
@@ -233,8 +233,8 @@ Die Zielgröße allein garantiert deshalb nicht, dass jeder Chunk passt.
 
 Die Eingabegrenze, eine Angabe des Embedding-Modells bei der Installation, nennt die Grenze des
 Endpunkts, wie er tatsächlich läuft.
-Kann ein Chunk sie erreichen, bettet OPAA ihn einzeln ein. Lehnt der Endpunkt ihn als zu lang ab
-oder meldet er eine Tokenzahl an der Grenze, teilt OPAA den Chunk an Absatz-, Zeilen- oder
+Kann ein Chunk sie erreichen, bettet opaa ihn einzeln ein. Lehnt der Endpunkt ihn als zu lang ab
+oder meldet er eine Tokenzahl an der Grenze, teilt opaa den Chunk an Absatz-, Zeilen- oder
 Satzgrenzen in zwei oder drei Teile mit höchstens halber Länge und prüft sie erneut. Jeder Teil
 behält Fundort und Überschrift. Kürzere Chunks laufen wie bisher gesammelt und kosten keinen eigenen
 Aufruf. Die Einzelaufrufe laufen so parallel wie die Stapel (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`);
@@ -248,16 +248,16 @@ Typische Werte: ein unverändert gezogenes Ollama-Modell 2.048, die Embedding-Mo
 - **Ohne Tokenzahl:** Meldet der Endpunkt keine Tokenzahl, bleibt der Chunk ganz. Das Log warnt,
   dass eine Kürzung nicht auszuschließen ist.
 - **Ohne neues Zerlegen:** Die Neueinbettung nach einem Modellwechsel und der Nachlauf des
-  Kontextpräfixes behalten den Zuschnitt. Kürzt der Endpunkt dort einen Chunk, behält OPAA den
+  Kontextpräfixes behalten den Zuschnitt. Kürzt der Endpunkt dort einen Chunk, behält opaa den
   gekürzten Vektor, damit der Lauf durchläuft und die Vektorsuche umschalten kann. Das Log warnt,
   die Kennzahl zählt den Chunk als `cut`, und das Dokument wird für den
   [Nachzug](../administration/suche-und-indexierung.md#bestand-nachziehen) vorgemerkt. Der Nachzug liest
   es aus der Quelle neu und teilt den Chunk dabei. Nur wenn der Endpunkt den Chunk ablehnt statt
   ihn zu kürzen, scheitert das Dokument.
-- **Grenze zu hoch eingestellt:** Kürzt der Endpunkt früher als eingestellt, bemerkt OPAA das nicht.
+- **Grenze zu hoch eingestellt:** Kürzt der Endpunkt früher als eingestellt, bemerkt opaa das nicht.
   Die Einstellung muss zum Endpunkt passen.
 
-**Ollama.** Über den OpenAI-kompatiblen Weg, den OPAA nutzt, kürzt Ollama ohne Meldung und zählt
+**Ollama.** Über den OpenAI-kompatiblen Weg, den opaa nutzt, kürzt Ollama ohne Meldung und zählt
 nur die behaltenen Tokens. Die Grenze ist dabei die Stapelgröße des Modells (`num_batch`), nicht
 seine Kontextlänge. Ein unverändertes Modell nimmt deshalb 2.048 Tokens auf, auch wenn es mehr
 kann. `OLLAMA_CONTEXT_LENGTH` hebt die Grenze nicht, und Optionen in der Anfrage wirken auf diesem
@@ -279,7 +279,7 @@ nicht mit der eingestellten Grenze.
 
 ### Erstes Modell festlegen
 
-> **Beispiel.** Ein Haus installiert OPAA, bevor der Modellserver freigeschaltet ist, und
+> **Beispiel.** Ein Haus installiert opaa, bevor der Modellserver freigeschaltet ist, und
 > überspringt den Schritt „Einbettung“. Zwei Wochen später trägt die Systemverwaltung
 > `bge-m3` im Reiter „Einbettung“ ein; ab dann lassen sich Bibliotheken indexieren.
 
@@ -290,13 +290,13 @@ der Installation. „Probeeinbettung“ prüft den Endpunkt und nennt die Zahl d
 „Embedding-Modell festlegen“ fragt nach und legt dann Modell und Vektorablage an. Weil vor dem
 ersten Modell keine Inhalte angenommen werden, wird nichts neu eingebettet, und die Vektorsuche läuft
 sofort. Enthält die Vektorablage trotzdem Abschnitte, etwa nach einer unvollständigen Rücksicherung,
-lehnt OPAA schon die Probe ab (siehe [Fehlerbilder](#fehlerbilder)). Das wirkt auf allen
+lehnt opaa schon die Probe ab (siehe [Fehlerbilder](#fehlerbilder)). Das wirkt auf allen
 Instanzen ohne Neustart; legen zwei Sitzungen zugleich ein Modell fest, gilt das erste, die zweite
 bekommt „Das Embedding-Modell wurde zwischendurch geändert". Wie beim Wechsel müssen alle laufenden
 Instanzen dieselbe Version haben, und die Grenzen der Probeeinbettung gelten
 ([Modell wechseln](#modell-wechseln)).
 
-Vor dem ersten Modell nimmt OPAA keine Inhalte an: Uploads und Indexierungsläufe werden abgelehnt,
+Vor dem ersten Modell nimmt opaa keine Inhalte an: Uploads und Indexierungsläufe werden abgelehnt,
 geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit. Danach läuft der nächste
 geplante Lauf wie gewohnt; eine Bibliothek ohne Zeitplan startet man von Hand auf ihrer Seite.
 
@@ -325,17 +325,17 @@ flowchart LR
    den Schlüssel nur, solange die Adresse denselben Endpunkt nennt (Schema, Host, Port, Pfad); bei
    einem anderen ist er neu einzugeben oder „ohne" zu wählen. So geht ein Schlüssel nie an einen
    anderen Anbieter.
-2. **„Probeeinbettung".** OPAA bettet drei feste Probetexte ein und vergleicht sie mit dem
+2. **„Probeeinbettung".** opaa bettet drei feste Probetexte ein und vergleicht sie mit dem
    gespeicherten Referenzanker des aktiven Modells. Ist es dasselbe Modell an einem anderen
    Endpunkt, bietet die Seite stattdessen „Endpunkt ändern" an ([Endpunkt wechseln](#endpunkt-wechseln)).
 3. **Vorschau.** Sie nennt die Zahl der Chunks (private Bibliotheken nur ab der
    Mindestgruppengröße), die Tokens grob geschätzt, die Dauer und den zusätzlichen Speicher. Die
-   Dauer misst OPAA am neuen Endpunkt mit künstlichen Texten in der Zielgröße der Chunks; vor der
+   Dauer misst opaa am neuen Endpunkt mit künstlichen Texten in der Zielgröße der Chunks; vor der
    Bestätigung geht kein Inhalt einer Bibliothek dorthin. Antwortet der Endpunkt darauf nicht, rechnet
-   OPAA mit dem voreingestellten Durchsatz und sagt das. Einen Preis nennt die Vorschau
+   opaa mit dem voreingestellten Durchsatz und sagt das. Einen Preis nennt die Vorschau
    nicht; die Tokenzahl lässt sich mit dem eigenen Tarif rechnen.
 4. **„Wechsel starten".** Ein Dialog wiederholt die beiden Folgen und verlangt die Bestätigung.
-   OPAA prüft dann alles erneut, setzt das neue Modell, bewahrt das bisherige für ein Verwerfen auf
+   opaa prüft dann alles erneut, setzt das neue Modell, bewahrt das bisherige für ein Verwerfen auf
    und startet die Neueinbettung. Ab jetzt ist die Vektorsuche ausgesetzt: Suche und Chat finden
    Chunks nur über die Volltextsuche, der Chat zeigt den Hinweis „Eingeschränkte Suche", und die
    Seite „Suche & Indexierung" zeigt im Reiter „Indexstatus" den Hinweis „Index veraltet".
@@ -347,7 +347,7 @@ flowchart LR
    „Neueinbettung fortsetzen" macht dort weiter. Ein Neustart setzt den Lauf von selbst fort; endet
    die Instanz, die ihn ausführt, übernimmt ihn die nächste. Abbrechen und Fortsetzen wirken gleich,
    welche Instanz die Seite beantwortet.
-6. **Umschalten.** Haben alle Chunks einen neuen Vektor, baut OPAA den Vektorindex für das neue
+6. **Umschalten.** Haben alle Chunks einen neuen Vektor, baut opaa den Vektorindex für das neue
    Modell und stellt um, bei einer anderen Dimension samt Vektorablage. Die Vektorsuche läuft wieder.
    **Mit dem Umschalten fallen die bisherigen Vektoren weg;** zurück geht es dann nur mit einem
    neuen Wechsel und einer vollständigen Neueinbettung.
@@ -364,7 +364,7 @@ Modell zurück, samt Schlüssel; die Vektorsuche läuft sofort wieder. Chunks, d
 Bestätigung neu oder mit geändertem Text indiziert wurden, haben keinen Vektor des bisherigen
 Modells. Ihre Zahl nennt der Dialog, und ein anschließender Lauf füllt sie mit dem bisherigen Modell
 nach; bis dahin findet sie nur die Volltextsuche. Den Stand des Nachfüllens zeigt der Indexstatus,
-mit „Nachfüllen abbrechen" und „Nachfüllen fortsetzen". Sobald OPAA den Vektorindex für das neue
+mit „Nachfüllen abbrechen" und „Nachfüllen fortsetzen". Sobald opaa den Vektorindex für das neue
 Modell baut, lässt sich der Wechsel nicht mehr verwerfen; wurde der Lauf während des Baus
 angehalten, gelingt das Verwerfen, sobald der Bau fertig ist.
 
@@ -385,7 +385,7 @@ drei Aufrufen mit je 16 künstlichen Texten. Ist die Grenze der Probe erschöpft
 „Endpunkt ändern" weiter an; es prüft selbst.
 
 **Nach einer Rücksicherung.** Passt das gespeicherte Modell beim Start nicht zum Index, etwa nach
-einer Rücksicherung nur eines Teils der Datenbank, setzt OPAA die Vektorsuche aus und zeigt „Index
+einer Rücksicherung nur eines Teils der Datenbank, setzt opaa die Vektorsuche aus und zeigt „Index
 veraltet". Dann im Indexstatus „Neueinbettung starten". Ein Verwerfen gibt es in diesem Fall nicht,
 weil kein bisheriges Modell aufbewahrt ist.
 
@@ -413,13 +413,13 @@ brauchen keine Neueinbettung. Typischer Anlass ist der Ausfall des bisherigen Se
 
 Dafür im Reiter „Einbettung" die neue Adresse und den Schlüssel eintragen und „Probeeinbettung"
 wählen; meldet die Seite, dass der Endpunkt wie das aktive Modell einbettet, „Endpunkt ändern". Das
-gilt sofort auf allen Instanzen, ohne Neustart. OPAA nimmt den Endpunkt nur an, wenn Modell-Kennung
+gilt sofort auf allen Instanzen, ohne Neustart. opaa nimmt den Endpunkt nur an, wenn Modell-Kennung
 und Dimension gleich bleiben und seine Vektoren der festen Probetexte denen des **Referenzankers**
 nahezu gleichen. Gewertet wird die kleinste Ähnlichkeit der drei Texte; sie muss mindestens 0,99
 erreichen.
 
-Den Anker nimmt OPAA bei der Installation und bei jedem Modellwechsel auf, und ein Endpunktwechsel
-lässt ihn unverändert. Fehlt er, holt ihn OPAA nach, sobald das Modell erfolgreich einbettet; bis
+Den Anker nimmt opaa bei der Installation und bei jedem Modellwechsel auf, und ein Endpunktwechsel
+lässt ihn unverändert. Fehlt er, holt ihn opaa nach, sobald das Modell erfolgreich einbettet; bis
 dahin vergleicht die Prüfung mit dem bisherigen Endpunkt und lehnt ab, wenn dieser nicht antwortet.
 
 **Grenze des Schutzes.** Der Vergleich erkennt eine andere Fassung oder Quantisierung unter
@@ -432,7 +432,7 @@ ab; dann bleibt der Modellwechsel.
 **Ersatz-Endpunkt während eines Wechsels.** Fällt der neue Endpunkt während der Neueinbettung aus,
 den Lauf im Indexstatus anhalten und im Reiter „Einbettung" „Ersatz-Endpunkt eintragen" wählen. Die
 Prüfung ist dieselbe, gegen den Anker des neuen Modells. Danach den Lauf fortsetzen. Während ein Lauf
-arbeitet, nimmt OPAA keinen Endpunktwechsel an.
+arbeitet, nimmt opaa keinen Endpunktwechsel an.
 
 ## Reranking einschalten
 
@@ -458,7 +458,8 @@ Zur Wahl des Endpunkts:
 
 Zum Einschalten gehören drei Angaben zusammen: das Auswahlkästchen „Reranking einschalten", die
 Basis-Adresse ohne den Pfad `/rerank` und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
-fortlaufend auf der Seite „Suche & Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
+fortlaufend auf der Seite „Suche & Indexierung" sowie in der Health Group
+`GET /actuator/health/rerank-model`; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.
 
 > **`OPAA_QUERY_FETCH_K` mit anheben.** Der Reranker bewertet nur, was die Suchstufen zuvor geliefert
@@ -467,7 +468,7 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > damit gerade gedeckt, ein größeres läuft ins Leere. Wer dem Reranking mehr Material geben will, hebt
 > `OPAA_QUERY_FETCH_K` mit an.
 
-> **Prüfabstand bei bezahltem Endpunkt groß wählen.** Ohne Fragen prüft OPAA die Erreichbarkeit mit
+> **Prüfabstand bei bezahltem Endpunkt groß wählen.** Ohne Fragen prüft opaa die Erreichbarkeit mit
 > einer echten Rerank-Anfrage, sobald die letzte Antwort länger als `OPAA_RERANK_PROBE_INTERVAL`
 > zurückliegt. Ein gehosteter Dienst rechnet jede dieser Prüfungen ab, auch wenn niemand eine Frage
 > stellt. Bei einem bezahlten Endpunkt den Abstand deshalb groß wählen, etwa `24h`: Jede Frage mit
@@ -492,7 +493,7 @@ Timeouts, Prüfabstand und Lastgrenzen bleiben Sache des Betriebs (`OPAA_RERANK_
 `OPAA_TRANSCRIPTION_MAX_CONCURRENT`, die Aufnahmen je Konto und Client unter
 `OPAA_RATE_LIMIT_TRANSCRIPTION_*`). Die früheren Variablen `OPAA_RERANK_ENABLED`,
 `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL`, `OPAA_RERANK_API_KEY` und `OPAA_TRANSCRIPTION_ENABLED`,
-`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest OPAA nicht mehr und übernimmt sie auch nicht;
+`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest opaa nicht mehr und übernimmt sie auch nicht;
 ist eine noch gesetzt, warnen der Start im Log und der Reiter der Rolle. Jede Änderung an beiden
 Rollen steht mit Vorher und Nachher im Revisionsprotokoll („Rerank-Modell“, „Transkriptionsmodell“),
 der Schlüssel nur als gesetzt, geändert oder entfernt.
@@ -501,7 +502,7 @@ der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 Mit der Spracheingabe spricht eine Person ihre Frage ein, statt sie zu tippen: Sie nimmt im Chat auf,
 beendet die Aufnahme, und der erkannte Text landet im Eingabefeld (Bedienung unter
-[Spracheingabe](../benutzer/anhaengen-und-diktieren.md#spracheingabe)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
+[Spracheingabe](../benutzer/anhaengen-und-diktieren.md#spracheingabe)). Dafür braucht opaa eine eigene Modellrolle **Transkription**, die
 Sprache in Text umwandelt. Sie ist ab Werk **aus**; ohne sie zeigt der Chat kein Mikrofon. Eingetragen wird sie unter
 **Modelle → Spracheingabe** ([Rerank- und
 Transkriptionsmodell](#rerank--und-transkriptionsmodell)) oder schon bei der
@@ -520,7 +521,7 @@ speaches oder ein LiteLLM-Gateway auf einem zentralen Server mit interner Adress
 der openai-kompatiblen Schnittstelle bedienen:
 
 - `POST {Basis-Adresse}/audio/transcriptions` nimmt die Aufnahme an und antwortet mit dem Text;
-- `GET {Basis-Adresse}/models` dient OPAA als Erreichbarkeitsprüfung, beim Start und danach
+- `GET {Basis-Adresse}/models` dient opaa als Erreichbarkeitsprüfung, beim Start und danach
   regelmäßig. Sie überträgt kein Audio und kostet bei Anbietern mit Abrechnung je Aufruf nichts.
 
 Einzutragen sind unter **Modelle → Spracheingabe** das Auswahlkästchen „Spracheingabe einschalten", die
@@ -539,8 +540,8 @@ läuft weiter.
 **Was an den Dienst geht:** die Aufnahme, die Modell-Kennung, die Sprache
 (Feld „Sprache" unter Modelle → Spracheingabe; leer erkennt das Modell sie selbst), die
 Begriffslisten als Prompt (siehe unten) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
-kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von OPAA als Absender.
-**Was OPAA behält:** nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
+kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von opaa als Absender.
+**Was opaa behält:** nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
 Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Das
 Anfrageprotokoll des Backends nennt für eine Aufnahme nur Methode, Pfad, Status und Dauer, keine
 Person. Eine Aufnahme
@@ -549,7 +550,7 @@ Person. Eine Aufnahme
 ### Begriffslisten
 
 Whisper-kompatible Modelle erkennen Fachbegriffe deutlich besser, wenn sie Beispielvokabular
-mitbekommen. OPAA schickt dazu das Feld `prompt` mit: zuerst die Begriffsliste der Installation
+mitbekommen. opaa schickt dazu das Feld `prompt` mit: zuerst die Begriffsliste der Installation
 (Modelle → Spracheingabe), dann die persönliche Liste der diktierenden Person (Ihre Einstellungen →
 Allgemein). Jede Liste fasst höchstens 500 Zeichen. Ist keine gepflegt, geht kein Prompt mit.
 
@@ -566,7 +567,7 @@ Allgemein). Jede Liste fasst höchstens 500 Zeichen. Ist keine gepflegt, geht ke
 
 ### Anforderungen an den Betrieb des Dienstes
 
-OPAA speichert und protokolliert keine Aufnahme; der Transkriptionsdienst muss dasselbe zusichern.
+opaa speichert und protokolliert keine Aufnahme; der Transkriptionsdienst muss dasselbe zusichern.
 Für die Stelle, die ihn betreibt, heißt das:
 
 - **Keine Ablage der Aufnahmen** und **keine Transkripte im Log.** Anfrage- und Inhaltslogs des
@@ -574,17 +575,17 @@ Für die Stelle, die ihn betreibt, heißt das:
 - **Auf verbleibende Logs greift nur der Betrieb zu.**
 - **Proxys und Gateways dazwischen** protokollieren keinen Inhalt. Ein Proxy-Log, das Konto oder
   IP-Adresse einer Person mit der Anfrage verbindet, stellt einen Personenbezug her; zwischen Browser
-  und OPAA gilt das für den vorgelagerten Reverse-Proxy genauso.
+  und opaa gilt das für den vorgelagerten Reverse-Proxy genauso.
 - **Proxys halten die Aufnahme im Arbeitsspeicher.** Viele Reverse-Proxys und Ingress-Controller
   schreiben einen Anfrage-Body, der ihren kleinen Standardpuffer übersteigt, in eine temporäre
-  Datei. Der Frontend-Container von OPAA hält eine Aufnahme bis 11 MiB im Speicher; ein Proxy davor
+  Datei. Der Frontend-Container von opaa hält eine Aufnahme bis 11 MiB im Speicher; ein Proxy davor
   braucht einen ebenso großen Puffer für den Body, bei nginx und ingress-nginx
   `client_body_buffer_size` bzw. die Annotation `nginx.ingress.kubernetes.io/client-body-buffer-size`
   (Kapitel [Kubernetes](kubernetes.md)).
 
 ### Erprobung mit speaches im Compose-Stapel
 
-Für eine Erprobung ohne vorhandenen Dienst lässt sich speaches als zusätzlicher Container neben OPAA
+Für eine Erprobung ohne vorhandenen Dienst lässt sich speaches als zusätzlicher Container neben opaa
 betreiben, etwa in einer `docker-compose.override.yml`. Das CPU-Image kommt ohne Grafikkarte aus,
 transkribiert dann aber langsam; `OPAA_TRANSCRIPTION_TIMEOUT` muss die Dauer einer Aufnahme auf der
 vorhandenen Hardware abdecken. Der Container braucht `ffmpeg` für die Umwandlung der
@@ -626,7 +627,7 @@ darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der 
 ### Live-Transkript
 
 Mit Live-Transkript sieht die Person den Text schon beim Sprechen. Dafür hält der Browser während
-der Aufnahme eine WebSocket-Verbindung zu OPAA (`/api/v1/transcriptions/stream`), und OPAA eine zu
+der Aufnahme eine WebSocket-Verbindung zu opaa (`/api/v1/transcriptions/stream`), und opaa eine zu
 einem Live-Dienst. Eingerichtet wird es unter **Modelle → Spracheingabe**, Abschnitt
 „Live-Transkript (optional)“ ([Live-Transkript einrichten](../administration/modelle.md#live-transkript-einrichten)),
 oder im Installationsschritt Transkriptionsmodell. Es setzt die eingeschaltete Spracheingabe voraus;
@@ -639,12 +640,12 @@ Platz frei ist oder nach dem Ende kein endgültiger Text kommt.
 | vLLM (eigener Server) | `ws://vllm:8000/v1/realtime` | `mistralai/Voxtral-Mini-4B-Realtime-2602` | 16 kHz |
 | Mistral | `wss://api.mistral.ai/v1/audio/transcriptions/realtime` | `voxtral-mini-transcribe-realtime-3` | 16 kHz |
 
-Das Protokoll ist eine Auswahl, kein Freitext; OPAA spricht genau diese drei. Die Live-Adresse
+Das Protokoll ist eine Auswahl, kein Freitext; opaa spricht genau diese drei. Die Live-Adresse
 beginnt mit `ws://` oder `wss://` und durchläuft dieselbe
 [Adressprüfung der Modelle](#adressprüfung-der-modelle) wie die übrigen Rollen, mit `http`/`https`
 an Stelle von `ws`/`wss`; ein Host im Haus kommt also in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`.
 Die Verbindung geht über den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und folgt keinem
-Redirect. Ohne eigenen Live-Schlüssel sendet OPAA den Schlüssel des Transkriptionsmodells mit, aber
+Redirect. Ohne eigenen Live-Schlüssel sendet opaa den Schlüssel des Transkriptionsmodells mit, aber
 nur bei gleicher Adresse bis zum Port (Schema, Host, Port), wobei `ws`/`wss` wie `http`/`https`
 zählen; sonst geht keiner mit. OpenAI und Mistral verlangen einen Schlüssel: Ohne eigenen
 Live-Schlüssel und ohne Schlüssel des Transkriptionsmodells unter der gleichen Adresse bis zum Port
@@ -660,12 +661,12 @@ beim Einspielen einer Datei; wie oft eine Person Live-Sitzungen startet, begrenz
 `OPAA_RATE_LIMIT_TRANSCRIPTION_STREAM_*`.
 
 **Was an den Dienst geht:** die Aufnahme fortlaufend während des Sprechens, als PCM-Audio, dazu
-Modell, Sprache und bei OpenAI und Mistral die Begriffslisten. **Was OPAA behält:** nichts; Audio und
+Modell, Sprache und bei OpenAI und Mistral die Begriffslisten. **Was opaa behält:** nichts; Audio und
 Text laufen nur durch. **Ein externer Live-Dienst erhält die Stimme laufend**, nicht erst nach dem
 Ende; das braucht wie beim [externen Anbieter](#externer-anbieter) eine eigene
 datenschutzrechtliche Prüfung. Verwaltung und Assistent weisen bei OpenAI und Mistral darauf hin.
 
-Zwischen Browser und OPAA muss jeder Proxy das WebSocket-Upgrade weiterreichen
+Zwischen Browser und opaa muss jeder Proxy das WebSocket-Upgrade weiterreichen
 ([Netz und Sicherheit](netz-und-sicherheit.md#websocket-der-spracheingabe)). Fehlt es, bleibt es ohne
 Fehlermeldung beim Diktat mit ganzer Aufnahme. Zustand und Fehler zeigt der Abschnitt
 „Live-Transkript (optional)“ unter Modelle → Spracheingabe; im Log steht nur Code oder Typ eines Fehlers des
@@ -685,7 +686,7 @@ Live-Dienstes vor:
 | Mistral | keine Vorbelegung | – |
 
 Bei OpenAI haben Diktat und Live die gleiche Adresse bis zum Port; ein Schlüssel im Feld des
-Diktats gilt dann für beide. Für Mistral belegt OPAA nichts vor: Dass dessen
+Diktats gilt dann für beide. Für Mistral belegt opaa nichts vor: Dass dessen
 `/v1/audio/transcriptions` die Anfrage des Diktats (Datei, Modell und Sprache als Formular) so annimmt wie die OpenAI-kompatiblen
 Dienste, ist nicht geprüft; ein Diktat-Endpunkt wird dort selbst eingetragen und mit „Verbindung
 testen“ geprüft.
@@ -698,21 +699,21 @@ Whisper-Modell.
 ### Spracheingabe und Mitbestimmung
 
 - *Worum es geht:* Die Spracheingabe verarbeitet die Stimme der Beschäftigten. Auch beim Betrieb im
-  Haus ist die Stimme ein biometrienahes Datum. OPAA speichert weder Aufnahme noch Text der Aufnahme
+  Haus ist die Stimme ein biometrienahes Datum. opaa speichert weder Aufnahme noch Text der Aufnahme
   und zählt keine Nutzung je Person; eine Chat-Nachricht trägt kein Merkmal, ob sie diktiert wurde.
 - *Warum es zählt:* Technische Einrichtungen, die Leistung oder Verhalten überwachen können, berühren
   die Mitbestimmung der Personalvertretung. Ob die Spracheingabe dazu geeignet ist, hängt auch am
   Betrieb des Transkriptionsdienstes und der Proxys davor.
 - *Zu klären:* Braucht die Einführung eine Dienstvereinbarung oder die Zustimmung der
   Personalvertretung? Sichert die Stelle, die den Dienst betreibt, zu, dass Aufnahmen und
-  Transkripte weder abgelegt noch protokolliert werden? Ist die Nutzung freiwillig geregelt? OPAA
+  Transkripte weder abgelegt noch protokolliert werden? Ist die Nutzung freiwillig geregelt? opaa
   kennt keine Einstellung, die das Diktieren vorschreibt; abschalten lässt es sich mit
   `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false`.
-- *In OPAA:* Weder die Modellverwaltung noch der Installationsassistent fragt vor dem Einschalten
+- *In opaa:* Weder die Modellverwaltung noch der Installationsassistent fragt vor dem Einschalten
   nach einer Absprache mit der Personalvertretung. Den Weg gibt der Betrieb frei: Ist die Frage bei
   der Installation noch offen, startet er mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false`; dann
   bietet der Assistent das Transkriptionsmodell nicht an. Nach der Klärung entfernt der Betrieb die
-  Variable und startet neu, weil OPAA Funktionsschalter nur beim Start liest; dann trägt die
+  Variable und startet neu, weil opaa Funktionsschalter nur beim Start liest; dann trägt die
   Systemverwaltung das Modell unter Modelle → Spracheingabe ein und schaltet es ein. Bei mehreren
   Instanzen tragen alle denselben Wert: Eine Instanz mit abgeschalteter Spracheingabe verwirft beim
   Abschluss der Installation einen gespeicherten Schritt Transkriptionsmodell.
@@ -720,7 +721,7 @@ Whisper-Modell.
 ## Texterkennung einschalten
 
 Gescannte PDF-Dokumente haben oft keine Textebene; ohne Texterkennung (OCR) findet die Suche in
-ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei Stufen, beide ab Werk
+ihnen nichts. Dafür hat opaa die Modellrolle **Texterkennung**. Sie hat zwei Stufen, beide ab Werk
 **aus**:
 
 1. **Betriebsschalter** `OPAA_OCR_ENABLED=true`, gelesen beim Start. Ohne ihn wird die Rolle weder
@@ -739,7 +740,7 @@ ihnen nichts. Dafür hat OPAA die Modellrolle **Texterkennung**. Sie hat zwei St
 | **Vision-Modell** (OpenAI-kompatibel) | je Seite ein Bild an `POST {Basis-Adresse}/chat/completions` | `Authorization: Bearer` | `GET {Basis-Adresse}/models` |
 
 Für docling-serve ist die Basis-Adresse die Wurzel des Dienstes (etwa `http://ocr:5001`), für ein
-Vision-Modell die Adresse mit `/v1`. OPAA fordert docling-serve immer mit denselben Optionen an:
+Vision-Modell die Adresse mit `/v1`. opaa fordert docling-serve immer mit denselben Optionen an:
 erzwungene OCR mit RapidOCR, Sprache Deutsch, Tabellenstruktur genau, Ausgabe als JSON. Eine interne
 Adresse gibt der Betrieb wie bei den anderen Rollen über `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
 frei; der Aufruf folgt keinem Redirect und geht über den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy).
@@ -748,7 +749,8 @@ frei; der Aufruf folgt keinem Redirect und geht über den [Ausgangsproxy](netz-u
 Tabelle) genau so, wie es der Betrieb täte, und unterscheidet: bereit, Schlüssel abgelehnt, Engine
 oder Modelle fehlen (der Dienst antwortet, kann die Seite aber nicht lesen oder kennt das Modell
 nicht), kein Text erkannt und nicht erreichbar. Der Zustand steht fortlaufend auf der Seite
-„Suche & Indexierung" (Rolle „Texterkennung"); geprüft werden fortlaufend Erreichbarkeit und
+„Suche & Indexierung" (Rolle „Texterkennung") und in der Health Group
+`GET /actuator/health/text-recognition-model`; geprüft werden fortlaufend Erreichbarkeit und
 Schlüssel, nie eine Seite. Ein abgelehnter Schlüssel zeigt die Rolle als nicht nutzbar.
 
 **Grenzen.** Seiten je Dokument (`OPAA_OCR_MAX_PAGES_PER_DOCUMENT`), Zeit je Dokument
@@ -759,12 +761,12 @@ Werte unter [Konfiguration](../referenz/konfiguration.md#alle-umgebungsvariablen
 **Was die Indexierung damit tut.** Eine PDF-Datei ohne Textebene geht an den Dienst, der erkannte
 Text wird wie jedes Dokument zerlegt und eingebettet. Jeder Abschnitt trägt Seiten und, bei
 docling-serve, die Rahmen seiner Zeilen auf der Seite; im Beleg steht, dass sein Text per
-Texterkennung gelesen wurde. OPAA speichert den erkannten Text mit dem Dokument, ohne Seitenbilder,
+Texterkennung gelesen wurde. opaa speichert den erkannten Text mit dem Dokument, ohne Seitenbilder,
 und löscht ihn mit ihm; eine Neuindizierung unveränderter Dateien liest daraus und ruft den Dienst
 nicht erneut. Fällt der Dienst aus (Zeitüberschreitung, Schlüssel abgelehnt, überlastet, Fehler,
 nicht erreichbar), wandelt docling-serve nur einen Teil um oder geht sonst etwas unerwartet schief,
 bleibt der Scan abgewiesen und wartet; nichts wird gespeichert, der nächste Lauf versucht es
-erneut, hochgeladene Scans holt OPAA selbst nach, in der Vorgabe alle fünf Minuten
+erneut, hochgeladene Scans holt opaa selbst nach, in der Vorgabe alle fünf Minuten
 (`OPAA_OCR_CATCH_UP_INTERVAL`). Weist ein Vision-Modell eine
 Anfrage ab (etwa HTTP 400 bei falschem Modellnamen), gilt das ebenso als Ausfall, nicht als Fehler
 der Datei. Lehnt docling-serve die Datei selbst ab, ist sie unlesbar oder liegt sie über der
@@ -817,7 +819,7 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 - **Bei Schlüsselverlust** sind die gespeicherten API-Schlüssel nicht wiederherstellbar; der übrige
   Modelleintrag bleibt. Abhilfe: den API-Schlüssel des Modells in der Oberfläche neu eintragen.
 - **Ein Schlüsselwechsel** braucht kein neues Eintragen: Der abgelöste Schlüssel entschlüsselt
-  weiter, bis OPAA alle Werte umgestellt hat
+  weiter, bis opaa alle Werte umgestellt hat
   ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)).
 - Für Entwicklung und Tests (nur Profil `dev`) ist ein fester, **nicht für den Betrieb gedachter**
   Schlüssel voreingestellt.
@@ -826,13 +828,13 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 
 Der Anbieter eines KI-Systems, das Text erzeugt, muss die Ausgaben maschinenlesbar als KI-erzeugt
 markieren und erkennbar machen, soweit das technisch möglich ist (Art. 50 Abs. 2 KI-Verordnung); eine
-Behörde, die OPAA unter eigenem Namen in Betrieb nimmt, kann selbst Anbieterin werden. Eine solche Markierung im Text setzt das Modell, nicht OPAA: OPAA schickt die
+Behörde, die opaa unter eigenem Namen in Betrieb nimmt, kann selbst Anbieterin werden. Eine solche Markierung im Text setzt das Modell, nicht opaa: opaa schickt die
 Anfrage an einen Endpunkt und hat auf die Erzeugung keinen Zugriff.
 
-Was OPAA selbst dazu beiträgt, steht in den Kapiteln [Suche](../referenz/wie-die-suche-arbeitet.md) und
+Was opaa selbst dazu beiträgt, steht in den Kapiteln [Suche](../referenz/wie-die-suche-arbeitet.md) und
 [Branding](../administration/branding.md): der Hinweis im Chat, das Kennzeichen an jeder Antwort, der Vermerk beim
 Kopierknopf und das Kennzeichnungsfeld in der Schnittstelle. Das ersetzt keine Markierung im Text.
-OPAA fügt keinem Text ein eigenes Wasserzeichen und kein signiertes Manifest hinzu.
+opaa fügt keinem Text ein eigenes Wasserzeichen und kein signiertes Manifest hinzu.
 
 Welche Anbieter Text nach eigener Angabe markieren, hängt vom Anbieter und vom Modell ab. Die Tabelle
 gibt Herstellerangaben mit Stand 23.10.2026 wieder; sie sind keine Rechtsquelle, und das Haus prüft
@@ -1022,7 +1024,8 @@ Fragen und an der Fehlerquote.
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness);
+`GET /actuator/health/chat-model`, `…/embedding-model`, `…/transcription-model`, `…/rerank-model` und
+`…/text-recognition-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness);
 Details nur für die Systemverwaltung) und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
 `embedding-model` und `vector-store` `UNKNOWN` mit dem Detail `NOT_CONFIGURED`; das ist kein
 Ausfall, die Readiness bleibt `UP`. Eine Überwachung, die nur auf `DOWN` achtet, bemerkt ein nie
@@ -1034,11 +1037,11 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Meldung | Bedeutung |
 |---|---|
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ | Der Host liegt in einem internen Bereich und fehlt in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, oder sein Name lässt sich nicht auflösen. Beides ergibt bewusst denselben Satz, damit die Meldung nicht verrät, ob ein interner Name existiert; die genaue Ursache nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise des Hosts prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
-| Verbindung abgelehnt, Zeitlimit, Zertifikat, Host nicht gefunden (bei freigegebenem Host) | Der Endpunkt ist von OPAA aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers |
+| Verbindung abgelehnt, Zeitlimit, Zertifikat, Host nicht gefunden (bei freigegebenem Host) | Der Endpunkt ist von opaa aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers |
 | API-Schlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht |
 | keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an; die Kennung von Hand eintragen |
 | Der Endpunkt meldet keine Modelle | Die Liste ist leer; bei Ollama ist noch kein Modell geladen (`ollama pull …`) |
-| Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt OPAA nicht; die Zieladresse direkt eintragen |
+| Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt opaa nicht; die Zieladresse direkt eintragen |
 | Der Anbieter lehnt die Temperatur ab | Das Feld Temperatur leer lassen |
 | Die Testantwort beginnt mit einem Denkblock | Ein Server ohne Reasoning-Parser; siehe [Denktext im Antworttext](#denktext-im-antworttext) |
 
@@ -1051,8 +1054,8 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Jede Chat-Anfrage scheitert mit HTTP 400 | Meist eine Temperatur, die das Modell nicht annimmt |
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell oder überspringt es ([Installation](installation.md)) |
-| Indexierung, Upload und Suche antworten „Es ist noch kein Embedding-Modell eingerichtet“, der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | Die Installation hat das Embedding-Modell übersprungen; ein regulärer Zustand, kein Fehler. Abhilfe: im Reiter „Einbettung" das erste Modell festlegen ([Erstes Modell festlegen](#erstes-modell-festlegen)). Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse, und OPAA versucht es erneut |
-| Der Start schreibt „The vector table holds chunks but no embedding model is installed“, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, „Probeeinbettung“ im Reiter „Einbettung" meldet, die Vektortabelle enthalte bereits Abschnitte | Die Vektorablage hat Abschnitte, aber es gibt kein Embedding-Modell, etwa nach einer Rücksicherung, die nur einen Teil der Datenbank zurückgespielt hat. Die Abschnitte gehören zu einem Modell, das OPAA nicht mehr kennt; ein erstes Modell darüber lehnt OPAA ab. Abhilfe: die Datenbank vollständig aus derselben Sicherung zurückspielen, die auch das Embedding-Modell enthält ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)), oder die Datenbank neu aufsetzen und installieren |
+| Indexierung, Upload und Suche antworten „Es ist noch kein Embedding-Modell eingerichtet“, der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | Die Installation hat das Embedding-Modell übersprungen; ein regulärer Zustand, kein Fehler. Abhilfe: im Reiter „Einbettung" das erste Modell festlegen ([Erstes Modell festlegen](#erstes-modell-festlegen)). Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse, und opaa versucht es erneut |
+| Der Start schreibt „The vector table holds chunks but no embedding model is installed“, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, „Probeeinbettung“ im Reiter „Einbettung" meldet, die Vektortabelle enthalte bereits Abschnitte | Die Vektorablage hat Abschnitte, aber es gibt kein Embedding-Modell, etwa nach einer Rücksicherung, die nur einen Teil der Datenbank zurückgespielt hat. Die Abschnitte gehören zu einem Modell, das opaa nicht mehr kennt; ein erstes Modell darüber lehnt opaa ab. Abhilfe: die Datenbank vollständig aus derselben Sicherung zurückspielen, die auch das Embedding-Modell enthält ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)), oder die Datenbank neu aufsetzen und installieren |
 | Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modell eines anlegen und aktivieren ([Chat-Modelle](#chat-modelle)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Ein Wechsel des Embedding-Modells läuft, oder nach einer Rücksicherung passt das gespeicherte Modell nicht zum Index; den Fortschritt im Indexstatus verfolgen oder dort die Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
@@ -1064,7 +1067,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
 | Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](../administration/suche-und-indexierung.md#bestand-nachziehen)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
-| Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
+| Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; opaa hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
 | Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |
 | Dokumente enden mit `FAILED`, Fragen scheitern, alles andere läuft | Modellserver nicht erreichbar oder Modell nicht geladen; unter Compose mit Profil `ollama` zuerst `docker compose logs ollama-pull` |
 | Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](../referenz/konfiguration.md#entfallene-und-veraltete-variablen)) |

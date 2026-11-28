@@ -862,7 +862,7 @@ components:
         every executor change:
           * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
             to a foreign host that looks like a bot-protection challenge, an unsupported link
-            scheme) - not a failure of OPAA's own processing.
+            scheme) - not a failure of opaa's own processing.
           * UNREACHABLE - the item's network location could not be reached at all (connection
             failure, timeout, non-2xx status unrelated to a rejection above).
           * UNSUPPORTED_FORMAT - the item's file format or content type is not one

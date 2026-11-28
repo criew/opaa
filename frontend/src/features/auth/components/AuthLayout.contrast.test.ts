@@ -25,8 +25,8 @@ import bundledBackdropInline from '../assets/login-backdrop.webp?inline'
 const BUNDLED_BACKDROP = {
   sha256: 'c7b2110edaeaf0dcf6872af1f221374986366c4ca7050b92f4021ac8da180496',
   /** The script's own constants; the proof below only holds while they match the theme. */
-  measuredAgainst: { ground: '#012142', claimOpacity: 0.78 },
-  worstPixel: '#ADB295',
+  measuredAgainst: { ground: '#242855', claimOpacity: 0.78 },
+  worstPixel: '#90B3BE',
 }
 
 /**
@@ -82,7 +82,7 @@ describe('Schleier über dem Hintergrundbild der Anmeldeseite', () => {
 
 /**
  * The bundled backdrop is the one image this application does know. Its scrim is lighter than
- * the worst-case one above, and the proof runs against the brightest pixel the shipped file
+ * the worst-case one above, and the proof runs against the least favourable pixel the shipped file
  * actually contains instead of against pure white.
  */
 describe('Schleier über dem mitgelieferten Hintergrundbild', () => {
@@ -116,8 +116,8 @@ describe('Schleier über dem mitgelieferten Hintergrundbild', () => {
   })
 
   const worstPixels = {
-    'dem hellsten Pixel': BUNDLED_BACKDROP.worstPixel,
-    'dem hellsten Pixel mit Dekoder-Toleranz': lightenHex(
+    'dem ungünstigsten Pixel': BUNDLED_BACKDROP.worstPixel,
+    'dem ungünstigsten Pixel mit Dekoder-Toleranz': lightenHex(
       BUNDLED_BACKDROP.worstPixel,
       DECODER_TOLERANCE,
     ) as string,

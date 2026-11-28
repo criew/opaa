@@ -54,7 +54,8 @@ interface RailDestination {
 /**
  * The global rail: the always-visible first navigation level left of the
  * space column, one shade darker so global and space scope read apart at a glance. It carries
- * the brand emblem, the global destinations - Chat, the catalog, administration -
+ * the brand (the wordmark, or the operator's logo or mark), the global destinations - Chat, the
+ * catalog, administration -
  * and the user's avatar with the account menu; the navy column next to it stays purely
  * space-scoped.
  */

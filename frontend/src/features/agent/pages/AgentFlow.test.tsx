@@ -67,7 +67,7 @@ describe('Agenten', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von OPAA.',
+        'Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von opaa.',
       ),
     ).toBeInTheDocument()
   })

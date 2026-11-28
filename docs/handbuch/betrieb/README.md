@@ -1,6 +1,6 @@
 # Betrieb
 
-Dieses Kapitel beschreibt die Bausteine einer OPAA-Installation und führt zu den Kapiteln, die für
+Dieses Kapitel beschreibt die Bausteine einer opaa-Installation und führt zu den Kapiteln, die für
 jeden Betriebsweg gleich gelten. Die Einrichtung beschreiben [Docker Compose](docker-compose.md) und
 [Kubernetes](kubernetes.md), jede Umgebungsvariable die [Konfiguration](../referenz/konfiguration.md).
 
@@ -45,7 +45,7 @@ beim Identitätsanbieter.
 | Sicherheitsmonitoring (SIEM) | empfängt das Revisionsprotokoll ohne Pseudonyme als Syslog | nein, eigener Schalter | [Ausleitung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring) |
 
 Gesichert wird nur, was Zustand hält: Datenbank, Originalablage und Geheimnisse
-([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)). Jede Verbindung, die OPAA
+([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)). Jede Verbindung, die opaa
 selbst aufbaut, listet mit ihren Daten das Faktenblatt `datenfluesse`; was davon geprüft wird, steht
 unter [Was bei jeder Änderung geprüft wird](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird).
 

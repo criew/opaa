@@ -369,7 +369,7 @@ class FactSheetRendererTest {
 
   private static ComplianceManifest.PromptEntry prompt(String area, String id) {
     return new ComplianceManifest.PromptEntry(
-        area, id, "Zweck", List.of("io.opaa.Example"), null, "0".repeat(64), null);
+        area, id, "Zweck", List.of("io.opaa.Example"), null, null, "0".repeat(64), null);
   }
 
   private static List<String> headings(String sheet) {

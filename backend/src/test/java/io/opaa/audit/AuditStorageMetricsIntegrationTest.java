@@ -3,10 +3,12 @@ package io.opaa.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.observability.PolledGauges;
 import io.opaa.test.OpaaIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -20,7 +22,11 @@ class AuditStorageMetricsIntegrationTest {
   private static final double DAY = 86_400;
 
   @Autowired private MeterRegistry meterRegistry;
-  @Autowired private AuditStorageMetrics metrics;
+
+  @Autowired
+  @Qualifier("auditStorageGauges")
+  private PolledGauges metrics;
+
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach

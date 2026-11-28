@@ -87,9 +87,9 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: 'Katalog' })).toBeInTheDocument()
   })
 
-  it('renders OPAA branding', () => {
+  it('renders opaa branding', () => {
     renderShell()
-    expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('img', { name: 'opaa' }).length).toBeGreaterThan(0)
   })
 
   // No footer - product name and version are in the profile menu under „Info zu …". A
@@ -136,7 +136,7 @@ describe('AppShell', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toHaveFocus()
-    expect(document.title).toBe('Einstellungen · OPAA')
+    expect(document.title).toBe('Einstellungen · opaa')
   })
 
   it('drops the space column in a global area - rail and frame carry the navigation (#787)', () => {

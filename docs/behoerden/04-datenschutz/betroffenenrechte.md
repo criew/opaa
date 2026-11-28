@@ -16,10 +16,10 @@ Landesdatenschutzbeauftragten sind.
 
 Betroffenenrechte sind die Rechte jeder Person gegenüber einer Stelle, die Daten über sie verarbeitet:
 Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch. Diese Vorlage
-ergänzt den Ablauf, den die Behörde für alle Verfahren hat, um das, was für OPAA gilt. Verantwortlich
+ergänzt den Ablauf, den die Behörde für alle Verfahren hat, um das, was für opaa gilt. Verantwortlich
 ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - Welche Daten zu einer Person entstehen und wie man an sie kommt: {{faktenblatt:datenkatalog}},
   Zeilen „Spalten mit Personenbezug“ und „Zugriffsweg“.
@@ -43,9 +43,9 @@ Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weit
 3. **Betroffene Daten bestimmen:** Daten über die Person als Nutzende (Konto, Chats, Rechte,
    Protokoll) und Daten über sie in Dokumenten der Wissensbibliotheken.
 4. **Handeln** nach der Tabelle unten.
-5. **Antworten und dokumentieren**, mit der eingesetzten OPAA-Version.
+5. **Antworten und dokumentieren**, mit der eingesetzten opaa-Version.
 
-| Recht | Was die Behörde in OPAA tut |
+| Recht | Was die Behörde in opaa tut |
 |---|---|
 | **Auskunft** | auf die Selbstauskunft hinweisen; ergänzen, was sie nicht enthält; bei Bedarf alles nach dem Datenkatalog zusammenstellen |
 | **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/administration/konten.md)), sonst im Identitätsanbieter |
@@ -60,7 +60,7 @@ Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weit
 Anfrage nach Art. [15–21] DSGVO
 Eingang:              [Datum]          Frist bis: [Datum]
 Person:               [Name, Konto]    Identität geprüft durch: [ ]
-OPAA-Version:         [Version]
+opaa-Version:         [Version]
 Betroffene Daten:     [Datenkatalog-Einträge]
 Maßnahmen:            [ ]
 Antwort am:           [Datum]          durch: [ ]
@@ -90,7 +90,7 @@ Antwort am:           [Datum]          durch: [ ]
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
   Regelt eine [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) den Zugriff auf das Protokoll, gilt deren Verfahren.
-- **Dokumente folgen ihrer Quelle.** Wird ein Dokument dort gelöscht oder berichtigt, zieht OPAA nach
+- **Dokumente folgen ihrer Quelle.** Wird ein Dokument dort gelöscht oder berichtigt, zieht opaa nach
   ([Änderungen und Löschungen](../../handbuch/referenz/wie-indexierung-arbeitet.md#läufe)).
   Antworten in bestehenden Chats, die es zitiert haben, bleiben bis zur Löschung des Chats.
 

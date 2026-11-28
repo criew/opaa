@@ -31,7 +31,7 @@ class MailSettingsSectionTest {
     values.put("username", "kennung");
     values.put("encryption", "STARTTLS");
     values.put("fromAddress", "opaa@intern.example");
-    values.put("fromName", "OPAA");
+    values.put("fromName", "opaa");
 
     new MailSettingsSection(service).apply(admin, SettingsValues.of("mail", values));
 

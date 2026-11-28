@@ -374,6 +374,78 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
+   * The German analysis chain splits the spellings of one code into unrelated lexemes ({@code
+   * ab08}; {@code ab} and {@code -08}; {@code ab} and {@code 08}; {@code ab.08}), so without the
+   * code lexeme each spelling of the question finds only its own spelling. With it, every spelling
+   * finds every chunk, ahead of the chunk naming the neighbouring code.
+   */
+  @Test
+  void everySpellingOfACodeFindsEveryOtherSpelling() {
+    List<String> spellings = List.of("AB08", "AB-08", "AB 08", "ab_08", "AB.08");
+    List<String> variants =
+        spellings.stream()
+            .map(
+                spelling ->
+                    seed(readableLibrary, "Gebührentabelle: Tarifstelle " + spelling + " gilt.")
+                        .toString())
+            .toList();
+    UUID neighbour = seed(readableLibrary, "Gebührentabelle: Tarifstelle AB 09 gilt ab 08 Uhr.");
+
+    for (String spelling : spellings) {
+      List<Document> hits =
+          fullTextChunkSearch
+              .search(
+                  "Was kostet " + spelling + "?",
+                  Set.of(readableLibrary),
+                  MetadataFilter.NONE,
+                  List.of(),
+                  25)
+              .chunks();
+
+      assertThat(hits.stream().limit(variants.size()).map(Document::getId).toList())
+          .as("question %s, hits: %s", spelling, hits.stream().map(Document::getText).toList())
+          .containsExactlyInAnyOrderElementsOf(variants)
+          .doesNotContain(neighbour.toString());
+    }
+  }
+
+  /**
+   * A table extracted without cell separators puts the price right behind the code, so the chunk
+   * carries {@code AB08 40,00}; the German chain has only {@code ab08} for it, which a question
+   * spelling {@code AB 08} does not produce. Only the code lexeme connects the two.
+   */
+  @Test
+  void aCodeInATableRowWithoutCellSeparatorsIsFound() {
+    UUID wanted =
+        seed(readableLibrary, "Gebührentabelle\nAB08 40,00 EUR\nAC12 60,00 EUR\nAC13 80,00 EUR");
+    seed(readableLibrary, "Gebührentabelle\nAB09 40,00 EUR\nAC14 60,00 EUR");
+
+    List<Document> hits =
+        fullTextChunkSearch
+            .search(
+                "Was kostet AB 08?", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25)
+            .chunks();
+
+    assertFirstHit(hits, wanted);
+  }
+
+  /**
+   * The code lexeme is added next to the German analysis chain's own lexemes, never instead of
+   * them: a question naming only the letter block still finds the chunk by its ordinary word.
+   */
+  @Test
+  void theOriginalTokensOfACodeStaySearchable() {
+    UUID chunk = seed(readableLibrary, "Tarifstelle AB-08 der Gebührentabelle.");
+
+    List<Document> hits =
+        fullTextChunkSearch
+            .search("Was gilt für AB?", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25)
+            .chunks();
+
+    assertThat(hits).extracting(Document::getId).containsExactly(chunk.toString());
+  }
+
+  /**
    * PostgreSQL's own parser keeps an email address as one {@code email}-class token, but the
    * question path splits a question into individual word tokens ({@code
    * io.opaa.retrieval.search.FullTextChunkSearch#wordTokens}) - without the undecomposed identifier

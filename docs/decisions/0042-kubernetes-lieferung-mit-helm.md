@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-12 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md), [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) und [ADR-0074](0074-ein-datenspeicher-fuer-metadaten-und-abschnitte.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-11-12 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md), [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) und [ADR-0075](0075-ein-datenspeicher-fuer-metadaten-und-abschnitte.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439
 
 ## Kontext
@@ -13,7 +13,7 @@ das Backend voraussetzt: genau eine Instanz ([ADR-0021](0021-single-instance-bet
 Schemamigration beim Start, beschreibbare Pfade, eine Proxy-Kette, die das Rate-Limit nicht verfälscht.
 Jeder Eigenbau veraltete mit dem nächsten Release. Die Images in GHCR trugen nur `main` und `sha-…`;
 ein Chart hätte keine stabile Version gehabt, auf die er zeigen kann. Mehrere Instanzen und
-Hochverfügbarkeit entscheidet ADR-0053, getrennte Speicher-Backends ADR-0074.
+Hochverfügbarkeit entscheidet ADR-0053, getrennte Speicher-Backends ADR-0075.
 
 ## Entscheidung
 
@@ -45,7 +45,7 @@ Neuinstallation.
 PostgreSQL mit pgvector, LLM-, Embedding-, Rerank-, Transkriptions- und Texterkennungsendpunkte,
 Objektspeicher, Mailserver und gegebenenfalls ein Identitätsanbieter liefert der Betreiber; ohne
 Anbieter läuft die lokale Benutzerverwaltung (ADR-0033). Der Chart bindet genau eine Datenbank für
-alle Daten an (ADR-0074, Entscheidung 1). Drei Arten von Konfiguration:
+alle Daten an (ADR-0075, Entscheidung 1). Drei Arten von Konfiguration:
 
 | Art | Beispiele | Im Chart |
 |---|---|---|

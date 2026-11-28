@@ -70,8 +70,8 @@ describe('LoginPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Anmelden' })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     // The brand is a statement, not a heading level.
-    expect(screen.getByText('OPAA')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
+    expect(screen.getByRole('img', { name: 'opaa' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'opaa' })).toBeNull()
   })
 
   /**
@@ -87,7 +87,7 @@ describe('LoginPage', () => {
         claim: 'Kurz und klar',
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
-        primaryColor: '#0B6FBC',
+        primaryColor: '#1A5FA0',
         logoUrl: '/api/v1/branding/logo?v=abc123',
       },
     })
@@ -100,10 +100,10 @@ describe('LoginPage', () => {
     expect(screen.getByText('Landesamt-Assistent')).toBeInTheDocument()
     expect(screen.getByText('Kurz und klar')).toBeInTheDocument()
     expect(container.querySelector('img')).toHaveAttribute('src', '/api/v1/branding/logo?v=abc123')
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
   })
 
-  it('falls back to the OPAA standard when nothing is configured', () => {
+  it('falls back to the opaa standard when nothing is configured', () => {
     useAuthStore.setState({ mode: 'oidc' })
     useBrandingStore.setState({ branding: OPAA_BRANDING })
 
@@ -112,7 +112,7 @@ describe('LoginPage', () => {
       withNotificationHost: false,
     })
 
-    expect(screen.getByText(OPAA_BRANDING.productName)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: OPAA_BRANDING.productName })).toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
   })
 
@@ -122,10 +122,12 @@ describe('LoginPage', () => {
     expect(
       screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
+    expect(
+      screen.getByText('opaa weiß, was war, und hilft bei dem, was kommt.'),
+    ).toBeInTheDocument()
     // the choice is one named group; the trust line explains where the password goes
     expect(screen.getByRole('group', { name: 'Identitätsanbieter' })).toBeInTheDocument()
-    expect(screen.getByText(/OPAA erhält kein Kennwort/)).toBeInTheDocument()
+    expect(screen.getByText(/opaa erhält kein Kennwort/)).toBeInTheDocument()
   })
 
   it('offers no credential form — there is no password-based mode', () => {
@@ -433,7 +435,7 @@ describe('LoginPage', () => {
       expect(
         screen.queryByRole('link', { name: 'Anmeldung für die Systemverwaltung' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByText(/erhält OPAA kein Kennwort/)).toBeInTheDocument()
+      expect(screen.getByText(/erhält opaa kein Kennwort/)).toBeInTheDocument()
       expect(screen.getByText(/nicht umkehrbaren Prüfwert/)).toBeInTheDocument()
     })
 

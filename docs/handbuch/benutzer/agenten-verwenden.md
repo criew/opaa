@@ -49,7 +49,7 @@ Zeile:
 
 Ist die Antwort geschrieben, steht in derselben Zeile „Belege werden geprüft … Vorläufig.“ Die
 Antwort erscheint darunter, die Schritte schon zugeklappt an der Stelle, an der sie danach bleiben.
-Bis OPAA die Belege geprüft und die Antwort gespeichert hat, lässt sie sich weder kopieren noch
+Bis opaa die Belege geprüft und die Antwort gespeichert hat, lässt sie sich weder kopieren noch
 exportieren. Danach erscheint sie wie jede Antwort mit ihren Belegen.
 
 An der fertigen Antwort stehen die Schritte zugeklappt, etwa als „3 Schritte“. Ein Klick klappt die

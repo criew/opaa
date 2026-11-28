@@ -1,4 +1,14 @@
-# Golden Datasets: Comichelden, Sehenswürdigkeiten in europäischen Großstädten, Verwaltung
+# Golden Datasets: Comichelden, Sehenswürdigkeiten in europäischen Großstädten, Verwaltung, Antwortqualität
+
+## Domäne `answer-quality` (Issue #3890)
+
+`answer-quality.json` — 31 Fälle in den Klassen `false_negative`, `needless_caveat` und
+`wrong_reference` über [`eval/corpus/answer-quality/`](../corpus/answer-quality/), erzeugt zusammen
+mit dem Korpus von `eval/generator/generate_answer_quality_corpus.py`. Anders als die
+Retrieval-Datasets nennt ein Fall keine Rangerwartung, sondern `evidence` (Texte, die in einem
+Abschnitt des Prompt-Kontexts stehen müssen) und Muster für die Antwort; der Zustand je Ebene
+(`format`, `context`) steht in `expected_state`. Schema und Lesart:
+[`../corpus/answer-quality/SOURCE.md`](../corpus/answer-quality/SOURCE.md). Von Hand nicht bearbeiten.
 
 ## Domäne `prompt-injection` (Issue #3044)
 

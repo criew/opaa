@@ -30,7 +30,7 @@ export const ROLES_CLAIM_NO_VALUES_WARNING =
   'Ohne Rollenwerte entzieht der Anbieter allen seinen Konten SYSTEM_ADMIN und AUDITOR.'
 /** Shown while an existing provider's issuer is being changed (ADR-0033, Entscheidung 9). */
 export const ISSUER_CHANGE_HINT =
-  'Ändert der neue Issuer die daraus abgeleitete Admin-API-Adresse, entfernt OPAA beim Speichern ' +
+  'Ändert der neue Issuer die daraus abgeleitete Admin-API-Adresse, entfernt opaa beim Speichern ' +
   'einen Verzeichniszugang ohne eigene Admin-API-Adresse samt Geheimnis. Er ist danach für die ' +
   'neue Adresse neu zu hinterlegen.'
 const REQUIRED_FIELDS_HINT = 'Anzeigename, Issuer-URI und Client-ID sind erforderlich.'
@@ -333,7 +333,7 @@ export default function OidcProviderFormDialog({
             Claim-Zuordnung
           </SectionHead>
           <Typography sx={{ fontSize: fontSize.text, color: 'text.secondary', mb: 2 }}>
-            Aus welchen Token-Claims OPAA E-Mail, Anzeigename und optional Rollen und Gruppen liest.
+            Aus welchen Token-Claims opaa E-Mail, Anzeigename und optional Rollen und Gruppen liest.
             Pfade in Punktnotation (z. B. <code>realm_access.roles</code>).
           </Typography>
           <Stack spacing={2}>
@@ -362,7 +362,7 @@ export default function OidcProviderFormDialog({
               value={draft.rolesClaim}
               onChange={(e) => update('rolesClaim', e.target.value)}
               slotProps={{ htmlInput: { maxLength: 200 } }}
-              helperText="Leer lassen: Rollen werden in OPAA verwaltet. Gesetzt: der Anbieter ist für SYSTEM_ADMIN und AUDITOR führend."
+              helperText="Leer lassen: Rollen werden in opaa verwaltet. Gesetzt: der Anbieter ist für SYSTEM_ADMIN und AUDITOR führend."
               fullWidth
               size="small"
             />

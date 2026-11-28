@@ -166,7 +166,7 @@ test.describe.serial('Agenten: Schalter und Anlegerecht', () => {
     expect(createdAgentId).toMatch(/^[0-9a-f-]{36}$/)
     await expect(page.getByText('Fassung 1')).toBeVisible()
     await expect(
-      page.getByText('Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von OPAA.'),
+      page.getByText('Noch kein Auftrag. Der Agent arbeitet nur nach den festen Regeln von opaa.'),
     ).toBeVisible()
   })
 })

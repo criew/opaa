@@ -2,14 +2,14 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02
+Akzeptiert · zuletzt geändert 2026-11-27
 
 ## Kontext
 
 Jede Zeile in `chunk_full_text` trägt in `content_tsv_version` die Fassung der Lexembildung, unter
 der ihr `tsvector` geschrieben wurde; `FullTextChunkStore.CURRENT_TSV_VERSION` wird angehoben, sobald
 sich die gespeicherten Lexeme ändern — bisher stets **additiv** (Kennungslexeme, E-Mail-Adressen,
-Kontextpräfix, technische Feld- und Elementnamen). Drei Verbraucher: der Füllstand
+Kontextpräfix, technische Feld- und Elementnamen, Buchstaben-Ziffern-Kennungen in jeder Schreibweise). Drei Verbraucher: der Füllstand
 (`FullTextIndexFillStateService`), die Reindex-Auswahl (`PipelineReindexService`) und der Suchpfad
 (`FullTextChunkSearch`), der bis #1346 nur Zeilen der aktuellen Fassung las. Damit war nach jedem
 Deployment einer Anhebung der gesamte Volltextindex für den lexikalischen Pfad unsichtbar, bis der

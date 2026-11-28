@@ -456,7 +456,7 @@ public enum MailTemplateKey {
    */
   private static final Map<String, String> SAMPLE_VALUES =
       Map.ofEntries(
-          Map.entry("productName", "OPAA"),
+          Map.entry("productName", "opaa"),
           Map.entry("displayName", "Erika Mustermann"),
           Map.entry("actionUrl", "https://opaa.example.org/set-password?token=BEISPIEL"),
           Map.entry("expiresAtHuman", "noch 24 Stunden"),

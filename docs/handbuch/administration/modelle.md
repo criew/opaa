@@ -6,7 +6,7 @@
 **Wer:** Systemverwaltung, „Administration → Modelle“
 {: .kopf }
 
-OPAA bringt kein Sprachmodell mit, sondern ruft Modelle an Endpunkten auf, die das Haus festlegt.
+opaa bringt kein Sprachmodell mit, sondern ruft Modelle an Endpunkten auf, die das Haus festlegt.
 Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der Betrieb
 ([Modelle](../betrieb/modell-endpunkte.md)).
 
@@ -57,7 +57,7 @@ Angabe nicht. Was vor dem Einschalten der Agenten zu prüfen ist, steht unter
 | „Nicht fähig“ | wird abgelehnt |
 
 Abgelehnt heißt: Die Person bekommt eine Meldung, dass das aktive Modell dafür nicht geprüft oder
-nicht fähig ist und die Systemverwaltung das ändern kann. OPAA beantwortet eine solche Anfrage nie
+nicht fähig ist und die Systemverwaltung das ändern kann. opaa beantwortet eine solche Anfrage nie
 stillschweigend ohne Werkzeuge. Der gewöhnliche Chat funktioniert mit jedem Wert.
 
 Die Spalte „Werkzeuge“ zeigt neben dem Wert die **Grundlage** der Angabe und ihr Datum: „manuell
@@ -76,7 +76,7 @@ und nachher.
 Grundlage und Datum. Das Formular weist vor dem Speichern darauf hin. Nach einem Umzug des
 Modellservers oder einem Update der Laufzeit mit neuer Adresse muss also erneut geprüft werden. Ein
 Update an derselben Adresse setzt nichts zurück; dann die Angabe selbst auf „Ungeprüft“ stellen und
-neu prüfen. Hat jemand anderes das Modell geändert, während der Dialog offen war, lehnt OPAA das
+neu prüfen. Hat jemand anderes das Modell geändert, während der Dialog offen war, lehnt opaa das
 Speichern ab; die Liste neu laden und die Angabe für die neue Kombination erneut prüfen.
 
 Beim Update auf die Version, die die Werkzeugfähigkeit einführt, kann bei mehreren Instanzen eine
@@ -88,10 +88,10 @@ läuft weiter.
 
 ## Werkzeuge prüfen
 
-Sind Agenten eingeschaltet, misst OPAA die Werkzeugfähigkeit eines Chat-Modells selbst,
+Sind Agenten eingeschaltet, misst opaa die Werkzeugfähigkeit eines Chat-Modells selbst,
 ohne Quellstand und ohne Kommandozeile. Sind sie aus, fehlt der Menüpunkt.
 
-Für Agenten braucht OPAA ein Modell mindestens der Klasse Gemma 4 31B. Kleinere Modelle rufen
+Für Agenten braucht opaa ein Modell mindestens der Klasse Gemma 4 31B. Kleinere Modelle rufen
 Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorher.
 
 1. Im Zeilenmenü „Werkzeuge prüfen“.
@@ -105,7 +105,7 @@ Werkzeuge oft unzuverlässig auf; wer eines einsetzen will, prüft es hier vorhe
 
 - Die Prüfung stellt dem Modell erfundene Fragen mit dem Suchwerkzeug der Agenten; Bibliotheken und
   Chats berührt sie nicht. Sie läuft auf dem Server weiter, wenn Sie den Dialog schließen, und es
-  läuft höchstens eine zur selben Zeit. Ein Neustart des Servers bricht sie ab; bis OPAA das
+  läuft höchstens eine zur selben Zeit. Ein Neustart des Servers bricht sie ab; bis opaa das
   merkt, erscheint sie bis zu 15 Minuten als laufend, und so lange lässt sich keine neue starten.
 - Schaltet jemand die Agenten ab, bricht eine laufende Prüfung nach dem aktuellen Fall ab. Scheitern
   Aufrufe am Endpunkt, etwa an einer Drosselung, endet sie als gescheitert statt mit einem Ergebnis.
@@ -122,7 +122,7 @@ Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:
    „Endpunkt ändern“ an: ohne Neueinbettung, sofort wirksam.
 3. Die **Vorschau** nennt Chunks, Dauer und zusätzlichen Speicher.
 4. „Wechsel starten“. Bis zum Ende sucht der Chat nur im Volltext und zeigt „Eingeschränkte Suche“.
-5. Ist alles neu eingebettet, schaltet OPAA um. Bis dahin kehrt „Wechsel verwerfen“ zurück; danach
+5. Ist alles neu eingebettet, schaltet opaa um. Bis dahin kehrt „Wechsel verwerfen“ zurück; danach
    sind die alten Vektoren weg.
 
 ## Reranking und Spracheingabe
@@ -185,7 +185,7 @@ Die Texterkennung liest gescannte PDFs ohne Textebene, damit die Suche sie finde
 
 Hat der Betrieb die Texterkennung nicht freigegeben (`OPAA_OCR_ENABLED`), zeigt der Reiter nur
 diesen Hinweis; gescannte PDFs werden dann weiter abgewiesen. Ein Vision-Modell liefert keine Lage
-des Textes: Fundstellen zeigt OPAA nur auf ihrer Seite, nicht als Rahmen. Seiten gehen ganz an den
+des Textes: Fundstellen zeigt opaa nur auf ihrer Seite, nicht als Rahmen. Seiten gehen ganz an den
 Dienst; ein Dienst außerhalb des Hauses gehört vorher mit Datenschutz und Personalvertretung
 geklärt ([Texterkennung im Betrieb](../betrieb/modell-endpunkte.md#texterkennung-einschalten)).
 

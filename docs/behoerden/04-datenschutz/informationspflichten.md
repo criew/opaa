@@ -15,10 +15,10 @@ naechste-durchsicht: 2027-04-23
 Landesdatenschutzbeauftragten sind.
 
 Wer Daten über Menschen erhebt, muss ihnen sagen, welche Daten das sind, wozu, wie lange und welche
-Rechte sie haben. Diese Vorlage enthält solche Datenschutzhinweise für Beschäftigte, die OPAA nutzen.
+Rechte sie haben. Diese Vorlage enthält solche Datenschutzhinweise für Beschäftigte, die opaa nutzen.
 Die Behörde passt sie an und stellt sie vor der ersten Nutzung bereit.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Die Faktenblätter liefern den Stoff für die Abschnitte 3 bis 7 des Textes: Daten und Zwecke,
 Protokoll, Sichtbarkeit, Empfänger, Fristen und KI-Funktionen. Der Text verweist an diesen Stellen
@@ -98,13 +98,13 @@ Datenschutzhinweise zur Nutzung von [Name der Installation]
    [Ob die Nutzung freiwillig oder dienstlich vorgegeben ist, und was gilt, wenn die Daten nicht
    bereitgestellt werden.]
 
-Stand dieser Hinweise: [Datum] · eingesetzte Version: [OPAA-Version]
+Stand dieser Hinweise: [Datum] · eingesetzte Version: [opaa-Version]
 ```
 
 ## Gut zu wissen
 
 - Personen, deren Daten in Dokumenten der Wissensbibliotheken stehen, werden in der Regel über das
-  Verfahren informiert, aus dem die Dokumente stammen. Ob die Aufnahme in OPAA eine eigene Information
+  Verfahren informiert, aus dem die Dokumente stammen. Ob die Aufnahme in opaa eine eigene Information
   erfordert, prüft die Behörde mit der oder dem DSB.
 
 ## Zum Nachlesen

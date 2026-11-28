@@ -77,7 +77,7 @@ class SmbLibraryIntegrationTest {
                 .content(
                     "{\"name\": \"Freigabe\", \"sourceType\": \"SMB\","
                         + " \"sourceUrl\": \"smb://fileserver.example/daten\","
-                        + " \"sourceCredentials\": \"OPAA\\\\opaa:geheim\"}"))
+                        + " \"sourceCredentials\": \"opaa\\\\opaa:geheim\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
   }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-07 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+Akzeptiert · zuletzt geändert 2026-11-27 · ergänzt durch ADR-0013 (Fehlerkriterium) und
 ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
@@ -24,16 +24,16 @@ die Fallklassen und Zustandsfelder der Datensätze in `eval/golden/README.md`.
 ## Entscheidung
 
 Gegliedert nach Messpfad; die `####`-Überschriften tragen die stabilen Entscheidungsnummern, die
-deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–73 auf.
+deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–74 auf.
 
 ### Regeln für alle Messpfade
 
 #### 6. Jede Vertragsänderung erhöht die Versionsnummer ihres Pfads
 
 Jeder Pfad führt seine Vertragsversion als Konstante im Report und als Festpunkt der Baseline:
-`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` (Rohvektor, heute 17),
-`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` (Pipeline, 22),
-`ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION` (Mehrrunden, 12). Die
+`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` (Rohvektor, heute 18),
+`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` (Pipeline, 23),
+`ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION` (Mehrrunden, 13). Die
 Version steigt, wenn sich ändert, was „dieselbe Messung“ heißt: eine Metrikdefinition, ein Fenster,
 die Schwellenbehandlung, die Mittelungsart, ein neuer, umbenannter oder enger definierter
 Festpunkt — auch wenn kein gemessener Wert sich bewegt. Sie steigt nicht, wenn nur der **Wert**
@@ -128,7 +128,7 @@ ungültig und keine Metrik wird verglichen.
 
 | Festpunkt | Wert heute | seit Version | Warum |
 |---|---|---|---|
-| `measurementContractVersion` | 17 | 1 | ordnet die Baseline einem Vertragsstand zu |
+| `measurementContractVersion` | 18 | 1 | ordnet die Baseline einem Vertragsstand zu |
 | `embeddingModel`, `embeddingModelDigest` | `nomic-embed-text:v1.5`, `0a109f42…` | 1 | Modell und Gewichte (ADR-0011) |
 | `embeddingDimensions` | 768 | 1 | andere Dimension, anderer Vektorraum |
 | `chunkSize`, `chunkSizeMatchesApplicationDefault` | 1000, `true` | 1 | die Zerlegung bestimmt, was eingebettet wird |
@@ -139,7 +139,7 @@ ungültig und keine Metrik wird verglichen.
 | `pgvectorIndexType` | `hnsw` | 1 | ein Wechsel auf exakte Suche ist eine Messänderung (ADR-0011) |
 | `corpusManifestSha256`, `corpusDocumentCount` | je Domäne | 1 | der Korpus |
 | `goldenDatasetFile`, `goldenDatasetSha256`, `goldenCaseCount` | je Domäne | 1 | der Datensatz samt Zuständen |
-| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pdf-ocr:1,pptx:4,tabular:5,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
+| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pdf-ocr:1,pptx:4,tabular:6,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
 | `metadataFilterEnabled` | `true` | 6 | ob die Golden-Filter in der Suche wirkten (Entscheidung 32) |
 | `ollamaImage` | `ollama/ollama:0.40.3` | 10 | das Laufzeitsystem, das die Vektoren berechnet (Entscheidung 45) |
 | `ollamaCpuBackend` | `haswell` | 11 | die ggml-Kernelvariante bewegt Rangfolgen (Entscheidung 55) |
@@ -166,6 +166,7 @@ ungültig und keine Metrik wird verglichen.
 | 15 | 2026-10-08 | #2327, #2328 | Fingerabdruck-Schritt: übergroße Abschnitte, neun Formate |
 | 16 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks, `markdown` 2→3 und acht weitere |
 | 17 | 2026-11-07 | #3622 | Fingerabdruck-Schritt: `pdf-ocr` 1 neu (Texterkennung) |
+| 18 | 2026-11-27 | #3893 | Fingerabdruck-Schritt: `tabular` 5→6 (Titelzeile) |
 
 ### Pipeline-Pfad
 
@@ -303,6 +304,7 @@ des Rohvektor-Pfads, zählt aber Chunk-Plätze.
 | 20 | 2026-10-09 | #2373 | Fenster @8 → @20; neu gemessen |
 | 21 | 2026-10-14 | #2386 | `fusion` und `relevanceCutoff`; neu gemessen |
 | 22 | 2026-11-07 | #3622 | Fingerabdruck-Schritt: `pdf-ocr` 1 neu (Texterkennung) |
+| 23 | 2026-11-27 | #3893 | Fingerabdruck-Schritt: `tabular` 5→6 (Titelzeile) |
 
 ### Mehrrunden-Pfad
 
@@ -402,6 +404,7 @@ unvergleichbar; sie steht als Beobachtungsfeld im Bericht.
 | 10 | 2026-10-09 | #2373 | Fenster @8 → @20; neu gemessen |
 | 11 | 2026-10-14 | #2386 | `fusion` und `relevanceCutoff`; neu gemessen |
 | 12 | 2026-11-07 | #3622 | Fingerabdruck-Schritt: `pdf-ocr` 1 neu (Texterkennung) |
+| 13 | 2026-11-27 | #3893 | Fingerabdruck-Schritt: `tabular` 5→6 (Titelzeile) |
 
 ### Zustandsfelder der Datensätze
 
@@ -461,6 +464,22 @@ Pin nicht (`ollamaCpuBackend: null`); mit `-Dopaa.eval.allowGpu=true` trägt der
 `unpinned: gpu allowed`; mit externem Chat-Modell (`-Dopaa.eval.chatBaseUrl`/`chatModel`, #1674)
 verlangt die Prüfung nur den Embedding-Runner. Alle drei Läufe sind gegen keine Baseline vergleichbar.
 
+#### 74. Jeder zerlegende Lauf beginnt auf einem frisch geladenen Chat-Runner
+
+`MehrfachlaufRule` entlädt das gepinnte Chat-Modell im Ollama-Container des Harness vor jedem
+zerlegenden Lauf (`EvalChatRunner`, `keep_alive: 0`, wartet, bis `/api/ps` es nicht mehr führt).
+Jeder der drei Läufe beginnt damit im selben Zustand, unabhängig von Rechner, Laufzeit und
+Keep-alive; der Zustand gleicht dem, aus dem die Baselines stammen, und ist kein Festpunkt. Eine
+Streuung über 0 zwischen den Läufen zeigt deshalb eine verbliebene Quelle von Nichtdeterminismus an.
+Ein externes Chat-Modell und ein externer Ollama-Endpunkt werden nie entladen.
+
+Begründung: Der Chat-Runner von Ollama hält den KV-Zustand früherer Prompts und setzt jeden neuen
+Prompt auf dem längsten gemeinsamen Präfix eines gespeicherten auf. Ein so übernommenes Präfix wurde
+in einem anderen Stapel gerechnet und liefert minimal andere Logits, an denen die Zerlegung bei
+Temperatur 0 kippt; ohne Entladen hinge der Messzustand daran, ob die Bereitschaftsprüfung noch
+innerhalb der Keep-alive-Zeit lag. Ein externer Endpunkt gehört dem Entwickler, und sein Lauf ist
+ohnehin gegen keine Baseline vergleichbar.
+
 #### 69. Stetigkeitsprüfung vor jeder Messung
 
 `EvalEmbeddingContinuity.require` bettet nach dem Modell-Pull 21 Präfixe eines Korpustexts zwischen
@@ -510,7 +529,7 @@ modellgestützte Extraktion und Vokabular, Fundort und Schnittgrenzen (`ChunkLoc
 `HeadingSectionSplitter`), Bestandsläufe, Zweige ohne Beispiel — eine Änderung dort verlangt eine
 bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht.
 
-### Nummernverzeichnis der Entscheidungen 1–73
+### Nummernverzeichnis der Entscheidungen 1–74
 
 | Nummer | Steht heute in |
 |---|---|
@@ -543,7 +562,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 | 63 | Pipeline-Pfad, Entscheidung 63 |
 | 66 | Regeln, Entscheidung 66 |
 | 67 | Pipeline-Pfad, Entscheidung 11 (Tabelle: ohne Nachbar-Chunks) |
-| 68, 69 | Eval-Umgebung |
+| 68, 69, 74 | Eval-Umgebung |
 
 ## Konsequenzen
 

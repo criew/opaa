@@ -43,7 +43,7 @@ public final class BrandingSettingsRules {
 
   static final String COLOR_INVALID =
       "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
-          + " #1292EE";
+          + " #0055A4";
 
   private BrandingSettingsRules() {}
 
@@ -76,8 +76,16 @@ public final class BrandingSettingsRules {
             productName,
             BrandingDefaults.MAX_PRODUCT_NAME_LENGTH,
             "Der Produktname");
+    // The standard name is stored as "not set", so the installation follows a later standard.
+    if (BrandingDefaults.PRODUCT_NAME.equals(name)) {
+      name = null;
+    }
     String validClaim =
         text(errors, prefix + "claim", claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
+    // The standard claim is stored as "not set", so the installation follows a later standard.
+    if (BrandingDefaults.CLAIM.equals(validClaim)) {
+      validClaim = null;
+    }
     String notice = notice(errors, prefix + "aiNotice", aiNotice);
     String color = color(errors, prefix + "primaryColor", primaryColor);
     return new Checked(new Values(name, validClaim, notice, color), errors);
@@ -167,6 +175,10 @@ public final class BrandingSettingsRules {
     return problems.isEmpty() ? text : null;
   }
 
+  /**
+   * A six-digit hex colour; the standard colour is stored as "not set" so the installation keeps
+   * following the standard when it changes.
+   */
   private static String color(List<FieldError> errors, String field, String value) {
     if (value == null) {
       return null;
@@ -179,7 +191,7 @@ public final class BrandingSettingsRules {
       errors.add(new FieldError(field, INVALID, COLOR_INVALID));
       return null;
     }
-    return trimmed;
+    return BrandingDefaults.PRIMARY_COLOR.equalsIgnoreCase(trimmed) ? null : trimmed;
   }
 
   /**

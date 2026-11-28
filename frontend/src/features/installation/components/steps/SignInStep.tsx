@@ -19,7 +19,7 @@ const MODES: SetupOption<InstallationSignInMode>[] = [
   {
     value: 'LOCAL_ONLY',
     label: 'Nur lokale Konten',
-    hint: 'Konten legt die Systemverwaltung in OPAA an. Ein Anbieter lässt sich später ergänzen.',
+    hint: 'Konten legt die Systemverwaltung in opaa an. Ein Anbieter lässt sich später ergänzen.',
   },
   {
     value: 'LOCAL_AND_OIDC',

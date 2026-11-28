@@ -61,7 +61,11 @@ class ConversationWindowRestartInvarianceTest {
             .maxMessages(20)
             .build();
     answerGenerationService =
-        new AnswerGenerationService(activeChatModelResolver, chatMemory, new ActiveAnswerStreams());
+        new AnswerGenerationService(
+            activeChatModelResolver,
+            chatMemory,
+            new ActiveAnswerStreams(),
+            org.mockito.Mockito.mock(DocumentPartCounts.class));
   }
 
   @Test

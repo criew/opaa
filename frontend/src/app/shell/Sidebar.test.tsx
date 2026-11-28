@@ -137,7 +137,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Chats')).toBeInTheDocument()
     // the column is purely space-scoped: brand mark, catalog,
     // admin destinations and the user badge all live on the global rail instead.
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Benutzermenü' })).not.toBeInTheDocument()
     // The column's only settings link is the gear of the space, not the account's.

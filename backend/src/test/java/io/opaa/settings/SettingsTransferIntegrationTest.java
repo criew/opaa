@@ -199,7 +199,7 @@ class SettingsTransferIntegrationTest {
         .putArray("allowedOrigins")
         .add("https://intranet.stadt.example");
     sections.withObject("localAccounts").put("passwordMinLength", 14);
-    sections.withObject("mail").put("fromName", "OPAA der Stadt");
+    sections.withObject("mail").put("fromName", "opaa der Stadt");
     ObjectNode override =
         sections.withObject("mailTemplates").putObject(MailTemplateKey.TEST_MAIL.key());
     override.put("subject", "Eigener Betreff");
@@ -610,6 +610,30 @@ class SettingsTransferIntegrationTest {
                   .content(exported))
           .andExpect(status().isForbidden());
     }
+  }
+
+  /** The import is the only guard of the template switch's write path outside its endpoint. */
+  @Test
+  void aNonAdminCannotSwitchTemplatesByImport() throws Exception {
+    ObjectNode document = (ObjectNode) JSON.readTree(export());
+    boolean enabled = sections(document).get("documentTemplates").get("enabled").booleanValue();
+    sections(document).withObject("documentTemplates").put("enabled", !enabled);
+    String changed = JSON.writeValueAsString(document);
+
+    for (String path : List.of(PREVIEW, IMPORT)) {
+      mockMvc
+          .perform(
+              post(path)
+                  .with(dev("dev-user"))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(changed))
+          .andExpect(status().isForbidden());
+    }
+
+    ObjectNode after = (ObjectNode) JSON.readTree(export());
+    assertThat(sections(after).get("documentTemplates").get("enabled").booleanValue())
+        .isEqualTo(enabled);
+    assertThat(auditEventTypes()).isEmpty();
   }
 
   @Test

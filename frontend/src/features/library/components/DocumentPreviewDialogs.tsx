@@ -2,6 +2,7 @@ import type { useDocumentPreview } from '../hooks/useDocumentPreview'
 import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import DocumentTextVersionDialog from './DocumentTextVersionDialog'
 import PdfPreviewDialog from './PdfPreviewDialog'
+import OfficeOriginalDialog from './documentView/OfficeOriginalDialog'
 
 interface DocumentPreviewDialogsProps {
   /** The `useDocumentPreview()` instance whose „Dokument öffnen“ these dialogs show. */
@@ -18,6 +19,12 @@ export default function DocumentPreviewDialogs({ preview }: DocumentPreviewDialo
       />
       <PdfPreviewDialog preview={preview.pdfPreview} onClose={preview.closePdfPreview} />
       <DocumentTextVersionDialog preview={preview.textVersion} onClose={preview.closeTextVersion} />
+      <OfficeOriginalDialog
+        original={preview.officeOriginal}
+        pending={preview.pendingOriginal}
+        onClose={preview.closeOfficeOriginal}
+        onUnreadable={preview.replaceOriginalByTextVersion}
+      />
     </>
   )
 }

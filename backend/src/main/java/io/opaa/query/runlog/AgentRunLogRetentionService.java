@@ -1,16 +1,12 @@
 package io.opaa.query.runlog;
 
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.AuditOutcome;
-import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import java.nio.charset.StandardCharsets;
+import io.opaa.settings.RetentionSetting;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,77 +18,60 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AgentRunLogRetentionService {
 
-  private static final String ADMIN_ONLY =
-      "Nur die Administration darf die Aufbewahrungsdauer einsehen und ändern";
-
-  private static final UUID SETTINGS_OBJECT_ID =
-      UUID.nameUUIDFromBytes("agent_run_log_retention_settings".getBytes(StandardCharsets.UTF_8));
-
   private final AgentRunLogRetentionSettingsRepository repository;
-  private final AuditEventRecorder auditEventRecorder;
+  private final RetentionSetting setting;
 
   AgentRunLogRetentionService(
       AgentRunLogRetentionSettingsRepository repository, AuditEventRecorder auditEventRecorder) {
     this.repository = repository;
-    this.auditEventRecorder = auditEventRecorder;
+    this.setting =
+        new RetentionSetting(
+            auditEventRecorder,
+            "agent_run_log_retention_settings",
+            "Nur die Administration darf die Aufbewahrungsdauer einsehen und ändern",
+            AuditEventType.AGENT_RUN_LOG_RETENTION_CHANGED,
+            null,
+            new RetentionSetting.Bounds(
+                AgentRunLogRetentionSettings.MIN_RETENTION_DAYS,
+                AgentRunLogRetentionSettings.MAX_RETENTION_DAYS,
+                "Tagen",
+                ""));
   }
 
   @Transactional(readOnly = true)
   public AgentRunLogRetentionSettings read(CurrentUser actor) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
-    return repository
-        .findSingleton()
-        .orElseThrow(() -> new NotFoundException("Aufbewahrungseinstellung nicht gefunden"));
+    setting.requireAdmin(actor);
+    return settingsRow();
   }
 
   @Transactional
   public AgentRunLogRetentionSettings updateRetentionDays(
       CurrentUser actor, int stepLogDays, int sandboxLogDays) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
-    requireBounds(stepLogDays, "des Schrittprotokolls");
-    requireBounds(sandboxLogDays, "des Sandbox-Protokolls");
+    setting.requireAdmin(actor);
+    setting.requireWithin("Die Aufbewahrungsdauer des Schrittprotokolls", stepLogDays);
+    setting.requireWithin("Die Aufbewahrungsdauer des Sandbox-Protokolls", sandboxLogDays);
     if (sandboxLogDays > stepLogDays) {
       throw new ValidationException(
           "Das Sandbox-Protokoll darf nicht länger aufbewahrt werden als das Schrittprotokoll");
     }
-    AgentRunLogRetentionSettings previous = read(actor);
+    AgentRunLogRetentionSettings previous = settingsRow();
     if (previous.getStepLogRetentionDays() == stepLogDays
         && previous.getSandboxLogRetentionDays() == sandboxLogDays) {
       return previous;
     }
-    repository.updateRetentionDays(stepLogDays, sandboxLogDays);
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(actor.organizationId())
-            .actor(actor.id())
-            .type(AuditEventType.AGENT_RUN_LOG_RETENTION_CHANGED)
-            .object(AuditObjectType.SYSTEM_SETTING, SETTINGS_OBJECT_ID, null)
-            .before(
-                Map.of(
-                    "stepLogRetentionDays", previous.getStepLogRetentionDays(),
-                    "sandboxLogRetentionDays", previous.getSandboxLogRetentionDays()))
-            .after(
-                Map.of(
-                    "stepLogRetentionDays", stepLogDays,
-                    "sandboxLogRetentionDays", sandboxLogDays))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    setting.change(
+        actor,
+        Map.of(
+            "stepLogRetentionDays", previous.getStepLogRetentionDays(),
+            "sandboxLogRetentionDays", previous.getSandboxLogRetentionDays()),
+        Map.of("stepLogRetentionDays", stepLogDays, "sandboxLogRetentionDays", sandboxLogDays),
+        () -> repository.updateRetentionDays(stepLogDays, sandboxLogDays));
+    return settingsRow();
+  }
+
+  private AgentRunLogRetentionSettings settingsRow() {
     return repository
         .findSingleton()
         .orElseThrow(() -> new NotFoundException("Aufbewahrungseinstellung nicht gefunden"));
-  }
-
-  private static void requireBounds(int days, String which) {
-    if (days < AgentRunLogRetentionSettings.MIN_RETENTION_DAYS
-        || days > AgentRunLogRetentionSettings.MAX_RETENTION_DAYS) {
-      throw new ValidationException(
-          "Die Aufbewahrungsdauer "
-              + which
-              + " muss zwischen "
-              + AgentRunLogRetentionSettings.MIN_RETENTION_DAYS
-              + " und "
-              + AgentRunLogRetentionSettings.MAX_RETENTION_DAYS
-              + " Tagen liegen");
-    }
   }
 }

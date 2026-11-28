@@ -638,11 +638,12 @@ export default function ChatInput({
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
+            bgcolor: 'actionSurface.main',
+            color: 'actionSurface.contrastText',
             borderRadius: '8px',
             p: 1,
-            '&:hover': { bgcolor: 'primary.dark' },
+            '&:hover': { bgcolor: 'actionSurface.hover' },
+            '&:active': { bgcolor: 'actionSurface.press' },
             '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' },
           }}
         >

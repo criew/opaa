@@ -6,7 +6,8 @@
 #   chart's PrometheusRule for release "opaa" in namespace "opaa", whose labels the Compose
 #   Prometheus attaches to its scrape of the backend.
 # With --check it writes nothing and fails when a file differs; .github/workflows/helm-chart.yml
-# runs it so. Needs helm, yq and python3.
+# runs it so. Needs helm, yq and python3; the output depends on the yq version, so render with
+# YQ_VERSION from helm-chart.yml.
 set -euo pipefail
 
 CHART_DIR="deploy/helm/opaa"
@@ -30,7 +31,7 @@ python3 deploy/monitoring/build_dashboards.py --values "$work_dir/metrics.json" 
 
 if [ -n "$check" ]; then
   if ! diff -u "$RULES" "$work_dir/opaa-rules.yaml"; then
-    echo "::error::$RULES is out of date. Run deploy/monitoring/render.sh." >&2
+    echo "::error::$RULES is out of date. Run deploy/monitoring/render.sh with yq at YQ_VERSION of helm-chart.yml (found: $(yq --version 2>/dev/null | grep -o 'v[0-9.]*' || echo unknown))." >&2
     exit 1
   fi
 else

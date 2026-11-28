@@ -7,7 +7,7 @@ Zehn Anwendungsfälle aus verschiedenen Nutzerperspektiven, mit Schwerpunkt **Fi
 Anwendungsfälle machen daraus etwas, das eine Sachbearbeiterin oder ein Kämmerer wiedererkennt — und sie
 zeigen, dass die elf Themenbereiche zusammen einen Arbeitstag tragen und nicht einzeln.
 
-**Aufbau je Fall:** Perspektive · Situation heute · Ablauf mit OPAA · genutzte Themenbereiche ·
+**Aufbau je Fall:** Perspektive · Situation heute · Ablauf mit opaa · genutzte Themenbereiche ·
 Verteilungs-Effekt (was daraus ein teilbares KI-Asset macht) · Phase. Die Bezeichnungen der Themenbereiche
 A–K und der Phasen 1–4 stammen aus [VISION.md](./VISION.md); die Begriffe *Space* und
 *Wissensbibliothek* sind im [Glossar](handbuch/referenz/glossar.md) erklärt, *Asset* und *Verteilungsstufe* in
@@ -46,14 +46,14 @@ steckt in einem BMF-Schreiben, einem Anwendungserlass, zwei Verfügungen der Obe
 internen Arbeitsanweisung — verteilt über Netzlaufwerk, Intranet und eine Ordnerstruktur, die niemand mehr
 vollständig kennt. Erfahrene Kollegen werden gefragt; wer sie nicht hat, sucht zwanzig Minuten oder rät.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Frage im Chat des Space „Veranlagung", in Umgangssprache gestellt.
-2. OPAA durchsucht die zugeordneten Wissensbibliotheken hybrid (Vektor und Volltext) und rankt die Treffer
+2. opaa durchsucht die zugeordneten Wissensbibliotheken hybrid (Vektor und Volltext) und rankt die Treffer
    nach.
 3. Die Antwort nennt **jede Aussage mit Fundstelle** — Dokument, Randnummer, Sprung zur Textstelle — dazu
    die Konfidenz.
-4. Ist die Lage nicht belegbar, sagt OPAA das, statt zu raten — für eine Auskunft, die jemand mit seinem
+4. Ist die Lage nicht belegbar, sagt opaa das, statt zu raten — für eine Auskunft, die jemand mit seinem
    Namen trägt, ist „nicht feststellbar" das brauchbarere Ergebnis. Jeder Beleg, den die Antwort führt,
    ist gegen die tatsächlich abgerufenen Fundstellen geprüft; ein Beleg, der auf nichts zeigt, steht im
    Belegfenster als **nicht bestätigt**.
@@ -78,15 +78,15 @@ Veranlagungsteams genutzt. Wer einen guten Suchprompt findet, legt ihn in die Pr
 Der Sachverhalt muss herausgearbeitet, die Rechtslage geprüft und eine Einspruchsentscheidung entworfen
 werden. Der zeitfressende Teil ist nicht die juristische Wertung, sondern das Zusammentragen.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
-1. Der Vorgang wird in den Chat gegeben; OPAA erkennt die Formate, extrahiert auch aus Scans und liest
+1. Der Vorgang wird in den Chat gegeben; opaa erkennt die Formate, extrahiert auch aus Scans und liest
    handschriftliche Randnotizen (modellabhängig).
 2. Ein Agent „Einspruch aufarbeiten" erzeugt eine strukturierte Sachverhaltsdarstellung: Antragsteller,
    Streitgegenstand, Zeitschiene, vorgetragene Argumente — jeweils mit Seitenverweis.
 3. **Deep Research** über die Wissensbibliothek „Rechtsbehelf" liefert vergleichbare Fälle und die
    einschlägigen Fundstellen als zitierbaren Bericht.
-4. OPAA entwirft die Begründungsstruktur mit Fundstellen. Die Wertung bleibt beim Menschen — der Entwurf
+4. opaa entwirft die Begründungsstruktur mit Fundstellen. Die Wertung bleibt beim Menschen — der Entwurf
    ist Rohmaterial, nicht Entscheidung.
 5. Jeder Schritt ist protokolliert; die Fundstellen sind einzeln prüfbar.
 
@@ -110,14 +110,14 @@ ganzen Rechtsbehelfsstelle. Siehe Fall 6.
 eigener Struktur. Die Kämmerei konsolidiert manuell, sucht Abweichungen zum Vorjahr, schreibt Rückfragen
 und baut am Ende Folien für den Finanzausschuss. Jedes Jahr dieselbe Fleißarbeit.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Alle Anmeldungen in den Space „Haushalt 2027".
-2. In der **isolierten Ausführungsumgebung** führt OPAA echte Auswertungen aus: Konsolidierung, Abweichung
+2. In der **isolierten Ausführungsumgebung** führt opaa echte Auswertungen aus: Konsolidierung, Abweichung
    zum Vorjahr je Produkt und Kostenart, Auffälligkeiten oberhalb einer Schwelle.
 3. Ergebnis als Arbeitsmappe samt **Diagrammen**; die auffälligen Positionen als Liste mit Bezug auf Zeile
    und Datei.
-4. OPAA formuliert die Rückfragen an die Fachämter aus einer geprüften Vorlage.
+4. opaa formuliert die Rückfragen an die Fachämter aus einer geprüften Vorlage.
 5. Aus der Auswertung entsteht ein **Folienentwurf** für den Finanzausschuss — Zahlen belegt,
    Kommentierung im Amtsstil.
 
@@ -140,12 +140,12 @@ wieder läuft — und im Asset-Katalog exportierbar ist, sodass ihn andere Häus
 werden: Vollständigkeit der Unterlagen, Fristen, Wertgrenzen, Dokumentation der Auswahlentscheidung. Die
 Checkliste hat 60 Punkte, die Akte 200 Seiten in gemischten Formaten.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Akte in den Space „Rechnungsprüfung" — mit eigenen Rechten, denn die Prüfung muss unabhängig bleiben.
 2. Ein Agent „Vergabeakte prüfen" arbeitet die Checkliste Punkt für Punkt ab und gibt zu jedem Punkt:
    erfüllt / nicht erfüllt / nicht feststellbar — **mit Seitenverweis**.
-3. Wo etwas fehlt, sagt OPAA „nicht feststellbar", statt zu interpretieren — und jeder angegebene
+3. Wo etwas fehlt, sagt opaa „nicht feststellbar", statt zu interpretieren — und jeder angegebene
    Seitenverweis ist gegen die abgerufenen Fundstellen geprüft (Belegvalidierung).
 4. Der Prüfer arbeitet die Liste ab, korrigiert Fehleinschätzungen und lässt daraus den
    **Prüfvermerk-Entwurf** erzeugen.
@@ -173,9 +173,9 @@ Teilzeit auf die Bezüge, Fristen bei Elternzeit. Die Antworten stehen in Beihil
 Rundschreiben und internen Auslegungshinweisen. Die Auskunft muss korrekt und verständlich sein — beides
 gleichzeitig ist die Mühe.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
-1. Anfrage in den Chat; OPAA zieht die einschlägigen Regelungen mit Fundstelle.
+1. Anfrage in den Chat; opaa zieht die einschlägigen Regelungen mit Fundstelle.
 2. Antwortentwurf in zwei Fassungen: **Amtssprache** für die Akte und **Leichte Sprache** für die
    Antwortmail.
 3. Der Sachbearbeiter prüft die Fundstellen, wählt die Fassung und ergänzt den Einzelfall.
@@ -203,7 +203,7 @@ Mail als Textbaustein, drei Kollegen nutzen eine veraltete Kopie, der Rest weiß
 das Amt, geht die Arbeitsweise mit ihm. Das ist der eigentliche Engpass der KI-Einführung — nicht das
 Modell.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Der Kollege baut seinen Agenten in seinem **persönlichen Space**: Aufgabenbeschreibung, gebundene
    Wissensbibliothek, erlaubte Werkzeuge, Modellwahl — alles in einem Paket.
@@ -238,7 +238,7 @@ Arbeitsweise nicht mehr weg.
 Fallbeschreibungen in frei verfügbare Verbraucherwerkzeuge — bei Steuerdaten ein Verstoß gegen § 30 AO.
 Gleichzeitig fragt die Amtsleitung nach dem Fortschritt der KI-Einführung, und niemand kann ihn belegen.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. **Modellvorgaben** zentral setzen: Die Wissensbibliothek mit steuerlichen Daten trägt die Beschränkung
    „ausschließlich lokal betriebene Modelle im eigenen Rechenzentrum" selbst — sie gilt überall dort, wo
@@ -274,7 +274,7 @@ funktionieren, an das vorhandene Identitätsmanagement andocken und prüffähige
 drei Anforderungen entscheiden vor jeder Funktionsfrage darüber, ob eine Lösung im Haus überhaupt
 betrieben werden darf.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Installation **air-gapped** im eigenen Rechenzentrum — Docker Compose für den Start, Kubernetes mit
    Hochverfügbarkeit im Ausbau.
@@ -306,14 +306,14 @@ ohne Rechte, Protokoll und lokale Modelle darf kein Asset organisationsweit lauf
 abgeglichen; daraus entstehen Erinnerungs- oder Mahnschreiben. Der Vorgang ist repetitiv, aber jede
 Abweichung erfordert Fachurteil — Automatisierung ohne Kontrolle wäre riskant und rechtlich heikel.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Der Konnektor liest die Vorgänge **nur lesend** aus dem Fachverfahren beziehungsweise dem
    Vorgangssystem. Maßgeblich ist der Leserkreis der Zielbibliothek; gibt das Fachverfahren seine
    Berechtigungen belastbar heraus, verengen sie ihn zusätzlich.
 2. Ein Agent gruppiert die Fälle, erkennt Auffälligkeiten (Teilzahlung, laufende Stundung, offener
    Einspruch) und legt sie dem Sachbearbeiter mit Begründung und Fundstelle vor.
-3. Für die unstrittigen Fälle bereitet OPAA die Schreiben vor und schlägt **schreibende Aktionen** vor:
+3. Für die unstrittigen Fälle bereitet opaa die Schreiben vor und schlägt **schreibende Aktionen** vor:
    Vorgang aktualisieren, Wiedervorlage setzen.
 4. **Nichts wird ohne Freigabe ausgeführt** — der Mensch entscheidet an einem ausdrücklichen Gate; jede
    ausgeführte Aktion landet revisionssicher im Protokoll.
@@ -338,10 +338,10 @@ Oberfinanzdirektionen und Kammern ein — als PDF, als Textdokument, teils in Ma
 eine Synopse: Wer fordert was, wo widersprechen sich die Vorschläge, welche Punkte wiederholen sich, was
 ist wirklich neu.
 
-**Ablauf mit OPAA:**
+**Ablauf mit opaa:**
 
 1. Alle Stellungnahmen in den Space „Erlassverfahren"; die Formate werden erkannt und passend zerlegt.
-2. OPAA erstellt eine **Synopse je Regelungspunkt**: Position, Absender, Zitat, Seitenverweis.
+2. opaa erstellt eine **Synopse je Regelungspunkt**: Position, Absender, Zitat, Seitenverweis.
 3. Ein **Deep-Research-Bericht** ordnet die Vorschläge in die bestehende Erlasslage ein und markiert
    Widersprüche zu geltenden Verwaltungsanweisungen.
 4. Ausgabe als Textdokument und als Kurzvorlage für die Hausleitung, Zahlen und Zitate belegt.

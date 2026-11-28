@@ -146,7 +146,7 @@ public final class FactSheetRenderer {
         new Sheet(
             FactSheet.DATENKATALOG,
             provenance,
-            "Alle Daten, die OPAA speichert, je Bereich mit Zweck, Personenbezug, Speicherort, Frist,"
+            "Alle Daten, die opaa speichert, je Bereich mit Zweck, Personenbezug, Speicherort, Frist,"
                 + " Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen sowie der"
                 + " Zuordnung zur Person: über welche Spalten ein Eintrag einer Person zugeordnet"
                 + " wird oder warum er nicht Teil der Selbstauskunft ist. Am Ende stehen die"
@@ -356,7 +356,7 @@ public final class FactSheetRenderer {
       sheet.paragraph("```mermaid\n" + DataFlowDiagram.render(manifest.dataFlows()) + "```");
       sheet.paragraph(
           "Jeder Kasten ist ein Datenfluss mit seiner Kennung, jede Linie eine Verbindung, die"
-              + " OPAA aufbaut. Gestrichelt: "
+              + " opaa aufbaut. Gestrichelt: "
               + VIA_PROXY
               + ". Durchgezogen: nie über den Ausgangsproxy.");
     }
@@ -495,7 +495,7 @@ public final class FactSheetRenderer {
         new Sheet(
             FactSheet.FRISTEN,
             provenance,
-            "Wie lange OPAA Daten und Protokolleinträge aufbewahrt, und welcher"
+            "Wie lange opaa Daten und Protokolleinträge aufbewahrt, und welcher"
                 + " Konfigurationsschlüssel eine Frist setzt. Standardwerte gelten für die"
                 + " Auslieferung.");
     Map<String, SettingEntry> settingKeys = settingsByKey(manifest);
@@ -699,7 +699,14 @@ public final class FactSheetRenderer {
     if (entry.databaseDefault() != null && !entry.databaseDefault().isBlank()) {
       return "Standardwert der Spalte " + code(entry.databaseDefault());
     }
-    return codes(entry.classes());
+    List<String> located = new ArrayList<>();
+    if (entry.classes() != null) {
+      located.addAll(entry.classes());
+    }
+    if (entry.resources() != null) {
+      located.addAll(entry.resources());
+    }
+    return codes(located);
   }
 
   /**
@@ -927,7 +934,7 @@ public final class FactSheetRenderer {
           .append("\n\n");
       paragraph(
           intro
-              + " Erzeugt aus dem Fakten-Manifest von OPAA "
+              + " Erzeugt aus dem Fakten-Manifest von opaa "
               + provenance.version()
               + " (Commit "
               + code(provenance.commit())

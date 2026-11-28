@@ -62,29 +62,21 @@ public class AnswerGenerationService {
       """;
 
   /**
-   * Binds factual answers to the passages and the conversation. Present whenever a message with
-   * search need was searched, also without a hit; absent for the chat answered on purpose without a
-   * knowledge base and for a message without search need, which must not get "not found".
+   * Binds factual answers to the passages and the conversation, followed by {@link
+   * AnswerRules#SHARED}. Present whenever a message with search need was searched, also without a
+   * hit; absent for the chat answered on purpose without a knowledge base and for a message without
+   * search need, which must not get "not found".
    */
   private static final String ANSWER_RULES =
       """
 
 
       ANTWORTREGELN:
-      - Gib zu Sachfragen nur wieder, was die Kontextdokumente, der Gesprächsverlauf oder die \
-      Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder Vermutung.
-      - Fehlt etwas in den Kontextdokumenten, sage, dass es in den vorliegenden Dokumenten nicht \
-      enthalten ist, und nicht, dass es das nicht gibt. Fehlt ein Teil der Grundlage, benenne \
-      die Lücke und lege dich nicht auf ein Ergebnis fest, das von ihr abhängt.
-      - Ziehe eine spezifische Regel einer allgemeinen Formulierung vor.
-      - Nenne Bedingungen, Ausnahmen, Geltungsbereich (etwa Land oder Behörde) und Stand der \
-      Quelle, wenn die Kontextdokumente sie nennen und sie für die Frage erheblich sind.
-      - Weichen Kontextdokumente voneinander ab, benenne die Abweichung ausdrücklich.
-      - Nenne bei Schwellen, Quoten und Fristen die Bezugsgröße. Ziehe aus einem Zahlenvergleich \
-      keinen Schluss, wenn die Bezugsgrößen verschieden sind.
-      - Beantworte die Frage direkt und knapp: keine Wiederholung der Frage, keine Einleitungs- \
-      oder Schlussfloskeln, nichts Unerhebliches.\
-      """;
+      - Gib zu Sachfragen nur wieder, was die Kontextdokumente (deine Quellen), der \
+      Gesprächsverlauf oder die Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder \
+      Vermutung.
+      """
+          + AnswerRules.SHARED;
 
   /**
    * The marker syntax {@code CitationMarker.PATTERN} reads, shown as a head-to-sentence example and
@@ -164,8 +156,7 @@ public class AnswerGenerationService {
   public static final String CITATION_REMINDER =
       "\n\n---\n\nBelege jede Aussage aus den Kontextdokumenten mit der Zitiermarke ihres"
           + " Abschnitts, unverändert aus der Zeile „Zitiermarke:“ übernommen, ohne Link, Klammer"
-          + " oder Zusatz darum. Was die Kontextdokumente nicht enthalten, benenne als nicht"
-          + " enthalten, statt es zu ergänzen.";
+          + " oder Zusatz darum. Ergänze nichts, was die Kontextdokumente nicht enthalten.";
 
   /**
    * Repeats the answer language after the passages. The leading rule alone does not keep a small
@@ -191,14 +182,17 @@ public class AnswerGenerationService {
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
   private final ActiveAnswerStreams activeAnswerStreams;
+  private final DocumentPartCounts documentPartCounts;
 
   public AnswerGenerationService(
       ActiveChatModelResolver activeChatModelResolver,
       ChatMemory chatMemory,
-      ActiveAnswerStreams activeAnswerStreams) {
+      ActiveAnswerStreams activeAnswerStreams,
+      DocumentPartCounts documentPartCounts) {
     this.activeChatModelResolver = activeChatModelResolver;
     this.chatMemory = chatMemory;
     this.activeAnswerStreams = activeAnswerStreams;
+    this.documentPartCounts = documentPartCounts;
   }
 
   /**
@@ -272,7 +266,7 @@ public class AnswerGenerationService {
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
             + (searchNeeded ? "" : NO_SEARCH_HINT)
             + CONTEXT_SECTION
-            + DocumentBlock.render(blockId, relevantChunks)
+            + DocumentBlock.render(blockId, relevantChunks, documentPartCounts.of(relevantChunks))
             + (bindToPassages ? CITATION_REMINDER : "")
             + (spaceBlock == null ? LANGUAGE_REMINDER : SPACE_LANGUAGE_REMINDER);
 

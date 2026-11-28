@@ -6,14 +6,24 @@ dataFlows:
     viaOutboundProxy: true
     target: >-
       Das systemweit aktive Chat-Modell, ein OpenAI-kompatibler Endpunkt, den die Installation
-      festlegt und die Systemverwaltung später wechseln kann
+      festlegt und die Systemverwaltung später wechseln kann; für die Werkzeugprüfung jeder Eintrag
+      der Modellverwaltung, den die Systemverwaltung prüfen lässt, auch ein nicht aktiver
     data: >-
       Frage und Gesprächsverlauf, die gefundenen Textstellen aus den Bibliotheken samt Titeln und
       System-Prompt; Chatinhalte für Titel und Notizen; Dokumenttext für die modellgestützte
-      Metadatenextraktion
+      Metadatenextraktion. In einem Agentenlauf zusätzlich die Anweisung des Agenten, die
+      Beschreibungen der eingeschalteten Werkzeuge, die Ergebnisse jedes Werkzeugaufrufs (Fundstellen
+      der Suche, Dokumenttext aus read_document bis zur Lesemenge des Laufs, Ausgaben von run_code,
+      Liste der Quellen, ausgefüllte Vorlagen), Plan und Planänderungen sowie Rückfragen und die
+      Antworten der Person darauf. Bei der Werkzeugprüfung nur die mitgelieferte Fallbasis
+      (System-Prompt, erfundene Fragen und Werkzeugergebnisse einer fiktiven Stadtverwaltung, die
+      Werkzeugbeschreibung der Suche) und eine Bereitschaftsprobe; keine Daten aus Bibliotheken,
+      Chats oder über Personen
     trigger: >-
-      Jede Chat-Anfrage, Zerlegung einer Suchanfrage, Chattitel und -notiz, Metadatenextraktion beim
-      Indizieren, Statusprüfung des Modells; endet eine gestreamte Antwort ohne ersten Teil oder
+      Jede Chat-Anfrage, jeder Schritt eines Agentenlaufs, Zerlegung einer Suchanfrage, Chattitel und
+      -notiz, Metadatenextraktion beim Indizieren, Statusprüfung des Modells; die Werkzeugprüfung
+      eines Eintrags, die die Systemverwaltung bei eingeschalteten Agenten startet (jeder Fall der
+      Fallbasis bis zu dreimal); endet eine gestreamte Antwort ohne ersten Teil oder
       lehnt das Modell die gestreamte Anfrage ab (nicht bei Netz-, Anmelde-, Last- oder
       Serverfehlern), geht dieselbe Anfrage einmal ohne Streaming erneut an das Modell
     switchOff: >-
@@ -195,7 +205,7 @@ dataFlows:
     target: Die Dropbox-API (api.dropboxapi.com, content.dropboxapi.com)
     data: >-
       API-Anfragen mit dem Token des Zugangs; bei einer Team-App ein Token des ganzen Teams, mit
-      dem OPAA als zustimmende Team-Administration Team-Ordner liest und die Namespaces des Teams
+      dem opaa als zustimmende Team-Administration Team-Ordner liest und die Namespaces des Teams
       auflistet; Inhalte gehen nicht hinaus
     trigger: Indizierungslauf, Verbindungstest, Ordnerauswahl, Original öffnen
     switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
@@ -207,10 +217,10 @@ dataFlows:
       - >-
         Über eine Team-App liest eine Bibliothek Team-Ordner, auch solche, die kein einzelnes
         Mitgliedskonto sieht; wer die Bibliothek lesen darf, liest deren Inhalt. Mitgliederordner,
-        geteilte Ordner und App-Ordner liest OPAA nicht und bietet sie nicht zur Auswahl an
+        geteilte Ordner und App-Ordner liest opaa nicht und bietet sie nicht zur Auswahl an
       - >-
-        Das Token einer Team-App erlaubt Dropbox-seitig mehr, als OPAA nutzt: Es könnte im Namen
-        jedes Mitglieds dessen Ordner lesen. OPAA hält es verschlüsselt, schickt es nur an die
+        Das Token einer Team-App erlaubt Dropbox-seitig mehr, als opaa nutzt: Es könnte im Namen
+        jedes Mitglieds dessen Ordner lesen. opaa hält es verschlüsselt, schickt es nur an die
         Dropbox-API und widerruft es beim Trennen
   - id: source-google-drive
     group: CONNECTOR
@@ -384,9 +394,12 @@ dataFlows:
       Installationsassistent einträgt, meist im eigenen Netz
     data: >-
       Der vollständige Inhalt jeder Datei, die eine Bibliothek oder ein Chat aufnehmen soll
-      (Upload, Datei einer Quelle, Anhang), ohne Dateiname, Bibliothek oder Person; bei der Prüfung
-      der Verbindung nur die Frage nach der Version
-    trigger: Jede Aufnahme einer Datei bei eingeschalteter Virenprüfung
+      (Upload, Datei einer Quelle, Anhang), und jeder hochgeladenen Dokumentvorlage, ohne
+      Dateiname, Bibliothek, Vorlage oder Person; bei der Prüfung der Verbindung nur die Frage nach
+      der Version
+    trigger: >-
+      Jede Aufnahme einer Datei und jeder Upload einer Dokumentvorlage bei eingeschalteter
+      Virenprüfung
     switchOff: Abschaltbar, Voreinstellung aus
     settings: [malware_scan_settings.enabled, malware_scan_settings.host]
   - id: siem-export
@@ -409,7 +422,11 @@ dataFlows:
     viaOutboundProxy: false
     target: >-
       Der Sandbox-Dienst des Betriebs (OpenSandbox-Server) neben dem Backend, der je Agentenlauf
-      einen Container ohne Netz startet und am Ende des Laufs löscht
+      einen Container startet und am Ende des Laufs löscht. Unter Kubernetes mit einem CNI, das
+      NetworkPolicies durchsetzt, hat die Sandbox keinen Internetzugang, nimmt nur Verbindungen
+      vom Sandbox-Dienst an, baut selbst keine auf und ist von anderen Sandboxen getrennt; ohne ein
+      solches CNI gilt keine dieser Sperren. Unter Docker Compose hat sie keinen Internetzugang,
+      aber gleichzeitig laufende Sandboxen erreichen sich gegenseitig, auch die anderer Personen
     data: >-
       Die Python-Skripte, die das Chat-Modell im Werkzeug run_code schreibt, mit den Inhalten, die
       es aus den gefundenen Textstellen übernimmt; beim Werkzeug fill_template die DOCX-Datei einer
@@ -439,7 +456,7 @@ dataFlows:
       und ein mitgeschickter traceparent eines Aufrufers wird verworfen
     trigger: >-
       Jede Anfrage und Hintergrundaufgabe, die die Stichprobe trifft (Voreinstellung 5 Prozent),
-      gezogen über eine Trace-ID, die OPAA selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
+      gezogen über eine Trace-ID, die opaa selbst erzeugt; der Aufruf zum Rundgang-Hinweis nie
     switchOff: Abschaltbar, Voreinstellung aus; eingeschaltet ohne Adresse bricht der Start ab
     settings:
       - management.tracing.export.enabled

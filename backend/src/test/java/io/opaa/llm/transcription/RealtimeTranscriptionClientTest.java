@@ -8,7 +8,9 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.llm.transcription.RealtimeTranscriptionClient.RealtimeUnavailableException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
@@ -405,19 +407,23 @@ class RealtimeTranscriptionClientTest {
 
   @Test
   void anUnreachableUpstreamIsAFailureThatWasNotAnswered() throws Exception {
-    String url = upstream.url("/v1/realtime");
-    upstream.close();
+    // a bound socket that never listens keeps its port reserved and refuses every connection; a
+    // closed server socket would free the port for a parallel test fork to take over
+    try (Socket unreachable = new Socket()) {
+      unreachable.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
+      String url = "ws://127.0.0.1:" + unreachable.getLocalPort() + "/v1/realtime";
 
-    assertThatThrownBy(
-            () ->
-                client.open(
-                    new RealtimeTranscriptionEndpoint(
-                        RealtimeTranscriptionProtocol.VLLM, url, "m", "", 1),
-                    "",
-                    "",
-                    recorder))
-        .isInstanceOfSatisfying(
-            RealtimeUnavailableException.class, e -> assertThat(e.answered()).isFalse());
+      assertThatThrownBy(
+              () ->
+                  client.open(
+                      new RealtimeTranscriptionEndpoint(
+                          RealtimeTranscriptionProtocol.VLLM, url, "m", "", 1),
+                      "",
+                      "",
+                      recorder))
+          .isInstanceOfSatisfying(
+              RealtimeUnavailableException.class, e -> assertThat(e.answered()).isFalse());
+    }
     assertThat(handshakes("io_error", "interactive")).isEqualTo(1);
   }
 

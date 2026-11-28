@@ -64,6 +64,39 @@ class OptionalRoleStartupCheckTest {
     verify(client, never()).probe(any(), any());
   }
 
+  @Test
+  void aKeyInTheQueryOfAnUnreachableAddressIsLeftOutOfTheErrorLine() {
+    RerankClient client = mock(RerankClient.class);
+    RerankEndpoint endpoint =
+        new RerankEndpoint(true, "http://h/v1?key=geheim#geheim", "bge-reranker", "");
+    when(client.probe(any(), any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
+    OptionalRoleStartupCheck check =
+        new OptionalRoleStartupCheck(
+            new RerankModelRole(
+                new RerankProperties(Duration.ofSeconds(5), null),
+                () -> endpoint,
+                client,
+                Clock.systemUTC()),
+            ModelRoleSettingsChangedEvent.Role.RERANK,
+            "Rerank",
+            "Retrieval continues without reranking.",
+            mock(TaskScheduler.class),
+            Clock.systemUTC());
+
+    List<ILoggingEvent> events = captureWhile(check::probeAndReport);
+
+    assertThat(events)
+        .filteredOn(event -> event.getLevel() == ch.qos.logback.classic.Level.ERROR)
+        .singleElement()
+        .satisfies(
+            event ->
+                assertThat(event.getFormattedMessage())
+                    .contains("http://h/v1")
+                    .doesNotContain("geheim"));
+    verify(client).probe(any(), any());
+  }
+
   private static List<ILoggingEvent> captureWhile(Runnable action) {
     ch.qos.logback.classic.Logger logger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(OptionalRoleStartupCheck.class);

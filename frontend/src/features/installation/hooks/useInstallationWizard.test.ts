@@ -82,7 +82,7 @@ describe('useInstallationWizard on a client timeout of a check', () => {
 
     expect(outcome).toMatchObject({
       ok: false,
-      failure: { message: expect.stringMatching(/OPAA prüft im Hintergrund weiter/) },
+      failure: { message: expect.stringMatching(/opaa prüft im Hintergrund weiter/) },
     })
     expect(result.current.view).toBe('TEXT_RECOGNITION_MODEL')
   })

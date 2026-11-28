@@ -1,4 +1,4 @@
-# ADR-0074: Ein Datenspeicher für Metadaten und Abschnitte — keine Trennung, Lesereplik als erste Ausbaustufe
+# ADR-0075: Ein Datenspeicher für Metadaten und Abschnitte — keine Trennung, Lesereplik als erste Ausbaustufe
 
 ## Status
 

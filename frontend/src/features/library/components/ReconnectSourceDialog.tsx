@@ -84,7 +84,7 @@ export default function ReconnectSourceDialog({
       <Typography variant="body2" sx={{ mb: 2 }}>
         {accountChange
           ? 'Der Anbieter hat ein anderes Konto gemeldet als bisher. Verbinden Sie mit diesem Konto, wird der Abgleichstand der Bibliothek verworfen; der nächste Lauf liest die Quelle vollständig neu ein. Sie werden dafür noch einmal zum Anbieter weitergeleitet.'
-          : `Sie werden zum Anbieter${profileName ? ` des Zugangs „${profileName}“` : ''} weitergeleitet, melden sich dort mit dem Dienstkonto an und stimmen zu. Danach kehren Sie hierher zurück. Meldet der Anbieter ein anderes Konto als bisher, fragt OPAA vor dem Wechsel nach.`}
+          : `Sie werden zum Anbieter${profileName ? ` des Zugangs „${profileName}“` : ''} weitergeleitet, melden sich dort mit dem Dienstkonto an und stimmen zu. Danach kehren Sie hierher zurück. Meldet der Anbieter ein anderes Konto als bisher, fragt opaa vor dem Wechsel nach.`}
       </Typography>
       <ServiceAccountConfirmation
         idPrefix="reconnect-source"

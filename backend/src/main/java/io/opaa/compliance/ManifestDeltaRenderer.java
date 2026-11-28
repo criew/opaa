@@ -132,14 +132,14 @@ public final class ManifestDeltaRenderer {
                 ? "den Stand ohne Fakten-Manifest (Commit "
                     + FactSheetRenderer.code(from.commit())
                     + ")"
-                : "das Fakten-Manifest von OPAA " + version(from))
+                : "das Fakten-Manifest von opaa " + version(from))
         .append(" direkt mit ")
         .append(
             bareCommit(to)
                 ? "dem Stand ohne Fakten-Manifest (Commit "
                     + FactSheetRenderer.code(to.commit())
                     + ")"
-                : (bareCommit(from) ? "dem Fakten-Manifest von OPAA " : "dem von OPAA ")
+                : (bareCommit(from) ? "dem Fakten-Manifest von opaa " : "dem von opaa ")
                     + version(to))
         .append(". Was zwischen beiden Versionen hinzukam und wieder entfiel, fehlt; ein mehrfach")
         .append(" geänderter Wert erscheint einmal mit Anfangs- und Endstand. Jede Änderung trägt")
@@ -157,7 +157,7 @@ public final class ManifestDeltaRenderer {
         out.append(
                 bareCommit(origin)
                     ? "> **Hinweis:** Der Stand (Commit " + shortCommit(origin) + ")"
-                    : "> **Hinweis:** OPAA " + FactSheetRenderer.text(origin.version()))
+                    : "> **Hinweis:** opaa " + FactSheetRenderer.text(origin.version()))
             .append(" hat noch kein Fakten-Manifest. ")
             .append(
                 origin == from

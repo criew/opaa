@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OPAA – souveräner KI-Assistent für die öffentliche Verwaltung</title>
-<meta name="description" content="OPAA durchsucht die Bestände Ihres Hauses und antwortet mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung. Quelloffen unter AGPL-3.0.">
+<title>opaa – souveräner KI-Assistent für die öffentliche Verwaltung</title>
+<meta name="description" content="opaa durchsucht die Bestände Ihres Hauses und antwortet mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung. Quelloffen unter AGPL-3.0.">
 <link rel="canonical" href="https://opaa.io/">
 <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -15,11 +15,11 @@
 /* Fonts are served from this origin (OFL, licence files in fonts/): no request leaves the page except to opaa.io. */
 @font-face{font-family:'Quicksand';font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format('woff2')}
 @font-face{font-family:'Source Sans 3';font-style:normal;font-weight:200 900;font-display:swap;src:url(fonts/source-sans-3-latin.woff2) format('woff2')}
-/* Layout: schmale Lesespalte (1120px), helle Fläche mit feinem Raster, schwebende Pill-Navigation, Produkt-Screenshots als große Karten. Farben aus den OPAA-Gestaltungsleitlinien (Navy, Blau-700, Off-White). */
+/* Layout: schmale Lesespalte (1120px), helle Fläche mit feinem Raster, schwebende Pill-Navigation, Produkt-Screenshots als große Karten. Farben aus den opaa-Gestaltungsleitlinien (Dunkelblau, Mittelblau, Hellblau, Off-White). */
 :root{
-  --bg:#FFFFFF; --bg-2:#F6F8FB; --bg-3:#EEF2F7; --grid:rgba(1,33,66,.055);
-  --fg:#012142; --fg-2:#3B4958; --fg-3:#556473; --line:#CBD4DF;
-  --accent:#0B6FBC; --accent-2:#1292EE; --accent-soft:#E7F4FE; --navy:#012142; --ok:#11774F; --warn:#8F5A00;
+  --bg:#FFFFFF; --bg-2:#F6F8FB; --bg-3:#EEF3FB; --grid:rgba(36,40,85,.055);
+  --fg:#242855; --fg-2:#3F4468; --fg-3:#555A78; --line:#CFD1D9;
+  --accent:#0055A4; --accent-2:#009DDB; --accent-soft:#EBF7FC; --navy:#242855; --ok:#11774F; --warn:#8F5A00;
   --display:'Quicksand','Inter',system-ui,sans-serif; --body:'Source Sans 3','Segoe UI',system-ui,sans-serif;
   color-scheme:light;
 }
@@ -48,18 +48,17 @@ p{margin:0}
 
 /* Navigation */
 .navbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;padding-top:14px}
-.pill{background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:999px;box-shadow:0 6px 24px rgba(1,33,66,.08);
+.pill{background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:999px;box-shadow:0 6px 24px rgba(36,40,85,.08);
   display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px 8px 14px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--fg)}
-.mark{width:34px;height:34px;flex-shrink:0;color:var(--navy)}
-.brand b{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:.02em}
+.wordmark{height:30px;width:auto;flex-shrink:0;color:var(--navy);display:block}
 .brand .b{font-size:10px;font-weight:700;letter-spacing:.12em;background:var(--bg-3);color:var(--fg-3);padding:3px 7px;border-radius:999px;font-family:var(--display)}
 .links{display:flex;gap:4px;align-items:center}
 .links a{text-decoration:none;color:var(--fg-2);font-weight:600;padding:8px 12px;border-radius:999px;font-size:15px}
 .links a:hover{background:var(--bg-3);color:var(--fg)}
 .btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:var(--display);font-weight:700;font-size:15px;padding:11px 18px;border-radius:999px;border:1px solid transparent}
 .btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:#085B9C}
+.btn-primary:hover{background:#004686}
 .btn-ghost{background:#fff;color:var(--fg);border-color:var(--line)}
 .btn-ghost:hover{background:var(--bg-2)}
 @media (max-width:760px){.pill{flex-wrap:wrap;border-radius:22px;padding:8px 10px}.links{order:3;width:100%;justify-content:center;border-top:1px solid var(--line);margin-top:6px;padding-top:6px}.links a{padding:6px 10px;font-size:14px}}
@@ -73,7 +72,7 @@ p{margin:0}
 .facts span::before{content:"✓ " / "";color:var(--ok);font-weight:700}
 
 /* Browserrahmen */
-.shot{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 60px -30px rgba(1,33,66,.35),0 2px 6px rgba(1,33,66,.06);overflow:hidden}
+.shot{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 60px -30px rgba(36,40,85,.35),0 2px 6px rgba(36,40,85,.06);overflow:hidden}
 .shot .bar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg-2);border-bottom:1px solid var(--line)}
 .shot .bar i{width:10px;height:10px;border-radius:50%;background:var(--line);display:inline-block}
 .shot .bar .url{margin-left:8px;flex:1;background:#fff;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--fg-3);padding:3px 10px;text-align:left;font-family:ui-monospace,monospace}
@@ -110,19 +109,20 @@ section{padding-block:64px}
 /* Getting started */
 .start{background:var(--navy);color:#fff;border-radius:22px;padding:40px clamp(20px,4vw,48px);display:grid;grid-template-columns:1.1fr 1fr;gap:32px;align-items:center}
 .start h2{color:#fff}
-.start p{color:#C6E3FC}
+.start p{color:#CCEBF8}
 .start .btn-primary{background:#fff;color:var(--navy)}
-.start .btn-primary:hover{background:#E7F4FE}
+.start .btn-primary:hover{background:#EBF7FC}
 .start ol{margin:0;padding-left:20px;display:grid;gap:10px;color:#fff}
 .start code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;background:rgba(255,255,255,.1);padding:2px 7px;border-radius:6px;word-break:break-all}
 .start .more{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px}
-.start .more a{color:#9BCEFA}
+.start .more a{color:#99D8F1}
 @media (max-width:820px){.start{grid-template-columns:1fr}}
 
 footer{padding-block:36px 48px;font-size:14px;color:var(--fg-3)}
 footer .wrap{display:flex;justify-content:space-between;gap:12px 24px;flex-wrap:wrap}
 footer a{color:var(--fg-2);text-decoration:none;margin-right:18px}
-a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.beta a:focus-visible,.start a:focus-visible,.start .btn:focus-visible{outline-color:var(--accent-2)}
 @media (prefers-reduced-motion:no-preference){.shot{transition:transform .3s}.shot:hover{transform:translateY(-2px)}}
 </style>
 </head>
@@ -131,13 +131,13 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 <div class="beta">
   <div class="wrap">
     <span class="tag">BETA</span>
-    <span>OPAA ist im Aufbau und noch nicht final freigegeben. Fragen und Pilotinteresse: <a href="mailto:info@opaa.io">info@opaa.io</a></span>
+    <span>opaa ist im Aufbau und noch nicht final freigegeben. Fragen und Pilotinteresse: <a href="mailto:info@opaa.io">info@opaa.io</a></span>
   </div>
 </div>
 
 <div class="navbar"><div class="wrap">
   <nav class="pill" aria-label="Hauptnavigation">
-    <a class="brand" href="#"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><mask id="opaa-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><path d="M16 20h22M16 30h14" stroke="#000" stroke-width="5" stroke-linecap="round"/><circle cx="47" cy="45" r="15" fill="#000"/></mask><path mask="url(#opaa-cut)" fill="currentColor" d="M18 7h24a12 12 0 0 1 12 12v13a12 12 0 0 1-12 12H23l-10 10v-10.6A12 12 0 0 1 6 32V19A12 12 0 0 1 18 7z"/><circle cx="47" cy="45" r="13" fill="#1292EE"/><path d="M41 45.5l4.2 4.2 7.8-8.4" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>OPAA</b><span class="b">BETA</span></a>
+    <a class="brand" href="#"><!-- opaa-wortmarke --><svg class="wordmark" viewBox="0 0 482.39 167.52" role="img" aria-label="opaa"><path fill="currentColor" d="M455.03,68.64v22.32c-9.12,6.24-16.32,8.4-29.28,8.4-6.96,0-11.28-.72-13.92-2.88-2.88-2.4-3.6-6.48-3.6-12.96,0-5.76.72-9.36,3.36-11.52,2.88-2.64,8.16-3.36,17.76-3.36H455.03ZM482.39,120V50.64c0-38.88-11.04-50.64-49.44-50.64-18.96,0-30.96,3.12-38.4,10.08-6.24,6-9.12,15.36-10.08,29.04h27.36c.96-13.92,2.88-15.84,22.08-15.84,10.32,0,15.36.96,18.24,4.08,2.4,2.88,2.64,8.16,2.88,17.52v4.8c-4.56-2.64-7.92-3.36-14.64-3.36h-11.04c-18.24,0-27.84,1.92-35.28,6.96-9.12,6.24-13.68,16.56-13.68,30.72,0,26.16,13.2,38.64,41.04,38.64,14.4,0,22.56-2.88,33.84-11.04v8.4H482.39ZM157.68,34.08c8.4-7.44,16.32-10.32,28.32-10.32,17.76,0,18.96,2.4,18.96,37.68s-1.2,37.44-18.96,37.44c-11.76,0-19.68-2.88-28.32-10.8V34.08ZM130.08,2.64v164.88h27.6v-55.92c11.28,8.64,19.44,11.04,34.32,11.04s26.4-3.84,32.64-12.24c6.24-8.4,8.88-23.28,8.88-48.96s-2.64-40.32-8.88-48.72C218.4,4.32,207.6,0,191.52,0c-14.64,0-23.28,2.88-34.56,11.04V2.64H130.08ZM52.56,122.64c42.24,0,52.32-11.76,52.32-61.2S94.8,0,52.56,0,0,12,0,61.44,10.08,122.64,52.56,122.64M52.56,98.88c-22.8,0-24-1.92-24-37.44s1.2-37.68,24-37.68,23.76,1.92,23.76,37.68S75.12,98.88,52.56,98.88"/><path fill="#009DDB" d="M329.28,68.64v22.32c-9.12,6.24-16.32,8.4-29.28,8.4-6.96,0-11.28-.72-13.92-2.88-2.88-2.4-3.6-6.48-3.6-12.96,0-5.76.72-9.36,3.36-11.52,2.88-2.64,8.16-3.36,17.76-3.36H329.28ZM356.64,120V50.64c0-38.88-11.04-50.64-49.44-50.64-18.96,0-30.96,3.12-38.4,10.08-6.24,6-9.12,15.36-10.08,29.04h27.36c.96-13.92,2.88-15.84,22.08-15.84,10.32,0,15.36.96,18.24,4.08,2.4,2.88,2.64,8.16,2.88,17.52v4.8c-4.56-2.64-7.92-3.36-14.64-3.36h-11.04c-18.24,0-27.84,1.92-35.28,6.96-9.12,6.24-13.68,16.56-13.68,30.72,0,26.16,13.2,38.64,41.04,38.64,14.4,0,22.56-2.88,33.84-11.04v8.4H356.64ZM244.32,131.39h125.72v24.75h-125.72Z"/></svg><!-- /opaa-wortmarke --><span class="b">BETA</span></a>
     <div class="links">
       <a href="https://opaa.io/handbuch/">Handbuch</a>
       <a href="https://demo.opaa.io">Demo</a>
@@ -150,7 +150,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 <header class="hero"><div class="wrap inner">
   <span class="eyebrow">Quelloffen · AGPL-3.0 · für die öffentliche Verwaltung</span>
   <h1>Fragen. Belegen. <span>Entscheiden.</span></h1>
-  <p class="lead">OPAA ist der souveräne KI-Assistent für die öffentliche Verwaltung. Durchsuchen Sie die Bestände Ihres Hauses, mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung.</p>
+  <p class="lead">opaa ist der souveräne KI-Assistent für die öffentliche Verwaltung. Durchsuchen Sie die Bestände Ihres Hauses, mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung.</p>
   <div class="ctas">
     <a class="btn btn-primary" href="https://demo.opaa.io">Demo ansehen</a>
     <a class="btn btn-ghost" href="https://opaa.io/handbuch/betrieb/schnellstart.html">Getting Started</a>
@@ -158,7 +158,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
   <div class="facts"><span>Lokale Modelle</span><span>Rechte in der Suche</span><span>Jeder Beleg geprüft</span><span>Betrieb auch air-gapped</span></div>
   <figure class="shot" style="margin-bottom:0">
     <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">demo.opaa.io · Space „Meldewesen &amp; Ausweise“</span></div>
-    <img src="img/antwort.png" fetchpriority="high" width="2880" height="1800" alt="OPAA-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet OPAA mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
+    <img src="img/antwort.png" fetchpriority="high" width="2880" height="1800" alt="opaa-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet opaa mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
   </figure>
   <div class="callouts">
     <span class="callout"><b>Frage</b> in Umgangssprache</span>
@@ -176,7 +176,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
     <article class="card">
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
       <h3>Souverän, bis hin zu air-gapped</h3>
-      <p>Daten verlassen das Haus nicht. Modelle laufen auf eigener Hardware, ein Offline-Bündel bringt OPAA in Netze ohne Internet.</p>
+      <p>Daten verlassen das Haus nicht. Modelle laufen auf eigener Hardware, ein Offline-Bündel bringt opaa in Netze ohne Internet.</p>
       <span class="k">Docker Compose · Kubernetes · Offline-Bündel</span>
     </article>
     <article class="card">
@@ -204,88 +204,88 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
   <div class="head">
     <span class="eyebrow">Wissensquellen</span>
     <h2>Eine Frage, alle Bestände</h2>
-    <p class="lead">OPAA sucht in den Bibliotheken, die dem Space zugeordnet und für die fragende Person lesbar sind.</p>
+    <p class="lead">opaa sucht in den Bibliotheken, die dem Space zugeordnet und für die fragende Person lesbar sind.</p>
   </div>
   <div class="diagram">
   <svg viewBox="0 0 1100 520" role="img" aria-labelledby="dg-title">
-    <title id="dg-title">Diagramm: Browser mit Chat, verbunden über OPAA mit fünf Quellarten</title>
+    <title id="dg-title">Diagramm: Browser mit Chat, verbunden über opaa mit fünf Quellarten</title>
     <defs>
-      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#0B6FBC"/></marker>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#0055A4"/></marker>
     </defs>
     <!-- Browser mit Chat -->
     <g transform="translate(20 130)">
-      <rect x="0" y="0" width="330" height="250" rx="14" fill="#fff" stroke="#CBD4DF"/>
+      <rect x="0" y="0" width="330" height="250" rx="14" fill="#fff" stroke="#CFD1D9"/>
       <rect x="0" y="0" width="330" height="30" rx="14" fill="#F6F8FB"/><rect x="0" y="16" width="330" height="14" fill="#F6F8FB"/>
-      <circle cx="18" cy="15" r="4" fill="#CBD4DF"/><circle cx="32" cy="15" r="4" fill="#CBD4DF"/><circle cx="46" cy="15" r="4" fill="#CBD4DF"/>
-      <text x="165" y="20" font-size="11" fill="#556473" text-anchor="middle">opaa.stadt-rheinfurt.example</text>
-      <rect x="18" y="48" width="294" height="34" rx="10" fill="#E7F4FE"/>
-      <text x="30" y="70" font-size="13" fill="#012142" textLength="270" lengthAdjust="spacingAndGlyphs">Was kostet ein Personalausweis für eine 22-Jährige?</text>
-      <text x="18" y="112" font-size="13" fill="#012142">Für eine 22-Jährige beträgt die Gebühr</text>
-      <text x="18" y="132" font-size="13" fill="#012142"><tspan font-weight="700">26,20 Euro</tspan> (unter 24 Jahren). <tspan fill="#0B6FBC" font-size="10" baseline-shift="super">1</tspan></text>
-      <rect x="18" y="150" width="84" height="22" rx="11" fill="#fff" stroke="#CBD4DF"/>
+      <circle cx="18" cy="15" r="4" fill="#CFD1D9"/><circle cx="32" cy="15" r="4" fill="#CFD1D9"/><circle cx="46" cy="15" r="4" fill="#CFD1D9"/>
+      <text x="165" y="20" font-size="11" fill="#555A78" text-anchor="middle">opaa.stadt-rheinfurt.example</text>
+      <rect x="18" y="48" width="294" height="34" rx="10" fill="#EBF7FC"/>
+      <text x="30" y="70" font-size="13" fill="#242855" textLength="270" lengthAdjust="spacingAndGlyphs">Was kostet ein Personalausweis für eine 22-Jährige?</text>
+      <text x="18" y="112" font-size="13" fill="#242855">Für eine 22-Jährige beträgt die Gebühr</text>
+      <text x="18" y="132" font-size="13" fill="#242855"><tspan font-weight="700">26,20 Euro</tspan> (unter 24 Jahren). <tspan fill="#0055A4" font-size="10" baseline-shift="super">1</tspan></text>
+      <rect x="18" y="150" width="84" height="22" rx="11" fill="#fff" stroke="#CFD1D9"/>
       <circle cx="31" cy="161" r="5" fill="none" stroke="#11774F" stroke-width="1.6"/><path d="M28.5 161l2 2 3.5-4" fill="none" stroke="#11774F" stroke-width="1.6"/>
-      <text x="40" y="165" font-size="12" font-weight="600" fill="#012142">Belegt</text>
-      <text x="110" y="165" font-size="11" fill="#556473">1 Stelle in 1 Dokument</text>
-      <rect x="18" y="200" width="294" height="32" rx="8" fill="#fff" stroke="#0B6FBC"/>
-      <text x="30" y="221" font-size="12" fill="#556473">Nachricht eingeben … @ für Quellen</text>
+      <text x="40" y="165" font-size="12" font-weight="600" fill="#242855">Belegt</text>
+      <text x="110" y="165" font-size="11" fill="#555A78">1 Stelle in 1 Dokument</text>
+      <rect x="18" y="200" width="294" height="32" rx="8" fill="#fff" stroke="#0055A4"/>
+      <text x="30" y="221" font-size="12" fill="#555A78">Nachricht eingeben … @ für Quellen</text>
     </g>
-    <text x="185" y="110" font-size="13" font-weight="700" fill="#012142" text-anchor="middle" font-family="Quicksand, sans-serif">Sachbearbeiterin Meldewesen</text>
+    <text x="185" y="110" font-size="13" font-weight="700" fill="#242855" text-anchor="middle" font-family="Quicksand, sans-serif">Sachbearbeiterin Meldewesen</text>
 
-    <!-- OPAA -->
+    <!-- opaa -->
     <g transform="translate(470 195)">
-      <rect x="0" y="0" width="160" height="120" rx="16" fill="#012142"/>
+      <rect x="0" y="0" width="160" height="120" rx="16" fill="#242855"/>
       <rect x="56" y="18" width="48" height="48" rx="12" fill="#fff" opacity=".12"/>
       <path d="M68 30h24v16H76l-6 6z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
       <path d="M73 36h12M73 41h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-      <text x="80" y="90" font-size="16" font-weight="700" fill="#fff" text-anchor="middle" font-family="Quicksand, sans-serif">OPAA</text>
-      <text x="80" y="107" font-size="11" fill="#9BCEFA" text-anchor="middle">Suche · Rechte · Belegprüfung</text>
+      <text x="80" y="90" font-size="16" font-weight="700" fill="#fff" text-anchor="middle" font-family="Quicksand, sans-serif">opaa</text>
+      <text x="80" y="107" font-size="11" fill="#99D8F1" text-anchor="middle">Suche · Rechte · Belegprüfung</text>
     </g>
-    <!-- Pfeile Browser <-> OPAA -->
-    <path d="M350 245 H468" stroke="#0B6FBC" stroke-width="2" fill="none" marker-end="url(#arr)"/>
-    <path d="M468 268 H352" stroke="#0B6FBC" stroke-width="2" fill="none" marker-end="url(#arr)"/>
-    <text x="409" y="236" font-size="11" fill="#556473" text-anchor="middle">Frage</text>
-    <text x="409" y="286" font-size="11" fill="#556473" text-anchor="middle">belegte Antwort</text>
+    <!-- Pfeile Browser <-> opaa -->
+    <path d="M350 245 H468" stroke="#0055A4" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+    <path d="M468 268 H352" stroke="#0055A4" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+    <text x="409" y="236" font-size="11" fill="#555A78" text-anchor="middle">Frage</text>
+    <text x="409" y="286" font-size="11" fill="#555A78" text-anchor="middle">belegte Antwort</text>
 
     <!-- Quellen -->
-    <g font-size="12" fill="#3B4958">
+    <g font-size="12" fill="#3F4468">
       <g transform="translate(740 20)">
-        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
-        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
-        <path d="M24 31h20v16H24z M24 36h20" fill="none" stroke="#0B6FBC" stroke-width="1.8"/>
-        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Netzlaufwerk (SMB)</text>
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CFD1D9"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#EBF7FC"/>
+        <path d="M24 31h20v16H24z M24 36h20" fill="none" stroke="#0055A4" stroke-width="1.8"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#242855" font-family="Quicksand, sans-serif">Netzlaufwerk (SMB)</text>
         <text x="68" y="54">Dienstanweisungen, BMF-Schreiben,</text><text x="68" y="69">Verfügungen</text>
       </g>
       <g transform="translate(740 118)">
-        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
-        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
-        <path d="M26 31h16M26 37h16M26 43h10" stroke="#0B6FBC" stroke-width="1.8" stroke-linecap="round"/>
-        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Confluence</text>
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CFD1D9"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#EBF7FC"/>
+        <path d="M26 31h16M26 37h16M26 43h10" stroke="#0055A4" stroke-width="1.8" stroke-linecap="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#242855" font-family="Quicksand, sans-serif">Confluence</text>
         <text x="68" y="54">Sitzungsprotokolle, Dienstbesprechungen,</text><text x="68" y="69">interne FAQ</text>
       </g>
       <g transform="translate(740 216)">
-        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
-        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
-        <circle cx="29" cy="45" r="2.4" fill="#0B6FBC"/><path d="M27 37a9 9 0 0 1 9 9M27 31a15 15 0 0 1 15 15" fill="none" stroke="#0B6FBC" stroke-width="1.8" stroke-linecap="round"/>
-        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">RSS und Web</text>
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CFD1D9"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#EBF7FC"/>
+        <circle cx="29" cy="45" r="2.4" fill="#0055A4"/><path d="M27 37a9 9 0 0 1 9 9M27 31a15 15 0 0 1 15 15" fill="none" stroke="#0055A4" stroke-width="1.8" stroke-linecap="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#242855" font-family="Quicksand, sans-serif">RSS und Web</text>
         <text x="68" y="54">Amtsblatt, Verwaltungsvorschriften,</text><text x="68" y="69">Pressemitteilungen</text>
       </g>
       <g transform="translate(740 314)">
-        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
-        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
-        <path d="M27 45h14a5 5 0 0 0 0-10 7 7 0 0 0-13-2 5 5 0 0 0-1 12z" fill="none" stroke="#0B6FBC" stroke-width="1.8" stroke-linejoin="round"/>
-        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Nextcloud, SharePoint</text>
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CFD1D9"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#EBF7FC"/>
+        <path d="M27 45h14a5 5 0 0 0 0-10 7 7 0 0 0-13-2 5 5 0 0 0-1 12z" fill="none" stroke="#0055A4" stroke-width="1.8" stroke-linejoin="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#242855" font-family="Quicksand, sans-serif">Nextcloud, SharePoint</text>
         <text x="68" y="54">Haushaltsplan, Ratsinformationen,</text><text x="68" y="69">Satzungen und Gebührenordnungen</text>
       </g>
       <g transform="translate(740 412)">
-        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
-        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
-        <path d="M34 47V32M28 38l6-6 6 6M26 48h16" fill="none" stroke="#0B6FBC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Upload</text>
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CFD1D9"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#EBF7FC"/>
+        <path d="M34 47V32M28 38l6-6 6 6M26 48h16" fill="none" stroke="#0055A4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#242855" font-family="Quicksand, sans-serif">Upload</text>
         <text x="68" y="54">Einzelne Dokumente: PDF, DOCX,</text><text x="68" y="69">XLSX, PPTX, Markdown</text>
       </g>
     </g>
-    <!-- Verbindungen OPAA -> Quellen -->
-    <g stroke="#0B6FBC" stroke-width="1.6" fill="none" opacity=".75">
+    <!-- Verbindungen opaa -> Quellen -->
+    <g stroke="#0055A4" stroke-width="1.6" fill="none" opacity=".75">
       <path d="M630 255 C690 255 690 59 738 59"/>
       <path d="M630 255 C690 255 690 157 738 157"/>
       <path d="M630 255 C690 255 690 255 738 255"/>
@@ -343,7 +343,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 <section id="anders"><div class="wrap">
   <div class="head">
     <span class="eyebrow">Abgrenzung</span>
-    <h2>Was OPAA anders macht</h2>
+    <h2>Was opaa anders macht</h2>
   </div>
   <div class="diff">
     <div><h3>Rechte, Protokoll, Mandanten im Kern</h3><p>Quelloffen, an keine Bezahlstufe gebunden.</p></div>
@@ -357,7 +357,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 <section id="start"><div class="wrap">
   <div class="start">
     <div style="display:grid;gap:16px">
-      <span class="eyebrow" style="color:#9BCEFA">Getting Started</span>
+      <span class="eyebrow" style="color:#99D8F1">Getting Started</span>
       <h2>Selbst installieren</h2>
       <p>Docker Compose oder Kubernetes, Einrichtung im Browser.</p>
       <div><a class="btn btn-primary" href="https://opaa.io/handbuch/betrieb/schnellstart.html">Zur Installationsanleitung</a></div>
@@ -379,7 +379,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-off
 
 <footer><div class="wrap">
   <div><a href="https://opaa.io/handbuch/">Handbuch</a><a href="https://demo.opaa.io">Demo</a><a href="https://github.com/criew/opaa">GitHub</a><a href="https://github.com/criew/opaa/blob/main/LICENSE">Lizenz AGPL-3.0</a><a href="mailto:info@opaa.io">Kontakt: info@opaa.io</a></div>
-  <div>OPAA · Open Project AI Assistant · Entwicklung im Offenen</div>
+  <div>opaa · open project ai assistant · Entwicklung im Offenen</div>
 </div></footer>
 </body>
 </html>

@@ -78,7 +78,7 @@ class DecompositionContextTest {
 
     assertThat(context.systemText(INSTRUCTION)).contains(BLOCK_HEADING);
     assertThat(context.contextTexts())
-        .as("the heading is OPAA's own wording, not material of the asking person")
+        .as("the heading is opaa's own wording, not material of the asking person")
         .noneSatisfy(text -> assertThat(text).contains("Angaben der fragenden Person"));
     assertThat(context.contextTexts()).contains("Bezugsjahr 2024");
   }

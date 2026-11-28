@@ -33,7 +33,7 @@ export const BRANDING_TEXTS = {
   aiNoticeReset: 'Hinweis auf Standard zurücksetzen',
   primaryColorHint: 'Akzentfarbe für Schaltflächen, Verweise und Fokusrahmen.',
   primaryColorInvalid:
-    'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #1292EE.',
+    'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #0055A4.',
   previewHint:
     'So wirkt die Einstellung in beiden Farbschemata — beide sind gleichermaßen verbindlich.',
   contrastTitle: 'Kontrast unterschritten',

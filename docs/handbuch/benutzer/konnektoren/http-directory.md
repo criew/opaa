@@ -24,7 +24,7 @@ flowchart LR
   möglich.
 - **Liest:** alle Dateien in unterstützten Formaten unter der Start-Adresse, rekursiv.
 - **Dokument:** Die Adresse der Datei ist die Identität.
-- **Rechte** des Webservers übernimmt OPAA nicht.
+- **Rechte** des Webservers übernimmt opaa nicht.
 
 ## 2. Einrichtung
 
@@ -37,7 +37,7 @@ flowchart LR
 
 | Angabe im Formular | Bedeutung |
 |---|---|
-| „Adresse (URL)" | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt. Anmeldedaten in der Adresse (`https://benutzer:passwort@host`) lehnt OPAA ab: Die Adresse wird im Klartext gespeichert und protokolliert, Benutzername und Passwort gehören in das Feld darunter |
+| „Adresse (URL)" | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt. Anmeldedaten in der Adresse (`https://benutzer:passwort@host`) lehnt opaa ab: Die Adresse wird im Klartext gespeichert und protokolliert, Benutzername und Passwort gehören in das Feld darunter |
 | „Anmeldedaten (optional)", beim Bearbeiten „Neue Zugangsdaten" | `benutzer:passwort`; der erste Doppelpunkt trennt |
 
 Bleibt beim Bearbeiten das Feld für die Zugangsdaten leer und der Ursprung der Adresse (Schema, Host,

@@ -1,20 +1,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
-import AddIcon from '@mui/icons-material/Add'
-import RemoveIcon from '@mui/icons-material/Remove'
-import FitWidthIcon from '@mui/icons-material/WidthFull'
-import TocIcon from '@mui/icons-material/Toc'
-import SubjectIcon from '@mui/icons-material/Subject'
-import { alpha } from '@mui/material/styles'
-import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist'
-import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
-import 'pdfjs-dist/web/pdf_viewer.css'
+import type { SxProps, Theme } from '@mui/material/styles'
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import type { PDFViewer as PdfJsViewer } from 'pdfjs-dist/legacy/web/pdf_viewer.mjs'
+import 'pdfjs-dist/legacy/web/pdf_viewer.css'
 import type { ChunkAnchor } from '@/shared/api/types'
-import { fontSize, markHighlight } from '@/shared/theme/tokens'
+import { fontSize, fontWeight, radius, shadow } from '@/shared/theme/tokens'
 import { isRecognizedText, RECOGNIZED_TEXT_NOTICE } from '@/shared/utils/recognizedText'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
@@ -22,8 +13,26 @@ import { sha256Hex } from '../utils/sha256'
 import { NO_ANCHOR_NOTICE } from '../utils/textPassage'
 import { drawRegions, framedPages, REGION_CLASS, regionsOnPage } from '../utils/recognizedRegions'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
+import {
+  horizontalOffset,
+  lastAtOrBefore,
+  readingLine,
+  useUserScroll,
+} from './documentView/readingPosition'
 import RecognizedTextPanel from './RecognizedTextPanel'
 import LoadingState from '@/shared/ui/states/LoadingState'
+import useFullScreenDialog from '@/shared/ui/dialog/useFullScreenDialog'
+import ReadingLayout from './documentView/ReadingLayout'
+import PdfTools from './documentView/PdfTools'
+import { FindingPanel } from './documentView/FindingCard'
+import { anchorPlace, anchorQuote } from './documentView/findingText'
+import {
+  drawPassageMarks,
+  labelFrame,
+  PASSAGE_BAND_CLASS,
+  PASSAGE_EDGE_CLASS,
+  PASSAGE_LABEL_CLASS,
+} from './documentView/passageMarks'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
 const SEARCH_PAGE_LIMIT = 50
@@ -31,6 +40,10 @@ const SEARCH_PAGE_LIMIT = 50
 const ZOOM_STEP = 1.25
 const MIN_SCALE = 0.25
 const MAX_SCALE = 5
+/** A PDF opens in page width, but no larger than this on a wide screen. */
+const MAX_OPENING_SCALE = 1.6
+/** On a phone, page width would shrink the text below reading size: it opens at least this large. */
+const PHONE_MIN_SCALE = 0.7
 
 const RECOGNIZED_TEXT_PANEL_ID = 'pdf-recognized-text'
 
@@ -52,6 +65,31 @@ type MarkState = 'none' | 'pending' | 'marked' | 'not-found' | 'no-anchor' | 'fr
 interface Passage {
   from: number
   to: number
+}
+
+/** Where an outline entry leads: its page and pdf.js's explicit destination there. */
+interface OutlineTarget {
+  node: OutlineNode
+  pageNumber: number
+  destArray: unknown[]
+}
+
+/** An outline entry with its destination resolved, where it resolves. */
+interface ResolvedNode extends OutlineNode {
+  children: ResolvedNode[]
+  destination: { pageNumber: number; destArray: unknown[] } | null
+}
+
+/** The page and the outline entry at the reading line; both shown as current. */
+interface Reading {
+  page: number
+  node: OutlineNode | null
+}
+
+/** A place the view went to itself, shown as current until the reader scrolls away. */
+interface Pin extends Reading {
+  /** For a passage: where it starts, to find its outline entry once the outline is known. */
+  line?: number
 }
 
 /**
@@ -80,8 +118,35 @@ export default function PdfViewer({
   const viewerRef = useRef<PdfJsViewer | null>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [outline, setOutline] = useState<OutlineNode[]>([])
+  const targetsRef = useRef<OutlineTarget[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
-  const [page, setPage] = useState(1)
+  const [reading, setReading] = useState<Reading>({ page: 1, node: null })
+  // the entry just chosen, or the passage just opened, stays the current place until the reader
+  // scrolls on their own
+  const [pinned, setPinned] = useState<Pin | null>(null)
+  const scrolledByView = useUserScroll(containerRef, () => setPinned(null))
+  // the passage's place: its page, and the outline entry above it once the outline is known
+  function pinAt(
+    container: HTMLElement,
+    viewer: PdfJsViewer,
+    pageNumber: number,
+    mark: HTMLElement,
+  ) {
+    scrolledByView()
+    const line = contentRect(mark, container).top
+    const { node } = readingAt(container, viewer, targetsRef.current, line)
+    setPinned({ page: pageNumber, node, line })
+  }
+  const pinPassage = useEffectEvent(pinAt)
+  const [scale, setScale] = useState(1)
+  // the page the passage starts on; the status names it, not the page scrolled to since
+  const [markedPage, setMarkedPage] = useState(1)
+  const firstMarkRef = useRef<HTMLElement | null>(null)
+  const phone = useFullScreenDialog()
+  const phoneRef = useRef(phone)
+  useEffect(() => {
+    phoneRef.current = phone
+  }, [phone])
   const recognized = isRecognizedText(anchor)
   const [recognizedOpen, setRecognizedOpen] = useState(true)
   const [markState, setMarkState] = useState<MarkState>(() => initialMarkState(anchor))
@@ -146,24 +211,44 @@ export default function PdfViewer({
         let jumped = false
 
         eventBus.on('pagesinit', () => {
-          viewer.currentScaleValue = 'auto'
-          if (passage) viewer.scrollPageIntoView({ pageNumber: passage.from })
+          viewer.currentScaleValue = 'page-width'
+          const fitted = viewer.currentScale
+          if (phoneRef.current && fitted < PHONE_MIN_SCALE) viewer.currentScale = PHONE_MIN_SCALE
+          else if (fitted > MAX_OPENING_SCALE) viewer.currentScale = MAX_OPENING_SCALE
+          if (passage) {
+            viewer.scrollPageIntoView({ pageNumber: passage.from })
+            alignPage(container, viewer, passage.from)
+          }
         })
         if (frames) {
           eventBus.on(
             'pagerendered',
             ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
               const first = drawRegions(source.div, regionsOnPage(anchor, pageNumber))
+              if (first && pageNumber === firstFramed) {
+                labelFrame(first)
+                firstMarkRef.current = first
+              }
               // drawn again after every zoom step, scrolled to only once
               if (first && pageNumber === firstFramed && !jumped) {
                 jumped = true
                 first.scrollIntoView?.({ block: 'center' })
+                alignPage(container, viewer, pageNumber, first)
+                pinPassage(container, viewer, pageNumber, first)
                 setMarkState('framed')
               }
             },
           )
         }
-        eventBus.on('pagechanging', ({ pageNumber }: { pageNumber: number }) => setPage(pageNumber))
+        // pdf.js's own current page is the most visible one, which with pages of different widths
+        // is often not the one at the top: page and outline entry are measured at the reading line
+        eventBus.on('updateviewarea', () => {
+          const next = readingAt(container, viewer, targetsRef.current)
+          setReading((previous) =>
+            previous.page === next.page && previous.node === next.node ? previous : next,
+          )
+        })
+        eventBus.on('scalechanging', ({ scale: next }: { scale: number }) => setScale(next))
         eventBus.on(
           'textlayerrendered',
           ({ pageNumber, source }: { pageNumber: number; source: { div: HTMLElement } }) => {
@@ -179,11 +264,18 @@ export default function PdfViewer({
             )
             if (range) {
               for (let i = range[0]; i <= range[1]; i++) spans[i].classList.add('passage')
+              const band = drawPassageMarks(source.div, spans.slice(range[0], range[1] + 1), {
+                label: startsHere,
+              })
+              if (startsHere) firstMarkRef.current = band ?? spans[range[0]]
               // a text layer renders again on zoom and when its page scrolls back into view - the
               // passage stays marked, but the view jumps to it only once
               if (startsHere && !jumped) {
                 jumped = true
-                spans[range[0]].scrollIntoView?.({ block: 'center' })
+                spans[range[0]].scrollIntoView?.({ block: 'center', inline: 'nearest' })
+                alignPage(container, viewer, pageNumber, spans[range[0]])
+                pinPassage(container, viewer, pageNumber, spans[range[0]])
+                setMarkedPage(pageNumber)
                 setMarkState('marked')
               }
             } else if (startsHere && !jumped) {
@@ -198,7 +290,16 @@ export default function PdfViewer({
         setPdf(document)
         const items = (await document.getOutline()) as PdfJsOutlineItem[] | null
         const nodes = await toOutline(document, items ?? [])
-        if (!cancelled) setOutline(nodes)
+        if (cancelled) return
+        const targets = outlineTargets(nodes)
+        targetsRef.current = targets
+        setOutline(nodes)
+        setReading(readingAt(container, viewer, targets))
+        setPinned((pin) =>
+          pin?.line === undefined
+            ? pin
+            : { ...pin, node: readingAt(container, viewer, targets, pin.line).node },
+        )
       } catch (error) {
         if (!cancelled) reportError(error)
       }
@@ -207,6 +308,7 @@ export default function PdfViewer({
     return () => {
       cancelled = true
       viewerRef.current = null
+      targetsRef.current = []
       teardown()
       abort.abort()
       void task?.destroy()
@@ -234,173 +336,216 @@ export default function PdfViewer({
     const viewer = viewerRef.current
     if (!viewer) return
     viewer.currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, viewer.currentScale * factor))
+    // pdf.js keeps the place in view while zooming: the current place stays
+    scrolledByView()
   }
 
   function fitWidth() {
-    if (viewerRef.current) viewerRef.current.currentScaleValue = 'page-width'
+    if (!viewerRef.current) return
+    viewerRef.current.currentScaleValue = 'page-width'
+    scrolledByView()
   }
 
   function goTo(node: OutlineNode) {
     const viewer = viewerRef.current
-    if (!viewer || node.dest == null) return
-    void viewer.linkService.goToDestination(node.dest)
+    const container = containerRef.current
+    const target = targetsRef.current.find((candidate) => candidate.node === node)
+    if (!viewer || !container || !target) return
+    viewer.scrollPageIntoView({ pageNumber: target.pageNumber, destArray: target.destArray })
+    alignPage(container, viewer, target.pageNumber, destinationX(viewer, target))
+    scrolledByView()
+    setPinned({ page: target.pageNumber, node: target.node })
   }
+
+  function goToPage(next: number) {
+    const viewer = viewerRef.current
+    const container = containerRef.current
+    if (!viewer || !container) return
+    setPinned(null)
+    viewer.currentPageNumber = next
+    alignPage(container, viewer, next)
+  }
+
+  function jumpToPassage() {
+    const mark = firstMarkRef.current
+    const viewer = viewerRef.current
+    const container = containerRef.current
+    if (!mark || !viewer || !container) return
+    mark.scrollIntoView?.({ block: 'center', inline: 'nearest' })
+    const pageNumber = Number(mark.closest<HTMLElement>('.page')?.dataset.pageNumber) || markedPage
+    alignPage(container, viewer, pageNumber, mark)
+    pinAt(container, viewer, pageNumber, mark)
+  }
+
+  const page = pinned?.page ?? reading.page
+  const currentNode = pinned ? pinned.node : reading.node
 
   const numPages = pdf?.numPages ?? 0
   const hasOutline = outline.length > 0
+  const status = {
+    text: recognized
+      ? scanStatusText(markState, changed, anchor)
+      : statusText(markState, changed, anchor?.pageFrom != null, markedPage),
+    warning: changed || markState === 'not-found',
+  }
+  const canJump = markState === 'marked' || markState === 'framed'
+  const showOutline = hasOutline && outlineOpen
+  const showRecognized = recognized && recognizedOpen && anchor != null
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }}>
-      <Box
-        role="toolbar"
-        aria-label="Ansicht"
-        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}
-      >
-        {hasOutline && (
-          <Tooltip
-            title={outlineOpen ? 'Inhaltsverzeichnis ausblenden' : 'Inhaltsverzeichnis einblenden'}
-          >
-            <IconButton
-              size="small"
-              aria-label="Inhaltsverzeichnis"
-              aria-expanded={outlineOpen}
-              aria-controls={outlineOpen ? 'pdf-outline' : undefined}
-              onClick={() => setOutlineOpen((open) => !open)}
-            >
-              <TocIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Typography component="span" sx={{ fontSize: fontSize.text, mx: 1 }}>
-          {numPages > 0 ? `Seite ${page} von ${numPages}` : <LoadingState shape="inline" />}
-        </Typography>
-        {recognized && (
-          <Tooltip
-            title={recognizedOpen ? 'Erkannten Text ausblenden' : 'Erkannten Text einblenden'}
-          >
-            <IconButton
-              size="small"
-              aria-label="Erkannter Text"
-              aria-expanded={recognizedOpen}
-              aria-controls={recognizedOpen ? RECOGNIZED_TEXT_PANEL_ID : undefined}
-              onClick={() => setRecognizedOpen((open) => !open)}
-            >
-              <SubjectIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-        <Tooltip title="Verkleinern">
-          <IconButton size="small" aria-label="Verkleinern" onClick={() => zoom(1 / ZOOM_STEP)}>
-            <RemoveIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Vergrößern">
-          <IconButton size="small" aria-label="Vergrößern" onClick={() => zoom(ZOOM_STEP)}>
-            <AddIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Seitenbreite">
-          <IconButton size="small" aria-label="Seitenbreite" onClick={fitWidth}>
-            <FitWidthIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
-      <Typography
-        role="status"
-        sx={
-          changed || markState === 'not-found'
-            ? { fontSize: fontSize.text, color: 'warning.main', fontWeight: 600 }
-            : markState === 'no-anchor' || markState === 'framed' || markState === 'page-only'
-              ? { fontSize: fontSize.text, color: 'text.secondary' }
-              : visuallyHidden
-        }
-      >
-        {recognized
-          ? scanStatusText(markState, changed, anchor)
-          : statusText(markState, changed, anchor?.pageFrom != null, page)}
-      </Typography>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: recognized ? 'column' : 'row', sm: 'row' },
-          flex: 1,
-          minHeight: 0,
-          gap: 1,
-        }}
-      >
-        {hasOutline && outlineOpen && (
-          <Box
-            id="pdf-outline"
-            component="nav"
-            aria-label="Inhaltsverzeichnis"
-            sx={{
-              width: 260,
-              flex: 'none',
-              overflow: 'auto',
-              borderRight: 1,
-              borderColor: 'divider',
-              pr: 1,
-            }}
-          >
-            <PdfOutline nodes={outline} activeNode={activeNode(outline, page)} onSelect={goTo} />
+    <ReadingLayout
+      finding={
+        anchor !== undefined
+          ? { place: anchorPlace(anchor), quote: recognized ? '' : anchorQuote(anchor) }
+          : null
+      }
+      status={status}
+      onJump={canJump ? jumpToPassage : undefined}
+      panels={
+        showOutline || showRecognized ? (
+          <>
+            {showOutline && (
+              <FindingPanel>
+                <Box
+                  id="pdf-outline"
+                  component="nav"
+                  aria-label="Inhaltsverzeichnis"
+                  sx={{ mx: -1 }}
+                >
+                  <PdfOutline nodes={outline} activeNode={currentNode} onSelect={goTo} />
+                </Box>
+              </FindingPanel>
+            )}
+            {showRecognized && (
+              <FindingPanel>
+                <RecognizedTextPanel
+                  id={RECOGNIZED_TEXT_PANEL_ID}
+                  anchor={anchor}
+                  documentId={documentId}
+                  chunkIndex={chunkIndex}
+                />
+              </FindingPanel>
+            )}
+          </>
+        ) : undefined
+      }
+    >
+      <Box sx={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 160 }}>
+        {!pdf && (
+          <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
+            <LoadingState shape="block" />
           </Box>
         )}
         <Box
-          sx={{
-            position: 'relative',
-            flex: 1,
-            minWidth: 0,
-            minHeight: 160,
-            bgcolor: 'action.hover',
-          }}
+          ref={containerRef}
+          data-testid="pdf-container"
+          tabIndex={0}
+          role="region"
+          aria-label="Seiten"
+          sx={pagesSx}
         >
-          {!pdf && (
-            <Box sx={{ position: 'absolute', inset: 0, p: 2 }}>
-              <LoadingState shape="block" />
-            </Box>
-          )}
-          <Box
-            ref={containerRef}
-            data-testid="pdf-container"
-            tabIndex={0}
-            role="region"
-            aria-label="Seiten"
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'auto',
-              '& .textLayer .passage': {
-                backgroundColor: markHighlight,
-                boxShadow: `0 0 0 2px ${markHighlight}`,
-                borderRadius: '2px',
-              },
-              // The frame lies on the scanned paper, which stays light in both schemes: the
-              // accent's pressed tone stays far above 3:1 there, the solid 3 px line is its shape.
-              [`& .${REGION_CLASS}`]: {
-                position: 'absolute',
-                zIndex: 3,
-                pointerEvents: 'none',
-                boxSizing: 'border-box',
-                border: '3px solid',
-                borderColor: 'primary.dark',
-                borderRadius: '3px',
-                backgroundColor: (theme) => alpha(theme.palette.primary.dark, 0.06),
-              },
-            }}
-          >
-            <div className="pdfViewer" />
-          </Box>
+          <div className="pdfViewer" />
         </Box>
-        {recognized && recognizedOpen && anchor && (
-          <RecognizedTextPanel
-            id={RECOGNIZED_TEXT_PANEL_ID}
-            anchor={anchor}
-            documentId={documentId}
-            chunkIndex={chunkIndex}
-          />
-        )}
+        <PdfTools
+          page={page}
+          numPages={numPages}
+          scale={scale}
+          onPage={goToPage}
+          onZoomIn={() => zoom(ZOOM_STEP)}
+          onZoomOut={() => zoom(1 / ZOOM_STEP)}
+          onFitWidth={fitWidth}
+          hasOutline={hasOutline}
+          outlineOpen={outlineOpen}
+          outlineId="pdf-outline"
+          onToggleOutline={() => setOutlineOpen((open) => !open)}
+          recognized={recognized}
+          recognizedOpen={recognizedOpen}
+          recognizedId={RECOGNIZED_TEXT_PANEL_ID}
+          onToggleRecognized={() => setRecognizedOpen((open) => !open)}
+        />
       </Box>
-    </Box>
+    </ReadingLayout>
   )
+}
+
+/**
+ * The pages on the desk, and the marks on them: bands multiplied onto the page, so the text
+ * stays dark on them, the Mittelblau edge, the label; a scan's frames in the same colours.
+ */
+const pagesSx: SxProps<Theme> = (theme) => {
+  const { band, edge, edgeFg } = theme.palette.documentView
+  return {
+    position: 'absolute',
+    inset: 0,
+    overflow: 'auto',
+    '--page-margin': '16px auto',
+    '--page-border': 'none',
+    '& .pdfViewer': { pb: 10 },
+    '& .pdfViewer .page': { boxShadow: shadow.floating, borderRadius: '2px' },
+    // the spans only carry the passage for the search; the bands below draw it
+    '& .textLayer .passage': { backgroundColor: 'transparent' },
+    [`& .${PASSAGE_BAND_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 1,
+      pointerEvents: 'none',
+      backgroundColor: band,
+      mixBlendMode: 'multiply',
+      borderRadius: '3px',
+    },
+    [`& .${PASSAGE_EDGE_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 1,
+      pointerEvents: 'none',
+      backgroundColor: edge,
+      borderRadius: '2px',
+    },
+    [`& .${REGION_CLASS}`]: {
+      position: 'absolute',
+      zIndex: 3,
+      pointerEvents: 'none',
+      boxSizing: 'border-box',
+      border: `2px solid ${edge}`,
+      borderRadius: '4px',
+      backgroundColor: band,
+      mixBlendMode: 'multiply',
+    },
+    [`& .${PASSAGE_LABEL_CLASS}`]: {
+      position: 'absolute',
+      left: 0,
+      bottom: '100%',
+      mb: 0.5,
+      whiteSpace: 'nowrap',
+      backgroundColor: edge,
+      color: edgeFg,
+      fontFamily: theme.typography.fontFamily,
+      fontSize: fontSize.label,
+      fontWeight: fontWeight.semibold,
+      lineHeight: '16px',
+      px: 1,
+      borderRadius: `${radius.xs}px`,
+      '&[data-place="margin"]': {
+        left: 'auto',
+        right: '100%',
+        bottom: 'auto',
+        top: 0,
+        mb: 0,
+        mr: 1,
+      },
+    },
+    '@media (forced-colors: active)': {
+      [`& .${PASSAGE_BAND_CLASS}`]: {
+        backgroundColor: 'Mark',
+        mixBlendMode: 'normal',
+        opacity: 0.5,
+      },
+      [`& .${PASSAGE_EDGE_CLASS}`]: { backgroundColor: 'Highlight', forcedColorAdjust: 'none' },
+      [`& .${REGION_CLASS}`]: { borderColor: 'Highlight', backgroundColor: 'transparent' },
+      [`& .${PASSAGE_LABEL_CLASS}`]: {
+        backgroundColor: 'Highlight',
+        color: 'HighlightText',
+        forcedColorAdjust: 'none',
+      },
+    },
+  }
 }
 
 function initialMarkState(anchor: ChunkAnchor | null | undefined): MarkState {
@@ -449,17 +594,102 @@ function statusText(markState: MarkState, changed: boolean, pageKnown: boolean, 
   return markState === 'marked' ? `Fundstelle auf Seite ${page} markiert.` : ''
 }
 
-/** The last entry, in reading order, whose page is at or before `page` - the section shown. */
-function activeNode(nodes: OutlineNode[], page: number): OutlineNode | null {
-  let active: OutlineNode | null = null
-  const visit = (list: OutlineNode[]) => {
-    for (const node of list) {
-      if (node.page !== null && node.page <= page) active = node
-      visit(node.children)
+/** The bounds of `element` in the scrolled content of `container`. */
+function contentRect(element: Element, container: HTMLElement) {
+  const box = element.getBoundingClientRect()
+  const frame = container.getBoundingClientRect()
+  const left = box.left - frame.left - container.clientLeft + container.scrollLeft
+  const top = box.top - frame.top - container.clientTop + container.scrollTop
+  return { left, top, right: left + box.width, width: box.width }
+}
+
+/** The page and the outline entry at the reading line of the view. */
+function readingAt(
+  container: HTMLElement,
+  viewer: PdfJsViewer,
+  targets: OutlineTarget[],
+  line = readingLine(container),
+): Reading {
+  const count = viewer.pagesCount
+  if (!count) return { page: 1, node: null }
+  const tops = new Map<number, number>()
+  const topOf = (pageNumber: number) => {
+    let top = tops.get(pageNumber)
+    if (top === undefined) {
+      const div = viewer.getPageView(pageNumber - 1)?.div
+      top = div ? contentRect(div, container).top : 0
+      tops.set(pageNumber, top)
     }
+    return top
   }
-  visit(nodes)
-  return active
+  // pages run top to bottom: the last one starting at or above the line holds it
+  let low = 1
+  let high = count
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2)
+    if (topOf(middle) <= line) low = middle
+    else high = middle - 1
+  }
+  const entries = targets.map((target) => ({
+    node: target.node,
+    position: topOf(target.pageNumber) + destinationY(viewer, target),
+  }))
+  return { page: low, node: lastAtOrBefore(entries, line)?.node ?? null }
+}
+
+/** How far down its page an outline entry points, in CSS pixels; the page top if it names none. */
+function destinationY(viewer: PdfJsViewer, target: OutlineTarget): number {
+  const view = viewer.getPageView(target.pageNumber - 1)
+  if (!view) return 0
+  const [, kind, ...args] = target.destArray as [unknown, { name?: string } | null, ...unknown[]]
+  const name = kind?.name
+  const y =
+    name === 'XYZ'
+      ? args[1]
+      : name === 'FitH' || name === 'FitBH'
+        ? args[0]
+        : name === 'FitR'
+          ? args[3]
+          : null
+  if (typeof y !== 'number') return 0
+  const offset = view.viewport.convertToViewportPoint(0, y)[1]
+  return Math.min(Math.max(offset, 0), view.viewport.height)
+}
+
+/** Where across its page an outline entry points, in CSS pixels; `null` if it names no place. */
+function destinationX(viewer: PdfJsViewer, target: OutlineTarget): number | null {
+  const view = viewer.getPageView(target.pageNumber - 1)
+  const [, kind, x] = target.destArray as [unknown, { name?: string } | null, unknown]
+  const name = kind?.name
+  if (!view || typeof x !== 'number') return null
+  if (name !== 'XYZ' && name !== 'FitR' && name !== 'FitV' && name !== 'FitBV') return null
+  return view.viewport.convertToViewportPoint(x, 0)[0]
+}
+
+/**
+ * Scrolls the view across so that page `pageNumber` shows as fully as it fits (see
+ * {@link horizontalOffset}), keeping `target` - a mark on the page or a position across it - in
+ * view. pdf.js would scroll a destination's left edge to the view's left edge instead, which on a
+ * page narrower than the widest one cuts off what lies to its left.
+ */
+function alignPage(
+  container: HTMLElement,
+  viewer: PdfJsViewer,
+  pageNumber: number,
+  target?: HTMLElement | number | null,
+) {
+  const div = viewer.getPageView(pageNumber - 1)?.div
+  if (!div) return
+  const page = contentRect(div, container)
+  let mark: { left: number; right: number } | null = null
+  if (typeof target === 'number') mark = { left: page.left + target, right: page.left + target }
+  else if (target) mark = contentRect(target, container)
+  container.scrollLeft = horizontalOffset({
+    pageLeft: page.left,
+    pageWidth: page.width,
+    viewWidth: container.clientWidth,
+    target: mark,
+  })
 }
 
 /** The text items of a rendered page's text layer, in reading order. */
@@ -515,27 +745,51 @@ interface PdfJsOutlineItem {
 }
 
 /** The outline with the page each entry points at, where its destination resolves to one. */
-async function toOutline(pdf: PDFDocumentProxy, items: PdfJsOutlineItem[]): Promise<OutlineNode[]> {
+async function toOutline(
+  pdf: PDFDocumentProxy,
+  items: PdfJsOutlineItem[],
+): Promise<ResolvedNode[]> {
   return Promise.all(
-    items.map(async (item) => ({
-      title: item.title,
-      dest: item.dest,
-      page: await pageOfDestination(pdf, item.dest),
-      children: await toOutline(pdf, item.items ?? []),
-    })),
+    items.map(async (item) => {
+      const [destination, children] = await Promise.all([
+        resolveDestination(pdf, item.dest),
+        toOutline(pdf, item.items ?? []),
+      ])
+      const node: ResolvedNode = {
+        title: item.title,
+        dest: item.dest,
+        page: destination?.pageNumber ?? null,
+        children,
+        destination,
+      }
+      return node
+    }),
   )
 }
 
-async function pageOfDestination(
+/** The resolved entries of `nodes` and everything below them, in reading order. */
+function outlineTargets(nodes: ResolvedNode[], targets: OutlineTarget[] = []): OutlineTarget[] {
+  for (const node of nodes) {
+    if (node.destination) targets.push({ node, ...node.destination })
+    outlineTargets(node.children, targets)
+  }
+  return targets
+}
+
+async function resolveDestination(
   pdf: PDFDocumentProxy,
   dest: string | unknown[] | null,
-): Promise<number | null> {
+): Promise<{ pageNumber: number; destArray: unknown[] } | null> {
   try {
     const explicit = typeof dest === 'string' ? await pdf.getDestination(dest) : dest
-    const target = explicit?.[0]
-    if (typeof target === 'number') return target + 1
+    if (!explicit) return null
+    const target = explicit[0]
+    if (typeof target === 'number') return { pageNumber: target + 1, destArray: explicit }
     if (target && typeof target === 'object') {
-      return (await pdf.getPageIndex(target as Parameters<PDFDocumentProxy['getPageIndex']>[0])) + 1
+      const index = await pdf.getPageIndex(
+        target as Parameters<PDFDocumentProxy['getPageIndex']>[0],
+      )
+      return { pageNumber: index + 1, destArray: explicit }
     }
   } catch {
     // an unresolvable destination only loses the entry's page, not the entry

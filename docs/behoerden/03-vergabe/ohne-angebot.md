@@ -18,7 +18,7 @@ Für quelloffene Software gibt es oft wenige Dienstleister. Geht auf eine Aussch
 wertbares Angebot ein, bleiben mehrere Wege. Welcher im Einzelfall zulässig ist, entscheidet die
 Vergabestelle nach dem für sie geltenden Recht.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Jedem Betreiber stehen dieselben Unterlagen offen: das
 [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) jeder Version mit

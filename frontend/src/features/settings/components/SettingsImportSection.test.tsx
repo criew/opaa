@@ -209,7 +209,7 @@ describe('SettingsImportSection', () => {
     await user.upload(input, settingsFile('{"format": "etwas anderes"}'))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Die Datei ist kein Einstellungsexport von OPAA.',
+      'Die Datei ist kein Einstellungsexport von opaa.',
     )
   })
 

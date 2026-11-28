@@ -95,10 +95,10 @@ export interface DiscoveryPlan {
 }
 
 const ENTER_ADDRESS =
-  'Anbieter wählen oder Basis-Adresse eintragen; dann ruft OPAA die angebotenen Modelle ab.'
+  'Anbieter wählen oder Basis-Adresse eintragen; dann ruft opaa die angebotenen Modelle ab.'
 const ENTER_ADDRESS_ONLY =
-  'Basis-Adresse eintragen; dann ruft OPAA die Modelle ab, sofern der Endpunkt eine Liste anbietet.'
-const ENTER_KEY = 'API-Schlüssel eintragen; dann ruft OPAA die angebotenen Modelle ab.'
+  'Basis-Adresse eintragen; dann ruft opaa die Modelle ab, sofern der Endpunkt eine Liste anbietet.'
+const ENTER_KEY = 'API-Schlüssel eintragen; dann ruft opaa die angebotenen Modelle ab.'
 const KEY_LEFT_BEHIND =
   'Die Basis-Adresse weicht von der gespeicherten ab, der gespeicherte Schlüssel gilt nur für sie. Den Schlüssel neu eintragen oder entfernen, dann „Modelle abrufen“.'
 const READY = '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'

@@ -15,10 +15,10 @@ import java.util.regex.Pattern;
 
 /**
  * The curated pattern list behind the lexical path's identifier protection (ADR-0065, Entscheidung
- * 2): paragraph references, file numbers, Erlass-/Drucksachen numbers, email addresses and
- * technical field names become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35" stay
- * distinguishable under stemming. Write and query path call this same method, or the two sides
- * would build different lexemes and never match.
+ * 2): paragraph references, file numbers, Erlass-/Drucksachen numbers, email addresses,
+ * letter-digit codes and technical field names become <b>undecomposed lexemes</b>, so "§ 34" and "§
+ * 35" stay distinguishable under stemming and {@code AB-08} meets {@code AB08}. Write and query
+ * path call this same method, or the two sides would build different lexemes and never match.
  *
  * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
  * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
@@ -29,9 +29,10 @@ public final class FullTextIdentifiers {
 
   /**
    * Upper bound on lexemes per text, against one chunk's {@code tsvector} growing without limit.
-   * Paragraph, file-number, ordinance and email lexemes rarely come near it; field names can: a
-   * field table of more than this many names reaches it, and uppercase headings or acronyms earlier
-   * in the text take places first. What is cut are field names, in order of appearance.
+   * Paragraph, file-number, ordinance, email and letter-digit code lexemes rarely come near it,
+   * though a long code table can; field names can: a field table of more than this many names
+   * reaches it, and uppercase headings or acronyms earlier in the text take places first. What is
+   * cut are field names first, in order of appearance, and codes only beyond that.
    */
   static final int MAX_LEXEMES = 64;
 
@@ -39,6 +40,7 @@ public final class FullTextIdentifiers {
   private static final String FILE_NUMBER_PREFIX = "xakz";
   private static final String ORDINANCE_NUMBER_PREFIX = "xnr";
   private static final String EMAIL_PREFIX = "xmail";
+  private static final String CODE_PREFIX = "xkz";
   private static final String FIELD_NAME_PREFIX = "xfld";
 
   /**
@@ -153,6 +155,38 @@ public final class FullTextIdentifiers {
           "\\b([A-Za-z0-9][A-Za-z0-9._%+-]{0,63}@[A-Za-z0-9.-]{1,253}\\.[A-Za-z]{2,63})\\b");
 
   /**
+   * A letter-digit code in any of its spellings - {@code AB08}, {@code AB-08}, {@code AB–08},
+   * {@code ab_08}, {@code AB 08}, {@code AB.08} - all reduced to one lexeme. Directly joined or
+   * joined by hyphen, en dash or underscore, any letter block counts (groups 1 and 2). Joined by a
+   * space, a no-break space or a dot, only two to six uppercase letters that are not {@link
+   * #SPACED_CODE_STOPWORDS} and one to three digits count (groups 3 and 4), and not before "Uhr": a
+   * year ({@code STAND 2024}), an area code ({@code FAX 0711}) and lowercase prose ("ab 08 Uhr")
+   * stay text. Neither block may continue into a letter, a digit or a separator with a further
+   * letter or digit, so a longer chain ({@code AB-08-15}), a version ({@code v2.1}) or a time
+   * ({@code AB 18:00}) is never shortened to a code it does not name.
+   */
+  private static final Pattern LETTER_DIGIT_CODE =
+      Pattern.compile(
+          "(?<![\\p{L}\\p{N}])(?<![\\p{L}\\p{N}][-_./\u2013])"
+              + "(?:([A-Za-z]{1,6})[-_\u2013]?(\\d{1,6})"
+              + "|([A-Z]{2,6})[ \u00A0.](\\d{1,3})(?![ \u00A0]+(?i:uhr)\\b))"
+              + "(?![\\p{L}\\p{N}])(?![-_./,:\u2013][\\p{L}\\p{N}])");
+
+  /**
+   * Uppercase words that a space or dot joins to a number in ordinary all-caps prose ({@code UM 12
+   * UHR}, {@code SEITE 3 VON 12}, {@code KW 12}); behind them the number is a time, a page or a
+   * count, not part of a code. Only the spaced form consults this list; {@code AB08} stays a code.
+   */
+  private static final Set<String> SPACED_CODE_STOPWORDS =
+      Set.of(
+          "AM", "AN", "AUF", "AUS", "BEI", "BIS", "CA", "DAS", "DEN", "DER", "DIE", "EIN", "IM",
+          "IN", "MIT", "NACH", "ODER", "PER", "SEIT", "UM", "UND", "VOM", "VON", "ZU", "ZUM", "ZUR",
+          "UHR", "NR", "NUMMER", "ABS", "ART", "SEITE", "TEIL", "KAP", "ANLAGE", "KW", "TAG",
+          "TAGE", "JAHR", "MONAT", "WOCHE", "JAN", "FEB", "MRZ", "APR", "MAI", "JUNI", "JULI",
+          "AUG", "SEP", "SEPT", "OKT", "NOV", "DEZ", "JANUAR", "MAERZ", "APRIL", "AUGUST", "TEL",
+          "FAX", "STAND", "VERSION", "ABSATZ", "SATZ", "ZIFFER");
+
+  /**
    * A maximal run of letters, digits and underscores - the unit a field name is recognized in. A
    * hyphen ends the run, so {@code EU-DSGVO} offers {@code DSGVO} on its own, as a question that
    * names it bare does.
@@ -226,6 +260,7 @@ public final class FullTextIdentifiers {
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
+    collectCodes(text, lexemes);
     Set<String> structural = new HashSet<>(lexemes);
     Map<String, String> wordForms = new LinkedHashMap<>();
     collectFieldNames(text, lawAbbreviationStarts(text), lexemes, structural, wordForms);
@@ -301,6 +336,20 @@ public final class FullTextIdentifiers {
       if (!joined.isEmpty()) {
         lexemes.add(prefix + joined);
       }
+    }
+  }
+
+  /** One lexeme per {@link #LETTER_DIGIT_CODE}, letters and digits joined without separator. */
+  private static void collectCodes(String text, Set<String> lexemes) {
+    Matcher matcher = LETTER_DIGIT_CODE.matcher(text);
+    while (matcher.find()) {
+      boolean spaced = matcher.group(3) != null;
+      String letters = spaced ? matcher.group(3) : matcher.group(1);
+      if (spaced && SPACED_CODE_STOPWORDS.contains(letters)) {
+        continue;
+      }
+      String digits = spaced ? matcher.group(4) : matcher.group(2);
+      lexemes.add(CODE_PREFIX + normalize(letters) + digits);
     }
   }
 

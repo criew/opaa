@@ -1,6 +1,6 @@
 # Releases
 
-Ein Release ist ein unveränderlicher, benannter Stand von OPAA: zwei Container-Images und ein
+Ein Release ist ein unveränderlicher, benannter Stand von opaa: zwei Container-Images und ein
 Helm-Chart in GHCR mit derselben Versionsnummer und ein GitHub-Release mit der Änderungsübersicht.
 Daneben gibt es weiter den beweglichen Stand `main`, der jedem Merge folgt. Wer reproduzierbar
 betreiben will, pinnt eine Version.
@@ -17,7 +17,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` oder des Wartungsbranches `rele
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z`, `ghcr.io/criew/opaa-ocr:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben**; der Index **attestiert** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte heften Backend und Frontend `X.Y.Z` per Digest an; **nie überschrieben**, **attestiert** |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs seit dem vorigen finalen Release, das der Commit enthält (bei einem Patch-Release das vorige Release seiner Linie), gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket; als „Latest“ markiert nur, wenn es das höchste finale Release ist (siehe [Latest](#latest-und-vergleichsstand-der-notizen)) |
+| GitHub-Release `opaa vX.Y.Z` | Änderungsübersicht aus den gemergten PRs seit dem vorigen finalen Release, das der Commit enthält (bei einem Patch-Release das vorige Release seiner Linie), gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket; als „Latest“ markiert nur, wenn es das höchste finale Release ist (siehe [Latest](#latest-und-vergleichsstand-der-notizen)) |
 | `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, [Prüfbericht Barrierefreiheit](#prüfbericht-barrierefreiheit), Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
 | `opaa-offline-X.Y.Z.tar` mit `….tar.sha256` und `….tar.sigstore.json`, am GitHub-Release, über 2 GiB in Teilen `….tar.part-00`, `-01`, … | das [Offline-Bündel](#offline-bündel) für Netze ohne Internetzugang: die drei Images beider Architekturen als OCI-Archive, Chart, Update-Paket, SBOMs, ihre Attestierungen und `SHA256SUMS`; **attestiert** |
 | `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
@@ -89,7 +89,7 @@ Namespace vor `helm install` mit beiden Labels anlegt.
 
 Das Backend eines Release-Images meldet dieselbe Version in seiner Startzeile
 (`Starting OpaaApplication vX.Y.Z`) und unter `/actuator/info`, das Frontend im Dialog „Info zu
-OPAA“ (`OPAA vX.Y.Z`); der Release-Lauf übergibt sie beiden Image-Builds als Build-Argument
+opaa“ (`opaa vX.Y.Z`); der Release-Lauf übergibt sie beiden Image-Builds als Build-Argument
 `OPAA_VERSION`. Ein Image von `main` meldet `0.0.0-dev+<Commit>` mit dem kurzen Hash des Commits,
 aus dem es gebaut ist (`0.0.0-dev+3f2a9c1`), jeder lokale Build `0.0.0-dev`.
 
@@ -134,7 +134,8 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
   `.github/data-impact-paths.txt` ändert (Datenbankmigrationen, Protokollereignisse und Rollen,
   OpenAPI-Spezifikation, Konfigurationsklassen und Vorgabewerte, Konnektoren und Modellanbieter,
   Installationsassistent, Texterkennung und Chat-Anhänge, Prompts, Fristen, Löschung des
-  Personenbezugs, Dienstkonten, Exporte, Auswertungen und Anfrageprotokoll) und weder das Label
+  Personenbezugs, Dienstkonten, Agenten und Dokumentvorlagen, Exporte, Auswertungen,
+  Anfrageprotokoll und Betriebsmetriken) und weder das Label
   trägt noch „Keine Wirkung“ ankreuzt. Bei angekreuztem „Keine Wirkung“ listet er die Dateien als
   Warnung; **das Review sieht sich diese Warnung an** und prüft, ob die Aussage stimmt.
 - **Pflege der Pfadliste:** Neue Pfade kommen in `.github/data-impact-paths.txt`. Derselbe
@@ -454,7 +455,7 @@ Ablauf:
 5. Den in Schritt 4 begutachteten Commit taggen und das Tag pushen:
 
    ```bash
-   git tag -a v0.3.0 "$commit" -m "OPAA v0.3.0"
+   git tag -a v0.3.0 "$commit" -m "opaa v0.3.0"
    git push origin v0.3.0
    ```
 
@@ -881,7 +882,7 @@ führt den Lauf aus.
 ## Offline-Bündel
 
 Für Netze ohne Internetzugang hängt an jedem Release, auch an einem Vorab-Release,
-`opaa-offline-X.Y.Z.tar`. Das Bündel enthält alles von OPAA selbst, was hinter einer Schleuse
+`opaa-offline-X.Y.Z.tar`. Das Bündel enthält alles von opaa selbst, was hinter einer Schleuse
 gebraucht wird, und lässt sich dort ohne Netz prüfen. Der Job `offline-bundle` ruft dafür den
 wiederverwendbaren Workflow `.github/workflows/offline-bundle.yml` auf; die Logik steht in
 `.github/scripts/offline_bundle.sh`. Das Archiv enthält unter `opaa-offline-X.Y.Z/`:
@@ -957,7 +958,7 @@ Nicht im Bündel sind Drittimages (Datenbank, Modellserver, Identitätsanbieter)
 
 ## Versionsnummern
 
-OPAA zählt nach [Semantic Versioning](https://semver.org/lang/de/). Solange die Hauptversion `0`
+opaa zählt nach [Semantic Versioning](https://semver.org/lang/de/). Solange die Hauptversion `0`
 ist, gilt:
 
 | Teil | Erhöht bei |
@@ -1010,7 +1011,7 @@ das Enddatum je Version nennt die [Projektseite](https://spring.io/projects/spri
 | **Linie** | jedes finale `X.Y.0` eröffnet die Linie `X.Y`; ihre Patch-Releases bringen Sicherheitskorrekturen und Behebungen [kritischer Fehler](#kritische-fehler), sonst nichts: keine neue Funktion, keinen [Bruch](#versionsnummern) und keine neue Minor-Version von Spring Boot |
 | **Normales Release** | Patch-Releases bis einen Monat nach dem nächsten Funktionsrelease |
 | **LTS** | das Juni-Release; Patch-Releases bis zum Ende des kostenlosen Supports seiner Spring-Boot-Minor-Version, im Regelfall der 30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; weil das nächste LTS spätestens zu diesem Supportende erscheint, überlappen die LTS-Linien immer, aber höchstens wenige Wochen |
-| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS. Weil die Überlappung knapp ist, erscheint das nächste LTS so früh wie möglich als Release-Kandidat (`vX.Y.0-rc.N`), sobald OPAA auf der neuen Spring-Boot-Version läuft, spätestens zwei Wochen nach deren Erscheinen; danach kommen bis zum finalen Release nur Korrekturen hinzu, und das finale Release erscheint spätestens zum Supportende der laufenden LTS-Linie. Der Kandidat trägt das vollständige Update-Paket mit dem kumulierten Delta zur laufenden LTS-Linie ([#3020](https://github.com/criew/opaa/issues/3020)); auf seiner Grundlage bereitet die Behörde den Wechsel vor und beginnt die Beteiligung, damit sie das finale Release vor dem Supportende der laufenden Linie einspielen kann |
+| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS. Weil die Überlappung knapp ist, erscheint das nächste LTS so früh wie möglich als Release-Kandidat (`vX.Y.0-rc.N`), sobald opaa auf der neuen Spring-Boot-Version läuft, spätestens zwei Wochen nach deren Erscheinen; danach kommen bis zum finalen Release nur Korrekturen hinzu, und das finale Release erscheint spätestens zum Supportende der laufenden LTS-Linie. Der Kandidat trägt das vollständige Update-Paket mit dem kumulierten Delta zur laufenden LTS-Linie ([#3020](https://github.com/criew/opaa/issues/3020)); auf seiner Grundlage bereitet die Behörde den Wechsel vor und beginnt die Beteiligung, damit sie das finale Release vor dem Supportende der laufenden Linie einspielen kann |
 | **Supportende** | steht bei einem LTS mit Erscheinen fest, bei einem normalen Release mit Erscheinen seines Nachfolgers, also mindestens einen Monat vorher; es steht in der Roadmap unten und in den Release-Notizen und wird nie vorgezogen |
 
 Meist laufen zwei Linien nebeneinander, im Monat nach einem Juni-Release drei. Ein Patch-Release
@@ -1031,7 +1032,7 @@ Update-Paket eines LTS-Release vergleicht zusätzlich mit der vorigen LTS-Linie
 Kritisch ist ein Fehler, für den es keinen zumutbaren Workaround gibt und der
 
 - Daten verliert oder verfälscht (Dokumente, Indizes, Einstellungen, Protokoll),
-- OPAA oder eine Kernfunktion ausfallen lässt (Start, Anmeldung, Suche, Chat, Indizierung) oder
+- opaa oder eine Kernfunktion ausfallen lässt (Start, Anmeldung, Suche, Chat, Indizierung) oder
 - Rechte falsch auswertet, also Inhalte Personen zeigt, die sie nicht sehen dürfen, oder
   Berechtigten den Zugriff verweigert.
 
@@ -1217,7 +1218,7 @@ Apple-Silicon-Rechner ohne Cache).
 **Native Bibliotheken.** Das `app.jar` ist für beide Architekturen dasselbe. Nativen Code enthalten
 darin nur Netty-Module: QUIC liegt für `linux-x86_64` und `linux-aarch_64` bei, der
 Epoll-Transport nur für `linux-x86_64`. Ohne passende Epoll-Bibliothek nimmt Reactor Netty den
-Java-NIO-Transport; OPAA konfiguriert keinen Transport selbst. Tesseract, ONNX oder andere
+Java-NIO-Transport; opaa konfiguriert keinen Transport selbst. Tesseract, ONNX oder andere
 JNI-Bibliotheken gibt es im Image nicht. Die übrigen nativen Teile bringt die `jlink`-Laufzeit mit,
 die in der Bau-Stufe der jeweiligen Architektur entsteht.
 

@@ -10,10 +10,10 @@ describe('settingsFile', () => {
 
   it('accepts only JSON in the export format', () => {
     expect(parseSettingsFile('kein JSON')).toEqual({
-      error: 'Die Datei ist kein JSON. Wählen Sie eine Datei aus dem Export von OPAA.',
+      error: 'Die Datei ist kein JSON. Wählen Sie eine Datei aus dem Export von opaa.',
     })
     expect(parseSettingsFile('[1, 2]')).toEqual({
-      error: 'Die Datei ist kein Einstellungsexport von OPAA.',
+      error: 'Die Datei ist kein Einstellungsexport von opaa.',
     })
     expect(
       parseSettingsFile('{"format": "opaa-settings", "formatVersion": 1, "sections": {}}'),

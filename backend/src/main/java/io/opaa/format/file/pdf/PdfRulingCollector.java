@@ -98,6 +98,14 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
     super.processOperator(operator, operands);
   }
 
+  /** Counts an operator PDFBox failed on against the budget before PDFBox handles the failure. */
+  @Override
+  protected void operatorException(Operator operator, List<COSBase> operands, IOException e)
+      throws IOException {
+    budget.countBrokenOperator();
+    super.operatorException(operator, operands, e);
+  }
+
   @Override
   public void processPage(PDPage page) throws IOException {
     budget.chargePage(page);

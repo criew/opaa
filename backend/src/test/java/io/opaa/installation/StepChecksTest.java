@@ -121,7 +121,7 @@ class StepChecksTest {
     String payload =
         json.writeValueAsString(
             new StepRules.MailPayload(
-                "127.0.0.1", 2525, MailEncryption.NONE, "kennung", "opaa@stadt.example", "OPAA"));
+                "127.0.0.1", 2525, MailEncryption.NONE, "kennung", "opaa@stadt.example", "opaa"));
     when(mailTester.test(any(MailSettingsSnapshot.class), eq("it@stadt.example")))
         .thenReturn(new MailConnectionTester.Outcome(true, "gelungen"));
 

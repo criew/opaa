@@ -1,6 +1,6 @@
 {
   "uid": "opaa-operations",
-  "title": "OPAA · Betrieb & Bereitschaft",
+  "title": "opaa · Betrieb & Bereitschaft",
   "description": "Bereich Betrieb: Bausteine, Nutzerseite, Hintergrund und Plattform.",
   "tags": [
     "opaa"
@@ -35,7 +35,7 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "enable": true,
-        "iconColor": "#0B6FBC",
+        "iconColor": "#0055A4",
         "name": "Neuer Pod oder Neustart",
         "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",
@@ -63,7 +63,7 @@
   },
   "links": [
     {
-      "title": "OPAA",
+      "title": "opaa",
       "type": "dashboards",
       "tags": [
         "opaa"
@@ -1550,6 +1550,198 @@
           "sort": "desc"
         }
       }
+    },
+    {
+      "id": 212,
+      "type": "timeseries",
+      "title": "Belegung der Agentenplätze",
+      "description": "Belegte Plätze für gleichzeitige Agentenläufe gegen das Platzlimit der Installation.",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "max(opaa_agent_workspace_occupied{namespace=~\"$namespace\", host=~\"$host\"}) / max(opaa_agent_workspace_capacity{namespace=~\"$namespace\", host=~\"$host\"} > 0)",
+          "legendFormat": "belegt",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 213,
+      "type": "timeseries",
+      "title": "Abweisungen an Kapazitätsgrenzen",
+      "description": "Pro Stunde abgewiesen: Agentenläufe mangels Platz (full) oder am Anteil der Person (person_limit), Chat-Anhänge an einem Speicherkontingent, Live-Diktate, weil alle Plätze belegt sind. Steigt full stetig, das Platzlimit anheben.",
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (reason) (increase(opaa_agent_workspace_rejected_total{namespace=~\"$namespace\", host=~\"$host\"}[$__interval]))",
+          "legendFormat": "Agent {{reason}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "1h"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (quota) (increase(opaa_chat_attachments_rejected_total{namespace=~\"$namespace\", host=~\"$host\"}[$__interval]))",
+          "legendFormat": "Anhang {{quota}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "1h"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(increase(opaa_transcription_live_sessions_total{namespace=~\"$namespace\", host=~\"$host\", end=\"installation_busy\"}[$__interval]))",
+          "legendFormat": "Live-Diktat belegt",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "interval": "1h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": 300000,
+            "lineInterpolation": "smooth",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1h"
     }
   ],
   "version": 1

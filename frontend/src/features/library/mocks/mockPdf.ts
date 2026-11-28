@@ -75,7 +75,7 @@ function escapePdfText(text: string): string {
 /** The pages of the mocked „getting-started.pdf“, which the mocked chat answer cites on S. 2–3. */
 export const GETTING_STARTED_PDF_PAGES: string[][] = [
   [
-    'Erste Schritte mit OPAA',
+    'Erste Schritte mit opaa',
     '',
     '1 Einleitung',
     '',

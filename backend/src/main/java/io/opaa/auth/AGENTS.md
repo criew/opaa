@@ -5,11 +5,11 @@ Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
-Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität,
-Bereitstellung aus dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit.
-`account` sind die lokalen Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung);
-die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll,
-Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), Einstellungsexport (`settings`).
+Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität, Bereitstellung aus
+dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit. `account` sind die lokalen Konten
+(Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung); die Filterkette und der Resolver des Modus `oidc`
+liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mail, Benachrichtigungen, Selbstauskunft
+(`SelfDisclosureExporter`), Einstellungsexport und Schreibkern der Aufbewahrungsfristen (`settings.RetentionSetting`).
 
 ## Invarianten und Stolpersteine
 

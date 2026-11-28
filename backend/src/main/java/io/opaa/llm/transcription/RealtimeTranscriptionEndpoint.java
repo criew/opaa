@@ -2,6 +2,7 @@ package io.opaa.llm.transcription;
 
 import io.opaa.api.types.RealtimeTranscriptionProtocol;
 import io.opaa.llm.ModelEndpointUri;
+import io.opaa.llm.OptionalRoleEndpoint;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;
 import java.util.Locale;
@@ -12,13 +13,17 @@ import java.util.Locale;
  * once. Unconfigured while protocol, address or model is missing; then dictation works by recording
  * only. {@code apiKey} is the key sent - the live upstream's own key, or the batch endpoint's when
  * none of its own is stored. {@link #toString()} never names the key.
+ *
+ * <p>As an {@link OptionalRoleEndpoint}, storing the live upstream is its switch; the batch switch
+ * above it is {@link RealtimeTranscriptionRole}'s business.
  */
 public record RealtimeTranscriptionEndpoint(
     RealtimeTranscriptionProtocol protocol,
     String url,
     String model,
     String apiKey,
-    int maxSessions) {
+    int maxSessions)
+    implements OptionalRoleEndpoint {
 
   /** The number of live sessions of the factory default. */
   public static final int DEFAULT_MAX_SESSIONS = 1;
@@ -40,6 +45,27 @@ public record RealtimeTranscriptionEndpoint(
   /** Whether dialect, address and model are present. */
   public boolean configured() {
     return protocol != null && !url.isEmpty() && !model.isEmpty();
+  }
+
+  @Override
+  public boolean enabled() {
+    return configured();
+  }
+
+  @Override
+  public String baseUrl() {
+    return url;
+  }
+
+  @Override
+  public boolean bound() {
+    return configured();
+  }
+
+  /** A change of dialect is a different upstream. */
+  @Override
+  public String observedModel() {
+    return protocol + " " + model;
   }
 
   /** The same endpoint with another key to send. */
@@ -113,6 +139,7 @@ public record RealtimeTranscriptionEndpoint(
   }
 
   /** Dialect, model and address as far as they may be logged: never the key or query. */
+  @Override
   public String describeWithoutSecrets() {
     if (!configured()) {
       return "(no live upstream configured)";

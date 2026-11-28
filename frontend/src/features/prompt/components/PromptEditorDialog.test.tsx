@@ -65,7 +65,7 @@ describe('PromptEditorDialog', () => {
     expect(within(highlight).getByTitle('Ungültiger Platzhalter')).toHaveTextContent('{{fal sch}}')
     // Colour is not the only feature: the legend names the second one of each kind.
     expect(
-      screen.getByText(/Systemvariable \(gepunktet unterstrichen, füllt OPAA selbst\)/),
+      screen.getByText(/Systemvariable \(gepunktet unterstrichen, füllt opaa selbst\)/),
     ).toBeInTheDocument()
   })
 

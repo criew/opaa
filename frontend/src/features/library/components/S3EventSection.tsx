@@ -94,7 +94,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
     const ok = await confirmAction({
       question: 'Benachrichtigung entfernen?',
       consequence:
-        'Der Objektspeicher kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Token werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.',
+        'Der Objektspeicher kann opaa danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Token werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.',
       confirmLabel: 'Entfernen',
       tone: 'danger',
     })
@@ -149,7 +149,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
         {insecureOrigin && (
           <Alert severity="error" sx={{ mb: 2 }} data-testid="s3-event-insecure-origin">
             Diese Adresse ist nicht über https erreichbar. Der Objektspeicher würde das Token
-            unverschlüsselt senden — für den Betrieb OPAA hinter TLS betreiben.
+            unverschlüsselt senden — für den Betrieb opaa hinter TLS betreiben.
           </Alert>
         )}
         <Typography variant="body2" sx={{ fontWeight: 600 }}>

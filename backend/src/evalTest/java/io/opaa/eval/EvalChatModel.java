@@ -258,7 +258,7 @@ final class EvalChatModel {
               + " is set. It would measure a model nothing here reports - remove the property or "
               + "run the verwaltung harness.");
     }
-    install(jdbcTemplate, UUID.randomUUID(), ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
+    installPinned(jdbcTemplate, ollamaEndpoint);
   }
 
   /**
@@ -272,9 +272,10 @@ final class EvalChatModel {
     Optional<External> external = external();
     if (external.isEmpty()) {
       refuseTemperatureWithoutExternalModel();
-      install(jdbcTemplate, UUID.randomUUID(), ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
+      installPinned(jdbcTemplate, ollamaEndpoint);
       return;
     }
+    EvalChatRunner.clear();
     External chatModel = external.get();
     UUID id = UUID.randomUUID();
     install(
@@ -287,6 +288,21 @@ final class EvalChatModel {
             : settingsEncryptor.encrypt(
                 chatModel.apiKey(), LlmEncryptedColumns.CHAT_MODEL_KEY.row(id)),
         chatModel.temperature());
+  }
+
+  /**
+   * Installs {@link #MODEL} and, in the harness's own Ollama container, registers its runner so
+   * every decomposing measurement run starts on a freshly loaded one ({@link EvalChatRunner}). An
+   * external Ollama endpoint ({@link EvalOllamaEndpoint#isExternal()}) belongs to the developer and
+   * is never unloaded: such a run is not baseline-comparable anyway.
+   */
+  private static void installPinned(JdbcTemplate jdbcTemplate, String ollamaEndpoint) {
+    install(jdbcTemplate, UUID.randomUUID(), ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
+    if (EvalOllamaEndpoint.isExternal()) {
+      EvalChatRunner.clear();
+    } else {
+      EvalChatRunner.register(ollamaEndpoint, MODEL);
+    }
   }
 
   private static void install(

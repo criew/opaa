@@ -24,7 +24,7 @@ flowchart LR
   Ausschlussmuster treffen (Abschnitt 3).
 - **Dokument:** Der Dateipfad ist die Identität. Die Verzeichnisstruktur erscheint als Ordner der
   Bibliothek.
-- **Rechte** aus dem Dateisystem übernimmt OPAA nicht: Wer die Bibliothek lesen darf, sieht alle
+- **Rechte** aus dem Dateisystem übernimmt opaa nicht: Wer die Bibliothek lesen darf, sieht alle
   ihre Dokumente.
 
 ## 2. Einrichtung
@@ -49,7 +49,7 @@ flowchart LR
 | „Verzeichnis" | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host, und unter einem freigegebenen Basisverzeichnis |
 | „Ausschlussmuster" | optional, eines je Zeile, höchstens 50, je bis 255 Zeichen; Regeln unten |
 
-Beim Speichern weist OPAA einen Pfad außerhalb der Freigabeliste ab („… liegt außerhalb der vom
+Beim Speichern weist opaa einen Pfad außerhalb der Freigabeliste ab („… liegt außerhalb der vom
 Betrieb freigegebenen Verzeichnisse"), ebenso jeden Pfad, solange der Betrieb kein Verzeichnis
 freigegeben hat („… ist deaktiviert"). Pfad und Muster lassen sich später ändern; die Änderung wirkt
 mit dem nächsten Lauf. Pfad und Laufprotokoll sehen nur Verwaltende der Bibliothek.

@@ -28,6 +28,10 @@ class ModelHealthGroupsConfiguration {
   static final String VECTOR_STORE_GROUP = "vector-store";
   static final String TRANSCRIPTION_CONTRIBUTOR = "transcription";
   static final String TRANSCRIPTION_GROUP = "transcription-model";
+  static final String RERANK_CONTRIBUTOR = "rerank";
+  static final String RERANK_GROUP = "rerank-model";
+  static final String TEXT_RECOGNITION_CONTRIBUTOR = "textRecognition";
+  static final String TEXT_RECOGNITION_GROUP = "text-recognition-model";
 
   @Bean
   @ConditionalOnProperty(name = "management.health.chat.enabled", matchIfMissing = true)
@@ -51,5 +55,17 @@ class ModelHealthGroupsConfiguration {
   @ConditionalOnProperty(name = "management.health.transcription.enabled", matchIfMissing = true)
   HealthEndpointGroupsPostProcessor transcriptionHealthGroup() {
     return new SeparateHealthGroup(TRANSCRIPTION_GROUP, Set.of(TRANSCRIPTION_CONTRIBUTOR));
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "management.health.rerank.enabled", matchIfMissing = true)
+  HealthEndpointGroupsPostProcessor rerankHealthGroup() {
+    return new SeparateHealthGroup(RERANK_GROUP, Set.of(RERANK_CONTRIBUTOR));
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "management.health.textrecognition.enabled", matchIfMissing = true)
+  HealthEndpointGroupsPostProcessor textRecognitionHealthGroup() {
+    return new SeparateHealthGroup(TEXT_RECOGNITION_GROUP, Set.of(TEXT_RECOGNITION_CONTRIBUTOR));
   }
 }

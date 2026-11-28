@@ -97,8 +97,8 @@ export default function ConnectionsAdminPage() {
           title="Anbindungen"
           description={
             externalAccess
-              ? 'Wie OPAA mit anderen Systemen verbunden ist, in beide Richtungen: Über Zugänge liest OPAA Inhalte aus anderen Systemen, externe KI-Werkzeuge lesen Fundstellen aus OPAA.'
-              : 'Wie OPAA mit anderen Systemen verbunden ist: Über Zugänge liest OPAA Inhalte aus anderen Systemen.'
+              ? 'Wie opaa mit anderen Systemen verbunden ist, in beide Richtungen: Über Zugänge liest opaa Inhalte aus anderen Systemen, externe KI-Werkzeuge lesen Fundstellen aus opaa.'
+              : 'Wie opaa mit anderen Systemen verbunden ist: Über Zugänge liest opaa Inhalte aus anderen Systemen.'
           }
         />
         <AreaTabs

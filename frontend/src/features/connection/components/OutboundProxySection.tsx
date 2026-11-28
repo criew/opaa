@@ -115,7 +115,7 @@ export default function OutboundProxySection() {
   return (
     <PageSection
       title="Ausgangsproxy"
-      description="Alle ausgehenden HTTP(S)-Verbindungen laufen über diesen Proxy, auch zu Sprachmodellen und Identitätsanbietern; Ziele der Ausnahmeliste erreicht OPAA direkt."
+      description="Alle ausgehenden HTTP(S)-Verbindungen laufen über diesen Proxy, auch zu Sprachmodellen und Identitätsanbietern; Ziele der Ausnahmeliste erreicht opaa direkt."
     >
       {loadError ? (
         <LoadError
@@ -178,7 +178,7 @@ export default function OutboundProxySection() {
               }
             />
             <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary' }}>
-              Die Ausnahmeliste gibt keine internen Adressen frei. Welche internen Ziele OPAA
+              Die Ausnahmeliste gibt keine internen Adressen frei. Welche internen Ziele opaa
               überhaupt erreichen darf, legt der Betrieb über
               OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST fest.
             </Typography>

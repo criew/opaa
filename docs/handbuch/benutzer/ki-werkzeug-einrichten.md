@@ -1,6 +1,6 @@
 # KI-Werkzeug einrichten
 
-**Ziel:** Ein KI-Werkzeug wie OpenCode durchsucht Ihre Bibliotheken über OPAA.
+**Ziel:** Ein KI-Werkzeug wie OpenCode durchsucht Ihre Bibliotheken über opaa.
 {: .kopf }
 
 Das Werkzeug bekommt nur Fundstellen und nie mehr, als Sie selbst lesen dürfen. Voraussetzung: Die
@@ -47,7 +47,7 @@ Andere MCP-fähige Werkzeuge brauchen dieselben Angaben: Adresse `https://<host>
 
 - Der Tokenwert gehört in keine Datei, die in eine Versionsverwaltung wandert.
 - Ein neues Passwort beendet alle Ihre Tokens, ebenso die Systemverwaltung als neue Rolle.
-- Jedes neue Token meldet OPAA per Mail. Nicht selbst erzeugt? Widerrufen und die Systemverwaltung
+- Jedes neue Token meldet opaa per Mail. Nicht selbst erzeugt? Widerrufen und die Systemverwaltung
   informieren.
 - Verbindet nichts, fehlt meist die Freigabe der Bibliothek, ein gültiges Token oder ein
   zugelassener Netzbereich.

@@ -29,7 +29,7 @@ class InstallationConfiguration {
   @Bean
   Gauge installationPendingGauge(MeterRegistry registry, InstallationStatus status) {
     return Gauge.builder(PENDING_GAUGE, status, s -> s.isPending() ? 1 : 0)
-        .description("1 while the installation of this OPAA instance is pending, else 0")
+        .description("1 while the installation of this opaa instance is pending, else 0")
         .register(registry);
   }
 }

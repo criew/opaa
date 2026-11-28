@@ -228,7 +228,9 @@ class ComplianceManifestLoaderTest {
                 assertThat(e.violations())
                     .containsExactlyInAnyOrder(
                         "prompts: prompts 'both': rule 'locatedOnce' is not met",
-                        "prompts: prompts 'neither': rule 'locatedOnce' is not met"));
+                        "prompts: prompts 'neither': rule 'locatedOnce' is not met",
+                        "prompts: prompts 'resource-and-database': rule 'locatedOnce' is not"
+                            + " met"));
   }
 
   @Test

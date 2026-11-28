@@ -48,6 +48,11 @@ public final class ChatResponses {
     return AnswerCompleteness.COMPLETE;
   }
 
+  /** Whether the model reports its output limit as the finish reason ({@code length}). */
+  public static boolean endedAtOutputLimit(ChatResponse response) {
+    return FINISH_REASON_LENGTH.equalsIgnoreCase(finishReason(response));
+  }
+
   /** The finish reason the model reported for the result, or {@code null} without one. */
   public static String finishReason(ChatResponse response) {
     requireResponse(response);

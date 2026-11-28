@@ -358,7 +358,7 @@ class BrandingSettingsServiceIntegrationTest {
   void aStoredValueWithHiddenTagCharactersOrAnUnassignedCodePointIsReadAsTheStandard() {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = ?, claim = ? WHERE id = 1",
-        "OPAA󠁉󠁇󠁎",
+        "opaa󠁉󠁇󠁎",
         "́Fragen͸");
 
     EffectiveBranding branding = brandingSettingsService.currentBranding();

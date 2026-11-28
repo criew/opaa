@@ -4,7 +4,8 @@ package io.opaa.llm;
  * An optional model role as the administration stored it (ADR-0060, Entscheidung 10): the switch
  * states the intent, address and model the how. The switch is deliberately separate from the
  * endpoint fields: a role being off must be a statement, never the indistinguishable consequence of
- * a missing address (ADR-0065, Entscheidung 6).
+ * a missing address (ADR-0065, Entscheidung 6). A role without a switch of its own may report its
+ * stored configuration as the switch, as the live upstream of transcription does.
  */
 public interface OptionalRoleEndpoint {
 

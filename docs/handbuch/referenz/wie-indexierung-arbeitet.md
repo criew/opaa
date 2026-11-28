@@ -2,7 +2,7 @@
 
 Eine Wissensbibliothek bekommt ihre Dokumente aus einer angebundenen **Quelle** (über einen
 [Konnektor](../benutzer/konnektoren/README.md)) oder per **Upload**. Damit die Suche sie findet, nimmt
-OPAA jedes Dokument in zwei Indizes auf: eine **Vektorablage**, die nach Bedeutung findet, und einen
+opaa jedes Dokument in zwei Indizes auf: eine **Vektorablage**, die nach Bedeutung findet, und einen
 **Volltextindex**, der exakte Wörter, Aktenzeichen und Paragrafen trifft.
 
 ```mermaid
@@ -20,7 +20,7 @@ flowchart LR
 Ein **Lauf** ist ein Durchgang über die Quelle, angestoßen von Hand, vom Zeitplan oder von einer
 Meldung der Quelle (etwa ein Confluence-Webhook). Je Bibliothek läuft höchstens einer.
 
-| In der Quelle | In OPAA |
+| In der Quelle | In opaa |
 |---|---|
 | unverändert (gleiche Prüfsumme) | übersprungen; darum sind Folgeläufe schnell |
 | geändert | neu verarbeitet, das Dokument behält seine Identität, Belege in Chats bleiben gültig |
@@ -30,7 +30,7 @@ Meldung der Quelle (etwa ein Confluence-Webhook). Je Bibliothek läuft höchsten
 
 Ein einzelnes kaputtes Dokument bricht den Lauf nicht ab; es wird übersprungen und protokolliert.
 **Unvollständig** endet ein Lauf, der sein Anfragebudget oder ein Speicherkontingent erreicht hat;
-der nächste setzt fort. Bricht eine Backend-Instanz weg, beendet OPAA ihre Läufe von selbst; was
+der nächste setzt fort. Bricht eine Backend-Instanz weg, beendet opaa ihre Läufe von selbst; was
 fertig war, bleibt indiziert.
 
 ## Was mit jedem Dokument passiert
@@ -40,8 +40,8 @@ fertig war, bleibt indiziert.
 - **Chunks:** Der Text wird entlang seiner Gliederung zerlegt, nach Überschriften, Seiten, Folien
   oder Zeilen. Kein Text geht wegen seiner Länge verloren; zu lange Abschnitte werden geteilt,
   Kleinstabschnitte zusammengelegt. Jeder Chunk trägt eine Ortsangabe wie „S. 3 · Abschn. Fristen“,
-  die im Beleg erscheint.
-- **Bereinigung:** Unsichtbare Zeichen, die Text vor dem Auge verbergen können, entfernt OPAA;
+  die im Beleg erscheint und die auch das Modell im Kopf jeder Fundstelle liest.
+- **Bereinigung:** Unsichtbare Zeichen, die Text vor dem Auge verbergen können, entfernt opaa;
   Wendungen wie „ignoriere alle vorherigen Anweisungen“ bleiben, werden aber im Laufprotokoll als
   „Auffällige Muster“ gezählt. Ein Treffer ist ein Hinweis, kein Beweis.
 - **Metadaten:** Titel, Dokumentart und Datum ([Metadaten](metadaten.md)). Für die Einbettung

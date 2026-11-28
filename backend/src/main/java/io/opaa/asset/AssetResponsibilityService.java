@@ -147,7 +147,10 @@ public class AssetResponsibilityService {
     return unit;
   }
 
-  /** Records the unit of a just-created object; its creation entry is the audit of this step. */
+  /**
+   * Records the unit of a just-created object. Writes no entry of its own: the creation entry of
+   * the type carries the unit through {@link #unitPayload}.
+   */
   @Transactional
   public void establish(Asset asset, ResponsibleUnit unit) {
     repository.save(
@@ -157,7 +160,9 @@ public class AssetResponsibilityService {
 
   /**
    * Replaces the unit of an object the caller manages (the type's service has checked that); an
-   * unchanged unit writes nothing. Returns whether it changed.
+   * unchanged unit writes nothing. The period without a unit ends only when the object no longer
+   * misses one afterwards, so renaming a unit while the owner is in open succession never restarts
+   * it. Returns whether it changed.
    */
   @Transactional
   public boolean change(Asset asset, ResponsibleUnit unit, CurrentUser caller) {
@@ -168,6 +173,14 @@ public class AssetResponsibilityService {
       return false;
     }
     row.assign(unit);
+    boolean stillMissing =
+        isMissing(
+            row,
+            unit.groupId() == null ? Map.of() : groupsAct(Set.of(unit.groupId())),
+            successionSource.findingsAmong(List.of(asset), false).containsKey(asset.getId()));
+    if (!stillMissing) {
+      row.endMissingPeriod();
+    }
     repository.save(row);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
@@ -347,7 +360,11 @@ public class AssetResponsibilityService {
     return assetTypes.require(asset.getAssetType()).auditObjectType();
   }
 
-  private static Map<String, Object> unitPayload(ResponsibleUnit unit) {
+  /**
+   * The audit keys of a unit: {@code responsibleGroupId} (the group only as id) or {@code
+   * responsibleFunction} (the text as entered); empty without a unit.
+   */
+  public static Map<String, Object> unitPayload(ResponsibleUnit unit) {
     Map<String, Object> payload = new LinkedHashMap<>();
     if (unit != null && unit.groupId() != null) {
       payload.put("responsibleGroupId", unit.groupId().toString());

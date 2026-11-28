@@ -3,11 +3,11 @@ package io.opaa.format;
 import java.util.regex.Pattern;
 
 /**
- * Collapses runs of blank lines in extracted text with exactly the result of Spring AI's {@code
- * ExtractedTextFormatter.defaults().format}, in linear time and constant stack depth: a line of
- * spaces only is emptied, then {@code (?m)^$([\r\n]+?)(^$[\r\n]+?^)+} is replaced by its first
+ * Collapses runs of blank lines in extracted text in linear time and constant stack depth: a line
+ * of spaces only is emptied, then {@code (?m)^$([\r\n]+?)(^$[\r\n]+?^)+} is replaced by its first
  * group. The second expression is evaluated by hand, since the regex engine recurses once per blank
- * line and overflows the stack on a long run.
+ * line and overflows the stack on a long run. The result is part of the stored chunk text, so it
+ * stays fixed across Spring AI versions instead of following {@code ExtractedTextFormatter}.
  */
 final class AdjacentBlankLines {
 

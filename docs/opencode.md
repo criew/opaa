@@ -2,7 +2,7 @@
 
 [openCode](https://opencode.de/de) ist die Plattform der öffentlichen Verwaltung für quelloffene
 Software, betrieben vom Zentrum für Digitale Souveränität (ZenDiS). Behörden suchen dort in einem
-Softwareverzeichnis nach nachnutzbaren Lösungen; Markterkundungen verweisen zunehmend darauf. OPAA
+Softwareverzeichnis nach nachnutzbaren Lösungen; Markterkundungen verweisen zunehmend darauf. opaa
 soll dort als Spiegel des GitHub-Repositorys liegen, damit Behörden es finden und nachnutzen
 können.
 
@@ -17,14 +17,14 @@ Gelesen am 24.10.2026 auf den offiziellen Seiten von openCode: Nutzungsbedingung
 in das Softwareverzeichnis“, „Anforderungen an Inhalte“, „Badges“ und die Liste der freigegebenen
 Lizenzen. Die Seiten ändern sich; vor der Einrichtung neu lesen.
 
-| Thema | Bedingung | Bezug zu OPAA |
+| Thema | Bedingung | Bezug zu opaa |
 |---|---|---|
 | Konto | Nutzungsbedingungen, Abschnitt 4: Registrieren dürfen sich geschäftsfähige natürliche Personen, Minderjährige mit schriftlicher Zustimmung der Sorgeberechtigten; ein technisches Konto dürfen ausschließlich juristische Personen registrieren. Angegeben werden amtlicher Vor- und Nachname und E-Mail-Adresse, Änderungen unverzüglich nachzutragen; Zwei-Faktor-Authentifizierung ist Pflicht. Mehrere Konten sind erlaubt, um private Beiträge und die Tätigkeit für verschiedene Dienstherren zu trennen; bei der Anlage ist öffentlich anzugeben, ob ein Konto privat ist oder für welchen Dienstherrn es handelt. Ein Konto ist nicht übertragbar. Ein Konto für ausschließlich automatisierte Aufgaben ist als „technischer Account“ auszuweisen und darf keine schutzfähigen Code-Beiträge leisten. Für alles unter einem Konto haftet die Person, bei Tätigkeit für einen Dienstherrn oder ein Unternehmen dieses | Ein Spiegel braucht ein Konto des Maintainers, als privat oder mit Dienstherrn ausgewiesen, und ein Token mit Schreibrecht auf das Projekt. Ob ein Projekt-Token als technisches Konto zählt, das nur eine juristische Person anlegen darf, ist **offen** |
-| Projekt anlegen | Projekte anlegen und als Maintainer oder Repository Owner wirken dürfen nur „Identifizierte Nutzende“: Beschäftigte der öffentlichen Verwaltung oder Unternehmen in ihrem Auftrag, nachgewiesen über eine betriebliche E-Mail-Adresse | **Offen:** OPAA wird von keiner Behörde und in keinem Auftrag entwickelt |
+| Projekt anlegen | Projekte anlegen und als Maintainer oder Repository Owner wirken dürfen nur „Identifizierte Nutzende“: Beschäftigte der öffentlichen Verwaltung oder Unternehmen in ihrem Auftrag, nachgewiesen über eine betriebliche E-Mail-Adresse | **Offen:** opaa wird von keiner Behörde und in keinem Auftrag entwickelt |
 | Zuordnung | „Sämtliche Projekte auf der Plattform müssen einem Träger der öffentlichen Verwaltung oder einem beauftragten Unternehmen zugeordnet werden können“ (Nutzungsbedingungen, Abschnitt 7); Inhalte müssen im Interesse der öffentlichen Verwaltung liegen | **Offen**, wie oben |
 | Spiegel | Die primäre Entwicklung darf auf einer anderen Plattform stattfinden; für das Softwareverzeichnis muss der Code auf openCode gespiegelt werden (FAQ, Verweis auf den openCode-Guide) | passt zur Entwicklung auf GitHub |
 | Lizenz | jeder Inhalt unter einer Open-Source-Lizenz nach der Definition der OSI aus der Liste von openCode; REUSE wird empfohlen | AGPL-3.0 steht auf der Liste (`AGPL-3.0-only` und `AGPL-3.0-or-later`) |
-| SBOM | Für bereitgestellte Kompilate (ausführbare Dateien, Installer, Images) gelten die Lizenzanforderungen für alle eingehenden Komponenten; nachzuweisen über eine SBOM im Repository mit dem Namen `SPDX_<ARTEFAKT_NAME>.<spdx_dateityp>`. Die Nutzungsbedingungen verlangen den Nachweis über eine SBOM des Projekts allgemein | OPAA erzeugt CycloneDX-SBOMs am Release und als CI-Artefakt ([sbom.md](sbom.md)), keine SPDX-Datei im Repository. Der Spiegel stellt nur Quellcode und Tags bereit, keine Kompilate; ob openCode dennoch eine SPDX-Datei verlangt, ist **offen** |
+| SBOM | Für bereitgestellte Kompilate (ausführbare Dateien, Installer, Images) gelten die Lizenzanforderungen für alle eingehenden Komponenten; nachzuweisen über eine SBOM im Repository mit dem Namen `SPDX_<ARTEFAKT_NAME>.<spdx_dateityp>`. Die Nutzungsbedingungen verlangen den Nachweis über eine SBOM des Projekts allgemein | opaa erzeugt CycloneDX-SBOMs am Release und als CI-Artefakt ([sbom.md](sbom.md)), keine SPDX-Datei im Repository. Der Spiegel stellt nur Quellcode und Tags bereit, keine Kompilate; ob openCode dennoch eine SPDX-Datei verlangt, ist **offen** |
 | Softwareverzeichnis | eine Datei `publiccode.yml` im Wurzelverzeichnis des Repositorys auf openCode, nach dem Standard publiccode.yml 0.4, Kategorien nur aus der Liste des openCode-Editors; prüfbar mit dem [Editor](https://editor.opencode.de/) („Validate“); das Projekt erscheint danach zeitversetzt | `publiccode.yml` liegt im Wurzelverzeichnis |
 | Verhalten | Code of Conduct der Plattform | — |
 | CI | GitLab-Runner von openCode stehen zur Verfügung, ihr Gebrauch ist freiwillig | Der Spiegel nutzt sie nicht; gebaut und geprüft wird auf GitHub |
@@ -89,7 +89,7 @@ Hauptrepositorys annimmt, ist **offen**.
 Schritte für einen Maintainer; ein Agent führt sie nicht aus.
 
 1. **Zuordnung klären:** Mit openCode (`info@opencode.de`) klären, ob und unter welchem Träger der
-   öffentlichen Verwaltung OPAA als Projekt angelegt werden darf, oder eine Behörde finden, die es in
+   öffentlichen Verwaltung opaa als Projekt angelegt werden darf, oder eine Behörde finden, die es in
    ihrer Gruppe führt. Ohne diese Klärung gibt es keine eigene Ablage des Projekts.
 2. **Konto anlegen** auf openCode mit Zwei-Faktor-Authentifizierung und, sofern möglich, die
    Identifizierung beantragen.
@@ -127,10 +127,10 @@ behoben ist. Nach der Behebung den Workflow auf `main` von Hand starten.
 
 ## Offene Fragen
 
-- Darf OPAA ohne Träger der öffentlichen Verwaltung als eigenes Projekt auf openCode liegen
+- Darf opaa ohne Träger der öffentlichen Verwaltung als eigenes Projekt auf openCode liegen
   (Nutzungsbedingungen, Abschnitte 5 und 7)?
 - Verlangt openCode für einen reinen Spiegel des Quellcodes eine SPDX-Datei im Repository, oder
   genügen die CycloneDX-SBOMs am GitHub-Release?
 - Bietet openCode Pull-Spiegel an, und nimmt das Softwareverzeichnis `url` auf GitHub an?
 - Zählt ein Projekt-Token als technisches Konto, das nach Abschnitt 4 der Nutzungsbedingungen nur
-  eine juristische Person registrieren darf? OPAA ist keine juristische Person.
+  eine juristische Person registrieren darf? opaa ist keine juristische Person.

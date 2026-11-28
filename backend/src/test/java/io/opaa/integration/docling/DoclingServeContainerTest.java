@@ -142,7 +142,7 @@ class DoclingServeContainerTest {
             role,
             store,
             new PdfOcrDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
-            new PdfPages(new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 0)),
+            new PdfPages(new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
             new IndexingMetrics(new SimpleMeterRegistry()),
             Clock.systemUTC());
 

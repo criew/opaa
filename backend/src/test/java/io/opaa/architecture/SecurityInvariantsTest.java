@@ -550,6 +550,10 @@ class SecurityInvariantsTest {
                   + " history is the conversation window, whose entrances in"
                   + " ConversationWindowMessages clean every message"),
           Map.entry(
+              "io.opaa.query.toolloop.AgentToolLoop#recheckAbsence",
+              "the user message is AbsenceFollowUp's constant text around passages fenced by"
+                  + " DocumentBlock; the assistant message is the model's own answer"),
+          Map.entry(
               "io.opaa.chat.ChatService#historyAsSpringAiMessages",
               "the persisted history enters the conversation window only through"
                   + " ConversationWindowMessages#reloaded, which cleans every message"),

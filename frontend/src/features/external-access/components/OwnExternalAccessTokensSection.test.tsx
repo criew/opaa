@@ -90,12 +90,12 @@ describe('OwnExternalAccessTokensSection', () => {
 
     expect(
       within(dialog).getByText(
-        /verlassen mit diesem Token OPAA und unterliegen der Protokollierung/,
+        /verlassen mit diesem Token opaa und unterliegen der Protokollierung/,
       ),
     ).toBeInTheDocument()
     expect(
       within(dialog).getByText(
-        /Zusage, dass OPAA einzelne Abfragen nicht mitschreibt, gilt dort nicht/,
+        /Zusage, dass opaa einzelne Abfragen nicht mitschreibt, gilt dort nicht/,
       ),
     ).toBeInTheDocument()
     expect(

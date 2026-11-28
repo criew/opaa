@@ -1,6 +1,6 @@
 # Nutzung
 
-Vorlagen für den Alltag mit OPAA: was Beschäftigte dürfen und wie zugänglich die Anwendung ist.
+Vorlagen für den Alltag mit opaa: was Beschäftigte dürfen und wie zugänglich die Anwendung ist.
 
 | Dokument | Worum es geht |
 |---|---|
