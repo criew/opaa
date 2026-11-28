@@ -186,6 +186,74 @@ Mehr öffnet eine Instanz auch unter Last nicht: Sind alle Verbindungen ihres Po
 weitere Anfragen auf eine freie, höchstens 30 Sekunden, und enden danach mit einem Fehler. Wie viele
 Verbindungen eine Instanz wirklich hält, zeigt `pg_stat_activity`, gruppiert nach `client_addr`.
 
+## Replizierte Datenbank
+
+Eine PostgreSQL mit Replikation und automatischer Umschaltung, etwa mit dem Operator CloudNativePG
+oder mit Patroni, ist für opaa weiterhin eine Datenbank: Alle Instanzen schreiben und lesen auf dem
+Primärserver, eine Replik nutzt opaa nicht. opaa braucht deshalb eine Adresse, die nach einer
+Umschaltung auf den neuen Primärserver zeigt.
+
+| Anbindung | Adresse | Wann |
+|---|---|---|
+| Adresse des Primärservers | ein Name oder eine IP, die der Datenbankbetrieb dem Primärserver nachführt: bei CloudNativePG der Service `<Cluster>-rw`, bei Patroni etwa eine virtuelle IP oder ein Load Balancer, der nur den Primärserver anspricht | die Vorgabe; `database.host` bzw. `OPAA_DB_URL` bleiben, wie sie sind |
+| Verbindungs-URL mit mehreren Hosts | `jdbc:postgresql://db-1:5432,db-2:5432/opaa?targetServerType=primary&connectTimeout=2&prepareThreshold=0` in `OPAA_DB_URL` | wenn es keine solche Adresse gibt; der Treiber probiert die Hosts der Reihe nach und bleibt bei dem, der Schreibzugriffe annimmt |
+
+- **Ohne `targetServerType=primary`** nimmt der Treiber den ersten Host, der antwortet, auch eine
+  Replik; jede schreibende Anfrage scheitert dann. Der Wert gehört in jede URL mit mehreren Hosts,
+  `prepareThreshold=0` ebenso wie in jede andere.
+- **`connectTimeout`** begrenzt, wie lange der Treiber auf einen Host wartet, bevor er den nächsten
+  probiert; ohne den Wert wartet er zehn Sekunden. Ein alter Primärserver, der während einer
+  geplanten Umschaltung keine Verbindung annimmt, verlängerte die längste Lücke ohne Antwort damit
+  in der Messung auf 12 bis 13 Sekunden; mit `connectTimeout=2` lag sie bei 4 Sekunden, so kurz
+  wie mit der Adresse des Primärservers. Beim Ausfall des Primärservers machte die Anbindung keinen
+  Unterschied.
+- **Nicht geeignet** sind die Adresse einer einzelnen Instanz, ein Service für Lesezugriffe (bei
+  CloudNativePG `<Cluster>-ro` und `<Cluster>-r`) und ein Verbindungs-Proxy im Transaktionsmodus.
+- **Die Hörverbindung** (Anwendungsname `opaa-invalidation-bus`) nutzt dieselbe Adresse. Sie
+  braucht wie ohne Replikation eine direkte Verbindung oder einen Proxy im Sitzungsmodus.
+- **`max_connections`** nach [Verbindungen bei mehreren Instanzen](#verbindungen-bei-mehreren-instanzen)
+  gilt auf jedem Server, der Primärserver werden kann.
+
+### Was während einer Umschaltung geschieht
+
+Gemessen mit CloudNativePG (zwei Instanzen, asynchrone Replikation), zwei Backend-Instanzen unter
+Last (rund 80 Anfragen je Sekunde) und dem Service `<Cluster>-rw`, je zwei Läufe:
+
+| Anlass | ohne Primärserver | längste Lücke ohne Antwort | Fehlerantworten |
+|---|---|---|---|
+| Geplante Umschaltung | 3 Sekunden | 5 Sekunden | 2 bis 4 |
+| Räumen des Knotens mit dem Primärserver | 3 Sekunden | 6 Sekunden | 4 bis 5 |
+| Ausfall des Primärservers | 21 Sekunden | 20 Sekunden | 3 bis 5 |
+
+- **Fehlerantworten** bekommen nur Anfragen, die im Moment der Umschaltung eine Verbindung zum alten
+  Primärserver benutzten: Sie enden mit `500`, das Protokoll nennt
+  `terminating connection due to administrator command` (geplant) oder
+  `An I/O error occurred while sending to the backend` (Ausfall). Alle übrigen Anfragen warten im
+  Connection Pool, bis der neue Primärserver antwortet, und laufen dann normal weiter. Dauert eine
+  Umschaltung länger als die 30 Sekunden, die eine Anfrage auf eine Verbindung wartet, enden auch
+  die wartenden Anfragen mit einem Fehler. Die Readiness prüft die Datenbank; in den gemessenen
+  Umschaltungen blieben alle Instanzen bereit.
+- **Änderungen zwischen den Instanzen:** Die Hörverbindung reißt ab, jede Instanz meldet
+  `The invalidation bus does not listen` und liest Rechte und Einstellungen direkt aus der
+  Datenbank. Sie steht wieder, sobald der neue Primärserver antwortet
+  (`Listening on the invalidation bus again`): nach einer geplanten Umschaltung nach fünf Sekunden,
+  nach einem Ausfall nach 20 bis 30 Sekunden. Die Meldung
+  `Dropping the cache … failed` dazwischen ist harmlos: Die Instanz liest den Speicher nach dem
+  Wiederanschluss neu.
+- **Instanzregister:** Der Herzschlag setzt für die Dauer der Umschaltung aus und liegt weit unter
+  der Frist `OPAA_INSTANCE_DEAD_AFTER`. Keine Instanz fällt aus dem Register, keine gibt ihre Arbeit
+  ab oder übernimmt fremde.
+- **Geplante Läufe und Mails:** Ein Termin, der in die Umschaltung fällt, läuft genau einmal; jede
+  Mail der Warteschlange geht genau einmal hinaus. Ein Lauf, der genau in der Umschaltung scheitert,
+  zählt als Fehler (`opaa_scheduled_failures_total`) und läuft beim nächsten Termin.
+- **Indexierung und Uploads:** Laufende Indexierungen setzen nach der Umschaltung fort. Ein Dokument
+  oder ein Upload, dessen Schreibvorgang genau in den Ausfall fällt, scheitert dagegen: Das Dokument
+  zählt im Lauf als fehlgeschlagen und wird beim nächsten Lauf erneut gelesen, ein Upload steht auf
+  „Fehlgeschlagen“ und wird neu hochgeladen.
+- **Asynchrone Replikation:** Fällt der Primärserver aus, fehlen dem neuen die Transaktionen, die
+  er noch nicht empfangen hatte. In den Läufen ging keine verloren; wer das ausschließen muss,
+  schaltet im Datenbankbetrieb synchrone Replikation ein.
+
 ## Volltextsuche (lexikalischer Suchpfad)
 
 Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL, mit der
