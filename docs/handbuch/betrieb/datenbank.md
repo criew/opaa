@@ -222,7 +222,7 @@ Last (rund 80 Anfragen je Sekunde) und dem Service `<Cluster>-rw`, je zwei Läuf
 | Anlass | ohne Primärserver | längste Lücke ohne Antwort | Fehlerantworten |
 |---|---|---|---|
 | Geplante Umschaltung | 3 Sekunden | 5 Sekunden | 2 bis 4 |
-| Räumen des Knotens mit dem Primärserver | 3 Sekunden | 6 Sekunden | 4 bis 5 |
+| Räumen des Knotens mit dem Primärserver | 3 bis 4 Sekunden | 6 Sekunden | 4 bis 5 |
 | Ausfall des Primärservers | 21 Sekunden | 20 Sekunden | 3 bis 5 |
 
 - **Fehlerantworten** bekommen nur Anfragen, die im Moment der Umschaltung eine Verbindung zum alten
