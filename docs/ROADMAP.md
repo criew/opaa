@@ -3,37 +3,20 @@
 Was im Zielbild der [Vision](./VISION.md) noch nicht gebaut ist, nach Phasen geordnet. Was gebaut ist,
 steht im [Handbuch](./handbuch/README.md) und im [Gesamtstand](./fortschritt/gesamtstand.md).
 
-Stand: 09.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
+Stand: 28.11.2026. Ein Punkt bekommt erst ein Epic mit Spezifikation, wenn er
 angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
-## Phase 1 — Souveräner Wissensassistent (Rest)
+## Phase 1 — Souveräner Wissensassistent
 
-### A · Wissensschicht & Retrieval
-
-- **Reranking produktiv machen (Latenz-/Hardwareprofil)** — Laufzeit auf Referenzhardware messen und je
-  Hardwareklasse eine Aktivierungsempfehlung geben; heute ab Werk aus (rund 3 min je Frage auf CPU).
-  _(Epic #3492 (Sizing); #1051 ungebaut geschlossen)_
-
-### G · Sicherheit, Nachweis & Prüfbarkeit
-
-- **Löschrecht nach DSGVO als Ablauf** — Löschung eines Kontos und seiner Daten über alle abgeleiteten
-  Bestände; heute nur Sperrpfad und echte Löschung nie benutzter Konten.
-
-### J · Betrieb & Deployment
-
-- **Erprobung auf einem produktiven Cluster und erstes finales Release `v0.1.0`** — bisher k3d und kind.
-
-- **Hardware- und Größenprofile (Sizing)** — Auslegung je Installationsgröße; trägt auch die
-  Reranking-Empfehlung (A). _(Epic #3492)_
-
-### Querschnitt
-
-- **Quick-Tour für neue Nutzer** — nur als Epic. _(Epic #2312)_
+Gebaut; erscheint als erstes stabiles Release `v0.1.0`. Den Stand beschreibt das Handbuch.
 
 ## Phase 2 — Agenten, Werkzeuge und teilbare Assets
 
 ### A · Wissensschicht & Retrieval
 
+- **Reranking produktiv machen (Latenz-/Hardwareprofil)** — Laufzeit auf Referenzhardware messen und je
+  Hardwareklasse eine Aktivierungsempfehlung geben; heute ab Werk aus (rund 3 min je Frage auf CPU).
+  _(Epic #3492 (Sizing))_
 - **Deep Research** — kein eigener Betriebsmodus, sondern ein mitgelieferter Agent „Recherche“ auf der
   Werkzeugschleife (siehe D): sichtbarer Plan mit Teilfragen, mehrstufige Suche, gegliederter Bericht mit
   Fundstellen und benannten Widersprüchen, Ergebnis als Datei nach der Vorlage des Agenten, Verbrauch
@@ -67,7 +50,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   hinterlegen; Freischaltung je Integration und Aktionsart, eigene Schreib-Zugangsdaten, menschliche
   Bestätigung im Einzelfall.
 - **Löschverlangen nach Datenschutzrecht** — Löschung greift auf Chunks, Einbettungen, Extrakte und
-  Vorschauen durch (siehe Phase 1, Löschrecht nach DSGVO).
+  Vorschauen durch (siehe G, Löschrecht nach DSGVO, zweite Stufe).
 - **Live-Abfrage verbundener Konten und Token-Austausch** — Quellen im Chat ohne Indexierung abfragen;
   Token Exchange (RFC 8693) als fünfte Anmeldeart nur für den Live-Zugriff, Machbarkeit belegt (Spike
   #2174). _(#1747 · ⚑)_
@@ -145,6 +128,9 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
+- **Löschrecht nach DSGVO, zweite Stufe** — heute entfernt die Systemverwaltung den Personenbezug
+  eines gesperrten Kontos und löscht seine persönlichen Daten; offen ist der Selbstantrag der Person
+  als Ablauf.
 - **C5-Nachweispaket** — Verantwortungsmatrix Produkt/Betreiber, Härtungsleitfaden mit
   Referenzkonfiguration, reproduzierbare Builds; bisher nicht vorhanden.
 - **Unabhängige Sicherheitsprüfung** — ab wann und in welchem Umfang. ⚑
@@ -175,10 +161,11 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 - **Antwort-Bewertung** — Antwort, einzelne Fundstelle und freier Hinweis bewerten, zur Frage statt zur
   Person gespeichert, Eingang in Golden-Datensatz; Bedienelement wurde ausgebaut, Konzept fehlt.
   Aufbewahrung und Sichtkreis offen. _(⚑ (Konzept))_
-- **Live-Transkript der Spracheingabe** — per WebSocket (Stufe 2). _(#2615)_
 
 ### J · Betrieb & Deployment
 
+- **Hardware- und Größenprofile (Sizing)** — Auslegung je Installationsgröße; trägt auch die
+  Reranking-Empfehlung (A). _(Epic #3492)_
 - **Getrennte Dienste für große Installationen** — Betriebsarchitektur mit getrennten Speicher-Backends.
   _(Epic #1439)_
 - **Hochverfügbarkeit über die Anwendung hinaus** — Datenbank mit Replikation, Blau-Grün-Umschaltung,

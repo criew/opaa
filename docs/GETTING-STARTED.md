@@ -120,9 +120,8 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [Glossar](handbuch/referenz/glossar.md) — die gemeinsame Sprache im Repository
 2. [VISION.md](./VISION.md) — besonders die elf Themenbereiche und die vier Phasen
-3. [Gesamtstand](./fortschritt/gesamtstand.md) — **hier stehen die Lücken.** Die Bereiche **D** und **K**
-   sind noch nicht begonnen; die priorisierte Restliste für Phase 1 steht im aktuellen
-   [Zeitraumsbericht](./fortschritt/20260831/report.md)
+3. [Gesamtstand](./fortschritt/gesamtstand.md) — was gebaut ist; was noch fehlt, steht in der
+   [Roadmap](./ROADMAP.md)
 4. [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — Ablauf, Branch-Regel, Contributor License Agreement
 5. [`../AGENTS.md`](../AGENTS.md) — Konventionen, Build- und Testbefehle, Pre-Push-Checkliste
 6. [AGENT-ORGANIZATION.md](./AGENT-ORGANIZATION.md) — Rollen und der Weg von der Idee bis zum Merge
