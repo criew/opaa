@@ -1,9 +1,9 @@
-# ADR-0074: Betriebsarchitekturen klein, mittel und groß
+# ADR-0076: Betriebsarchitekturen klein, mittel und groß
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-12 · stützt sich auf [ADR-0042](0042-kubernetes-lieferung-mit-helm.md) und
-[ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · Konzept aus Epic #1439
+Akzeptiert · zuletzt geändert 2026-11-28 · stützt sich auf [ADR-0042](0042-kubernetes-lieferung-mit-helm.md),
+[ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0075](0075-ein-datenspeicher-fuer-metadaten-und-abschnitte.md) · Konzept aus Epic #1439
 
 ## Kontext
 
@@ -17,7 +17,8 @@ als geparktes Epic (#1442).
 
 Dieser ADR legt drei Betriebsarchitekturen als Zielbilder fest und führt je Architektur die
 Hindernisse mit Beleg. Was das Handbuch zu Einrichtung und Betrieb schon beschreibt, wird verlinkt.
-Die Entscheidung über getrennte Speicher-Backends trifft #3806, nicht dieser ADR.
+Ob Metadaten und Abschnitte getrennt gespeichert werden, entscheidet ADR-0075: eine PostgreSQL je
+Installation, eine Lesereplik für die Suche als erste Ausbaustufe; dieser ADR übernimmt das für „groß“.
 
 ## Entscheidung
 
@@ -25,7 +26,7 @@ Die Entscheidung über getrennte Speicher-Backends trifft #3806, nicht dieser AD
 
 | | Klein | Mittel | Groß |
 |---|---|---|---|
-| Betriebsweg | Docker Compose auf einem Host | Kubernetes mit dem Helm-Chart | Kubernetes, Dienste und Speicher getrennt |
+| Betriebsweg | Docker Compose auf einem Host | Kubernetes mit dem Helm-Chart | Kubernetes, Dienste nach Rollen getrennt, eine replizierte Datenbank |
 | Backend | eine Instanz | zwei oder mehr gleichrangige Instanzen | Instanzen nach Rollen getrennt |
 | Ausfall des Backends | Dienst steht bis zum Neustart | übrige Instanzen antworten | übrige Instanzen antworten |
 | Ausfall der Datenbank | Dienst steht | Dienst steht, bis der Datenbankbetrieb sie wiederherstellt | Umschaltung auf eine Replik, Verhalten belegt (#3807) |
@@ -120,7 +121,7 @@ flowchart LR
 | Dateisystem-Quellen in jedem Pod | `filesystemSources` braucht NFS oder `ReadOnlyMany` | [Mehrere Backend-Instanzen](../handbuch/betrieb/kubernetes.md#mehrere-backend-instanzen) | hingenommen |
 | Keine belegte Größenplanung | wie „klein“ | #3492 | offen |
 
-### 4. Groß: getrennte Dienste und Speicher, mehrere Organisationen
+### 4. Groß: getrennte Dienste, replizierte Datenbank, mehrere Organisationen
 
 ```mermaid
 flowchart LR
@@ -132,15 +133,15 @@ flowchart LR
         WK[Worker-<br/>Instanzen]
     end
     subgraph DZ[Daten]
-        MD[(Metadaten<br/>Primär+Replik)]
-        VS[(Vektoren,<br/>Volltext)]
+        DB[(PostgreSQL<br/>Primär)]
+        RR[(Lesereplik<br/>Suche)]
         S3[(Objekt-<br/>speicher)]
     end
     W --> F
-    API --> MD
-    API --> VS
-    WK --> MD
-    WK --> VS
+    API --> DB
+    API -.-> RR
+    DB --> RR
+    WK --> DB
     WK --> S3
     API --> S3
     API -.-> M[Modelle]
@@ -150,12 +151,12 @@ flowchart LR
 
 | Thema | Aufbau |
 |---|---|
-| Komponenten | API-Instanzen für Anfragen und Verwaltung, Worker-Instanzen für Indexierung und geplante Läufe (#3808); PostgreSQL mit Replikation und automatischer Umschaltung; Vektor- und Volltextspeicher getrennt oder in derselben Datenbank, wie #3806 entscheidet; Objektspeicher mit Replikation |
+| Komponenten | API-Instanzen für Anfragen und Verwaltung, Worker-Instanzen für Indexierung und geplante Läufe (#3808); eine PostgreSQL für Metadaten, Vektoren und Volltext mit Replikation und automatischer Umschaltung (ADR-0075, Entscheidung 1); Objektspeicher mit Replikation |
 | Netzbereiche | DMZ mit Proxy des Hauses; Anwendungsbereich nur mit Eingang aus der DMZ; Indexierungsbereich mit Ausgang zu Quellen und Anbietern, ohne Eingang von außen; Datenbereich nur aus Anwendung und Indexierung; Modellbereich (GPU) nur aus Anwendung und Indexierung; Betriebsbereich für Monitoring und Sicherheitsmonitoring ([ADR-0055](0055-ausleitung-an-ein-sicherheitsmonitoring.md), [ADR-0071](0071-betriebsbeobachtung.md)) |
-| Speicher | getrennt nach Last und Verantwortung, soweit #3806 das trägt; Datenhaltung je Organisation folgt #1442 |
-| Skalierung | API und Worker unabhängig; Lesezugriffe auf Repliken nur nach #3806 |
+| Speicher | eine Datenbank für alle Daten (ADR-0075); als erste Ausbaustufe liest die Suche von einer Lesereplik, sobald die Messung aus #3492 sie begründet; eine eigene Datenbank für die Abschnitte bräuchte ein eigenes ADR (ADR-0075, Entscheidungen 4 und 5); Datenhaltung je Organisation folgt #1442, getrennte Daten heißen eigene Installation |
+| Skalierung | API und Worker unabhängig; Lesezugriffe der Suche auf die Lesereplik nach ADR-0075, Stufe 1 |
 | Verfügbarkeit | über die Anwendung hinaus: Datenbank mit Umschaltung, Objektspeicher repliziert, Instanzen über Zonen verteilt; Vorgaben für RTO und RPO sind offen (Roadmap, „Offene Betriebsfragen“) |
-| Sicherung | Point-in-Time-Recovery des Datenbankbetriebs, Bucket-Replikation; Reihenfolge und Abgleich wie bei „mittel“, bei getrennten Speichern nach #3806 |
+| Sicherung | Point-in-Time-Recovery des Datenbankbetriebs, Bucket-Replikation; Reihenfolge und Abgleich wie bei „mittel“, eine Datenbank für alles |
 | Update | wie „mittel“ je Rolle; Blau-Grün mit zweiter Datenbank ist nicht vorgesehen (Entscheidung 5) |
 | Größenordnung | Landesverwaltung oder Rechenzentrum für mehrere Häuser: zehntausende Personen, Millionen Dokumente, zehn Mio. Chunks und mehr |
 
@@ -163,7 +164,7 @@ flowchart LR
 |---|---|---|---|
 | Helm, mehrere Instanzen, Objektspeicher | wie „mittel“ | #2346, #1292, #1440 | erledigt |
 | Ausleitung an ein Sicherheitsmonitoring, Betriebsbeobachtung | Syslog-Ausleitung, Metriken und Dashboards | ADR-0055, ADR-0071 | erledigt |
-| Metadaten, Vektoren und Volltext in einer Datenbank, über eine Verbindung | eine `spring.datasource` (`backend/src/main/resources/application.yml`); `vector_store` legt `InstallationService` an, `VectorStoreWriter#writeEmbeddedChunks` schreibt Vektoren und `chunk_full_text` in einer Transaktion; Handbuch nennt Millionen Vektoren als Grenze ([Vektorspeicher](../handbuch/betrieb/datenbank.md#vektorspeicher-pgvector)) | #3806 | offen |
+| Metadaten, Vektoren und Volltext in einer Datenbank, über eine Verbindung | eine `spring.datasource` (`backend/src/main/resources/application.yml`); `vector_store` legt `InstallationService` an, `VectorStoreWriter#writeEmbeddedChunks` schreibt Vektoren und `chunk_full_text` in einer Transaktion; Handbuch nennt Millionen Vektoren als Grenze ([Vektorspeicher](../handbuch/betrieb/datenbank.md#vektorspeicher-pgvector)) | ADR-0075 | entschieden: keine Trennung; Lesereplik für die Suche als Stufe 1, nach Messung (#3492) |
 | Jede Instanz macht alles, keine Rollen | `DatabaseMigrationMode.Mode` kennt nur `SERVE`, `MIGRATE`, `AWAIT_MIGRATION`; Läufe im Executor der annehmenden Instanz (`IndexingConfiguration#indexingTaskExecutor`) | #3808, ADR-0053 „Offen“, #106 | offen |
 | Verhalten bei Umschaltung der Datenbank unbelegt | Handbuch nennt einen Operator, aber weder Anbindung einer replizierten Datenbank noch Verhalten bei Umschaltung ([Kubernetes, Datenbank](../handbuch/betrieb/kubernetes.md#datenbank)); die Hörverbindung braucht eine direkte Verbindung ([Voraussetzungen](../handbuch/betrieb/datenbank.md#voraussetzungen-einer-eigenen-postgresql)) | #3807 | offen |
 | Eine Organisation je Installation | genau eine Organisation, Datenmodell vorbereitet ([Eine Organisation](../handbuch/betrieb/README.md#eine-organisation)); Modelle, Anbieter und Ausgangsproxy sind installationsweit | #1442, ADR-0014, Entscheidung 15 | offen, Epic geparkt |
@@ -183,7 +184,8 @@ Update mit anderem Namen und braucht dieselben Regeln.
 
 Wird ein Hindernis erledigt, steht in seiner Zeile „erledigt“ mit dem Verweis auf den liefernden
 Vorgang; ein neu erkanntes Hindernis kommt mit Beleg in die Tabelle seiner Architektur. Entscheidet
-#3806 oder #3808 anders als hier skizziert, ändern sich Skizze und Tabelle von „groß“ im selben PR.
+#3808 anders als hier skizziert oder schreibt ADR-0075 eine Ausbaustufe fort, ändern sich Skizze und
+Tabelle von „groß“ im selben PR.
 
 ## Konsequenzen
 
@@ -195,9 +197,9 @@ Zielbild.
 Größenordnungen sind bis zum Sizing (#3492) nur Richtwerte und dürfen nicht als Zusage gelesen
 werden.
 
-**Restrisiken:** „Groß“ hängt an Entscheidungen, die noch ausstehen (#3806, #3808, #1442); fallen
-sie gegen eine Trennung aus, bleibt „groß“ ein „mittel“ mit replizierter Datenbank und mehr
-Instanzen.
+**Restrisiken:** „Groß“ hängt an Entscheidungen, die noch ausstehen (#3808, #1442). Fallen sie gegen
+Rollen bzw. Mandanten aus, bleibt „groß“ ein „mittel“ mit replizierter Datenbank und mehr Instanzen.
+Die Grenze von pgvector gilt auch hier, solange alle Abschnitte in einer Datenbank liegen (ADR-0075).
 
 ## Verworfene Alternativen
 

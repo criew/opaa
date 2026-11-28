@@ -1729,7 +1729,7 @@ class LocalUserAdminIntegrationTest {
                 "geheim",
                 MailEncryption.NONE,
                 "opaa@intern.example",
-                "OPAA")
+                "opaa")
             : new MailSettingsUpdate(
                 false, null, null, null, "", MailEncryption.STARTTLS, null, null));
   }

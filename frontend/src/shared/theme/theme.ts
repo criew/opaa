@@ -3,12 +3,13 @@ import type { Theme } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
 import { deriveAccentSurface, deriveAccentText } from '../utils/contrast'
 import { deDE } from '@mui/material/locale'
-import type { BrandingOverrides, SchemeRoles } from './tokens'
+import type { BrandingOverrides, DocumentViewRoles, SchemeRoles } from './tokens'
 import {
   blue,
-  carbon,
   controlHeight,
   darkRoles,
+  documentViewDark,
+  documentViewLight,
   focusRingOffsetPx,
   focusRingWidthPx,
   fontFamily,
@@ -34,6 +35,19 @@ declare module '@mui/material/styles' {
      * cutout, reads it from here.
      */
     scrim: string
+  }
+  interface Palette {
+    /** Desk, paper and passage mark of the document view (guidelines 2.3). */
+    documentView: DocumentViewRoles
+    /**
+     * The filled action surface and its label (accent-surface/accent-fg, guidelines 2.2) for
+     * controls that are no contained Button but must look like one, such as the chat's send button.
+     */
+    actionSurface: { main: string; hover: string; press: string; contrastText: string }
+  }
+  interface PaletteOptions {
+    documentView?: DocumentViewRoles
+    actionSurface?: { main: string; hover: string; press: string; contrastText: string }
   }
 }
 
@@ -64,14 +78,15 @@ export function focusFrameStyle(color: string) {
  */
 function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   const brandColor = branding?.primaryColor
-  // The OPAA standard colour counts as "not configured": the backend resolves branding
-  // field by field, so an unconfigured deployment still delivers '#1292EE' - but that value means
-  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-500
+  // The opaa standard colour counts as "not configured": the backend resolves branding
+  // field by field, so an unconfigured deployment still delivers blue-700 - but that value means
+  // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-400
   // dark). Only a genuinely different operator colour overrides the roles.
-  // OPAA_BRANDING.primaryColor mirrors blue[500]; theme.test.ts pins that equivalence.
-  if (!brandColor || brandColor.toUpperCase() === blue[500].toUpperCase()) {
+  // OPAA_BRANDING.primaryColor mirrors blue[700]; theme.test.ts pins that equivalence.
+  if (!brandColor || brandColor.toUpperCase() === blue[700].toUpperCase()) {
     return {
       accent: roles.accent,
+      accentFg: roles.accentFg,
       accentSurface: roles.accentSurface,
       accentHover: roles.accentHover,
       accentPress: roles.accentPress,
@@ -88,6 +103,8 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
     // unchanged. Now it is moved away from the ground as far as the threshold requires — no
     // further. The surface is not affected (`accentSurface` above).
     accent: deriveAccentText(brandColor, [roles.bg1, roles.bg2, roles.bg3]),
+    // deriveAccentSurface guarantees white on the surface, whatever the scheme's own accentFg.
+    accentFg: white,
     accentSurface,
     accentHover: darken(accentSurface, 0.08),
     accentPress: darken(accentSurface, 0.16),
@@ -105,7 +122,7 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
 
 /**
  * The global rail's theme: a step darker than the navy sidebar while the app
- * is light ({@link railRoles}), the carbon dark scheme while it is dark - same rule as the
+ * is light ({@link railRoles}), the dark scheme while it is dark - same rule as the
  * sidebar, one surface further left.
  */
 export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrides): Theme {
@@ -114,8 +131,11 @@ export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrid
 
 function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
-  const { accent, accentSurface, accentHover, accentPress } = resolveAccent(roles, branding)
-  const scrim = isDark ? alpha(carbon[950], 0.72) : alpha(navy[900], 0.42)
+  const { accent, accentFg, accentSurface, accentHover, accentPress } = resolveAccent(
+    roles,
+    branding,
+  )
+  const scrim = isDark ? alpha(navy[950], 0.72) : alpha(navy[900], 0.42)
   // One opaque focus ring for everything interactive, in both schemes (guidelines 4.4). MUI
   // components draw it through `focusVisible` below, which also insets it where a scrolling
   // container would clip it (menu items, list items, tabs); the global rule covers the rest.
@@ -137,7 +157,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         primary: {
           main: accent,
           dark: accentPress,
-          contrastText: roles.accentFg,
+          contrastText: accentFg,
         },
         secondary: {
           main: roles.fg2,
@@ -167,6 +187,13 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           scrim,
         },
         divider: roles.border,
+        documentView: isDark ? documentViewDark : documentViewLight,
+        actionSurface: {
+          main: accentSurface,
+          hover: accentHover,
+          press: accentPress,
+          contrastText: accentFg,
+        },
         text: {
           primary: roles.fg1,
           secondary: roles.fg2,
@@ -327,10 +354,10 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 {
                   props: { variant: 'contained', color: 'primary' },
                   style: {
-                    // The filled surface is accentSurface, never the (possibly lighter)
-                    // accent - white label text needs 4.5:1.
+                    // The filled surface is accentSurface, never the accent: its label
+                    // (accentFg) is only guaranteed 4.5:1 there.
                     backgroundColor: accentSurface,
-                    color: roles.accentFg,
+                    color: accentFg,
                     '&:hover': {
                       backgroundColor: accentHover,
                     },
@@ -537,8 +564,8 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         // The ground behind a floating layer recedes instead of only getting darker: on
         // the almost black ground of the dark scheme darkening alone stays almost
         // without effect. `invisible` is excluded - menus and popovers deliberately bring none.
-        // The scrim carries the scheme's tone: navy in the light one, the neutral carbon in the
-        // dark one, whose ground knows no blue tint.
+        // The scrim carries the scheme's tone: navy-900 in the light one, the deeper navy-950 in
+        // the dark one.
         MuiBackdrop: {
           styleOverrides: {
             root: {
@@ -604,7 +631,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                   props: { variant: 'filled', color: 'primary' },
                   style: {
                     backgroundColor: accentSurface,
-                    color: roles.accentFg,
+                    color: accentFg,
                   },
                 },
               ],
@@ -618,7 +645,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         MuiTooltip: {
           styleOverrides: {
             tooltip: {
-              backgroundColor: isDark ? carbon[700] : navy[700],
+              backgroundColor: isDark ? navy[600] : navy[700],
               color: isDark ? roles.fg1 : white,
               fontSize: fontSize.meta,
               borderRadius: radius.sm,

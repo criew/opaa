@@ -23,7 +23,7 @@ function farbeVon(element: HTMLElement): string {
   return getComputedStyle(element).color
 }
 
-/** `#3B4958` → `rgb(59, 73, 88)`: jsdom always returns the computed colour in this form. */
+/** `#3F4468` → `rgb(63, 68, 104)`: jsdom always returns the computed colour in this form. */
 function alsRgb(hex: string): string {
   const wert = hex.replace('#', '')
   const zahl = Number.parseInt(wert, 16)

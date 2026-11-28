@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0010, ADR-0012, ADR-0013
+Akzeptiert · zuletzt geändert 2026-11-27 · ergänzt durch ADR-0010, ADR-0012, ADR-0013
 
 ## Kontext
 
@@ -68,6 +68,18 @@ Fehlerkriterium präzisiert ADR-0013.
 behandelt: Änderungen sind reviewpflichtige Commits mit begründeter Baseline-Aktualisierung
 (`eval/baseline/README.md`).
 
+### 7. Antwortqualität: Muster statt Modell-Juror, Zustand je Ebene
+
+Die Domäne `answer-quality` prüft Antworten auf vollständig beantwortbare Fragen (falsche Fehlanzeige,
+unnötiger Hinweis, falsche Bezugsgröße) ausschließlich mit Mustern auf Text; ein Modell urteilt nie.
+Jeder Fall trägt je Ebene einen deklarierten Zustand (`solved`, `known_gap`, `unmeasured`): die
+Formatebene (produktive Formate ohne Docker, in `evalUnitTest`) lässt die CI in beide Richtungen
+scheitern, die Kontextebene (Suche bis Prompt-Kontext) und der Antwortlauf mit Modell messen nur und
+nennen Abweichungen im Bericht. Ein Muster ist eine Stichprobe von Formulierungen; die Quoten für Fehlanzeige
+und Hinweis sind Untergrenzen, ein Wert- oder Bezugsfehler kann dagegen auch überzählt werden (eine
+unbekannte Schreibweise der richtigen Zahl), und kein Wert gated. Ein Modell-Juror wäre selbst ein zu messendes, mit Version und
+Temperatur driftendes Modell.
+
 ## Konsequenzen
 
 Einfacher: Der Regressionstest läuft ohne Netzzugriff auf Fremdquellen und ohne Secrets, auch in
@@ -81,8 +93,8 @@ erfordert einen neuen Baseline-Lauf.
 
 Restrisiken: Der HNSW-Index (`spring.ai.vectorstore.pgvector.index-type`) ist approximativ; die
 Toleranz muss Schwankungen abfedern, oder der Indextyp wird für die Evaluierung konfigurierbar
-gemacht; der Messvertrag führt ihn als `pgvectorIndexType` (ADR-0012). Der Harness misst nur Retrieval, nie die Generierung; was eine
-Demo- oder Betriebsinstanz mit anderem Embedding- oder Chat-Modell erlebt, belegt er nicht.
+gemacht; der Messvertrag führt ihn als `pgvectorIndexType` (ADR-0012). Die Retrieval-Harnesse messen nur Retrieval, die Antwortqualität misst nur Muster auf einer Stichprobe; was eine
+Demo- oder Betriebsinstanz mit anderem Embedding- oder Chat-Modell erlebt, belegen sie nicht.
 
 ## Verworfene Alternativen
 

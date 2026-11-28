@@ -157,7 +157,7 @@ class MailConnectionTesterIntegrationTest {
         password,
         MailEncryption.NONE,
         "opaa@intern.example",
-        "OPAA");
+        "opaa");
   }
 
   private String storedSendStatus() {

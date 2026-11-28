@@ -3,7 +3,7 @@
 # release.
 publiccodeYmlVersion: "0.4"
 
-name: OPAA
+name: opaa
 url: "https://github.com/criew/opaa"
 landingURL: "https://opaa.io"
 
@@ -36,16 +36,16 @@ description:
       Quelloffene KI-Plattform für die öffentliche Verwaltung: das Wissen des Hauses belegbar
       befragen, im eigenen Rechenzentrum.
     longDescription: >-
-      OPAA (Open Project AI Assistant) macht verstreutes Wissen einer Behörde befragbar und
+      opaa (open project ai assistant) macht verstreutes Wissen einer Behörde befragbar und
       nachweisbar. Dokumente aus Dateiablagen, Wikis, Webseiten und Cloud-Speichern werden in
       Wissensbibliotheken eingelesen; Beschäftigte stellen in Spaces, gemeinsamen Arbeitsräumen,
       Fragen in natürlicher Sprache. Jede Antwort nennt ihre Fundstellen, und für
-      haftungskritische Zusammenhänge lässt sich OPAA so einstellen, dass ohne Beleg keine Antwort
+      haftungskritische Zusammenhänge lässt sich opaa so einstellen, dass ohne Beleg keine Antwort
       ergeht. Rechte werden je Bibliothek und Space vergeben, ein revisionssicheres Protokoll hält
       fest, wer welche Rechte wann erhalten hat.
 
 
-      OPAA läuft im eigenen Rechenzentrum, mit Docker Compose oder Kubernetes (Helm-Chart), und
+      opaa läuft im eigenen Rechenzentrum, mit Docker Compose oder Kubernetes (Helm-Chart), und
       nutzt Sprach- und Einbettungsmodelle über eine OpenAI-kompatible Schnittstelle, etwa ein
       Modell im Behördennetz. Daten verlassen das Haus nur dorthin, wohin die Verwaltung es
       einstellt; jede Verbindung nach außen steht im Fakten-Manifest der Version.
@@ -56,7 +56,7 @@ description:
       Datenflüsse und Voreinstellungen, das Delta zum vorigen Release mit Stufenvorschlägen für die
       Beteiligung, Betriebsfolgen, Lizenzübersicht, SBOMs und Vorlagen für Behördenunterlagen.
       Images, Chart und Update-Paket sind attestiert; für Netze ohne Internetzugang gibt es ein
-      Offline-Bündel. OPAA steht unter der GNU Affero General Public License 3.0 und wird offen
+      Offline-Bündel. opaa steht unter der GNU Affero General Public License 3.0 und wird offen
       auf GitHub entwickelt.
     features:
       - Fragen an das Wissen des Hauses mit Fundstelle zu jeder Aussage
@@ -72,15 +72,15 @@ description:
       Open source AI platform for public administration: ask the knowledge of your organisation
       with sources, in your own data centre.
     longDescription: >-
-      OPAA (Open Project AI Assistant) makes the scattered knowledge of a public authority
+      opaa (open project ai assistant) makes the scattered knowledge of a public authority
       searchable and verifiable. Documents from file shares, wikis, websites and cloud storage are
       ingested into knowledge libraries; staff ask questions in natural language in spaces, shared
-      workspaces. Every answer cites its sources, and for contexts with liability OPAA can be set
+      workspaces. Every answer cites its sources, and for contexts with liability opaa can be set
       to give no answer without a source. Permissions are granted per library and space, and a
       tamper-evident audit log records who received which rights and when.
 
 
-      OPAA runs in your own data centre with Docker Compose or Kubernetes (Helm chart) and uses
+      opaa runs in your own data centre with Docker Compose or Kubernetes (Helm chart) and uses
       language and embedding models through an OpenAI compatible interface, such as a model inside
       the authority's network. Data leaves the organisation only where the administration sets it
       to; every outbound connection is listed in the fact manifest of the version.
@@ -91,7 +91,7 @@ description:
       to the previous release with proposed participation levels, operational consequences,
       license overview, SBOMs and templates for the authority's documents. Images, chart and
       update package are attested, and an offline bundle serves networks without internet access.
-      OPAA is licensed under the GNU Affero General Public License 3.0 and developed openly on
+      opaa is licensed under the GNU Affero General Public License 3.0 and developed openly on
       GitHub. Its documentation and user interface are in German.
     features:
       - Questions on the organisation's knowledge with a source for every statement

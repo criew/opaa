@@ -11,7 +11,7 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die OPAA selbst betreiben oder betreiben lassen.
+**Gilt für:** alle Behörden, die opaa selbst betreiben oder betreiben lassen.
 
 Eine Sicherung, deren Wiederherstellung nie geprüft wurde, ist keine Sicherung. Die
 Wiederherstellungsprobe spielt eine Sicherung in eine leere Testinstallation zurück und zeigt, ob
@@ -19,7 +19,7 @@ Datenbank, Suchindex und Originale zueinander passen und ob Rechte erhalten blei
 Werte, die das [Notfallkonzept](notfallkonzept.md) festlegt; die Behörde veranlasst sie, der
 Betrieb führt sie durch.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Das Verfahren** mit Testbestand, Ablauf, zwölf Prüfungen (P1 bis P12) und Messung:
   [Wiederherstellungsprobe](../../handbuch/betrieb/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) im Handbuch, die
@@ -44,7 +44,7 @@ Betrieb führt sie durch.
 
 ```text
 Datum der Probe:              [ ]
-OPAA-Version, Image-Digests:  [ ]
+opaa-Version, Image-Digests:  [ ]
 Betriebsweg und Ablage:       [Compose / Kubernetes; Dateisystem / Objektspeicher]
 Bestand:                      [Testbestand / Kopie des Produktivbestands], Größe Datenbank [ ],
                               Menge der Originale [ ], Zahl der Dokumente [ ]

@@ -6,7 +6,7 @@ package io.opaa.branding;
  * product name, and a later change to the standard reaches every deployment that never overrode it.
  *
  * <p>The values mirror docs/design/guidelines.md - {@link #PRIMARY_COLOR} is the accent {@code
- * blue.500} the token layer already carries ({@code frontend/src/shared/theme/tokens.ts}). Changing
+ * blue.700} the token layer already carries ({@code frontend/src/shared/theme/tokens.ts}). Changing
  * one here without changing it there would split the standard in two.
  */
 public final class BrandingDefaults {
@@ -20,9 +20,9 @@ public final class BrandingDefaults {
   /** Maximum accepted length of {@link EffectiveBranding#aiNotice()}, in characters. */
   public static final int MAX_AI_NOTICE_LENGTH = 500;
 
-  public static final String PRODUCT_NAME = "OPAA";
+  public static final String PRODUCT_NAME = "opaa";
 
-  public static final String CLAIM = "Fragen. Belegen. Entscheiden.";
+  public static final String CLAIM = "opaa weiß, was war, und hilft bei dem, was kommt.";
 
   /**
    * The notice that tells users the answers come from an AI (Art. 50 KI-VO). It can be replaced but
@@ -32,7 +32,7 @@ public final class BrandingDefaults {
       "Antworten werden von einer KI erzeugt und können Fehler enthalten. "
           + "Prüfen Sie wichtige Angaben anhand der Belege.";
 
-  public static final String PRIMARY_COLOR = "#1292EE";
+  public static final String PRIMARY_COLOR = "#0055A4";
 
   private BrandingDefaults() {}
 }

@@ -11,12 +11,12 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die OPAA selbst betreiben oder von einem Dienstleister beziehen. Wer
-OPAA an andere Stellen weitergibt, verändert oder unverändert, prüft seine Rolle gesondert.
+**Gilt für:** alle Behörden, die opaa selbst betreiben oder von einem Dienstleister beziehen. Wer
+opaa an andere Stellen weitergibt, verändert oder unverändert, prüft seine Rolle gesondert.
 
 Der Cyber Resilience Act (CRA) ist eine EU-Verordnung über die Sicherheit von Software und Geräten.
 Er verpflichtet *Wirtschaftsakteure*, also vor allem Hersteller, die solche Produkte auf den Markt
-bringen; eine Behörde, die OPAA für sich betreibt, trifft er nach der Rechtsrecherche des Projekts
+bringen; eine Behörde, die opaa für sich betreibt, trifft er nach der Rechtsrecherche des Projekts
 nicht. Für sie zählt, welche Pflichten das Projekt und ein Dienstleister haben und was sie in der
 Vergabe fragt. Die Meldepflichten gelten seit dem 11.9.2026, der ganze CRA ab dem 11.12.2027.
 
@@ -24,12 +24,12 @@ Vergabe fragt. Die Meldepflichten gelten seit dem 11.9.2026, der ganze CRA ab de
 
 | Beteiligte | Rolle nach dem CRA | Pflichten im Kern |
 |---|---|---|
-| **Projekt OPAA** | Open-Source-Steward: eine Stelle, die quelloffene Software dauerhaft pflegt, ohne sie als Hersteller zu verkaufen | Cybersicherheitsstrategie, Zusammenarbeit mit den Marktüberwachungsbehörden, begrenzte Meldepflichten |
-| **Dienstleister**, der OPAA kommerziell als Produkt bereitstellt (gepackt, als Appliance, als bezahlte Distribution) | Hersteller | volle Herstellerpflichten, darunter Meldepflichten; ab 11.12.2027 auch Konformitätsbewertung und CE-Kennzeichnung |
-| **Dienstleister**, der OPAA nur als Dienst betreibt (reines SaaS) | grundsätzlich keine | — |
-| **Behörde**, die OPAA für sich betreibt | Betreiberin; der CRA kennt diese Rolle nicht | nach der Recherche keine Pflichten aus dem CRA; sie profitiert von den Pflichten der anderen |
+| **Projekt opaa** | Open-Source-Steward: eine Stelle, die quelloffene Software dauerhaft pflegt, ohne sie als Hersteller zu verkaufen | Cybersicherheitsstrategie, Zusammenarbeit mit den Marktüberwachungsbehörden, begrenzte Meldepflichten |
+| **Dienstleister**, der opaa kommerziell als Produkt bereitstellt (gepackt, als Appliance, als bezahlte Distribution) | Hersteller | volle Herstellerpflichten, darunter Meldepflichten; ab 11.12.2027 auch Konformitätsbewertung und CE-Kennzeichnung |
+| **Dienstleister**, der opaa nur als Dienst betreibt (reines SaaS) | grundsätzlich keine | — |
+| **Behörde**, die opaa für sich betreibt | Betreiberin; der CRA kennt diese Rolle nicht | nach der Recherche keine Pflichten aus dem CRA; sie profitiert von den Pflichten der anderen |
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Cybersicherheitsstrategie:** [`SECURITY.md`](../../../SECURITY.md) mit Meldeweg, unterstützten
   Versionen und Ablauf bis zum Security Advisory; dort ist auch die Zusammenarbeit mit den
@@ -42,8 +42,8 @@ Vergabe fragt. Die Meldepflichten gelten seit dem 11.9.2026, der ganze CRA ab de
 
 ### Meldepflichten des Projekts
 
-- **Aktiv ausgenutzte Schwachstellen:** Das Projekt entwickelt OPAA selbst und meldet solche
-  Schwachstellen in OPAA deshalb.
+- **Aktiv ausgenutzte Schwachstellen:** Das Projekt entwickelt opaa selbst und meldet solche
+  Schwachstellen in opaa deshalb.
 - **Schwerwiegende Sicherheitsvorfälle:** nur, soweit sie die Systeme betreffen, die das Projekt für
   die Entwicklung bereitstellt, etwa Repository, CI und Image-Registry.
 
@@ -54,10 +54,10 @@ ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
 
 1. **Rolle des Dienstleisters klären** und die Anforderungen in der Vergabe festlegen
    ([Anforderungskatalog](../03-vergabe/anforderungskatalog.md), Baustein L-08). Mögliche Fragen:
-   - Stellen Sie OPAA als Produkt im Sinne des CRA bereit, und in welcher Rolle?
+   - Stellen Sie opaa als Produkt im Sinne des CRA bereit, und in welcher Rolle?
    - Wie erfüllen Sie die Meldepflichten (Frühwarnung binnen 24 Stunden, Meldung binnen 72
      Stunden), und wie erfahren wir von einer Meldung?
-   - Welche OPAA-Version liefern Sie, wie lange pflegen Sie sie, und melden Sie gefundene
+   - Welche opaa-Version liefern Sie, wie lange pflegen Sie sie, und melden Sie gefundene
      Schwachstellen an das Projekt?
 2. **Lücken vertraulich melden** über den [Meldeweg](../../../SECURITY.md#meldeweg), nicht in einem
    öffentlichen Issue.

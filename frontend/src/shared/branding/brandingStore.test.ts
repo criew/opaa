@@ -13,7 +13,7 @@ describe('brandingStore', () => {
     })
   })
 
-  it('starts on the OPAA standard before anything is loaded', () => {
+  it('starts on the opaa standard before anything is loaded', () => {
     const { branding, isLoaded } = useBrandingStore.getState()
 
     expect(branding).toEqual(OPAA_BRANDING)
@@ -26,7 +26,7 @@ describe('brandingStore', () => {
         HttpResponse.json({
           productName: 'Landesamt-Assistent',
           claim: 'Kurz und klar',
-          primaryColor: '#0B6FBC',
+          primaryColor: '#1A5FA0',
           logoUrl: '/api/v1/branding/logo?v=abc123',
         }),
       ),
@@ -45,7 +45,7 @@ describe('brandingStore', () => {
    * Silent is the operative word - branding is decoration, and a failed request must neither keep
    * the application from rendering nor put a message in front of a user who cannot act on it.
    */
-  it('falls back to the OPAA standard silently when the request fails', async () => {
+  it('falls back to the opaa standard silently when the request fails', async () => {
     server.use(http.get('/api/v1/branding', () => HttpResponse.error()))
 
     await useBrandingStore.getState().loadBranding()
@@ -68,16 +68,16 @@ describe('brandingStore', () => {
   it('applies a saved change immediately, without a second request', async () => {
     await useBrandingStore
       .getState()
-      .saveBranding({ productName: 'Landesamt-Assistent', primaryColor: '#0B6FBC' })
+      .saveBranding({ productName: 'Landesamt-Assistent', primaryColor: '#1A5FA0' })
 
     const { branding, isSaving, error } = useBrandingStore.getState()
     expect(branding.productName).toBe('Landesamt-Assistent')
-    expect(branding.primaryColor).toBe('#0B6FBC')
+    expect(branding.primaryColor).toBe('#1A5FA0')
     expect(isSaving).toBe(false)
     expect(error).toBeNull()
   })
 
-  it('empties a field back to the OPAA standard rather than storing the empty value', async () => {
+  it('empties a field back to the opaa standard rather than storing the empty value', async () => {
     await useBrandingStore.getState().saveBranding({ productName: 'Landesamt-Assistent' })
     await useBrandingStore.getState().saveBranding({ productName: '' })
 

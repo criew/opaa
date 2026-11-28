@@ -11,3 +11,36 @@ pyasn1==0.6.5 \
 oauthlib==4.0.1 \
     --hash=sha256:498a298876e996301950a5b053d12c31628bb7b895db03666430c69ce182eb61 \
     --hash=sha256:3d73febdb6faa00f277c81fb04be7b7586fb96fc3b7f0b9c772dada69a25ede7
+# dnspython 2.9.0: CVE-2026-128089
+dnspython==2.9.2 \
+    --hash=sha256:af15f7d385a6ae2fb35a796fde2138004c8c42c7389090e2addc83e3b3340fd8 \
+    --hash=sha256:8d4d39a513e649d634004ce4d39ade2352efcea472a0247535a5c2d18a9d7ba9
+# soupsieve 3.0.4: CVE-2026-126190. Only docling's HTML backend selects with it, through
+# beautifulsoup4 (soupsieve>=1.6.1); 4.x keeps that API.
+soupsieve==4.1.1 \
+    --hash=sha256:8ff3422dab0b720fb667ee79864d80531a0e57994a13eb701697719ffcb751f6 \
+    --hash=sha256:b296bd2d2f65b1a78149f3d7bf6736a147d2c9e2dfbde0e4404639d748a02e03
+# opentelemetry-api 1.45.1: CVE-2026-126360. opentelemetry-sdk and -semantic-conventions pin the
+# api exactly, and the instrumentation packages pin semantic-conventions exactly, so the whole
+# group moves together; the exporters accept opentelemetry-sdk~=1.45.1 and stay as shipped.
+opentelemetry-api==1.45.2 \
+    --hash=sha256:2cbd737377e710ee740d261c94e93fa0f08e6d037c18f17513cc0a2d94479a34 \
+    --hash=sha256:d7b0008e21e5fd61cbe7a7f34ca3b6905a78ab677d9bc395e299359c75cda6b4
+opentelemetry-sdk==1.45.2 \
+    --hash=sha256:ff974ea70ee4f1d51e2ec152db37c2b626c7bf82bb3f7d86114fd8704e7199c6 \
+    --hash=sha256:7eec4de13dd21ff3a1670dcb0e02079e692736f94d733dfdce5af461d884248d
+opentelemetry-semantic-conventions==0.66b2 \
+    --hash=sha256:4cbe61e5f9275d57ab31708446e7938ef4291ebbe6a7fca6f7a629c5acae87d8 \
+    --hash=sha256:7da5f1a5dc4383eb66711d4d3d3e71824d9403ac1559fea021cc103c1a4c4976
+opentelemetry-instrumentation==0.66b2 \
+    --hash=sha256:fa9ccfdab147a14af8107d19ef0a7b5015675273c5adced7a1fc38f28b42ec4c \
+    --hash=sha256:02b094150e53b76f5906d75e628dbb3833bbc6e62fa109b5c7ba0c081865e923
+opentelemetry-instrumentation-asgi==0.66b2 \
+    --hash=sha256:9c5ec36e6b898f18e6b07b5077c2a3bafa9abf69de98e729797b9efa465f8aa3 \
+    --hash=sha256:da8a2df4589976ad483feaec150a78ec7d1947754e420b838a4942361e465bfb
+opentelemetry-instrumentation-fastapi==0.66b2 \
+    --hash=sha256:401eb9fe58cc86015ac0a6682dcaf1b4bcea32c428969853d02171d6650d1774 \
+    --hash=sha256:bd226e0196990999eef77380a64527a26f35b621e681c3cad860984ecc3c23f5
+opentelemetry-util-http==0.66b2 \
+    --hash=sha256:c4bb5d6744e60353bcaa3e325bc529a1515346b51cb4d9c8e5b730579337e06d \
+    --hash=sha256:7ba066ea609202e474679ddf1d0f753a1e6619bd206b36afaecba4bbb86e25d0

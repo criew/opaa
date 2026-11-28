@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
 
-export const PROTOTYPE_TITLE = 'OPAA-Prototyp'
+export const PROTOTYPE_TITLE = 'opaa-Prototyp'
 
 /**
  * Rewrites every non-ASCII UTF-16 code unit and every control character other than tab, line feed

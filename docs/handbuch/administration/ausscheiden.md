@@ -36,7 +36,7 @@ offen“. Agenten und Vorlagen ohne verantwortliche Stelle werden nach einer eig
 3. Die **Vorschau** lesen, etwa „12 Berechtigungen an 7 Objekten, Mitglied in 2 Spaces, Eigentum an
    3 Objekten“.
 4. Bestätigen. Hat sich inzwischen etwas geändert oder ist die Vorschau älter als 30 Minuten,
-   verlangt OPAA eine neue.
+   verlangt opaa eine neue.
 
 | Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
 |---|---|---|---|

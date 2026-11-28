@@ -1,15 +1,10 @@
 package io.opaa.connection.log;
 
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.AuditOutcome;
-import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.ValidationException;
-import java.nio.charset.StandardCharsets;
+import io.opaa.settings.RetentionSetting;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,57 +17,43 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ConnectionLogRetentionService {
 
-  private static final String ADMIN_ONLY =
-      "Nur die Administration darf die Aufbewahrungsfrist des Verbindungsprotokolls einsehen"
-          + " und ändern";
-
-  static final UUID SETTINGS_OBJECT_ID =
-      UUID.nameUUIDFromBytes("connection_log_retention_settings".getBytes(StandardCharsets.UTF_8));
-
   private final ConnectionLogRetentionSettingsRepository repository;
-  private final AuditEventRecorder auditEventRecorder;
+  private final RetentionSetting setting;
 
   ConnectionLogRetentionService(
       ConnectionLogRetentionSettingsRepository repository, AuditEventRecorder auditEventRecorder) {
     this.repository = repository;
-    this.auditEventRecorder = auditEventRecorder;
+    this.setting =
+        new RetentionSetting(
+            auditEventRecorder,
+            "connection_log_retention_settings",
+            "Nur die Administration darf die Aufbewahrungsfrist des Verbindungsprotokolls"
+                + " einsehen und ändern",
+            AuditEventType.CONNECTION_LOG_RETENTION_CHANGED,
+            "Aufbewahrungsfrist des Verbindungsprotokolls",
+            new RetentionSetting.Bounds(
+                ConnectionLogRetentionSettings.MIN_RETENTION_MONTHS,
+                ConnectionLogRetentionSettings.MAX_RETENTION_MONTHS,
+                "Monaten",
+                ""));
   }
 
   @Transactional(readOnly = true)
   public ConnectionLogRetentionSettings read(CurrentUser actor) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
+    setting.requireAdmin(actor);
     return settingsRow();
   }
 
   @Transactional
   public ConnectionLogRetentionSettings updateRetentionMonths(CurrentUser actor, int months) {
-    actor.requireSystemAdmin(ADMIN_ONLY);
-    if (months < ConnectionLogRetentionSettings.MIN_RETENTION_MONTHS
-        || months > ConnectionLogRetentionSettings.MAX_RETENTION_MONTHS) {
-      throw new ValidationException(
-          "Die Aufbewahrungsfrist des Verbindungsprotokolls muss zwischen "
-              + ConnectionLogRetentionSettings.MIN_RETENTION_MONTHS
-              + " und "
-              + ConnectionLogRetentionSettings.MAX_RETENTION_MONTHS
-              + " Monaten liegen");
-    }
+    setting.requireAdmin(actor);
+    setting.requireWithin("Die Aufbewahrungsfrist des Verbindungsprotokolls", months);
     int previous = settingsRow().getRetentionMonths();
-    if (repository.updateRetentionMonths(months) != 1) {
-      throw new IllegalStateException("connection_log_retention_settings has no row with id=1");
-    }
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(actor.organizationId())
-            .actor(actor.id())
-            .type(AuditEventType.CONNECTION_LOG_RETENTION_CHANGED)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                SETTINGS_OBJECT_ID,
-                "Aufbewahrungsfrist des Verbindungsprotokolls")
-            .before(Map.of("retentionMonths", previous))
-            .after(Map.of("retentionMonths", months))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    setting.change(
+        actor,
+        Map.of("retentionMonths", previous),
+        Map.of("retentionMonths", months),
+        () -> repository.updateRetentionMonths(months));
     return settingsRow();
   }
 

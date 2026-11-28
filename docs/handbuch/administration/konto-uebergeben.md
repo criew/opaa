@@ -8,7 +8,7 @@
 
 1. Zeilenmenü des Kontos, „An Identitätsanbieter übergeben“.
 2. Anbieter wählen und einen **Anlass** eintragen; eine Kennung beim Anbieter gibt niemand ein.
-3. Die Person erhält einen Link, 72 Stunden und einmal gültig. Ohne Mailversand zeigt OPAA ihn
+3. Die Person erhält einen Link, 72 Stunden und einmal gültig. Ohne Mailversand zeigt opaa ihn
    einmal zur Weitergabe an. Bis zur Einlösung bleibt das Konto mit Passwort nutzbar.
 4. Die Person sieht, was mitgeht, meldet sich beim Anbieter an und hat damit übergeben. Alle
    Sitzungen und Zugangstokens enden, das Passwort verfällt. **Einen Rückweg gibt es nicht.**

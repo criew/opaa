@@ -145,7 +145,7 @@ export default function DirectorySyncPage() {
           icon={SyncOutlinedIcon}
           title="Verzeichnisabgleich"
           count={{ total: entries.length, unit: ['Anbieter', 'Anbieter'] }}
-          description="OPAA liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters, nur lesend."
+          description="opaa liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters, nur lesend."
         />
 
         <Box component="section" aria-labelledby="directory-sync-overview-heading">

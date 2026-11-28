@@ -14,8 +14,8 @@ describe('AboutDialog', () => {
   it('shows the build version, the development placeholder without OPAA_VERSION', () => {
     renderWithProviders(<AboutDialog open onClose={() => {}} />)
 
-    const dialog = screen.getByRole('dialog', { name: 'Info zu OPAA' })
-    expect(dialog).toHaveTextContent('OPAA v0.0.0-dev')
+    const dialog = screen.getByRole('dialog', { name: 'Info zu opaa' })
+    expect(dialog).toHaveTextContent('opaa v0.0.0-dev')
     expect(dialog).not.toHaveTextContent('v0.1.0')
   })
 })

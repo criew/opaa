@@ -1,6 +1,6 @@
 # Design-Guidelines
 
-Verbindliche Gestaltungsregeln der OPAA-Weboberfläche. Sie gelten für jedes UI-Issue und jeden
+Verbindliche Gestaltungsregeln der opaa-Weboberfläche. Sie gelten für jedes UI-Issue und jeden
 Frontend-PR; Abweichungen werden im PR begründet. Dieses Dokument ist die Quelle der Werte;
 die Zielbild-Beschreibung ([redesign-prompt.md](./redesign-prompt.md)) liefert den Hintergrund. Die technische Umsetzung als Token-Ebene und
 MUI-Theme ist Gegenstand von Issue #581; die Barrierefreiheits-Richtlinie
@@ -36,48 +36,45 @@ Die Skalen sind der Vorrat, aus dem die semantischen Rollen (2.2) schöpfen. **K
 nie direkt auf Skalenwerte zu** — sie verwenden Rollen. Ausnahmen sind in 2.3 abschließend
 aufgezählt.
 
+Die Ankerwerte stammen aus dem Markenkonzept: Dunkelblau `#242855`, Hellblau `#009DDB`,
+Mittelblau `#0055A4`, Hellblaugrau `#EEF3FB`, Grau `#555A78` und Weiß. Die übrigen Stufen sind
+daraus abgeleitet.
+
 **Blau** — Akzent- und Handlungsfarbe:
 
-| Stufe | Wert      | Stufe | Wert                                 |
-| ----- | --------- | ----- | ------------------------------------ |
-| 50    | `#E7F4FE` | 500   | `#1292EE` _(Basis)_                  |
-| 100   | `#C6E3FC` | 600   | `#0F80D6` _(Hover, −8 % Helligkeit)_ |
-| 200   | `#9BCEFA` | 700   | `#0B6FBC` _(Aktiv/Gedrückt, −16 %)_  |
-| 300   | `#61B5F6` | 800   | `#085B9C`                            |
-| 400   | `#349EF2` | 900   | `#05447A`                            |
+| Stufe | Wert      | Stufe | Wert                                                    |
+| ----- | --------- | ----- | ------------------------------------------------------- |
+| 50    | `#EBF7FC` | 500   | `#009DDB` _(Hellblau: Akzentlinie, Großschrift)_        |
+| 100   | `#CCEBF8` | 600   | `#0079C0`                                               |
+| 200   | `#99D8F1` | 700   | `#0055A4` _(Mittelblau: Akzent-Text hell, Aktionsfläche)_ |
+| 300   | `#66C4E9` | 800   | `#004686` _(Hover)_                                     |
+| 400   | `#33B1E2` | 900   | `#00386C` _(Gedrückt)_                                  |
 
-**Navy** — Struktur- und Textfarbe:
+Weiß auf Hellblau erreicht nur 3,07:1: **Hellblau ist nie Fläche unter weißer Schrift.** Weiß auf
+Mittelblau erreicht 7,41:1, deshalb ist Mittelblau die Aktionsfläche im hellen Schema; im dunklen ist sie Weiß (2.2).
 
-| Name     | Wert      | Verwendung                                          |
-| -------- | --------- | --------------------------------------------------- |
-| Navy     | `#012142` | Primärtext (hell), dunkle Grundfläche               |
-| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche                      |
-| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema                    |
-| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema                  |
-| Navy-500 | `#055396` | Grenzfälle, Diagramme                               |
+**Navy** (Dunkelblau) — Struktur- und Textfarbe:
 
-**Grau** (kühl, auf Navy abgestimmt): `#E6EBF1` (100), `#CBD4DF` (200), `#A4B1C1` (300),
-`#778797` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800).
+| Name     | Wert      | Verwendung                                                 |
+| -------- | --------- | ---------------------------------------------------------- |
+| Navy-950 | `#151731` | Schreibtisch der Dokumentansicht dunkel, Überlagerungen    |
+| Navy-900 | `#1B1E40` | globale Leiste hell, Karte der Dokumentansicht dunkel      |
+| Navy-800 | `#242855` | Dunkelblau: Primärtext hell, Seitengrund dunkel            |
+| Navy-700 | `#2F335E` | Aktivkachel der Rail, Tooltip hell                         |
+| Navy-600 | `#3E4269` | Standardrahmen dunkel, Tooltip dunkel                      |
+| Navy-500 | `#666888` | betonter Rahmen dunkel, Diagramme                          |
 
-**Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF2F7`
-(gedämpfte Fläche, Trennlinien).
+**Grau** (kühl, um das Grau `#555A78` des Markenkonzepts): `#E7E8EC` (100), `#CFD1D9` (200),
+`#AAACBC` (300), `#80839A` (400), `#555A78` (500), `#3F4468` (600), `#30345E` (700),
+`#20244C` (800).
 
-**Carbon** — neutrale Dunkel-Skala des dunklen Schemas (#654, angelehnt an das dunkle Schema
-der Claude-Docs-Website, erhoben am 20.08.2026). Navy bleibt der Block der globalen Leiste und
-der Anmeldeseite im hellen Schema:
-
-| Name       | Wert      | Verwendung                      |
-| ---------- | --------- | ------------------------------- |
-| Carbon-950 | `#09090B` | Seitengrund dunkel              |
-| Carbon-900 | `#171717` | erhöhte Fläche dunkel           |
-| Carbon-850 | `#1F1F1F` | gedämpfte Fläche dunkel         |
-| Carbon-800 | `#252525` | Standardrahmen dunkel           |
-| Carbon-700 | `#333333` | betonter Rahmen, Tooltip dunkel |
+**Weißtöne:** Weiß `#FFFFFF` · Off-White `#F6F8FB` (helle erhöhte Fläche) · Smoke `#EEF3FB`
+(Hellblaugrau: gedämpfte Fläche, Trennlinien).
 
 **Semantik:** Gefahr, Warnung und Erfolg sind Rollen je Schema (`danger`, `warning`, `success`,
-siehe 2.2), weil sie auch als Textfarbe dienen. Gefahr: Hell `#CE2C31`, Dunkel `#FF6369` (#2150;
+siehe 2.2), weil sie auch als Textfarbe dienen. Gefahr: Hell `#CE2C31`, Dunkel `#FF7A80` (#2150;
 der frühere gemeinsame Wert `#E5484D` erreichte als Text auf Weiß nur 3,91:1). Warnung: Hell
-`#8F5A00`, Dunkel `#F5B83D`; Erfolg: Hell `#11774F`, Dunkel `#16B77B` (#2493; die früher in
+`#8F5A00`, Dunkel `#F5B83D`; Erfolg: Hell `#11774F`, Dunkel `#38C18F` (#2493; die früher in
 beiden Schemata gemeinsamen Werte `#F5B83D` und `#16B77B` erreichten als Text auf Weiß nur
 1,78:1 bzw. 2,59:1).
 
@@ -87,53 +84,61 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 
 | Rolle            | Bedeutung                                                        | Hell                | Dunkel               |
 | ---------------- | ---------------------------------------------------------------- | ------------------- | -------------------- |
-| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Carbon-950 `#09090B` |
-| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | Carbon-900 `#171717` |
-| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF2F7`     | Carbon-850 `#1F1F1F` |
-| `fg-1`           | Primärtext                                                       | Navy `#012142`      | `#DEDEDE`            |
-| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3B4958`  | `#9E9E9E`            |
-| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#556473`  | `#8A8A8A`            |
-| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0B6FBC`  | Blau-500 `#1292EE`   |
-| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0B6FBC`  | Blau-700 `#0B6FBC`   |
-| `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Weiß                 |
-| `border`         | Standardrahmen                                                   | Grau-100 `#E6EBF1`  | Carbon-800 `#252525` |
-| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CBD4DF`  | Carbon-700 `#333333` |
-| `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF6369`            |
-| `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF7A80`            |
-| `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF8287`            |
+| `bg-1`           | Seitengrund                                                      | Weiß `#FFFFFF`      | Navy-800 `#242855`   |
+| `bg-2`           | erhöhte Fläche (Karte, Kopfzeile)                                | Off-White `#F6F8FB` | `#2F3466`            |
+| `bg-3`           | gedämpfte Fläche (Eingabefeld, Tabellenkopf)                     | Smoke `#EEF3FB`     | `#2A2E5E`            |
+| `fg-1`           | Primärtext                                                       | Navy-800 `#242855`  | Weiß `#FFFFFF`       |
+| `fg-2`           | Sekundärtext                                                     | Grau-600 `#3F4468`  | `#C9DBF2`            |
+| `fg-3`           | Tertiärtext, Metadaten                                           | Grau-500 `#555A78`  | `#A9B6D6`            |
+| `accent`         | Handlung, Bezug, aktiver Zustand (Text, Ziffern, Rahmen)         | Blau-700 `#0055A4`  | Blau-400 `#33B1E2`   |
+| `accent-surface` | Fläche gefüllter Aktionen (primäre Schaltfläche, gefüllter Chip) | Blau-700 `#0055A4`  | Weiß `#FFFFFF`       |
+| `accent-fg`      | Text auf `accent-surface`                                        | Weiß                | Navy-800 `#242855`   |
+| `border`         | Standardrahmen                                                   | Grau-100 `#E7E8EC`  | Navy-600 `#3E4269`   |
+| `border-strong`  | betonter Rahmen (Eingaben, Tabellen)                             | Grau-200 `#CFD1D9`  | Navy-500 `#666888`   |
+| `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF7A80`            |
+| `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF8287`            |
+| `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF9095`            |
 | `warning`        | Warnung: folgenreich, aber umkehrbar (Text, Icon, Kante, Fläche) | `#8F5A00`           | `#F5B83D`            |
-| `success`        | Erfolg: abgeschlossen, in Ordnung (Text, Icon, Punkt, Fläche)    | `#11774F`           | `#16B77B`            |
+| `success`        | Erfolg: abgeschlossen, in Ordnung (Text, Icon, Punkt, Fläche)    | `#11774F`           | `#38C18F`            |
 
 `warning` und `success` führen wie `danger` je eine Hover- und eine hellere Stufe (MUI `dark` und
 `light`): Warnung hell `#6B4300`/`#9A6100`, dunkel `#F7C35D`/`#F8CC73`; Erfolg hell
-`#0B5A3B`/`#0E7A52`, dunkel `#38C18F`/`#5BCB9F`. Die Werte stehen in
+`#0B5A3B`/`#0E7A52`, dunkel `#5BCB9F`/`#7DD5B1`. Die Werte stehen in
 `frontend/src/shared/theme/tokens.ts` (`SignalTones`).
 
-`fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
-Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
-der Wissensbibliotheken-Tabelle (Spaltenkopf, Metadaten) sichtbar unter der Schwelle. Grau-500
-erreicht 6,08:1 gegen Weiß und bleibt auch gegen `bg-2`/`bg-3` klar über 4,5:1; die Grau-Skala
-selbst (2.1) bleibt dabei unverändert.
+Das dunkle Schema steht auf Dunkelblau, nicht auf neutralem Grau: Es spiegelt die Logofassung für
+dunkle Flächen (Style Guide des Marketings): Seitengrund Dunkelblau, Karten (`bg-2`) eine Stufe
+heller (`#2F3466`), gedämpfte Flächen (`bg-3`) dazwischen, Texte Weiß und `#C9DBF2`. Der
+Zwischenton `#2A2E5E` steht nicht im Style Guide; er hält Eingabefelder und Tabellenköpfe von
+Seite und Karte auseinander. Gefüllte Schaltflächen sind **weiß mit dunkelblauer
+Schrift**, weil Mittelblau auf Dunkelblau nur 1,9:1 erreicht. Hellblau selbst erreicht auf
+Dunkelblau 4,53:1, auf den Karten aber nur 3,79:1; der Akzent als Text ist deshalb Blau-400
+(mindestens 4,73:1 auf allen dunklen Flächen), Hellblau bleibt Linien und Icons vorbehalten.
+
+`fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#80839A`) erreicht gegen
+Weiß nur 3,73:1 — unter der 4,5:1-Anforderung für Fließtext (2.4). Grau-500 erreicht 6,73:1 gegen
+Weiß und bleibt auch gegen `bg-2`/`bg-3` klar über 4,5:1.
 
 Das Rollenset auf Navy-Basis (`navyRoles`: Flächen Navy-800/700/600, Text
-Weiß/`#B9C6D4`/`#7A8BA0`) trägt seit #1922 nur noch **den Markenblock der Anmeldeseite**
-(`AuthLayout.tsx`) — die Werte des früheren dunklen Schemas, auf diese eine Fläche begrenzt
-(#654). Die Seitenleiste des Space nutzt es nicht mehr (siehe 2.3).
+Weiß/`#C8C9D4`/`#A3A5B8`) trägt seit #1922 nur noch **den Markenblock der Anmeldeseite**
+(`AuthLayout.tsx`). Die Seitenleiste des Space nutzt es nicht mehr (siehe 2.3).
 
 Die globale Leiste (Rail, #786) verwendet im hellen Schema das Rollenset `railRoles`
 (Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700 mit Navy-600-Rahmen, Text
-Weiß/`#99A1AB`/`#7A8BA0`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
-allem rechts davon ab. Im dunklen Schema folgt die Rail dem Carbon-Schema; Carbon hat keine
-dunklere Stufe, die Trennung übernimmt der Standardrahmen.
+Weiß/`#C8C9D4`/`#A3A5B8`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
+allem rechts davon ab. Im dunklen Schema folgt die Rail dem dunklen Schema; die Trennung übernimmt
+der Standardrahmen.
 
-`fg-3` (`#7A8BA0`) erreicht in `navyRoles` gegen `bg-1` 4,65:1, gegen `bg-2` 3,80:1 und gegen
-`bg-3` 2,99:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 5,26:1, gegen `bg-2`
-4,65:1 und gegen `bg-3` 3,80:1 — je Rollenset unterschreitet nur `bg-3` (und im Navy-Set
-zusätzlich `bg-2`) die 4,5:1-Schwelle (#853). Das ist folgenlos, weil `fg-3` dort nie als Text
-auf Hover- oder Aktivflächen landet: Rail-Kacheln zeigen im Hover `fg-2` (inaktiv, 6,20:1 gegen
-`bg-2`) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. Eine künftige Komponente, die `fg-3` als Text auf
-`bg-2`/`bg-3` dieser Rollensets einsetzt, verletzt 2.4 und braucht einen dunkleren Ton oder eine
-andere Rolle.
+Auf den helleren Navy-Stufen von `navyRoles` und `railRoles` fiele Hellblau unter 4,5:1 (auf
+Navy-700 3,90:1). Beide Rollensets führen deshalb Blau-300 `#66C4E9` als `accent`.
+
+`fg-3` (`#A3A5B8`) erreicht in `navyRoles` gegen `bg-1` 5,72:1, gegen `bg-2` 4,92:1 und gegen
+`bg-3` 3,94:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 6,61:1, gegen `bg-2`
+5,72:1 und gegen `bg-3` 4,92:1 — nur `bg-3` von `navyRoles` unterschreitet die 4,5:1-Schwelle
+(#853). Das ist folgenlos, weil `fg-3` dort nie als Text auf Hover- oder Aktivflächen landet:
+Rail-Kacheln zeigen im Hover `fg-2` (inaktiv) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. Eine
+künftige Komponente, die `fg-3` als Text auf `bg-3` von `navyRoles` einsetzt, verletzt 2.4 und
+braucht einen helleren Ton oder eine andere Rolle.
 
 ### 2.3 Regeln
 
@@ -172,8 +177,32 @@ andere Rolle.
   Bedeutung trägt der Satz, die Farbe zeigt nur, wo er hingehört. Ausnahme ist ein knapper
   Zustand ohne eigenes Zeichen, etwa der Grund unter einer gesperrten Kachel (5.11) — dort ist
   die Rolle selbst die Textfarbe und hält 2.4.
-- **Markierung von Suchtreffern** liegt auf dem eigenen Ton `markHighlight` (blasses Amber zu
-  25 %, in beiden Schemata gleich), nicht auf einer Signalrolle; der Text darauf bleibt `fg-1`.
+- **Markierung von Suchtreffern** im Chat liegt auf dem eigenen Ton `markHighlight` (blasses
+  Amber zu 25 %, in beiden Schemata gleich), nicht auf einer Signalrolle; der Text darauf bleibt
+  `fg-1`. Die Fundstelle in der Dokumentansicht trägt ihn nicht, sie folgt dem Belegfenster
+  (nächster Punkt).
+- **Die Dokumentansicht hat ein eigenes Rollenset `documentView`** (#3876), das den Lesemodus
+  für Originale und Textfassungen trägt (5.6):
+
+  | Rolle    | Verwendung                                             | Hell                 | Dunkel               |
+  |----------|--------------------------------------------------------|----------------------|----------------------|
+  | `desk`   | Grund des Lesemodus hinter dem Papier                  | Grau-100 `#E7E8EC`   | Navy-950 `#151731`   |
+  | `paper`  | Papier des Dokuments, in beiden Schemata hell          | Weiß                 | Weiß                 |
+  | `band`   | Fläche der Fundstelle, im PDF multipliziert            | Blau-100 `#CCEBF8`   | Blau-100 `#CCEBF8`   |
+  | `edge`   | Kante links der Fundstelle, Fläche des Etiketts        | Blau-700 `#0055A4`   | Blau-700 `#0055A4`   |
+  | `edgeFg` | Text des Etiketts „Fundstelle“                         | Weiß                 | Weiß                 |
+  | `card`   | Fundstellen-Karte und Panels neben dem Papier          | Weiß                 | Navy-900 `#1B1E40`   |
+
+  Das Papier bleibt auch im dunklen Schema hell: Ein Dokument sieht in der Ansicht aus wie
+  gedruckt, Text darauf steht im hellen Schema (`fg-1`), und das Papier trägt dafür das helle
+  Theme in sich. Die Fundstelle ist Fläche `band` plus 4 px Kante `edge` — dasselbe Zeichen wie
+  beim markierten Beleg im Belegfenster (5.8), nur auf dem Papier statt in der Leiste. Das
+  Etikett „Fundstelle“ steht genau einmal je Fundstelle, in der Typostufe `label`, links neben der
+  Kante im Rand, wo dieser reicht, sonst darüber; deckt es im PDF Text, entfällt es, Kante und
+  Fläche bleiben. Nachweis: `fg-1` auf `band` 11,13:1, `edgeFg` auf `edge` 7,41:1, `edge` gegen
+  `paper` 7,41:1 und gegen `band` 5,93:1; Text des Schemas auf `desk` und `card` hält die Werte
+  aus 2.4 (`frontend/src/shared/theme/theme.test.ts`). Im Modus „Erzwungene Farben“ werden Fläche
+  und Kante zu `Mark` und `Highlight`.
 
 ### 2.4 Kontrast
 
@@ -195,13 +224,14 @@ E2E-Suite misst die gescannten Seiten (#2493).
 Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
 deshalb wird er bei dunklem Text heller statt dunkler. Im hellen Schema tragen Gefahr, Warnung
 und Erfolg Weiß, ihr Hover ist dunkler (`danger-hover` `#901E22` mit 8,77:1); im dunklen Schema
-tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF7A80` mit 7,91:1)
-(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
-mehr — Weiß erreichte auf Blau-500 nur 3,3:1; gefüllte Flächen liegen deshalb auf
-`accent-surface` (Blau-700, 5,2:1), und das helle Schema führt `accent` selbst als Blau-700,
-damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Carbon-950 = 6,0:1). Ausnahme: `fg-3` in `navyRoles`/`railRoles`
-erfüllt das nicht gegen `bg-2`/`bg-3` (siehe 2.2) — dort ist `fg-3` als Text ausgeschlossen, nicht
-nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
+tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF8287` mit 5,83:1)
+(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination;
+gefüllte Flächen liegen deshalb auf `accent-surface`: hell Blau-700 mit Weiß (7,41:1), dunkel
+Weiß mit Navy-800 (13,9:1). Das helle Schema führt `accent` selbst als Blau-700, damit Akzent-Text
+auf Weiß 4,5:1 hält; das dunkle führt Blau-400 (5,65:1 auf `bg-1`, 4,73:1 auf `bg-2`). Ein
+Bedienelement, das wie eine gefüllte Schaltfläche aussieht, aber keine ist (Senden-Knopf des
+Chats), nimmt die Palette `actionSurface`, nie `primary.main`. Ausnahme: `fg-3` in `navyRoles` erfüllt das nicht gegen `bg-3` (siehe 2.2) —
+dort ist `fg-3` als Text ausgeschlossen, nicht nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ---
 
@@ -287,13 +317,15 @@ Gruppen deutlich getrennt (24–48).
 - Ebene 0/1 (Seite, Karte): Trennung ausschließlich über `border` und `bg`-Abstufung. **Kein
   Schatten auf ruhenden Karten.**
 - Ebene 2 (schwebend: Menü, Popover, @-Vorschlagsliste): Rahmen **plus** dezenter Schatten
-  `0 2px 6px rgba(1,32,66,0.08)`.
-- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`. Der Grund
+  `0 2px 6px rgba(36,40,85,0.08)`.
+- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(36,40,85,0.10)`. Der Grund
   dahinter tritt unter einem Schleier mit 2 px Unschärfe zurück; der Schleier trägt den Ton des
-  Schemas — hell `navy-900` mit 42 %, dunkel das neutrale `carbon-950` mit 72 %, nie Navy auf
-  dem Carbon-Grund.
+  Schemas — hell `navy-900` mit 42 %, dunkel das tiefere `navy-950` mit 72 %.
 - Im dunklen Schema bleiben die Schattenwerte gleich; die Trennung leisten dort vor allem die
   helleren Flächenstufen.
+- Im Lesemodus der Dokumentansicht (5.6) liegt das Papier wie ein Blatt auf dem Grund `desk`
+  und trägt deshalb den Schatten der Ebene 2, ebenso die schwebende Werkzeugpille des PDF; unter
+  600 px füllt das Papier die Breite und trägt keinen Schatten.
 
 ### 4.4 Fokus
 
@@ -439,15 +471,16 @@ Zeile, nicht ihr Text.
 
 | Variante           | Ruhe                                      | Hover                      | Aktiv            |
 | ------------------ | ----------------------------------------- | -------------------------- | ---------------- |
-| Primär             | `accent-surface`-Fläche, `accent-fg`-Text | Blau-800 (−8 % Helligkeit) | Blau-900 (−16 %) |
+| Primär             | `accent-surface`-Fläche, `accent-fg`-Text | hell Blau-800, dunkel `#E3EAF6` | hell Blau-900, dunkel `#C9DBF2` |
 | Sekundär           | `bg-1` mit `border-strong`                | `bg-2`                     | `bg-3`           |
 | Still (Text/Ghost) | transparent, `accent`-Text                | `bg-2`                     | `bg-3`           |
 
 Radius sm, Gewicht 500, 14 px, Höhe 36 px (kompakt 32 px, `controlHeight` im Theme),
 Beschriftung als Verb („Fragen", „Anlegen", „Speichern"). Genau eine primäre Schaltfläche je Fläche:
 der Anlege-Knopf oder „Speichern". Was nur ein Panel oder einen Dialog öffnet („Einstellungen"), ist
-sekundär; stehen zwei Handlungen gleichen Rangs auf einer Seite, ist nur die dringlichere primär. Auf Navy-Flächen gilt die
-Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
+sekundär; stehen zwei Handlungen gleichen Rangs auf einer Seite, ist nur die dringlichere primär. Auf den
+Navy-Flächen von Anmeldeseite und Rail im hellen Schema bleibt die Primärfläche Blau-700 mit Weiß
+(`navyRoles`, `railRoles`). Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
 rote Primärfläche als Standardaktion. Einzige Ausnahme ist die Handlung einer Bestätigung im Ton
 `danger` (5.10).
 
@@ -530,7 +563,7 @@ Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
 **Linktexte** nennen das Ziel oder was dort zu tun ist, ohne Pfeil am Ende („Verbindung ändern",
 nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
-Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
+Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in opaa wird als
 Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
 
 **Seiten vor der Anmeldung** (Anmelden, Systemanmeldung, Registrieren, Passwort vergessen,
@@ -798,13 +831,13 @@ bricht es um (`MetaBadge wrap`), statt abgeschnitten zu werden. Geprüft in
 `frontend/src/shared/ui/badgeShape.test.tsx` und `labels.test.ts`.
 
 **Kontrast** (2.4): `fg-2` auf der Fläche des Etiketts erreicht hell 9,21:1 (`bg-1`), 8,66:1
-(`bg-2`) und 8,19:1 (`bg-3`), dunkel 7,43:1, 6,69:1 und 6,15:1. Auf den Flächen, auf denen
+(`bg-2`) und 8,19:1 (`bg-3`), dunkel 9,93:1, 8,28:1 und 8,98:1. Auf den Flächen, auf denen
 Etiketten tatsächlich stehen: überfahrene Tabellenzeile (`bg-2`) wie oben; MUI-Hovertönung über
-`bg-1` hell 8,45:1, dunkel 6,28:1, über `bg-3` hell 7,48:1, dunkel 4,86:1; Akzent-Auswahltönung
-von `ListItemButton` und `MenuItem` über `bg-1` hell 8,22:1, dunkel 6,27:1, gewählt und
-überfahren hell 7,81:1, dunkel 5,51:1. Ausgenommen ist die Auswahltönung über `bg-3` (gewählt
-und überfahren dunkel nur 4,37:1, neutrales `action.selected` 3,70:1): Dort steht kein Etikett;
-wer eins dorthin setzt, weist den Kontrast im PR nach. Der Umriss in `border-strong` ist Schmuck,
+`bg-1` hell 8,45:1, dunkel 7,76:1, über `bg-3` hell 7,48:1, dunkel 7,10:1; Akzent-Auswahltönung
+von `ListItemButton` und `MenuItem` über `bg-1` hell 8,22:1, dunkel 7,53:1, gewählt und
+überfahren hell 7,81:1, dunkel 6,48:1. Die Auswahltönung über `bg-3` erreicht dunkel gewählt und
+überfahren 6,06:1, neutrales `action.selected` 5,52:1; wer im hellen Schema ein Etikett dorthin
+setzt, weist den Kontrast im PR nach. Der Umriss in `border-strong` ist Schmuck,
 kein Erkennungsmerkmal — das Wort macht das Etikett erkennbar, deshalb gilt für ihn keine
 3:1-Anforderung.
 
@@ -813,7 +846,7 @@ kein Erkennungsmerkmal — das Wort macht das Etikett erkennbar, deshalb gilt f�
 `bg-1`, `border`, Radius md, Schatten der Ebene 2/3, Einträge 14 px mit 8–12 px Innenabstand,
 Hover `bg-2`, zerstörende Einträge in Gefahr-Text am Ende, durch Trennlinie abgesetzt.
 Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 gegen `bg-2` und
-4,64:1 gegen `bg-3`, im dunklen Schema 6,86:1 / 6,18:1 / 5,68:1 (#2150).
+4,64:1 gegen `bg-3`, im dunklen Schema 5,56:1 / 4,63:1 / 5,02:1 (#2150).
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
 
 **Weitere Aktionen hinter „⋯".** Seltenere Aktionen einer Zeile, Kachel oder Detailseite öffnet
@@ -906,6 +939,19 @@ Fußzeile mit „Schließen“. Das Panel ist ein benannter Dialog (`role="dialo
 öffnet es an einer bestimmten Stelle, liegt der Fokus dort, beim Schließen kehrt er auf den
 Auslöser zurück. Escape und ein Klick daneben schließen es.
 
+**Ein Dokument liest man im Lesemodus** (`ReadingModeDialog`, #3876). Er füllt den Bildschirm
+auf dem Grund `desk` (2.3). Sein Kopf trägt links den Rückweg, benannt nach dem Ziel („Zurück zur
+Antwort“, unter 600 px nur der Pfeil mit diesem Namen), daneben den Dateinamen als Titel und
+rechts die Aktionen der Ansicht und das ✕; Escape schließt ebenfalls. Darunter steht links die
+**Fundstellen-Karte** mit Fundort, Zitat ohne Auszeichnungszeichen, der Statuszeile und „Zur
+Fundstelle“, rechts das Dokument auf hellem Papier mit der markierten Fundstelle. Ab 1440 px
+lässt sich die Kartenspalte über einen Trenner verbreitern, auch per Pfeiltasten, Pos1 und Ende.
+Unter 600 px wird die Karte zu einer Leiste über dem Dokument, die mit einer Zeile den Fundort
+nennt und für das Zitat aufklappt. Jede Ansicht hat genau eine Statusmeldung
+(`role="status"`). Die Werkzeuge des PDF (Gliederung, Blättern, Zoom, Seitenbreite, erkannter
+Text) schweben als Pille über den Seiten (Ebene 2, 4.3); unter 600 px trägt sie nur Blättern und
+Zoom, Gliederung und erkannter Text liegen in der Leiste.
+
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
 Jeder Bereich, der Daten lädt, kennt fünf Zustände: lädt, erstmals leer, kein Treffer, kein
@@ -976,8 +1022,8 @@ beantwortet jede Liste mit 502, `slow` verzögert jede lesende Anfrage um drei S
 Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und `accent` in einem
 Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
 Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
-Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit weißer Ziffer (`accent`
-selbst trüge Weiß im Dunkelschema nur mit 3,3:1); die Ziffer der ruhenden Marke rückt, wo die
+Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit `accent-fg` als Ziffer (hell
+Weiß auf Blau-900, dunkel Navy-800 auf `#C9DBF2`; `accent` selbst ist keine Fläche für die Ziffer); die Ziffer der ruhenden Marke rückt, wo die
 Tönung sie unter 4,5:1 drückt, wie jeder Akzenttext vom Grund weg, und ein Tooltip nennt je Fundstelle
 Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts
@@ -1145,7 +1191,7 @@ Quellart nur für Personen (OneDrive) ist schon die Wahl der Quellart diese ausd
 einziger Zugang steht als Zeile da, mit dem Hinweis „nur für Sie, später nicht änderbar“.
 
 **Fremde Objekte aus einer Quelle** erscheinen als Liste oder Baum, nie als Kacheln — ihre Zahl und
-Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:
+Benennung bestimmt das fremde System, nicht opaa. Die Schwelle:
 
 - **Bis sieben Einträge der obersten Ebene** stehen als Checkboxen direkt in der Zeile, ohne
   Suche — auch bei hierarchischen Quellen wie Nextcloud, SMB, Dropbox oder S3.
@@ -1464,7 +1510,7 @@ Verbindliche Begriffe:
 | **Reranking**             | Name von Schritt und Reiter für das Neuordnen der Suchkandidaten. Nicht „Rerank-Modell" als Name der Einstellung |
 | **Spracheingabe**         | Name von Schritt und Reiter für Diktat und Live-Transkript. Nicht „Transkriptionsmodell" als Name der Einstellung |
 | **Texterkennung**         | Name von Schritt und Reiter für das Lesen gescannter PDFs (OCR)                              |
-| **API-Schlüssel**         | das Geheimnis, mit dem sich OPAA an einem Modell-Endpunkt ausweist. Nicht „Zugangsschlüssel" |
+| **API-Schlüssel**         | das Geheimnis, mit dem sich opaa an einem Modell-Endpunkt ausweist. Nicht „Zugangsschlüssel" |
 | **Testnachricht**         | die E-Mail, die den Versand prüft. Nicht „Testmail"                                          |
 | **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
 | **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
@@ -1476,7 +1522,8 @@ Verbindliche Begriffe:
 | **Kontozustand**          | Eingeladen · Aktiv · Gesperrt · Abgelaufen — als Punkt **und** Wort, nie als farbiger Chip; die Sperre nennt ihren Grund in Klammern (Verwalter · Fehlversuche · Inaktivität) |
 | **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
 | **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
-| Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
+| **opaa**                  | der Produktname, immer klein, auch am Satzanfang (holpert es, den Satz umstellen). Nie „OPAA" oder „Opaa"; technische Bezeichner wie `OPAA_*`, `io.opaa` und Metriknamen bleiben |
+| Claim                     | „opaa weiß, was war, und hilft bei dem, was kommt." (Standard aus dem Markenkonzept)                           |
 
 **Verben für Handlungen.** Für diese Handlungen gelten in Schaltflächen und Bestätigungen (5.10)
 genau diese Verben; Ändern, Festlegen, Zurücksetzen, Übertragen und Ähnliches bleiben daneben
@@ -1506,7 +1553,7 @@ Von Anfang an gilt: **Produktname, Claim, Logo und Akzentfarbe sind
 Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponente:
 
 - Name, Claim und Logo werden nie hart eingebettet, sondern aus der Branding-Quelle bezogen
-  (mit OPAA-Standard als Fallback).
+  (mit opaa-Standard als Fallback).
 - Akzentfarbe nur über die Rollen `accent`/`accent-surface`; die Fläche gefüllter Aktionen wird
   aus der konfigurierten Farbe abgeleitet (#634): unverändert, wenn Weiß darauf 4,5:1 erreicht,
   sonst in −8-%-Schritten abgedunkelt (höchstens sechs Schritte). Hover (−8 %), Aktiv (−16 %)
@@ -1515,35 +1562,42 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
-### 7.1 Das OPAA-Standardlogo
+### 7.1 Das opaa-Standardlogo
 
-Das Logo heißt **Fundstelle**: eine Antwort-Sprechblase aus Textzeilen mit einem Prüfsiegel. Die
-Sprechblase steht für den Assistenten, der antwortet und handelt, die Zeilen für das Wissen des
-Hauses, das Siegel mit Haken für den geprüften Beleg. Es ist der Fallback, solange ein Betreiber kein
-eigenes Logo konfiguriert.
+Das Logo ist die **Wortmarke „opaa“** aus den Originaldateien des Marketings (Style Guide der
+VISION). Das erste a und der Balken darunter stehen in Hellblau, der Rest in der Textfarbe der
+Fläche. Das Logo wird nicht nachgebaut: Alle Dateien entstehen aus den Originalen. Es ist der
+Fallback, solange ein Betreiber kein eigenes Logo konfiguriert.
 
-| Bestandteil | Farbe                                                                       |
-| ----------- | --------------------------------------------------------------------------- |
-| Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy                          |
-| Siegel      | Dateien: Blau-500 `#1292EE`; in der App die Akzentfläche (`accent-surface`) |
-| Haken       | Weiß                                                                        |
-| Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Sprechblase           |
+| Bestandteil        | Farbe                                                       |
+| ------------------ | ----------------------------------------------------------- |
+| „op“ und letztes a | Dunkelblau auf hellen Flächen, Weiß auf dunklen             |
+| erstes a, Balken   | Hellblau `#009DDB`, auf jeder Fläche                        |
+| Zeichen (Icon)     | hellblaues a mit Balken auf dunkelblauer (bzw. weißer) Kachel |
 
-- Zeilen und der Ring um das Siegel sind ausgespart, nicht weiß gefüllt; das Logo liegt deshalb auf
-  jeder Fläche, ohne dass eine Kachel dahinter nötig ist.
-- In der App folgt das Siegel der Akzentfläche, weil sie Weiß mit 4,5:1 trägt; bei konfigurierter
-  Akzentfarbe nimmt es also die abgeleitete Hausfarbe an.
-- **Icon-Fassung** für Favicon, App- und Touch-Icon: Navy-Kachel, darin die Marke in
-  Weiß auf 72 % der Fläche. Das SVG hat Radius 14/64; die Raster-PNGs sind vollflächig ohne Rundung,
-  weil Betriebssysteme Icons selbst maskieren.
-- In der Oberfläche steht die freie Marke ohne Kachel, ab 16 px. Die Wortmarke ab 24 px Höhe.
-  Schutzraum ringsum ein Viertel der Markenhöhe.
-- Nicht verzerren, nicht drehen, keine Schatten oder Verläufe.
+- **Ohne Unterzeile:** Die Langform „open project ai assistant“ steht nicht im Logo der Software.
+  Auf dunklen Flächen steht die Wortmarke ohne weißen Kasten.
+- **In der globalen Leiste** steht die Wortmarke dekorativ und auf 44 px Breite verkleinert.
+- **Zeichen** für Favicon, App- und Touch-Icon und `og:image`: das hellblaue a mit Balken auf einer
+  dunkelblauen Kachel mit abgerundeten Ecken; die Fassung auf Weiß nur, wo eine helle Fläche
+  verlangt ist. Die Raster-PNGs sind vollflächig ohne Rundung, weil Betriebssysteme Icons selbst
+  maskieren. Das Zeichen ersetzt nie das Logo, wo Platz für die Wortmarke ist.
+- **In der App** zeigt `BrandMark` mit dem Standardnamen „opaa“ die Wortmarke statt Name und Marke
+  und gibt den Namen als zugänglichen Namen mit. Trägt die Installation einen eigenen Namen, aber
+  kein Logo, steht das Zeichen ohne Kachel neben dem Namen. Ein konfiguriertes Logo ersetzt beides.
+- Schutzraum mindestens so hoch wie das hellblaue a. Nicht verzerren, nicht drehen, nicht umfärben,
+  keine Schatten oder Verläufe. Hellblau ist hier Bildmarke, keine Textfarbe; die Kontrastregel für
+  Text (2.4) gilt für Logos nicht.
 
-Die Quelldateien liegen in [`logo/`](./logo/): `opaa-mark.svg` und `opaa-logo.svg` (für helle
-Flächen), `-hell`-Fassungen für dunkle Flächen, `opaa-icon.svg` sowie die Icon-Raster in 32, 180, 192
-und 512 px. Die App zeichnet die Marke in `BrandMark` selbst, damit Sprechblase und Siegel den
-Farbrollen des Schemas folgen.
+Das Zeichen ist im Style Guide noch als Vorschlag markiert; seine Reinzeichnung ersetzt später nur
+die Dateien.
+
+Die Originale liegen in [`logo/original/`](./logo/original/) (`wortmarke.svg`,
+`wortmarke-auf-blau.svg`, `zeichen-dunkel.svg`, `zeichen-hell.svg`). Daraus erzeugt
+`logo/original/build_logo.py` die Dateien in [`logo/`](./logo/) (`opaa-wortmarke.svg` mit
+`-hell`-Fassung, `opaa-icon.svg`, `opaa-icon-weiss.svg`, Icon-Raster in 32, 180, 192 und 512 px),
+die Kopien für App, Handbuch und Homepage und die Pfade, die `BrandMark` zeichnet. Kommt eine neue
+Reinzeichnung, werden nur die Originale getauscht und das Skript erneut ausgeführt.
 
 ---
 

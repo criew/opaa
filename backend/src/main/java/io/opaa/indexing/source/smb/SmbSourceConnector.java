@@ -217,7 +217,7 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
         }
         if (!links.isEmpty()) {
           findings.add(
-              "diese Ordner sind Verknüpfungen, denen OPAA nicht folgt: "
+              "diese Ordner sind Verknüpfungen, denen opaa nicht folgt: "
                   + String.join(", ", links));
         }
         return new SourceConnectionTestResult(

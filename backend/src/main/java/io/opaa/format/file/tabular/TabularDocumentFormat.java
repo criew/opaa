@@ -3,11 +3,13 @@ package io.opaa.format.file.tabular;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
 import io.opaa.format.FormatAdmission;
 import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkContextTitle;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.chunk.ChunkTable;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -35,12 +37,15 @@ import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ooxml.POIXMLProperties;
+import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.xmlbeans.XmlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -56,14 +61,14 @@ import org.xml.sax.helpers.DefaultHandler;
  *
  * <p>Every chunk repeats its column headers plus a "Blatt: … · Tabelle: …" structural-context line,
  * baked into the chunk's own text since only a fixed, generic metadata set survives into the stored
- * chunk otherwise.
+ * chunk otherwise. Every chunk of one table also carries the same {@link ChunkTable}.
  */
 public class TabularDocumentFormat implements DocumentFormat {
 
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 5;
+  static final short VERSION = 6;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -72,6 +77,11 @@ public class TabularDocumentFormat implements DocumentFormat {
    * table into chunks that are still readable and citable.
    */
   static final int MAX_ROWS_PER_CHUNK = 50;
+
+  /** How many single-cell rows above a table's header {@link #titleRowCount} reads as its title. */
+  static final int MAX_TITLE_ROWS = 3;
+
+  private static final String TITLE_LINE_SEPARATOR = " – ";
 
   private static final char[] CSV_DELIMITER_CANDIDATES = {',', ';', '\t'};
 
@@ -160,18 +170,30 @@ public class TabularDocumentFormat implements DocumentFormat {
   }
 
   @Override
+  public Set<String> passthroughMetadataKeys() {
+    return Set.of(
+        ChunkMetadataKeys.LOCATION_METADATA_KEY,
+        ChunkMetadataKeys.ANCHOR_METADATA_KEY,
+        ChunkMetadataKeys.TABLE_METADATA_KEY);
+  }
+
+  @Override
   public DocumentFormatResult run(DocumentFormatSource source) {
     // A source with neither a detected extension nor a suffix in its name is read as XLSX, the
     // format POI can reject outright rather than mis-parse.
     String extension = source.effectiveExtension() == null ? "" : source.effectiveExtension();
     List<Document> chunks;
+    DocumentProperties properties = DocumentProperties.EMPTY;
     try {
-      chunks =
-          switch (extension) {
-            case ".csv" -> readCsv(source);
-            case ".ods" -> readOds(source);
-            default -> readXlsx(source);
-          };
+      switch (extension) {
+        case ".csv" -> chunks = readCsv(source);
+        case ".ods" -> chunks = readOds(source);
+        default -> {
+          XlsxContent xlsx = readXlsx(source);
+          chunks = xlsx.chunks();
+          properties = xlsx.properties();
+        }
+      }
     } catch (IOException e) {
       // Unparsable content (a corrupt workbook, an invalid ZIP, a rejected XXE attempt) is
       // reported as a parse failure by DocumentFormatRunner, for every format alike.
@@ -183,7 +205,29 @@ public class TabularDocumentFormat implements DocumentFormat {
       return DocumentFormatResult.noExtractableText();
     }
     limits.requireTextWithinLimit(chunks, "Tabular document");
-    return DocumentFormatResult.chunked(chunks);
+    return DocumentFormatResult.chunked(chunks).withProperties(properties);
+  }
+
+  /**
+   * An XLSX workbook's OOXML core properties (title, created, modified), read without building a
+   * chunk per row - the Bestandslauf needs no chunk stream. CSV and ODS declare none here.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentFormatSource source) {
+    String extension = source.effectiveExtension() == null ? "" : source.effectiveExtension();
+    if (source.file() == null || extension.equals(".csv") || extension.equals(".ods")) {
+      return DocumentProperties.EMPTY;
+    }
+    try {
+      return OoxmlPackages.read(source.file(), limits, TabularDocumentFormat::readCoreProperties);
+    } catch (IOException | RuntimeException e) {
+      log.warn(
+          "Could not read properties of {} via pipeline {}",
+          source.logName(),
+          ID,
+          source.loggedName().of(e));
+      return DocumentProperties.EMPTY;
+    }
   }
 
   // --- CSV ---------------------------------------------------------------------------------
@@ -210,7 +254,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       rows.add(new RawRow(record.getRecordNumber(), toValues(record)));
     }
     String tableTitle = ChunkContextTitle.deriveTitle(source.fileName());
-    return chunksFromRawRows(null, tableTitle, rows);
+    return chunksFromRawRows(null, tableTitle, rows, 1);
   }
 
   /**
@@ -252,12 +296,25 @@ public class TabularDocumentFormat implements DocumentFormat {
 
   /**
    * Picks the delimiter among {@link #CSV_DELIMITER_CANDIDATES} whose {@link #delimiterScore} is
-   * highest across the file's first {@link #DELIMITER_SAMPLE_LINES} non-blank lines. Falls back to
-   * comma when no candidate scores above zero (a single-column file).
+   * highest across the file's first {@link #DELIMITER_SAMPLE_LINES} non-blank lines. Up to {@link
+   * #MAX_TITLE_ROWS} leading lines no candidate splits - title lines - are left out of the sample,
+   * so the first line any candidate splits decides as before. Falls back to comma when no candidate
+   * scores above zero (a single-column file).
    */
   private static char detectDelimiter(String text) {
+    List<String> lines =
+        text.lines()
+            .filter(line -> !line.isBlank())
+            .limit(DELIMITER_SAMPLE_LINES + MAX_TITLE_ROWS)
+            .toList();
+    int titleLines = 0;
+    while (titleLines < MAX_TITLE_ROWS
+        && titleLines < lines.size() - 1
+        && splitsUnderNoCandidate(lines.get(titleLines))) {
+      titleLines++;
+    }
     List<String> sampleLines =
-        text.lines().filter(line -> !line.isBlank()).limit(DELIMITER_SAMPLE_LINES).toList();
+        lines.subList(titleLines, Math.min(lines.size(), titleLines + DELIMITER_SAMPLE_LINES));
     if (sampleLines.isEmpty()) {
       return ',';
     }
@@ -272,6 +329,15 @@ public class TabularDocumentFormat implements DocumentFormat {
       }
     }
     return best;
+  }
+
+  private static boolean splitsUnderNoCandidate(String line) {
+    for (char candidate : CSV_DELIMITER_CANDIDATES) {
+      if (delimiterScore(line, candidate) > 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -317,12 +383,12 @@ public class TabularDocumentFormat implements DocumentFormat {
    * against {@link ParserLimitProperties#maxTextCharacters()} row by row, since shared strings let
    * a small sheet repeat one long text in every cell.
    */
-  private List<Document> readXlsx(DocumentFormatSource source) throws IOException {
+  private XlsxContent readXlsx(DocumentFormatSource source) throws IOException {
     if (source.file() == null) {
       // Never actually reached through the registry (an XLSX admission always carries a file, see
       // SupportedDocumentFormats) - defensive rather than a NullPointerException on a future
       // caller that violates that assumption.
-      return List.of();
+      return new XlsxContent(List.of(), DocumentProperties.EMPTY);
     }
     // Instantiated per call, not shared: DataFormatter is not thread-safe, and this pipeline can
     // run several documents concurrently on the indexing thread pool.
@@ -342,16 +408,39 @@ public class TabularDocumentFormat implements DocumentFormat {
           List<Document> chunks = new ArrayList<>();
           long[] characters = {0};
           // released by OoxmlPackages.read, which reverts the read-only package
-          Workbook workbook = new XSSFWorkbook(pkg);
+          XSSFWorkbook workbook = new XSSFWorkbook(pkg);
+          int tableId = 0;
           for (Sheet sheet : workbook) {
-            chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName(), characters));
+            chunks.addAll(
+                readSheet(sheet, ++tableId, cellFormatter, source.loggedName(), characters));
           }
-          return chunks;
+          return new XlsxContent(
+              chunks, coreProperties(workbook.getProperties().getCoreProperties()));
         });
   }
 
+  /** One workbook's reading: its chunks and what its core properties declare (ADR-0024). */
+  private record XlsxContent(List<Document> chunks, DocumentProperties properties) {}
+
+  /** Only {@code docProps/core.xml}, never the sheets - what the Bestandslauf reads. */
+  private static DocumentProperties readCoreProperties(OPCPackage pkg) throws IOException {
+    try {
+      return coreProperties(new POIXMLProperties(pkg).getCoreProperties());
+    } catch (OpenXML4JException | XmlException e) {
+      throw new IOException("Could not read the core properties of an XLSX workbook", e);
+    }
+  }
+
+  private static DocumentProperties coreProperties(POIXMLProperties.CoreProperties core) {
+    return DocumentProperties.builder()
+        .title(core.getTitle())
+        .createdAt(DocumentProperties.toLocalDate(core.getCreated()))
+        .modifiedAt(DocumentProperties.toLocalDate(core.getModified()))
+        .build();
+  }
+
   private List<Document> readSheet(
-      Sheet sheet, DataFormatter cellFormatter, LoggedName names, long[] characters) {
+      Sheet sheet, int tableId, DataFormatter cellFormatter, LoggedName names, long[] characters) {
     List<RawRow> rows = new ArrayList<>();
     List<String> header = null;
     boolean anyRowTruncated = false;
@@ -369,7 +458,8 @@ public class TabularDocumentFormat implements DocumentFormat {
             "XLSX workbook exceeds the configured text character limit of "
                 + limits.maxTextCharacters());
       }
-      if (header == null && !isBlankRow(values)) {
+      // the widths of the rows below follow the header, never a single-cell title row above it
+      if (header == null && filledCells(values) >= 2) {
         header = values;
       }
       // 1-based, matching the row number Excel itself displays (getRowNum() is 0-based).
@@ -382,7 +472,7 @@ public class TabularDocumentFormat implements DocumentFormat {
           names.of(sheet.getSheetName()),
           maxRowColumns);
     }
-    return chunksFromRawRows(sheet.getSheetName(), sheet.getSheetName(), rows);
+    return chunksFromRawRows(sheet.getSheetName(), sheet.getSheetName(), rows, tableId);
   }
 
   private List<String> toValues(Row row, int minColumns, DataFormatter cellFormatter) {
@@ -431,8 +521,9 @@ public class TabularDocumentFormat implements DocumentFormat {
           maxRowColumns);
     }
     List<Document> chunks = new ArrayList<>();
+    int tableId = 0;
     for (OdsSheet sheet : handler.sheets()) {
-      chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), sheet.rows()));
+      chunks.addAll(chunksFromRawRows(sheet.name(), sheet.name(), sheet.rows(), ++tableId));
     }
     return chunks;
   }
@@ -598,24 +689,43 @@ public class TabularDocumentFormat implements DocumentFormat {
   }
 
   /**
-   * Shared header/data-row detection for all three readers: the first non-blank row is the header,
-   * every following one is data, and a table without a non-blank row contributes no chunk. Exactly
-   * one non-blank row is always content, in a chunk of its own - treating it as an empty header
-   * would drop real content (the format chapter of the Handbuch).
+   * Shared title/header/data-row detection for all three readers: leading title rows ({@link
+   * #titleRowCount}) name the table, the first non-blank row after them is the header, every
+   * following one is data, and a table without a non-blank row contributes no chunk. Exactly one
+   * non-blank row is always content, in a chunk of its own - treating it as an empty header would
+   * drop real content (the format chapter of the Handbuch). Every chunk of the table carries the
+   * same {@link ChunkTable}.
    *
    * @param sheetName the sheet name, or {@code null} for CSV, forwarded unchanged
-   * @param tableName see {@link #buildChunks}
+   * @param tableName see {@link #buildChunks}; replaced by the title rows when the table has any
+   * @param tableId the table's 1-based ordinal within its document
    */
+  private List<Document> chunksFromRawRows(
+      String sheetName, String tableName, List<RawRow> rows, int tableId) {
+    List<Document> chunks = chunksFromRawRows(sheetName, tableName, rows);
+    ChunkTable.tag(chunks, tableId);
+    return chunks;
+  }
+
   private List<Document> chunksFromRawRows(String sheetName, String tableName, List<RawRow> rows) {
-    // both repeat in every chunk's context, Fundort and anchor
-    sheetName = RepeatedContext.cut(sheetName);
-    tableName = RepeatedContext.cut(tableName);
     List<RawRow> nonBlank = new ArrayList<>();
     for (RawRow row : rows) {
       if (!isBlankRow(row.values())) {
         nonBlank.add(row);
       }
     }
+    int titleRows = titleRowCount(nonBlank);
+    if (titleRows > 0) {
+      List<String> titleLines = new ArrayList<>(titleRows);
+      for (RawRow row : nonBlank.subList(0, titleRows)) {
+        titleLines.add(row.values().stream().filter(v -> !v.isBlank()).findFirst().orElseThrow());
+      }
+      tableName = String.join(TITLE_LINE_SEPARATOR, titleLines);
+      nonBlank = nonBlank.subList(titleRows, nonBlank.size());
+    }
+    // both repeat in every chunk's context, Fundort and anchor
+    sheetName = RepeatedContext.cut(sheetName);
+    tableName = RepeatedContext.cut(tableName);
     if (nonBlank.isEmpty()) {
       return List.of();
     }
@@ -632,6 +742,37 @@ public class TabularDocumentFormat implements DocumentFormat {
       dataRowNumbers.add(row.number());
     }
     return buildChunks(sheetName, tableName, headerRow.number(), header, dataRows, dataRowNumbers);
+  }
+
+  /**
+   * How many of the leading non-blank {@code rows} are title rows rather than the header: up to
+   * {@link #MAX_TITLE_ROWS} rows with exactly one filled cell (a merged or centred heading, a
+   * "Stand:" line). They count only when the row right after them fills at least two cells, the
+   * rows from that header on are at least as many as the title rows and at least half of them fill
+   * two cells or more. A one-column list, even with a second cell here and there, has no title.
+   */
+  private static int titleRowCount(List<RawRow> rows) {
+    int count = 0;
+    while (count < rows.size() && count < MAX_TITLE_ROWS && filledCells(rows.get(count)) == 1) {
+      count++;
+    }
+    if (count == 0 || count >= rows.size() || filledCells(rows.get(count)) < 2) {
+      return 0;
+    }
+    List<RawRow> table = rows.subList(count, rows.size());
+    long multiCellRows = table.stream().filter(row -> filledCells(row) >= 2).count();
+    if (table.size() < count || multiCellRows * 2 < table.size()) {
+      return 0;
+    }
+    return count;
+  }
+
+  private static long filledCells(RawRow row) {
+    return filledCells(row.values());
+  }
+
+  private static long filledCells(List<String> values) {
+    return values.stream().filter(value -> !value.isBlank()).count();
   }
 
   private List<Document> renderSingleRowChunk(String sheetName, String tableName, RawRow row) {

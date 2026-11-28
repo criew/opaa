@@ -1,6 +1,6 @@
 # Agenten-Organisation & Entwicklungs-Workflow
 
-Wie OPAA von einem Team aus KI-Agenten mit Menschen in der Schleife entwickelt wird. Dieses Dokument beschreibt **wer was tut** (Agenten-Rollen), **wie Arbeit fließt** von der Idee bis zum Merge, und **welche Regeln gelten** für Menschen und Agenten. Es ergänzt [ADR-0001](./decisions/0001-collaboration-workflow.md) (Branching, Commits, PRs) — diese Konventionen gelten unverändert.
+Wie opaa von einem Team aus KI-Agenten mit Menschen in der Schleife entwickelt wird. Dieses Dokument beschreibt **wer was tut** (Agenten-Rollen), **wie Arbeit fließt** von der Idee bis zum Merge, und **welche Regeln gelten** für Menschen und Agenten. Es ergänzt [ADR-0001](./decisions/0001-collaboration-workflow.md) (Branching, Commits, PRs) — diese Konventionen gelten unverändert.
 
 Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselbe Branch-Benennung, dasselbe PR-Template. Ein Mensch, der ein Issue aufgreift, folgt genau den nachfolgend für den Entwickler-Agenten beschriebenen Schritten.
 
@@ -22,7 +22,7 @@ Designprinzip: Ein Agent hat eine Spur, Arbeit wird über Artefakte (Epics mit S
 
 ## Stakeholder-Review
 
-Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen; die Stakeholder-Rollen vertreten die Menschen, die OPAA in einer Behörde benutzen, betreiben und verantworten, und liefern je eine schriftliche fachliche Bewertung aus dieser Perspektive.
+Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen; die Stakeholder-Rollen vertreten die Menschen, die opaa in einer Behörde benutzen, betreiben und verantworten, und liefern je eine schriftliche fachliche Bewertung aus dieser Perspektive.
 
 | Rolle | Perspektive | Läuft als |
 |---|---|---|

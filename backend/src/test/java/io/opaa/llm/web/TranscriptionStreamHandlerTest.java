@@ -12,6 +12,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.llm.transcription.PersonalTranscriptionVocabularyService;
@@ -19,6 +20,7 @@ import io.opaa.llm.transcription.RealtimeTranscriptionClient;
 import io.opaa.llm.transcription.RealtimeTranscriptionRole;
 import io.opaa.llm.transcription.RealtimeTranscriptionRole.LiveSession;
 import io.opaa.llm.transcription.RealtimeTranscriptionRole.RealtimeUnusableException;
+import io.opaa.llm.transcription.RealtimeTranscriptionSlots;
 import io.opaa.test.MutableClock;
 import java.io.IOException;
 import java.time.Duration;
@@ -67,6 +69,7 @@ class TranscriptionStreamHandlerTest {
       new AtomicReference<>();
   private final List<String> sent = new ArrayList<>();
   private final AtomicReference<CloseStatus> closed = new AtomicReference<>();
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private Runnable tick;
   private TranscriptionStreamHandler handler;
   private WebSocketSession socket;
@@ -82,7 +85,7 @@ class TranscriptionStreamHandlerTest {
             });
     handler =
         new TranscriptionStreamHandler(
-            role, vocabularies, json, clock, timers, new DirectExecutorService());
+            role, vocabularies, json, clock, timers, new DirectExecutorService(), meters);
     socket = mock(WebSocketSession.class);
     Map<String, Object> attributes = new HashMap<>();
     attributes.put(TranscriptionStreamHandler.CALLER_ATTRIBUTE, CALLER);
@@ -158,7 +161,9 @@ class TranscriptionStreamHandlerTest {
   @Test
   void aBusyInstallationIsRefusedWithBusy() throws Exception {
     when(role.open(any(), anyString(), any()))
-        .thenThrow(new RealtimeUnusableException("no live session free", true));
+        .thenThrow(
+            new RealtimeUnusableException(
+                "no live session free", RealtimeTranscriptionSlots.Refusal.INSTALLATION_BUSY));
 
     handler.afterConnectionEstablished(socket);
 
@@ -169,7 +174,7 @@ class TranscriptionStreamHandlerTest {
   @Test
   void liveSwitchedOffIsRefusedWithUnavailable() throws Exception {
     when(role.open(any(), anyString(), any()))
-        .thenThrow(new RealtimeUnusableException("live transcription is not available", false));
+        .thenThrow(new RealtimeUnusableException("live transcription is not available", null));
 
     handler.afterConnectionEstablished(socket);
 
@@ -327,6 +332,57 @@ class TranscriptionStreamHandlerTest {
     assertThat(slotFreed).isTrue();
     listener.get().text("late");
     assertThat(sent).hasSize(1);
+  }
+
+  @Test
+  void everySessionCountsOnceAtItsEnd() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+
+    listener.get().done("Guten Tag.");
+    handler.afterConnectionClosed(socket, CloseStatus.NORMAL);
+    listener.get().failed("late");
+
+    assertThat(ended("done")).isEqualTo(1);
+    assertThat(ended("client_closed")).isZero();
+    assertThat(ended("upstream")).isZero();
+  }
+
+  @Test
+  void aRefusalCountsUnderItsReasonAndABrowserGoingAwayUnderClientClosed() throws Exception {
+    when(role.open(any(), anyString(), any()))
+        .thenThrow(
+            new RealtimeUnusableException(
+                "no live session free", RealtimeTranscriptionSlots.Refusal.PERSON_BUSY));
+    handler.afterConnectionEstablished(socket);
+    handler.afterConnectionClosed(socket, CloseStatus.NORMAL);
+    assertThat(sent).containsExactly("{\"type\":\"error\",\"reason\":\"busy\"}");
+    assertThat(ended("person_busy")).isEqualTo(1);
+    assertThat(ended("installation_busy")).isZero();
+
+    closed.set(null);
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    handler.afterConnectionClosed(socket, CloseStatus.GOING_AWAY);
+    listener.get().failed("late");
+    assertThat(ended("client_closed")).isEqualTo(1);
+    assertThat(ended("upstream")).isZero();
+  }
+
+  @Test
+  void aSessionWhoseMessageCannotBeSentEndsAsTransportError() throws Exception {
+    liveIsReady();
+    handler.afterConnectionEstablished(socket);
+    doThrow(new IOException("broken pipe")).when(socket).sendMessage(any());
+
+    listener.get().text("Guten");
+
+    assertThat(ended("transport_error")).isEqualTo(1);
+    assertThat(closed.get()).isEqualTo(CloseStatus.SERVER_ERROR);
+  }
+
+  private double ended(String end) {
+    return meters.get(TranscriptionStreamHandler.SESSIONS_METRIC).tag("end", end).counter().count();
   }
 
   /** Runs every task on the calling thread. */

@@ -112,7 +112,7 @@ final class ManifestCompleteness {
                 + "' ("
                 + (prompt.databaseDefault() != null
                     ? prompt.databaseDefault()
-                    : String.join(", ", prompt.classes()))
+                    : String.join(", ", codeLocations(prompt)))
                 + ") changed. Review the wording - the change appears in the update delta -"
                 + " then set in "
                 + file(prompt.area())
@@ -125,6 +125,17 @@ final class ManifestCompleteness {
       }
     }
     return gaps;
+  }
+
+  private static List<String> codeLocations(PromptEntry prompt) {
+    List<String> locations = new ArrayList<>();
+    if (prompt.classes() != null) {
+      locations.addAll(prompt.classes());
+    }
+    if (prompt.resources() != null) {
+      locations.addAll(prompt.resources());
+    }
+    return locations;
   }
 
   /** Gaps between the tables and columns of {@code schema} and those the manifest names. */

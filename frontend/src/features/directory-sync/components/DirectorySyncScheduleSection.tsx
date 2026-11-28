@@ -49,7 +49,7 @@ export default function DirectorySyncScheduleSection({
 
   const switchHint = enabled
     ? provider.enabled
-      ? `OPAA liest Gruppen, Mitgliedschaften und Kontostatus ${intervalLabel(saved)} aus dem Verzeichnis dieses Anbieters.`
+      ? `opaa liest Gruppen, Mitgliedschaften und Kontostatus ${intervalLabel(saved)} aus dem Verzeichnis dieses Anbieters.`
       : 'Eingeschaltet, aber pausiert: Der Anbieter ist deaktiviert.'
     : 'Die Gruppen dieses Anbieters werden nicht aus seinem Verzeichnis abgeglichen.'
 

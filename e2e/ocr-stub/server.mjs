@@ -12,6 +12,9 @@
 // ones. Any other PDF - the connection test's own test page among them - gets a one-line document.
 //
 // GET /control/conversions tells a scenario how many conversions were asked for, per file kind.
+// PUT /control/scan-hold {"held": true} answers every conversion of the scan with 429 (overloaded)
+// until {"held": false}: OPAA leaves it waiting without locking it or marking the role unusable,
+// so a scenario can look at the waiting state before the background catch-up reads it.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -38,7 +41,8 @@ const EXPECTED_OPTIONS = {
 const scanSha256 = sha256(readFileSync(join(FIXTURE_DIR, 'satzung-scan.pdf')))
 const scanDocument = JSON.parse(readFileSync(join(FIXTURE_DIR, 'satzung-scan.docling.json'), 'utf8'))
 
-const conversions = { scan: 0, other: 0, refused: 0 }
+const conversions = { scan: 0, other: 0, refused: 0, held: 0 }
+let scanHeld = false
 
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex')
@@ -133,6 +137,21 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, conversions)
       return
     }
+    if (req.method === 'PUT' && path === '/control/scan-hold') {
+      let held
+      try {
+        held = JSON.parse((await readBody(req)).toString('utf8') || '{}').held
+      } catch {
+        held = undefined
+      }
+      if (typeof held !== 'boolean') {
+        sendJson(res, 400, { detail: 'expected {"held": true|false}' })
+        return
+      }
+      scanHeld = held
+      sendJson(res, 200, { held: scanHeld })
+      return
+    }
     if (req.method === 'GET' && path.startsWith('/v1/status/poll/')) {
       sendJson(res, keyAccepted ? 404 : 401, { detail: keyAccepted ? 'Task not found.' : 'Unauthorized' })
       return
@@ -154,6 +173,11 @@ const server = createServer(async (req, res) => {
         sendJson(res, 422, {
           detail: `unexpected options: ${wrongOptions.map(([name]) => name).join(', ') || 'files'}`,
         })
+        return
+      }
+      if (sha256(file) === scanSha256 && scanHeld) {
+        conversions.held += 1
+        sendJson(res, 429, { detail: 'scan held back by the scenario' })
         return
       }
       if (sha256(file) === scanSha256) {

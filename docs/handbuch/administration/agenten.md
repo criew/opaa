@@ -17,7 +17,7 @@ ausgeschaltet.
 3. „Speichern“.
 
 Die Änderung wirkt sofort auf allen Instanzen, ohne Neustart, und steht mit altem und neuem Wert im
-[Nachweisprotokoll](nachweisprotokoll-lesen.md). Beim ersten Einschalten legt OPAA den Agenten
+[Nachweisprotokoll](nachweisprotokoll-lesen.md). Beim ersten Einschalten legt opaa den Agenten
 „Recherche“ an: Eigentümer ist, wer einschaltet, sichtbar ist er für alle Konten. Ein späteres
 Ein- und Ausschalten legt ihn nicht erneut an.
 
@@ -50,10 +50,10 @@ Zeile hebt sie auf.
 
 Wird die Gruppe der Stelle gelöscht oder steht der Eigentümer auf „Nachfolge offen“, fehlt die
 Stelle. Die Seite des Objekts zeigt dann, wann es gesperrt wird. Wird bis dahin keine neue Stelle
-benannt, sperrt OPAA das Objekt, löscht es aber nicht. Die Frist stellen Sie unter
+benannt, sperrt opaa das Objekt, löscht es aber nicht. Die Frist stellen Sie unter
 „Administration → Ohne Zuständigkeit“ im Abschnitt „Sperre ohne verantwortliche Stelle“ ein, ab
 Werk 30 Tage. Nach dem Benennen einer neuen Stelle heben Sie die Sperre mit „Entsperren“
-auf; fehlt die Stelle dann noch, sperrt OPAA beim nächsten Lauf wieder.
+auf; fehlt die Stelle dann noch, sperrt opaa beim nächsten Lauf wieder.
 
 ## Grenzen
 

@@ -153,8 +153,8 @@ function EmbeddingInfoSection() {
         <Typography
           sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2.5, maxWidth: readingWidth }}
         >
-          Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
-          bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
+          Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: opaa
+          bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht opaa nur über die
           Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.
         </Typography>
       )}

@@ -8,13 +8,13 @@
 
 Wer morgen in „Referat 50“ kommt,
 liest ab dann, wer geht, verliert es mit der Mitgliedschaft. Gruppen verschachteln nicht; eine
-Abteilung, die im Verzeichnis nur Untergruppen hat, ist in OPAA leer.
+Abteilung, die im Verzeichnis nur Untergruppen hat, ist in opaa leer.
 
 ## Woher Gruppen kommen
 
 | Herkunft | Gepflegt von | Mitglieder aktuell |
 |---|---|---|
-| intern | ihren Verantwortlichen in OPAA | sofort |
+| intern | ihren Verantwortlichen in opaa | sofort |
 | Identitätsanbieter, Gruppen-Claim | dem Anbieter | erst bei der nächsten Anmeldung der Person |
 | Identitätsanbieter, Verzeichnisabgleich | dem Verzeichnis | nach dem nächsten Abgleich, auch ohne Anmeldung |
 
@@ -42,7 +42,7 @@ Die Tabelle zeigt alle Gruppen, mit Herkunft, Zustand und **Verwendung** („2 B
 
 Eine Anbietergruppe lässt sich hier nur schützen; Name und Mitglieder pflegt ihre Quelle.
 
-**Externe Anbieter** sind gekennzeichnet; vor jedem Recht an eine ihrer Gruppen fragt OPAA nach.
+**Externe Anbieter** sind gekennzeichnet; vor jedem Recht an eine ihrer Gruppen fragt opaa nach.
 
 ## Wer eine Gruppe sieht
 

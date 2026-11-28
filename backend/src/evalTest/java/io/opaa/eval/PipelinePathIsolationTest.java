@@ -64,7 +64,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(17);
+        .isEqualTo(18);
   }
 
   @Test
@@ -89,11 +89,13 @@ class PipelinePathIsolationTest {
     // plus 1 from issue #2331 (nine format versions moved, tiny sections combined), plus 1 from
     // issue #2373 (production top-k 8 -> 20, ranking window @20; this path only), plus 1 from
     // issue #2386 (fusion and relevance cutoff as fixed points; this path only), plus 1 from
-    // issue #3622 (PdfOcrDocumentFormat joined the registry, pdf-ocr:1)
+    // issue #3622 (PdfOcrDocumentFormat joined the registry, pdf-ocr:1), plus 1 from issue #3893
+    // (TabularDocumentFormat#version() moved 5 -> 6, title rows)
     // — counted independently of the raw-vector path above, whose own count (2 plus the same
-    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331/#3622
+    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331/#3622/
+    // #3893
     // bumps) moves for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(22);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(23);
   }
 
   /**

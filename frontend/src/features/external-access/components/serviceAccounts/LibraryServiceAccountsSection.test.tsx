@@ -76,7 +76,7 @@ describe('LibraryServiceAccountsSection', () => {
 
   it('meldet fehlende Angaben am Feld und setzt „Fehler:“ vor den Seitentitel', async () => {
     const user = userEvent.setup()
-    document.title = 'Projekte · OPAA'
+    document.title = 'Projekte · opaa'
     render('library-mine')
 
     const dialog = await openManage(user)
@@ -86,7 +86,7 @@ describe('LibraryServiceAccountsSection', () => {
     expect(within(dialog).getByText('Bitte ein Dienstkonto auswählen.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Zugriff bis')).toHaveAttribute('aria-invalid', 'true')
     expect(within(dialog).getAllByRole('radio')[0]).toHaveFocus()
-    expect(document.title).toBe('Fehler: Projekte · OPAA')
+    expect(document.title).toBe('Fehler: Projekte · opaa')
   })
 
   it('sucht ab acht wählbaren Dienstkonten', async () => {

@@ -49,7 +49,7 @@ data:
     evaluations: >-
       Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen
       lokaler Konten (90-Tage-Fenster), keine Zeitreihe. Der Merker zum Rundgang-Hinweis ist ein
-      reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; OPAA wertet ihn nicht aus, und
+      reiner Wahrheitswert ohne Zeitpunkt, Zähler oder Fortschritt; opaa wertet ihn nicht aus, und
       sein Setzen erzeugt keinen Revisionseintrag, keine Zeile im Anfrageprotokoll des Backends oder
       im Zugriffslog des Frontend-Containers, keine Metrik und keinen Trace; Spuren bleiben nur in einem
       vorgelagerten Proxy, im Fehlerlog des Frontend-Containers bei unerreichbarem Backend, im
@@ -449,18 +449,18 @@ data:
     purpose: Betrieb und Fehlersuche; enthält u. a. einzelne fehlgeschlagene Anmeldungen
     personalReference: IDENTIFIABLE
     tables: []
-    personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
+    personExcluded: Liegt beim Betrieb, nicht in opaa; Auskunft darüber gibt die Behörde
     storage: >-
       Standardausgabe des Prozesses, abgelegt durch den Betrieb (Container-Log); ebenso das
       Zugriffslog des Frontend-Containers mit Client-Adresse
     retention:
-      rule: Legt der Betrieb fest; OPAA speichert das Log nicht selbst
+      rule: Legt der Betrieb fest; opaa speichert das Log nicht selbst
       settings: []
     visibility: [Betrieb der Installation]
     accessPaths: [STORAGE]
     deletion: Durch den Betrieb
     evaluations: >-
-      Keine Auswertungsoberfläche in OPAA. Jede Zeile einer Anfrage trägt deren Request-ID, eine
+      Keine Auswertungsoberfläche in opaa. Jede Zeile einer Anfrage trägt deren Request-ID, eine
       technische Kennung ohne eigenen Personenbezug, die aber personenbeziehbar über Verknüpfung
       ist: Über sie lassen sich die Zeile im Zugriffslog des Frontend-Containers (Client-Adresse),
       die Zeilen des Anwendungslogs (teils mit Konto-Kennung), der Revisionseintrag derselben Anfrage
@@ -478,10 +478,10 @@ data:
       Tracing und nur für die Stichprobe
     personalReference: IDENTIFIABLE
     tables: []
-    personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
+    personExcluded: Liegt beim Betrieb, nicht in opaa; Auskunft darüber gibt die Behörde
     storage: Der Trace-Collector und sein Speicher beim Betrieb
     retention:
-      rule: Legt der Betrieb fest; OPAA speichert Traces nicht selbst
+      rule: Legt der Betrieb fest; opaa speichert Traces nicht selbst
       settings: []
     visibility: [Betrieb der Installation]
     accessPaths: [STORAGE]
@@ -492,6 +492,57 @@ data:
       Verknüpfung. Bei einer Stichprobe von 1.0 ein lückenloses Ablaufprotokoll aller Anfragen
     notes:
       - Kurze Frist beim Collector festlegen; Stichprobe niedrig halten
+  - id: operational-metrics
+    title: Betriebsmetriken beim Prometheus des Betriebs
+    purpose: >-
+      Betrieb, Störungserkennung und Kapazitätsplanung: Zähler, Dauern und Zustände der
+      Installation, abgefragt am Prometheus-Endpunkt des Management-Ports, unter anderem zu
+      Anfragen, Modellaufrufen und Tokens, Indizierung, Warteschlangen, Hintergrundläufen,
+      ausgehenden Aufrufen, abgewiesenen Anmeldungen, Agentenläufen (Ergebnis, Laufdauer und nicht
+      belegbare Quellenangaben je Agentenart, Werkzeugaufrufe je Werkzeug, Abweisungen nach Grund,
+      belegte und verfügbare Plätze für gleichzeitige Läufe),
+      Sitzungen des Live-Diktats nach Art ihres Endes und an den Speicherkontingenten
+      abgewiesenen Chat-Anhängen nach Kontingent
+    personalReference: NONE
+    tables: []
+    personExcluded: >-
+      Liegt beim Betrieb, nicht in opaa; die Reihen tragen keine Kennung einer Person, eines Chats
+      oder eines Dokuments, die sich einer Person zuordnen ließe
+    storage: >-
+      Der Prometheus des Betriebs, der den Endpunkt abfragt; im mitgelieferten Monitoring-Overlay
+      für Docker Compose ein eigener Prometheus-Container
+    retention:
+      rule: >-
+        Legt der Betrieb fest; opaa speichert keine Metriken über den laufenden Prozess hinaus. Das
+        mitgelieferte Monitoring-Overlay für Docker Compose hält die Reihen 30 Tage, änderbar über
+        OPAA_PROMETHEUS_RETENTION
+      settings: []
+    visibility: [Betrieb der Installation]
+    accessPaths: [STORAGE]
+    deletion: Durch den Betrieb, im Overlay mit Ablauf der Aufbewahrung
+    evaluations: >-
+      Verläufe über die Zeit für die ganze Installation, etwa Fragen, Fehlerquote, Antwortzeit und
+      Tokenverbrauch je Zweck und Modell. Jede Reihe zählt für die ganze Installation, getrennt
+      höchstens nach Instanz (host) und Build, nie für eine Person oder ein einzelnes Objekt; Tags
+      nehmen nur Werte aus
+      festen, kleinen Wertemengen an (Modell, Anbieter, Rolle, Operation, Konnektortyp,
+      Ergebnisklasse, Agentenart, Werkzeug, Abweisungsgrund, Kontingent, Job- oder Queue-Name), nie Kennungen von Personen, Spaces, Bibliotheken,
+      Dokumenten oder Chats, Adressen, Suchbegriffe oder Inhalte. Erfolgreiche Anmeldungen und
+      aktive Personen werden nicht gezählt, abgewiesene Anmeldungen nur nach Art und Grund; private
+      Bibliotheken zählen unter einer Sammelangabe statt unter ihrem Quellentyp
+    notes:
+      - >-
+        Metriken sind eine Auswertungsmöglichkeit im Sinn der Mitbestimmung; in sehr kleinen
+        Installationen kann auch eine installationsweite Zahl auf wenige Personen deuten, feine
+        Zeitauflösung und Aufteilung nach Kanal bleiben deshalb aus den mitgelieferten Dashboards
+      - >-
+        Einige Abweisungsgründe betreffen die Grenze einer einzelnen Person: person_limit bei
+        Agentenläufen (die Person hat ihren Anteil gleichzeitiger Läufe ausgeschöpft), person_busy
+        beim Live-Diktat (die Person diktiert bereits) und bei Chat-Anhängen quota=account (das
+        Kontingent des Kontos ist voll) sowie quota=unbound (das Kontingent des Kontos für noch
+        nicht gesendete Anhänge ist voll). Sie zählen ohne Kennung der Person, zeigen aber
+        installationsweit, wie oft Personen an ihre eigene Grenze stoßen
+      - Aufbewahrung und Zugriff auf Prometheus und Grafana regelt der Betrieb
 nonPersonalTables:
   organizations: [id, name, created_at]
   admin_review_reminders: [organization_id, reminded_on]
@@ -691,7 +742,7 @@ capabilities:
     seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Dokumentvorlage
   - id: VIEW_AGENT_DIRECTORY
     seesAboutOthers: >-
-      Nichts über andere Personen; öffnet das Agentenverzeichnis mit Zweck, Anweisung,
-      Bibliotheksnamen, Werkzeugen, Grenzen, Vorlagen, verantwortlicher Stelle, Fassung und
+      Nichts über andere Personen; öffnet das Agentenverzeichnis mit Zweck, Anweisung, den Namen
+      nicht privater Bibliotheken, Werkzeugen, Grenzen, Vorlagen, verantwortlicher Stelle, Fassung und
       Sperrzustand jedes Agenten und jeder Vorlage der Organisation, ohne Bibliotheksinhalte,
       Eigentümer und Nutzungsangaben. Ab Werk niemand außer der Systemverwaltung

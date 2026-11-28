@@ -18,11 +18,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class EmailLayoutBuilder {
 
-  private static final String INK = "#18191f";
-  private static final String INK_SOFT = "#3c3f49";
-  private static final String MUTED = "#767a85";
-  private static final String PAPER = "#f4f5f7";
-  private static final String HAIRLINE = "#e3e5ea";
+  private static final String INK = "#242855";
+  private static final String INK_SOFT = "#3f4468";
+  private static final String MUTED = "#555a78";
+  private static final String PAPER = "#eef3fb";
+  private static final String HAIRLINE = "#cfd1d9";
   private static final String BODY_FONT =
       "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
   private static final String MONO_FONT =

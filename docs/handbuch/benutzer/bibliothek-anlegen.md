@@ -10,7 +10,7 @@ Zeitplan selbst aktuell.
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“ wählen, dann „Wissen“.
 2. **Quellart** wählen, etwa „Upload“ oder „Confluence“. Angeboten wird, was Sie anlegen dürfen.
 3. **Stammdaten:** Name und Beschreibung.
-4. **Quelle:** bei einer Quelle Verbindung, Umfang und Zeitplan angeben. OPAA testet die
+4. **Quelle:** bei einer Quelle Verbindung, Umfang und Zeitplan angeben. opaa testet die
    Verbindung und sagt, woran es hakt. Eine Upload-Bibliothek hat diesen Schritt nicht.
 5. **Freigaben** vormerken, dann unter **Prüfen** die Angaben durchsehen und „Anlegen“ wählen.
 6. Bei Upload: im Reiter „Dokumente“ Dateien hineinziehen.
@@ -24,5 +24,5 @@ Danach die Bibliothek einem Space zuordnen; erst dann sucht der Chat darin
 - Der Zustand im Kopf der Bibliothek sagt, wie es steht, etwa „Aktuell“ oder „Teilweise
   fehlgeschlagen“. Ein Klick führt zur Ursache.
 - Alles aus einer Quelle sieht, wer die Bibliothek lesen darf. Die Rechte der Quelle übernimmt
-  OPAA nicht.
+  opaa nicht.
 - Für Ihre eigene Ablage beim Anbieter gibt es die [private Bibliothek](private-bibliothek.md).

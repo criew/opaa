@@ -13,8 +13,8 @@ export const TOKEN_STATUS_LABEL: Record<ExternalAccessTokenStatus, string> = {
 export const EXPIRY_WARNING_DAYS = 14
 
 export const DISCLOSURE_HINT =
-  'Ihre Fragen und die abgerufenen Inhalte verlassen mit diesem Token OPAA und unterliegen der ' +
-  'Protokollierung des fremden Werkzeugs. Die Zusage, dass OPAA einzelne Abfragen nicht ' +
+  'Ihre Fragen und die abgerufenen Inhalte verlassen mit diesem Token opaa und unterliegen der ' +
+  'Protokollierung des fremden Werkzeugs. Die Zusage, dass opaa einzelne Abfragen nicht ' +
   'mitschreibt, gilt dort nicht. Name, Bibliotheken und Ablauf dieses Tokens sieht auch die ' +
   'Systemverwaltung.'
 
@@ -186,7 +186,7 @@ export function clientSetupSnippets(baseUrl: string, token: string) {
           {
             id: 'opaa-token',
             type: 'promptString',
-            description: 'OPAA-Token',
+            description: 'opaa-Token',
             password: true,
           },
         ],

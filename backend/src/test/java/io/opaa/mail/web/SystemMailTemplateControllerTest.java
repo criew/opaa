@@ -186,8 +186,8 @@ class SystemMailTemplateControllerTest {
     when(templateService.preview(eq(MailTemplateKey.PASSWORD_RESET), any(), any(), any()))
         .thenReturn(
             new MailPreview(
-                new RenderedMail("Betreff OPAA", "Text", "<p>HTML</p>"),
-                Map.of("productName", "OPAA")));
+                new RenderedMail("Betreff opaa", "Text", "<p>HTML</p>"),
+                Map.of("productName", "opaa")));
 
     mockMvc
         .perform(
@@ -196,9 +196,9 @@ class SystemMailTemplateControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"variables\":{\"displayName\":\"Max\"}}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.subject").value("Betreff OPAA"))
+        .andExpect(jsonPath("$.subject").value("Betreff opaa"))
         .andExpect(jsonPath("$.bodyHtml").value("<p>HTML</p>"))
-        .andExpect(jsonPath("$.variables.productName").value("OPAA"));
+        .andExpect(jsonPath("$.variables.productName").value("opaa"));
   }
 
   @Test

@@ -18,7 +18,7 @@ Bei quelloffener Software gibt es keinen Hersteller, der vertraglich für Fortbe
 einsteht. Die Behörde braucht deshalb ein Bild davon, wer das Projekt führt, wie es Versionen pflegt
 und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei der Behörde.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Thema | Stand | Nachweis |
 |---|---|---|
@@ -52,7 +52,7 @@ und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei de
 - Das Projekt liegt auf GitHub; eine Ablage auf openCode, der Plattform der öffentlichen
   Verwaltung für quelloffenen Code, ist als Spiegel vorbereitet, aber nicht eingerichtet. openCode
   ordnet jedes Projekt einem Träger der öffentlichen Verwaltung oder einem beauftragten
-  Unternehmen zu; für OPAA steht diese Zuordnung aus. Bis dahin kann die Behörde den Code unter der
+  Unternehmen zu; für opaa steht diese Zuordnung aus. Bis dahin kann die Behörde den Code unter der
   AGPL-3.0 selbst dort spiegeln; Spiegel und Metadaten beschreibt
   [Ablage auf openCode](../../opencode.md).
 

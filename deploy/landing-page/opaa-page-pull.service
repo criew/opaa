@@ -1,5 +1,5 @@
 [Unit]
-Description=Mirror the OPAA landing page from gh-pages into /var/www/opaa.io
+Description=Mirror the opaa landing page from gh-pages into /var/www/opaa.io
 Wants=network-online.target
 After=network-online.target
 

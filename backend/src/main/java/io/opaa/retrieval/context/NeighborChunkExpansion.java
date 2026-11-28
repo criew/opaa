@@ -1,10 +1,12 @@
 package io.opaa.retrieval.context;
 
+import io.opaa.format.chunk.ChunkTable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,14 +23,17 @@ import org.springframework.stereotype.Component;
  * only for the answer: the selection, its ranking and the search hits stay what the pipeline
  * decided.
  *
- * <p>{@link NeighborChunkProperties#maxAddedCharacters} is spent in two rounds. First every
+ * <p>{@link NeighborChunkProperties#maxAddedCharacters} is spent in three rounds. First every
  * selected chunk in rank order gets one direct neighbour - the following one, else the preceding
- * one - unless a direct neighbour of it is already in the context. Then the rest goes nearest first
- * and in rank order, each neighbour only next to a chunk already present. A neighbour that no
- * longer fits is skipped. The result is ordered as continuous excerpts: every run of adjoining
- * chunks of one document in index order, the runs in the rank order of their best selected chunk.
- * Every chunk - neighbour or not - stays a chunk of its own with its own citation target, so a
- * citation of a neighbour validates like any other.
+ * one - unless a direct neighbour of it is already in the context. Then every table no larger than
+ * {@link NeighborChunkProperties#wholeTableMaxCharacters} that a selected chunk belongs to comes
+ * whole, in rank order, or not at all, so a row keeps its header and the rows around it. Then the
+ * rest goes nearest first and in rank order, each neighbour only next to a chunk already present. A
+ * neighbour that no longer fits is skipped. Neighbours and tables are each loaded in one query. The
+ * result is ordered as continuous excerpts: every run of adjoining chunks of one document in index
+ * order, the runs in the rank order of their best selected chunk. Every chunk - neighbour or not -
+ * stays a chunk of its own with its own citation target, so a citation of a neighbour validates
+ * like any other.
  */
 @Component
 public class NeighborChunkExpansion {
@@ -71,15 +76,29 @@ public class NeighborChunkExpansion {
         }
       }
     }
-    if (wanted.isEmpty()) {
+    Set<TableReference> tables = smallTables(selection);
+    if (wanted.isEmpty() && tables.isEmpty()) {
       return selection;
     }
 
-    Budget budget =
-        new Budget(
-            lookup.find(wanted.keySet(), searchScope),
-            new HashSet<>(present),
-            properties.maxAddedCharacters());
+    Map<ChunkPosition, Document> loaded = new HashMap<>(lookup.find(wanted.keySet(), searchScope));
+    Map<TableReference, List<ChunkPosition>> tableChunks = new HashMap<>();
+    if (!tables.isEmpty()) {
+      lookup
+          .findTables(tables, searchScope)
+          .forEach(
+              (position, chunk) -> {
+                loaded.putIfAbsent(position, chunk);
+                ChunkTable.of(chunk.getMetadata())
+                    .map(table -> new TableReference(position.documentId(), table.id()))
+                    .ifPresent(
+                        table ->
+                            tableChunks
+                                .computeIfAbsent(table, t -> new ArrayList<>())
+                                .add(position));
+              });
+    }
+    Budget budget = new Budget(loaded, new HashSet<>(present), properties.maxAddedCharacters());
 
     // First round: one direct neighbour per selected chunk, the following one if it can be added.
     for (Document chunk : selection) {
@@ -93,7 +112,13 @@ public class NeighborChunkExpansion {
         budget.add(position.get().shifted(-1));
       }
     }
-    // Second round: the rest of the budget, nearest first and in rank order.
+    // Second round: the small tables of the selection, each whole or not at all.
+    for (TableReference table : tables) {
+      List<ChunkPosition> positions = tableChunks.getOrDefault(table, List.of());
+      positions.sort(Comparator.comparingInt(ChunkPosition::chunkIndex));
+      budget.addAll(positions);
+    }
+    // Third round: the rest of the budget, nearest first and in rank order.
     for (Map.Entry<ChunkPosition, ChunkPosition> entry : wanted.entrySet()) {
       if (budget.includes(entry.getValue())) {
         budget.add(entry.getKey());
@@ -103,6 +128,42 @@ public class NeighborChunkExpansion {
       return selection;
     }
     return asExcerpts(selection, budget.added);
+  }
+
+  /**
+   * The tables of {@code selection} in rank order that are small enough to load whole and not
+   * already whole in it - measured by their size, so a table of the hit alone needs no lookup;
+   * empty when loading whole tables is switched off.
+   */
+  private Set<TableReference> smallTables(List<Document> selection) {
+    Map<TableReference, Integer> missingCharacters = new LinkedHashMap<>();
+    if (properties.wholeTableMaxCharacters() == 0) {
+      return Set.of();
+    }
+    Set<ChunkPosition> counted = new HashSet<>();
+    for (Document chunk : selection) {
+      Optional<ChunkPosition> position = ChunkPosition.of(chunk);
+      Optional<ChunkTable> table = ChunkTable.of(chunk.getMetadata());
+      if (position.isEmpty()
+          || table.isEmpty()
+          || table.get().characters() > properties.wholeTableMaxCharacters()) {
+        continue;
+      }
+      TableReference reference = new TableReference(position.get().documentId(), table.get().id());
+      missingCharacters.putIfAbsent(reference, table.get().characters());
+      if (counted.add(position.get())) {
+        int length = chunk.getText() == null ? 0 : chunk.getText().length();
+        missingCharacters.merge(reference, -length, Integer::sum);
+      }
+    }
+    Set<TableReference> tables = new LinkedHashSet<>();
+    missingCharacters.forEach(
+        (reference, missing) -> {
+          if (missing > 0) {
+            tables.add(reference);
+          }
+        });
+    return tables;
   }
 
   /** The neighbours added so far and the characters still free for further ones. */
@@ -121,6 +182,27 @@ public class NeighborChunkExpansion {
 
     private boolean includes(ChunkPosition position) {
       return included.contains(position);
+    }
+
+    /**
+     * Adds every loaded chunk at {@code positions} not in the context yet if all of them fit
+     * together, none otherwise; returns whether they were added.
+     */
+    private boolean addAll(List<ChunkPosition> positions) {
+      List<ChunkPosition> missing = new ArrayList<>();
+      int length = 0;
+      for (ChunkPosition position : positions) {
+        Document chunk = loaded.get(position);
+        if (chunk != null && !included.contains(position)) {
+          missing.add(position);
+          length += chunk.getText() == null ? 0 : chunk.getText().length();
+        }
+      }
+      if (missing.isEmpty() || length > remainingCharacters) {
+        return false;
+      }
+      missing.forEach(this::add);
+      return true;
     }
 
     /**
@@ -145,8 +227,9 @@ public class NeighborChunkExpansion {
 
   /**
    * Orders {@code selection} and {@code added} as continuous excerpts. Every neighbour adjoins a
-   * selected chunk, so every run holds at least one, and its rank is that of its best one. A
-   * selected chunk without a position is a run of its own.
+   * selected chunk and the chunks of a table are consecutive, so a run holds at least one selected
+   * chunk, and its rank is that of its best one; a run without one follows all others. A selected
+   * chunk without a position is a run of its own.
    */
   private static List<Document> asExcerpts(List<Document> selection, List<Document> added) {
     Map<String, TreeMap<Integer, Document>> byDocument = new HashMap<>();

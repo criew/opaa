@@ -279,21 +279,22 @@ class FillTemplateTest(unittest.TestCase):
         self.assertEqual("ENTWURF – Fassung 3",
                          docx.Document(self.result_docx()).core_properties.comments)
 
-    def test_a_stamp_longer_than_the_properties_allow_still_fills(self):
+    def test_the_footer_shows_the_short_line_and_the_properties_the_full_stamp(self):
         import docx
 
         make_template(self.template, ["{{ x }}"], footer="Seite")
-        stamp = "Agent „Recherche“, Fassung 3 · " + ", ".join(
+        footer = "KI-generierter Entwurf, nicht geprüft · Agent „Recherche“, Fassung 3"
+        stamp = footer + " · Bibliotheken: " + ", ".join(
             f"Bibliothek {n} mit einem langen Namen" for n in range(10))
         self.assertGreater(len(stamp), 255)
 
-        code, result = fill_template.fill(self.job({"x": "1"}, stamp=stamp))
+        code, result = fill_template.fill(self.job({"x": "1"}, stamp=stamp, footer=footer))
 
         self.assertEqual(0, code, result)
-        self.assertIn(stamp, footer_text(self.result_docx()))
+        self.assertEqual("Seite\n" + footer, footer_text(self.result_docx()))
         properties = docx.Document(self.result_docx()).core_properties
-        self.assertEqual(stamp[:255], properties.comments)
-        self.assertEqual(stamp[:255], properties.subject)
+        self.assertEqual(stamp, properties.comments)
+        self.assertEqual(stamp, properties.subject)
 
     def test_the_stamp_is_not_rendered_as_a_template(self):
         make_template(self.template, ["{{ x }}"])
@@ -367,16 +368,17 @@ class FillTemplateTest(unittest.TestCase):
 
         require_soffice(self)
         make_template(self.template, ["Betreff: {{ betreff }}"])
-        stamp = ("Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3"
-                 " · Vorlage „Bericht“, Fassung 2")
+        footer = "KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3"
+        stamp = footer + " · Vorlage „Bericht“, Fassung 2"
 
         code, result = fill_template.fill(
             self.job({"betreff": "Test"}, formats=["docx", "pdf"], pdf_deadline_seconds=60,
-                     stamp=stamp))
+                     stamp=stamp, footer=footer))
 
         self.assertEqual(0, code, result)
         docx_path = os.path.join(self.out, "Bericht.docx")
-        self.assertIn(stamp, footer_text(docx_path))
+        self.assertIn(footer, footer_text(docx_path))
+        self.assertNotIn("Vorlage", footer_text(docx_path))
         properties = docx.Document(docx_path).core_properties
         self.assertEqual(stamp, properties.comments)
         self.assertEqual(stamp, properties.subject)

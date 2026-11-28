@@ -80,7 +80,7 @@ sich vom Dev-Server mit Mocks in drei Punkten:
   Deep Links und Neuladen funktionieren ohne Server, der jede Route mit `index.html` beantwortet.
 - **Relative Pfade** (`base: './'`).
 - **Reines ASCII ohne Steuerzeichen in allen Skripten**, auch in mitgelieferten wie dem
-  PDF-Worker, und Seitentitel „OPAA-Prototyp“ (`frontend/prototypeOutput.ts`): Das Hosting von
+  PDF-Worker, und Seitentitel „opaa-Prototyp“ (`frontend/prototypeOutput.ts`): Das Hosting von
   claude.ai-Artifacts lehnt Dateien mit bestimmten rohen Zeichen ab, darunter U+FFFD und
   Steuerbytes. `build-prototype.mjs` bricht ab, wenn eine Ausgabedatei U+FFFD oder ein Skript ein
   Nicht-ASCII-Zeichen oder ein Steuerzeichen außer Tabulator und Zeilenumbruch enthält oder sich nicht mehr parsen lässt (`node --check`).

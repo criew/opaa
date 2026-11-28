@@ -79,7 +79,7 @@ export default function HandoverPage() {
 
   const describe = useCallback((err: unknown): string => {
     if (err instanceof ProviderAccountExistsError) {
-      return 'Unter dieser Anbieteridentität besteht bereits ein Konto in OPAA. Zwei Konten werden nie zusammengeführt — wenden Sie sich an Ihre Systemverwaltung.'
+      return 'Unter dieser Anbieteridentität besteht bereits ein Konto in opaa. Zwei Konten werden nie zusammengeführt — wenden Sie sich an Ihre Systemverwaltung.'
     }
     if (err instanceof ProviderMismatchError) {
       return 'Sie haben sich bei einem anderen Anbieter angemeldet als dem, für den die Übergabe angestoßen wurde. Öffnen Sie den Link aus der E-Mail noch einmal.'
@@ -182,7 +182,7 @@ export default function HandoverPage() {
             variant="contained"
             onClick={() => navigate(AFTER_SIGN_IN_ROUTE, { replace: true })}
           >
-            Weiter zu OPAA
+            Weiter zu opaa
           </Button>
         </AuthNotice>
       </AuthLayout>

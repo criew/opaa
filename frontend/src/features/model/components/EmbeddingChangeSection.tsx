@@ -122,7 +122,7 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
         <>
           „{name}“ gilt wieder, und die Vektorsuche läuft sofort wieder.
           {refill > 0 &&
-            ` ${formatCount(refill)} Abschnitte, die seit der Bestätigung geschrieben wurden, bettet OPAA danach mit „${name}“ nach; bis dahin findet sie nur die Volltextsuche.`}
+            ` ${formatCount(refill)} Abschnitte, die seit der Bestätigung geschrieben wurden, bettet opaa danach mit „${name}“ nach; bis dahin findet sie nur die Volltextsuche.`}
         </>
       ),
       confirmLabel: 'Verwerfen',
@@ -217,7 +217,7 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
       )}
       {index.running && (
         <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
-          Einen Ersatz-Endpunkt nimmt OPAA nur bei angehaltenem Lauf an.
+          Einen Ersatz-Endpunkt nimmt opaa nur bei angehaltenem Lauf an.
         </Typography>
       )}
       {replacing && !index.running && (
@@ -320,7 +320,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
       question: `„${model.trim()}“ als Embedding-Modell festlegen?`,
       consequence: (
         <>
-          OPAA legt die Vektorablage mit {probed.dimensions} Dimensionen an; danach stehen
+          opaa legt die Vektorablage mit {probed.dimensions} Dimensionen an; danach stehen
           Indexierung, Upload und Suche bereit. Ein späterer Wechsel des Modells bettet alle
           Abschnitte neu ein.
         </>
@@ -384,9 +384,9 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
       </SectionHead>
       <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 2 }}>
         {mode === 'change'
-          ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
+          ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt opaa, was die Neueinbettung kostet.'
           : mode === 'initial'
-            ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt OPAA die Vektorablage an. Vor dem ersten Modell nimmt OPAA keine Inhalte an, deshalb wird nichts neu eingebettet.'
+            ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt opaa die Vektorablage an. Vor dem ersten Modell nimmt opaa keine Inhalte an, deshalb wird nichts neu eingebettet.'
             : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
       </Typography>
       <Stack spacing={3}>
@@ -437,7 +437,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
         {error && <Alert severity="error">{error}</Alert>}
         {probesExhausted && (
           <Alert severity="info">
-            Ohne Probeeinbettung lässt sich nur der Endpunkt ändern; OPAA prüft dabei selbst, ob er
+            Ohne Probeeinbettung lässt sich nur der Endpunkt ändern; opaa prüft dabei selbst, ob er
             wie {mode === 'change' ? 'das aktive' : 'das neue'} Modell einbettet.
           </Alert>
         )}

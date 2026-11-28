@@ -7,13 +7,14 @@ prompts:
       Block mit Kennung je Anfrage, mit dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.answer.AnswerGenerationService
+      - io.opaa.query.answer.AnswerRules
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "1641942805a2aef568eeec580c0f273eaa45c1ad751a86a6d48c075febb45e15"
+    sha256: "99e2b700c384f635a6987a1babca06bdbe607ad718bd87bbc6809101859ab4ce"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
@@ -45,9 +46,15 @@ prompts:
       Regel, zuerst nur einen Plan vorzulegen, und im nächsten Lauf die Regel, den bestätigten oder
       geänderten Plan abzuarbeiten, auch nach der Antwort auf eine Rückfrage dabei; dazu die Beschreibungen der Werkzeuge,
       nach denen das Modell entscheidet. Fundstellen kommen als gekennzeichnete Daten zurück, mit
-      dem Hinweis, dass ihr Inhalt keine Anweisung ist
+      dem Hinweis, dass ihr Inhalt keine Anweisung ist. Sagt die Antwort, etwas sei in den Quellen
+      nicht enthalten, und findet die Nachprüfung im Suchbereich neue Fundstellen, folgt ihr ein
+      Prüfhinweis mit diesen Fundstellen und der Bitte, die Antwort einmal neu zu geben. Enthält
+      eine Ausgabe des Modells weder Text noch einen Werkzeugaufruf, folgt einmal die Aufforderung,
+      fortzufahren, nach Abbruch an der Längengrenze mit der Bitte um kürzere Werkzeugeingaben
     classes:
       - io.opaa.query.toolloop.AgentPrompt
+      - io.opaa.query.answer.AnswerRules
+      - io.opaa.query.absence.AbsenceFollowUp
       - io.opaa.query.toolloop.AgentToolCallback
       - io.opaa.query.toolloop.SearchKnowledgeTool
       - io.opaa.query.toolloop.ReadDocumentTool
@@ -61,7 +68,7 @@ prompts:
       - io.opaa.retrieval.ConversationNoteBlock
       - io.opaa.common.ContentFence
       - io.opaa.common.PromptText
-    sha256: "9c601b2bf6f31a13843da35c79722d27b4f6e3dc9876e867122e38396533aeea"
+    sha256: "dfbe28ae4e71a1f335cf8e9ae814464df37524e72ad66819d4b46938c4a5dc6e"
   - id: agent-research
     purpose: >-
       Anweisung des mitgelieferten Agenten „Recherche“, wie er beim Einschalten der Agenten
@@ -74,6 +81,26 @@ prompts:
       Fassung und steht im Revisionsprotokoll
     classes: [io.opaa.agent.AgentResearchProvisioner]
     sha256: "b5c3e36834c79b998259fb974da388338afeba75620331ee6435dcc1c498bd96"
+  - id: model-tool-check
+    purpose: >-
+      Feste Fallbasis der Werkzeugprüfung eines Chat-Modells in der Modellverwaltung: System-Prompt
+      einer fiktiven Stadtverwaltung mit der Grenze der Suchaufrufe, erfundene Fragen und
+      Werkzeugergebnisse, Hinweise bei erreichter Grenze oder falschem Aufruf, die Beschreibung
+      des Suchwerkzeugs der Agenten und eine Bereitschaftsprobe vor dem ersten Fall
+    classes:
+      - io.opaa.query.toolcheck.ToolCallingTool
+      - io.opaa.query.toolcheck.ToolCheckWorker
+      - io.opaa.query.toolloop.SearchKnowledgeDefinition
+    resources:
+      - io/opaa/query/toolcheck/casebase/system-prompt.txt
+      - io/opaa/query/toolcheck/casebase/cases.json
+      - io/opaa/query/toolcheck/casebase/mock-tool.json
+    sha256: "36f9b39bb747ff45020d4fc142c6a4a0af98491858b0c124600e87f7634f15de"
+    notes:
+      - >-
+        Keine KI-Funktion: Die Prüfung misst nur, ob ein Modell Werkzeuge verlässlich aufruft; sie
+        enthält keine Daten aus Bibliotheken, Chats oder über Personen, und ihr Ergebnis setzt
+        keine Einstellung
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]

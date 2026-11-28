@@ -10,7 +10,7 @@ import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '@/shared/utils/contrast'
 
 const MAX_TAB_PRESSES = 20
 
-/** `#0B6FBC` → `rgb(11, 111, 188)`: jsdom returns computed colours in this form. */
+/** `#0055A4` → `rgb(0, 85, 164)`: jsdom returns computed colours in this form. */
 function asRgb(hex: string): string {
   const value = Number.parseInt(hex.replace('#', ''), 16)
   return `rgb(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255})`

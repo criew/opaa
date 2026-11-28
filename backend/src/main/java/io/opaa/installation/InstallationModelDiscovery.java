@@ -86,10 +86,7 @@ public class InstallationModelDiscovery {
     }
     String address = baseUrl == null ? "" : baseUrl.strip();
     String key = effectiveKey(step, address, apiKey);
-    RateLimitService.Decision decision = budget.tryAcquire(BUDGET_KEY);
-    if (!decision.allowed()) {
-      throw new TooManyRequestsException(LIMIT_MESSAGE, decision.retryAfterSeconds(), LIMIT_CODE);
-    }
+    budget.acquire(BUDGET_KEY, LIMIT_MESSAGE, LIMIT_CODE);
     return discoverer.discover(address, key, null);
   }
 

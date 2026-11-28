@@ -1,6 +1,6 @@
 {
   "uid": "opaa-knowledge",
-  "title": "OPAA · Wissensbestand & Bibliotheken",
+  "title": "opaa · Wissensbestand & Bibliotheken",
   "description": "Bereich Wissensbestand: Bestand, Aktualität, Suche und Verzeichnisabgleich.",
   "tags": [
     "opaa"
@@ -35,7 +35,7 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "enable": true,
-        "iconColor": "#0B6FBC",
+        "iconColor": "#0055A4",
         "name": "Neuer Pod oder Neustart",
         "expr": "count by (host) (process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} unless process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"} offset 2m) or count by (host) (changes(process_start_time_seconds{namespace=~\"$namespace\", host=~\"$host\"}[2m]) > 0)",
         "step": "60s",
@@ -63,7 +63,7 @@
   },
   "links": [
     {
-      "title": "OPAA",
+      "title": "opaa",
       "type": "dashboards",
       "tags": [
         "opaa"

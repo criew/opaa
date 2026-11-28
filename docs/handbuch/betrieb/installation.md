@@ -1,6 +1,6 @@
 # Installation
 
-Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
+Eine opaa-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
 der Systemverwaltung und Identitätsanbieter, dazu nach Wahl Chat-Modell, Einbettung,
 Reranking, das Transkriptionsmodell der [Spracheingabe](modell-endpunkte.md#spracheingabe-einschalten), die
 [Texterkennung](texterkennung.md) gescannter PDFs, der Virenscanner der [Virenprüfung](../administration/virenpruefung.md), der Mailserver für den [E-Mail-Versand](../administration/e-mail.md) und das [Branding](../administration/branding.md). Bis dahin steht sie im
@@ -28,7 +28,7 @@ Die Readiness bleibt im Installationsmodus `UP`, damit Load Balancer und Ingress
 Betriebs in die Datenbank und einen Neustart.
 
 Im Modus `dev` richtet sich jede Instanz selbst ein, mit einem Chat-Modell aus festen Vorgaben für
-die Entwicklung. Eine Datenbank, auf der OPAA schon lief (vorhandene Konten), gilt als eingerichtet.
+die Entwicklung. Eine Datenbank, auf der opaa schon lief (vorhandene Konten), gilt als eingerichtet.
 
 Die Installation entscheidet eine Instanz erst, wenn das Instanzregister sie zugelassen hat
 ([Mehrere Backend-Instanzen](mehrere-instanzen.md)); eine abgewiesene Instanz schließt nichts ab und
@@ -58,19 +58,19 @@ Zu lesen mit `docker compose logs backend | grep -A3 "INSTALLATION TOKEN"` bzw. 
 das nicht will, setzt `OPAA_INSTALLATION_TOKEN` aus einem Secret; dann erscheint kein Token im Log,
 sofern **jede** Instanz die Variable mit demselben Wert trägt.
 Gespeichert wird nur ein Prüfwert; mit dem Abschluss verfällt er. Wird ein gesetztes Token
-wieder entfernt, gilt es beim nächsten Start nicht mehr; OPAA erzeugt ein neues. **Ein verlorenes Token** ersetzt
+wieder entfernt, gilt es beim nächsten Start nicht mehr; opaa erzeugt ein neues. **Ein verlorenes Token** ersetzt
 der Betrieb, indem er `OPAA_INSTALLATION_TOKEN` setzt und neu startet. Wer das Log lesen kann, kann
 die Installation abschließen: Log-Zugriff ist bis dahin so schutzwürdig wie das Token selbst.
 
 `OPAA_INSTALLATION_ALLOWED_CIDRS` beschränkt die Installations-API zusätzlich auf Netzbereiche (wie
 `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`); hinter einem Reverse-Proxy zählt die Adresse aus
 `X-Forwarded-For`, sofern der Proxy in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` steht. **Fehlt diese
-Angabe hinter einem Reverse-Proxy,** sieht OPAA für jeden Aufruf die Adresse des Proxys: Die
+Angabe hinter einem Reverse-Proxy,** sieht opaa für jeden Aufruf die Adresse des Proxys: Die
 Netzbeschränkung prüft dann den Proxy statt der Person, und alle teilen sich ein Budget, sodass
 fremde Fehlversuche den Betrieb aussperren. Start (Netzbereiche gesetzt, keine vertrauten Proxys)
 und der erste Aufruf mit `X-Forwarded-For` von einer nicht vertrauten Verbindung warnen davor im Log.
-Je Netzadresse und Instanz begrenzt OPAA Aufrufe und abgelehnte Tokens; jede Ablehnung steht im
-Log. Netz, Budget und Token prüft OPAA, bevor es eine Anfrage liest; größere Anfragen als 64 KiB
+Je Netzadresse und Instanz begrenzt opaa Aufrufe und abgelehnte Tokens; jede Ablehnung steht im
+Log. Netz, Budget und Token prüft opaa, bevor es eine Anfrage liest; größere Anfragen als 64 KiB
 lehnt es ab.
 
 ## Schritte
@@ -124,21 +124,21 @@ Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"
 weder gespeichert noch protokolliert. Was ohne Chat- oder Embedding-Modell geht und was nicht, steht
 unter [Ohne Modelle installiert](#ohne-modelle-installiert).
 
-Das Passwort des ersten Kontos speichert OPAA nur als Hash, API-Schlüssel und Passwort des
+Das Passwort des ersten Kontos speichert opaa nur als Hash, API-Schlüssel und Passwort des
 Mailservers verschlüsselt mit `OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie
 gesetzt sind. Ein gespeicherter Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich
 bleibt (Schema, Host, Port, Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt
 ihn. Ebenso geht ein gespeichertes Passwort des Mailservers nicht an einen anderen Server, Port,
 Benutzernamen oder eine andere Verschlüsselung.
 
-**Adressprüfung der Modelle.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
+**Adressprüfung der Modelle.** Weil die Installation vor jedem Konto läuft, prüft opaa die
 Adressen von Chat-, Embedding-, Rerank-, Transkriptions- und Texterkennungsmodell beim Speichern und unmittelbar vor
 Verbindungstest, Probeeinbettung und Probe, auch eine Adresse, die die Modellverwaltung schon
 gespeichert hat: Adressen in internen, Loopback- oder Link-Local-Bereichen werden abgelehnt, ohne
 dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im Compose-Stapel, gibt der
 Betrieb mit Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` frei (`ollama:11434`); die
 Liste der Quellen gibt kein Modell frei ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)). Die Probeeinbettung folgt keiner Weiterleitung, wartet höchstens zehn Sekunden, wiederholt
-sich nicht und liest nur eine begrenzte Antwort. Zwischen Prüfung und Anfrage löst OPAA den
+sich nicht und liest nur eine begrenzte Antwort. Zwischen Prüfung und Anfrage löst opaa den
 Hostnamen erneut auf; wer den Namensdienst des Modells kontrolliert, könnte die Anfrage in diesem
 Moment noch umlenken. Einen festen Endpunkt im eigenen Netz trifft das nicht.
 
@@ -177,7 +177,7 @@ Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an, ohne Reran
 Reranking aus, ohne Transkriptionsmodell die Spracheingabe, ohne Texterkennung bleiben Scans
 ohne Textebene unauffindbar, ohne Virenprüfung werden Dateien ungeprüft gelesen; ist der E-Mail-Versand übersprungen,
 bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
-OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
+opaa-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
 Neueinbettung ([Modelle](modell-endpunkte.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
@@ -211,7 +211,7 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   fehlgeschlagenen Prüfung.
 - **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
   prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
-  `https://`; alles Weitere prüft OPAA wie oben beschrieben.
+  `https://`; alles Weitere prüft opaa wie oben beschrieben.
 - **Modelle auswählen.** In den Modellschritten wählt man zuerst den Anbieter (Ollama, OpenAI, beim
   Chat auch Anthropic, bei der Spracheingabe nur OpenAI, oder „Eigene Adresse“); die Vorlage trägt
   die Basis-Adresse ein. Der Schritt Reranking hat keine Vorlage, weil keiner dieser Anbieter
@@ -267,13 +267,13 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   „Eigener Endpunkt“ bietet docling-serve oder ein Vision-Modell (OpenAI-kompatibel) an, beim
   Vision-Modell mit Modell-Kennung und dem Hinweis, dass Fundstellen nur auf ihrer Seite, nicht als
   Rahmen erscheinen. Eine Modellliste ruft der Schritt nicht ab. Den Schlüssel des Dienstes trägt man
-  von Hand ein, denselben wie bei `OPAA_OCR_API_KEY` oder `ocr-api-key` im Secret; OPAA liest ihn
+  von Hand ein, denselben wie bei `OPAA_OCR_API_KEY` oder `ocr-api-key` im Secret; opaa liest ihn
   nicht von dort. „Prüfen und weiter“ lässt den Dienst die Testseite lesen, in den Stufen Adresse,
   Anmeldung und Erkennung, und nennt bei einem Fehler die Stufe; die erste Umwandlung kann einige
-  Minuten dauern. OPAA wartet höchstens drei Minuten auf den Dienst, der Assistent etwas länger;
+  Minuten dauern. opaa wartet höchstens drei Minuten auf den Dienst, der Assistent etwas länger;
   bricht er trotzdem ab, liest er den Stand neu und geht weiter, wenn die Prüfung inzwischen
   gelungen ist, sonst sagt er, dass sie im Hintergrund weiterläuft.
-- **Virenprüfung.** OPAA bringt keinen Virenscanner mit; der Schritt bindet den clamd-Dienst an,
+- **Virenprüfung.** opaa bringt keinen Virenscanner mit; der Schritt bindet den clamd-Dienst an,
   den der Betrieb bereitstellt. Er hat die Felder, Texte und Regeln von „Administration → Virenprüfung“,
   aber kein Feld für den Port und nimmt `3310`; der Hilfetext am Host sagt das. Weil das Token allein schützt, soll der Schritt keine anderen Ports im
   internen Netz abtasten können. Ein Dienst auf einem anderen Port wird nach der Installation dort
@@ -295,10 +295,10 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
 - **Branding.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration → Allgemein & Branding“,
   dazu dessen Kontrastwarnung der Akzentfarbe, die warnt, aber nicht sperrt, und die Vorschau von
   Produktname, Claim und Akzentfarbe im hellen und im dunklen Farbschema. Ein leeres Feld zeigt den
-  OPAA-Standard, „Hinweis auf Standard zurücksetzen“ stellt den Standardtext des Hinweises zur
+  opaa-Standard, „Hinweis auf Standard zurücksetzen“ stellt den Standardtext des Hinweises zur
   KI-Nutzung wieder her, abschalten lässt er sich nicht. Logo, Logo der Anmeldeseite und
   Hintergrundbild nimmt der Assistent nicht an; sie lädt die Systemverwaltung nach der Installation
-  unter „Administration → Allgemein & Branding“ hoch, bis dahin gelten die Bilder von OPAA.
+  unter „Administration → Allgemein & Branding“ hoch, bis dahin gelten die Bilder von opaa.
 - **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
   gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“, ein gespeichertes
   Passwort des Mailservers „Gespeichertes Passwort löschen“. Wer das erste Konto
@@ -377,7 +377,7 @@ Prüfungen, alles oder nichts.
     "username": "opaa",
     "passwordFile": "/run/secrets/opaa-mail-password",
     "fromAddress": "opaa@stadt.example",
-    "fromName": "OPAA"
+    "fromName": "opaa"
   },
   "branding": {
     "productName": "Landesamt-Assistent",
@@ -408,25 +408,25 @@ Prüfungen, alles oder nichts.
   `textRecognitionModel`, `malwareScan`, `mail` und `branding` sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
   verworfen.
-- **Rerank-Modell:** Ohne den Abschnitt `rerankModel` bleibt das Reranking aus. Mit ihm prüft OPAA
+- **Rerank-Modell:** Ohne den Abschnitt `rerankModel` bleibt das Reranking aus. Mit ihm prüft opaa
   Adresse und Endpunkt wie im Assistenten, und der Abschluss schaltet das Reranking ein. Der
-  Schlüssel steht als `apiKeyFile`; ohne ihn sendet OPAA keinen.
-- **Virenprüfung:** Ohne den Abschnitt `malwareScan` bleibt die Virenprüfung aus. Mit ihm fragt OPAA
+  Schlüssel steht als `apiKeyFile`; ohne ihn sendet opaa keinen.
+- **Virenprüfung:** Ohne den Abschnitt `malwareScan` bleibt die Virenprüfung aus. Mit ihm fragt opaa
   den Dienst wie im Assistenten nach seiner Version, und der Abschluss schaltet die Prüfung ein.
   `port` ist auch hier nur `3310`; ohne `timeoutSeconds` gelten 30 Sekunden, ohne `onUnavailable`
   `REJECT`.
-- **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
+- **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft opaa Adresse
   und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
-  Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
+  Das Passwort steht als `passwordFile`; ohne es meldet sich opaa nicht an.
 - **Spracheingabe:** Ohne den Abschnitt `transcriptionModel` bleibt die Spracheingabe aus. Mit ihm
-  prüft OPAA Adresse und Endpunkt wie im Assistenten, und der Abschluss schaltet die Rolle ein; ohne
+  prüft opaa Adresse und Endpunkt wie im Assistenten, und der Abschluss schaltet die Rolle ein; ohne
   `language` gilt `de`, eine leere Sprache lässt das Modell sie erkennen. Ist die Spracheingabe mit
-  `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, übergeht OPAA den Abschnitt und meldet das
+  `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, übergeht opaa den Abschnitt und meldet das
   im Log, die Datei gilt trotzdem.
 - **Live-Transkript:** Der Unterabschnitt `transcriptionModel.realtime` schaltet es zusätzlich ein,
   sonst bleibt es beim Diktat mit ganzer Aufnahme. `protocol` ist `OPENAI`, `VLLM` oder `MISTRAL`,
   dazu `url` (`ws://` oder `wss://`) und `model`; der eigene Schlüssel steht als `apiKeyFile`. Ohne
-  ihn sendet OPAA den Schlüssel des Transkriptionsmodells, nur an die gleiche Adresse bis zum Port
+  ihn sendet opaa den Schlüssel des Transkriptionsmodells, nur an die gleiche Adresse bis zum Port
   (Schema, Host, Port); OpenAI und Mistral ohne einen dieser Schlüssel lehnt der Start ab. Beispiel:
 
   ```json
@@ -443,13 +443,13 @@ Prüfungen, alles oder nichts.
   }
   ```
 - **Texterkennung:** Ohne den Abschnitt `textRecognitionModel` bleibt die Texterkennung aus. Mit ihm
-  prüft OPAA Adresse und Dienst wie im Assistenten, mit dem gestuften Verbindungstest, und der
+  prüft opaa Adresse und Dienst wie im Assistenten, mit dem gestuften Verbindungstest, und der
   Abschluss trägt den Dienst ein und schaltet die Rolle ein. `connectionType` ist `DOCLING_SERVE`
   (Vorgabe) oder `OPENAI_VISION`, dann mit `model`; der Schlüssel steht als `apiKeyFile`, derselbe
-  Wert wie beim Dienst. Ohne `OPAA_OCR_ENABLED=true` übergeht OPAA den Abschnitt, ohne seine
-  Schlüsseldatei zu lesen, und meldet das im Log; die Datei gilt trotzdem. Ebenso liest OPAA die
+  Wert wie beim Dienst. Ohne `OPAA_OCR_ENABLED=true` übergeht opaa den Abschnitt, ohne seine
+  Schlüsseldatei zu lesen, und meldet das im Log; die Datei gilt trotzdem. Ebenso liest opaa die
   Schlüsseldatei eines übergangenen Abschnitts `transcriptionModel` nicht.
-- **Branding:** Ohne den Abschnitt `branding` gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
+- **Branding:** Ohne den Abschnitt `branding` gilt der opaa-Standard. Mit ihm prüft opaa die Angaben
   wie die Branding-Verwaltung; jedes Feld ist optional (`productName`, `claim`, `aiNotice`,
   `primaryColor`), ein fehlendes oder leeres gilt als Standard. Bilder nimmt die Antwortdatei nicht
   an; ein `defaultColorScheme` älterer Dateien wird übergangen.
@@ -468,7 +468,7 @@ Prüfungen, alles oder nichts.
 | `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
 | `400` am Feld Port „Im Assistenten sind die Ports 25, 465, 587 und 2525 zugelassen …“ | ein anderer Port ohne Eintrag mit genau diesem `host:port` | Port prüfen, oder `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` eintragen |
 | `400` am Feld Server, Absenderadresse, Passwort oder Testnachricht | Leer- oder Steuerzeichen im Server; mehr als ein Postfach in einer Adresse (`,` `;` `<` `>` `"`); `***` als Passwort, das in der Verwaltung „unverändert“ bedeutet | Eingabe korrigieren |
-| `400` am Feld Produktname, Claim, Hinweis zur KI-Nutzung oder Primärfarbe | zu lang, Steuerzeichen (auch zur Schreibrichtung), Zeilenumbruch oder ein nicht darstellbares Zeichen, oder eine Farbe, die kein sechsstelliger Hex-Wert mit `#` ist; dieselben Regeln wie unter „Administration → Allgemein & Branding“ | Eingabe korrigieren, das Feld leeren für den OPAA-Standard oder den Schritt überspringen |
+| `400` am Feld Produktname, Claim, Hinweis zur KI-Nutzung oder Primärfarbe | zu lang, Steuerzeichen (auch zur Schreibrichtung), Zeilenumbruch oder ein nicht darstellbares Zeichen, oder eine Farbe, die kein sechsstelliger Hex-Wert mit `#` ist; dieselben Regeln wie unter „Administration → Allgemein & Branding“ | Eingabe korrigieren, das Feld leeren für den opaa-Standard oder den Schritt überspringen |
 | `400` am Feld Passwort „Server, Port, Zugangsname oder Verschlüsselung ändern sich …“ | das gespeicherte Passwort des Mailservers folgt keinem neuen Ziel | Passwort neu eingeben oder löschen |
 | Prüfung des E-Mail-Versands „Der Mailserver ist nicht erreichbar …“ | falscher Server oder Port, Name nicht auflösbar, Verbindung abgelehnt oder Timeout beim Verbindungsaufbau | Server und Port prüfen, im Compose-Stapel den Servicenamen verwenden |
 | Prüfung „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | STARTTLS nicht angeboten, TLS-Handshake gescheitert oder das Zertifikat nennt den eingetragenen Server nicht | Verschlüsselung passend zum Port wählen ([Fehlerbilder des E-Mail-Versands](../administration/e-mail.md#fehlerbilder)) |
@@ -495,7 +495,7 @@ Prüfungen, alles oder nichts.
 
 ## Ohne Modelle installiert
 
-Eine Installation ohne Chat- oder Embedding-Modell ist ein regulärer Zustand. OPAA startet ohne
+Eine Installation ohne Chat- oder Embedding-Modell ist ein regulärer Zustand. opaa startet ohne
 Fehler im Log; Anmeldung, Konten, Spaces, Bibliotheken und die Verwaltung arbeiten wie sonst.
 
 | Fehlt | Wirkung | Abhilfe |

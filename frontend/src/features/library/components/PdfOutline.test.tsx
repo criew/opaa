@@ -46,6 +46,25 @@ describe('PdfOutline', () => {
     expect(onSelect).toHaveBeenCalledWith(OUTLINE[1])
   })
 
+  it('marks the folded entry that holds the current one, and the entry itself once unfolded', async () => {
+    const hidden = FRISTEN.children[0]
+    renderWithProviders(<PdfOutline nodes={OUTLINE} activeNode={hidden} onSelect={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: '3.1 Fristen' })).toHaveAttribute(
+      'aria-current',
+      'location',
+    )
+    expect(screen.getByRole('button', { name: '3 Verfahren' })).not.toHaveAttribute('aria-current')
+
+    await userEvent.click(screen.getByRole('button', { name: '3.1 Fristen aufklappen' }))
+
+    expect(screen.getByRole('button', { name: '3.1 Fristen' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('button', { name: '3.1.1 Fristbeginn' })).toHaveAttribute(
+      'aria-current',
+      'location',
+    )
+  })
+
   it('disables an entry without a destination', () => {
     renderWithProviders(<PdfOutline nodes={OUTLINE} activeNode={null} onSelect={vi.fn()} />)
 

@@ -7,7 +7,7 @@
 denen sie arbeitet, etwa Wissensbibliotheken und Prompts. Links in der Seitenleiste stehen oben
 Ihre Spaces, darunter die Chats des aktuellen Space. Einen eigenen Space haben Sie immer.
 
-**Gefragt wird im Chat.** Nach der Anmeldung öffnet OPAA einen leeren Chat. Frage eintippen, Enter,
+**Gefragt wird im Chat.** Nach der Anmeldung öffnet opaa einen leeren Chat. Frage eintippen, Enter,
 und die Antwort kommt mit Belegen aus dem Wissen des Space ([Fragen stellen](fragen-stellen.md)).
 
 **Inhalte kommen über den Katalog.** Der Katalog in der linken Leiste zeigt alle Arbeitsmittel, die
@@ -15,14 +15,14 @@ Sie lesen dürfen. Dort legen Sie neue an und ordnen sie einem Space zu ([Katalo
 
 ## Rundgang machen
 
-Beim ersten Besuch, und bis Sie antworten, fragt OPAA über dem leeren Chat „Neu hier?“. Der
+Beim ersten Besuch, und bis Sie antworten, fragt opaa über dem leeren Chat „Neu hier?“. Der
 Rundgang zeigt an der echten Oberfläche, wie Sie fragen, worauf sich Antworten stützen und wo Sie
 Wissen finden.
 
 1. „Rundgang starten“. Jeder Schritt hebt ein Element hervor und erklärt es kurz.
 2. Mit „Weiter“ und „Zurück“ oder den Pfeiltasten blättern; „Fertig“, ✕ oder Escape beendet ihn.
 3. Später noch einmal: Profil, „Rundgang starten“; auf schmalen Bildschirmen liegt das Profil im
-   Menü („Menü öffnen“). Außerhalb eines Chats öffnet OPAA dafür zuerst einen neuen Chat.
+   Menü („Menü öffnen“). Außerhalb eines Chats öffnet opaa dafür zuerst einen neuen Chat.
 
 „Nicht jetzt“ oder Escape schließt den Hinweis ohne Rundgang. Beide Antworten gelten für Ihr Konto
 auf jedem Gerät; der Hinweis kommt nicht wieder, der Rundgang bleibt im Profil erreichbar.

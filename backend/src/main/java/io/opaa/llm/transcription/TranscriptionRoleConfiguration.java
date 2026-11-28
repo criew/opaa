@@ -37,4 +37,18 @@ public class TranscriptionRoleConfiguration {
         probeScheduler,
         clock);
   }
+
+  @Bean
+  OptionalRoleStartupCheck realtimeTranscriptionRoleStartupCheck(
+      RealtimeTranscriptionRole role,
+      @Qualifier("transcriptionProbeScheduler") TaskScheduler probeScheduler,
+      Clock clock) {
+    return new OptionalRoleStartupCheck(
+        role,
+        ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION,
+        "Live transcription",
+        "Dictation falls back to recording.",
+        probeScheduler,
+        clock);
+  }
 }

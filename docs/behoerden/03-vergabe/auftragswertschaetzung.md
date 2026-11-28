@@ -20,9 +20,9 @@ den Leistungen eines Dienstleisters: Einführung, Betrieb, Pflege, Support, Schu
 (Gruppe L im [Anforderungskatalog](anforderungskatalog.md)). Die Schätzung erstellt die Behörde und
 hält die Herleitung im Vergabevermerk fest.
 
-## Was OPAA liefert
+## Was opaa liefert
 
-OPAA kostet kein Lizenzentgelt. Das Rechenbeispiel zeigt den Aufbau; alle Zahlen darin sind
+opaa kostet kein Lizenzentgelt. Das Rechenbeispiel zeigt den Aufbau; alle Zahlen darin sind
 **Annahmen**, keine Marktpreise.
 
 ## Aufgaben der Behörde

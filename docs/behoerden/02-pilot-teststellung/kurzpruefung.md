@@ -20,7 +20,7 @@ Datenschutz-Folgenabschätzung, kein Sicherheitskonzept und keine Dienstvereinba
 ob die Erprobung so beginnen kann. Schon ein Pilot mit Beschäftigten oder echten Daten kann
 mitbestimmungspflichtig sein. Verantwortlich ist die Projektleitung.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Die Antworten stehen in den Faktenblättern der Version, die erprobt wird, und im Handbuch. Die
 Version wird vor dem Start festgelegt und bleibt während der Erprobung gleich.
@@ -67,7 +67,7 @@ Version wird vor dem Start festgelegt und bleibt während der Erprobung gleich.
 ## Ergebnis festhalten
 
 ```text
-Erprobung:          [Pilot / Teststellung], OPAA-Version [X.Y.Z], von [ ] bis [ ]
+Erprobung:          [Pilot / Teststellung], opaa-Version [X.Y.Z], von [ ] bis [ ]
 Datenschutz:        [Start möglich / mit Auflagen: … / nicht möglich]   Name, Datum: [ ]
 Informationssich.:  [Start möglich / mit Auflagen: … / nicht möglich]   Name, Datum: [ ]
 Personalvertretung: [zugestimmt / Auflagen: … / abgelehnt]              Name, Datum: [ ]

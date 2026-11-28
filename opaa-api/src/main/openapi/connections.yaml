@@ -321,7 +321,7 @@ paths:
       tags: [connection-profile]
       summary: The redirect URI an OAuth app registration names (system admin only)
       description: >
-        Exactly the address OPAA sends every provider back to after a consent,
+        Exactly the address opaa sends every provider back to after a consent,
         {OPAA_PUBLIC_BASE_URL}/connections/callback; absent while no public address is configured,
         and then no consent can start.
       responses:
@@ -755,7 +755,7 @@ paths:
       tags: [connection-profile]
       summary: Create an MCP server profile (system admin only)
       description: >
-        OPAA discovers the authorization server first: the Protected Resource Metadata (RFC 9728)
+        opaa discovers the authorization server first: the Protected Resource Metadata (RFC 9728)
         of serverUrl, then the authorization server's metadata (RFC 8414, else OpenID discovery).
         The resource there must be serverUrl, the issuer the address the metadata was read from,
         PKCE must offer S256, every endpoint must be https; anything else is 400. The discovered
@@ -1274,7 +1274,7 @@ components:
           type: string
           pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
           nullable: true
-          description: An ISO date (YYYY-MM-DD); OPAA warns 14 days before it.
+          description: An ISO date (YYYY-MM-DD); opaa warns 14 days before it.
           example: "2027-03-31"
         tenant:
           type: string
@@ -1359,7 +1359,7 @@ components:
           type: string
           pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
           nullable: true
-          description: An ISO date (YYYY-MM-DD); OPAA warns 14 days before it.
+          description: An ISO date (YYYY-MM-DD); opaa warns 14 days before it.
           example: "2027-03-31"
         tenant:
           type: string
@@ -1663,7 +1663,7 @@ components:
         clientId:
           type: string
           maxLength: 255
-          description: The client id OPAA is registered with at the server's authorization server.
+          description: The client id opaa is registered with at the server's authorization server.
         clientSecret:
           type: string
           maxLength: 4096

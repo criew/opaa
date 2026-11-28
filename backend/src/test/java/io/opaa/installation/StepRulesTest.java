@@ -553,7 +553,7 @@ class StepRulesTest {
 
   private static StepInput.Mail mail(String host, String username, String password) {
     return new StepInput.Mail(
-        host, 2525, MailEncryption.NONE, username, password, " opaa@stadt.example ", "OPAA");
+        host, 2525, MailEncryption.NONE, username, password, " opaa@stadt.example ", "opaa");
   }
 
   @Test

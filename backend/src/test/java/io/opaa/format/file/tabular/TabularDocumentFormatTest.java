@@ -7,9 +7,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.chunk.ChunkTable;
 import io.opaa.format.file.office.CountingOdfOpener;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -20,13 +22,16 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -50,7 +55,7 @@ class TabularDocumentFormatTest {
   void claimsExactlyXlsxCsvAndOds() {
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
-    assertThat(pipeline.version()).isEqualTo((short) 5);
+    assertThat(pipeline.version()).isEqualTo((short) 6);
   }
 
   // --- XLSX ------------------------------------------------------------------------------------
@@ -264,6 +269,243 @@ class TabularDocumentFormatTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks().getFirst().getText()).contains("Blatt: Bericht");
+  }
+
+  // regression guard: an XLSX workbook declares title and dates in docProps/core.xml like DOCX
+  @Test
+  void anXlsxWorkbookDeclaresTitleAndDatesOfItsCoreProperties() throws Exception {
+    Path file = tempDir.resolve("tabelle.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      writeRow(workbook.createSheet("Daten"), 0, "Posten", "Betrag");
+      POIXMLProperties.CoreProperties core = workbook.getProperties().getCoreProperties();
+      core.setTitle("Finanzplanung der Jahre 2025 bis 2028");
+      core.setCreated("2024-02-01T09:00:00Z");
+      core.setModified("2024-03-15T16:30:00Z");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+    DocumentFormatSource source = DocumentFormatSource.ofFile(file, "tabelle.xlsx");
+
+    DocumentProperties fromRun = pipeline.run(source).properties();
+    DocumentProperties fromBackfill = pipeline.readProperties(source);
+
+    for (DocumentProperties properties : List.of(fromRun, fromBackfill)) {
+      assertThat(properties.title()).isEqualTo("Finanzplanung der Jahre 2025 bis 2028");
+      assertThat(properties.createdAt()).isEqualTo(LocalDate.of(2024, 2, 1));
+      assertThat(properties.modifiedAt()).isEqualTo(LocalDate.of(2024, 3, 15));
+    }
+  }
+
+  @Test
+  void aCsvFileDeclaresNoProperties() throws IOException {
+    Path file = tempDir.resolve("tabelle.csv");
+    Files.writeString(file, "Posten,Betrag\nStraßenbau,1240\n");
+
+    assertThat(pipeline.readProperties(DocumentFormatSource.ofFile(file, "tabelle.csv")))
+        .isEqualTo(DocumentProperties.EMPTY);
+  }
+
+  // --- Title rows ------------------------------------------------------------------------------
+
+  @Test
+  void aMergedTitleRowAboveTheHeaderBecomesTheTableTitleNotTheColumnHeader() throws IOException {
+    Path file = tempDir.resolve("gebuehrenordnung.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Gebühren");
+      writeRow(sheet, 0, "Gebührenordnung 2026");
+      sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 2));
+      writeRow(sheet, 2, "Kennung", "Leistung", "Gebühr");
+      writeRow(sheet, 3, "AB-08", "Beglaubigung", "12,00 EUR");
+      writeRow(sheet, 4, "AB-09", "Auskunft", "8,00 EUR");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "gebuehrenordnung.xlsx"));
+
+    assertThat(result.chunks()).hasSize(1);
+    Document chunk = result.chunks().getFirst();
+    assertThat(chunk.getText())
+        .startsWith(
+            "Blatt: Gebühren · Tabelle: Gebührenordnung 2026\n\nKennung | Leistung | Gebühr\n")
+        .contains("AB-08 | Beglaubigung | 12,00 EUR")
+        .contains("AB-09 | Auskunft | 8,00 EUR");
+    assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+        .isEqualTo("Blatt Gebühren · Zeilen 4–5");
+  }
+
+  @Test
+  void rowsBelowATitleRowArePaddedToTheHeaderWidthNotTheTitleWidth() throws IOException {
+    Path file = tempDir.resolve("gebuehrenordnung.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Gebühren");
+      writeRow(sheet, 0, "Gebührenordnung 2026");
+      writeRow(sheet, 1, "Kennung", "Leistung", "Gebühr");
+      writeRow(sheet, 2, "AB-10", "Prüfung");
+      writeRow(sheet, 3, "AB-08", "Beglaubigung", "12,00 EUR");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "gebuehrenordnung.xlsx"));
+
+    assertThat(result.chunks().getFirst().getText()).contains("\nAB-10 | Prüfung | \nAB-08");
+  }
+
+  @Test
+  void severalTitleRowsAndBlankRowsAboveTheHeaderAllBecomeTheTitle() throws IOException {
+    Path file = tempDir.resolve("gebuehren.csv");
+    Files.writeString(
+        file,
+        "Gebührenordnung 2026\n\nStand: 1. Januar;;\n\n"
+            + "Kennung;Leistung;Gebühr\nAB-08;Beglaubigung;12,00 EUR\n",
+        StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "gebuehren.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith(
+            "Tabelle: Gebührenordnung 2026 – Stand: 1. Januar\n\nKennung | Leistung | Gebühr\n")
+        .contains("AB-08 | Beglaubigung | 12,00 EUR");
+  }
+
+  @Test
+  void anOdsTitleRowOverCoveredCellsBecomesTheTableTitle() throws IOException {
+    Path file = tempDir.resolve("gebuehren.ods");
+    writeOds(
+        file,
+        odsTable(
+            "Gebühren",
+            "<table:table-row><table:table-cell table:number-columns-spanned=\"2\">"
+                + "<text:p>Gebührenordnung 2026</text:p></table:table-cell>"
+                + "<table:covered-table-cell/></table:table-row>",
+            odsRow("Kennung", "Gebühr"),
+            odsRow("AB-08", "12,00 EUR")));
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "gebuehren.ods"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Blatt: Gebühren · Tabelle: Gebührenordnung 2026\n\nKennung | Gebühr\n");
+  }
+
+  @Test
+  void aTitleAboveAHeaderWithoutDataRowsStaysInTheChunk() throws IOException {
+    Path file = tempDir.resolve("leer.csv");
+    Files.writeString(file, "Gebührenordnung 2026\nKennung;Leistung;Gebühr\n");
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "leer.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Tabelle: Gebührenordnung 2026")
+        .contains("Kennung | Leistung | Gebühr");
+  }
+
+  @Test
+  void aSingleColumnTableKeepsItsFirstRowAsTheHeader() throws IOException {
+    Path file = tempDir.resolve("kennungen.csv");
+    Files.writeString(file, "Kennung\nAB-08\nAB-09\n");
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "kennungen.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Tabelle: kennungen\n\nKennung\nAB-08\nAB-09");
+  }
+
+  @Test
+  void aSingleCellRowBelowTheHeaderStaysData() throws IOException {
+    Path file = tempDir.resolve("liste.csv");
+    Files.writeString(file, "Kennung;Leistung\nAB-08;Beglaubigung\nZwischensumme\n");
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "liste.csv"));
+
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Tabelle: liste\n\nKennung | Leistung\n")
+        .contains("Zwischensumme");
+  }
+
+  @Test
+  void aSemicolonCsvWhoseDataRowsCarryDecimalCommasKeepsTheSemicolon() throws IOException {
+    Path file = tempDir.resolve("gebuehren.csv");
+    Files.writeString(
+        file,
+        "Kennung;Leistung;Gebühr\nAB-01;Beglaubigung;12,00;ermäßigt\nAB-02;Auskunft;8,00;voll\n",
+        StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "gebuehren.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Tabelle: gebuehren\n\nKennung | Leistung | Gebühr\n")
+        .contains("AB-01 | Beglaubigung | 12,00 | ermäßigt");
+  }
+
+  @Test
+  void aOneColumnListWithAnOccasionalSecondCellHasNoTitle() throws IOException {
+    Path file = tempDir.resolve("namen.csv");
+    Files.writeString(file, "Name;\nAnna;\nBob;\nCarl;Urlaub\n", StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "namen.csv"));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .startsWith("Tabelle: namen\n\nName")
+        .contains("\nAnna")
+        .contains("\nBob")
+        .contains("Carl | Urlaub");
+  }
+
+  @Test
+  void singleCellRowsAboveAHeaderThatMostRowsBelowDoNotMatchAreNoTitle() throws IOException {
+    Path file = tempDir.resolve("namen.csv");
+    Files.writeString(
+        file, "Name;\nAnna;\nBob;\nCarl;Urlaub\nDora;\nEmil;\n", StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "namen.csv"));
+
+    assertThat(result.chunks().getFirst().getText()).startsWith("Tabelle: namen\n\nName");
+  }
+
+  // --- Table extent ----------------------------------------------------------------------------
+
+  @Test
+  void everyChunkNamesItsTableAndTheTablesTotalSize() throws IOException {
+    Path file = tempDir.resolve("liste.xlsx");
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet first = workbook.createSheet("Liste");
+      writeRow(first, 0, "Nr", "Name");
+      for (int i = 1; i <= 120; i++) {
+        writeRow(first, i, String.valueOf(i), "Eintrag " + i);
+      }
+      Sheet second = workbook.createSheet("Kurz");
+      writeRow(second, 0, "Kennung", "Gebühr");
+      writeRow(second, 1, "AB-08", "12,00 EUR");
+      try (var out = Files.newOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "liste.xlsx"));
+
+    List<Document> list = result.chunks().subList(0, 3);
+    Document shortTable = result.chunks().get(3);
+    int listCharacters = list.stream().mapToInt(c -> c.getText().length()).sum();
+    assertThat(list)
+        .allSatisfy(
+            c ->
+                assertThat(ChunkTable.of(c.getMetadata()))
+                    .contains(new ChunkTable(1, listCharacters)));
+    assertThat(ChunkTable.of(shortTable.getMetadata()))
+        .contains(new ChunkTable(2, shortTable.getText().length()));
+    assertThat(pipeline.passthroughMetadataKeys()).contains(ChunkMetadataKeys.TABLE_METADATA_KEY);
   }
 
   private static void writeRow(Sheet sheet, int rowIndex, String... values) {

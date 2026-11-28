@@ -13,6 +13,7 @@ eval/
 │   ├── generate_city_landmarks_corpus.py     Domäne Sehenswürdigkeiten (Issue #234)
 │   ├── generate_verwaltung_corpus.py         Domäne Verwaltung (Issue #1042)
 │   ├── generate_prompt_injection_corpus.py   Prompt-Injection-Testsatz mit Fällen (Issue #3044)
+│   ├── generate_answer_quality_corpus.py     Antwortqualität: Korpus mit PDF, DOCX, XLSX und Fälle (Issue #3890)
 │   ├── frozen/                                eingefrorene Wikidata-SPARQL-Rohdaten, committet (Issue #234)
 │   ├── README.md                    Reproduktionsanleitung
 │   └── raw-source/                  gecachte Rohdaten, gitignored
@@ -33,6 +34,9 @@ eval/
 │   ├── prompt-injection/            präparierte Merkblätter (Markdown, PDF, DOCX) und saubere Dokumente
 │   │   ├── MANIFEST.sha256
 │   │   └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
+│   ├── answer-quality/              Antwortqualität: Markdown, PDF, DOCX, XLSX der fiktiven Gemeinde Birkenstein
+│   │   ├── MANIFEST.sha256
+│   │   └── SOURCE.md                Fallklassen, Ebenen, Zustände, Ausgangswerte
 │   └── tool-calling/                Fallbasis Werkzeugfähigkeit (Issue #1753); Dateien im Backend, siehe SOURCE.md
 │       └── SOURCE.md                Fallklassen, Untergrenze, Grenzen der Messung
 ├── agents/
@@ -42,8 +46,10 @@ eval/
 │   ├── comic-characters.json
 │   ├── city-landmarks.json
 │   ├── verwaltung.json               fünf Fallklassen mit Zustandsfeldern je Pfad (Issues #1043, #1658)
-│   └── prompt-injection.json         ein Fall je präpariertem Dokument (Issue #3044)
+│   ├── prompt-injection.json         ein Fall je präpariertem Dokument (Issue #3044)
+│   └── answer-quality.json           drei Fallklassen mit Zuständen je Ebene (Issue #3890)
 ├── reports/                         Handproben und Ausgangsmessungen mit Datum, committet
+│   ├── answer-quality/              Berichtsformat und Vorher/Nachher-Anleitung der Antwortqualität
 │   └── tool-calling/                aufgenommene Messläufe der Werkzeugfähigkeit je Kombination
 └── variants/                        Variantenvergleiche, committet (siehe eval/variants/README.md, Issue #1041)
     └── comic-characters-selection-mechanics.json
@@ -101,6 +107,41 @@ kaum Zusätze; fünf der acht Angriffsziele können bei ihm gar nicht anschlagen
 Die Ausgangsmessung steht unter [`reports/`](reports/). Docker-frei prüft `PromptInjectionDatasetTest`
 (Teil von `evalUnitTest`) Manifest, Fälle und die Extraktion jeder Anweisung durch das produktive
 Format.
+
+## Antwortqualität bei Fehlanzeigen (Issue #3890, Epic #3888)
+
+Die Domäne **Antwortqualität** misst, ob eine vollständig beantwortbare Frage eine brauchbare
+Antwort bekommt: keine falsche Fehlanzeige („nicht in den Quellen“), kein unnötiger Prämissen- oder
+Lückenhinweis, keine falsche Bezugsgröße (richtige Zahl, falsche Einheit, Zeile, Spalte oder
+Zeitraum). 31 Fälle über einen eigenen Korpus der fiktiven Gemeinde Birkenstein (Markdown, PDF,
+DOCX, drei XLSX; Kennungen in Varianten wie `AB08`/`AB-08`, lange Dokumente mit spätem Treffer,
+eine Tabelle mit Titelzeile über dem Kopf, eine Matrix mit Zeilen- und Spaltenbezug). Fallklassen,
+Ebenen und Ausgangswerte: [`corpus/answer-quality/SOURCE.md`](corpus/answer-quality/SOURCE.md).
+
+Zwei Ebenen, beide ohne Modellurteil:
+
+- **Ebene ohne Modell**, getrennt in `format` (Docker-frei, Teil von `evalUnitTest`:
+  `AnswerQualityDatasetTest` schneidet den Korpus mit den produktiven Formaten und prüft, dass ein
+  Chunk Wert und Bezug trägt und der Tabellenkopf stimmt) und `context` (Docker:
+  `./gradlew evaluateAnswerQuality -Dopaa.eval.answerQuality.skipAnswers=true` führt jede Frage und
+  jede Kennungs-Schreibweise durch Suche und Nachbar-Erweiterung und prüft die Abschnitte, die der
+  Antwort-Prompt enthielte). Jeder Fall trägt je Ebene `solved`, `known_gap` oder `unmeasured`;
+  `format` lässt die CI in beide Richtungen scheitern, `context` nennt Abweichungen nur im Bericht.
+- **Antwortlauf mit echtem Modell**: `./gradlew evaluateAnswerQuality` fragt jeden Fall über den
+  produktiven Antwortweg an einem OpenAI-kompatiblen Endpunkt (`-Dopaa.eval.chatBaseUrl`,
+  `-Dopaa.eval.chatModel`, `OPAA_EVAL_CHAT_API_KEY`) und urteilt nach Mustern. Bericht:
+  `build/eval-reports/answer-quality.json` und `.md`; Format und Vorher/Nachher-Anleitung:
+  [`reports/answer-quality/README.md`](reports/answer-quality/README.md). Der Lauf misst nur, ohne
+  Baseline und Schwelle.
+
+Der Workflow `answer-quality.yml` führt die Kontextebene aus (nächtlich, per `workflow_dispatch` und bei
+einem Pull Request, der ihre Pfade ändert; ohne Chat-Modell und ohne die Retrieval-Matrix); er berichtet in Job-Zusammenfassung,
+Artefakt und PR-Kommentar und schlägt nur bei einer verletzten Voraussetzung fehl, nicht an einer Abweichung
+vom deklarierten Zustand.
+
+Ohne Docker und Modell laufen in der CI die Fall- und Urteilstests: `AnswerQualityDatasetTest`
+prüft Manifest, Fallvollständigkeit, die Ebene `format` und die Mustererkennung je Klasse in beide
+Richtungen gegen geskriptete Antworten.
 
 ## Werkzeugfähigkeit messen (Issue #1753)
 
@@ -297,6 +338,24 @@ Entscheidung 54). Zwei Fälle bleiben außerhalb des Pins, und beide sind nie ba
 - Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
   CPU-Variante und trägt `unpinned: gpu allowed` ein.
 
+### Frischer Chat-Runner je Lauf (Issue #3814)
+
+Der Chat-Runner von Ollama merkt sich frühere Prompts und rechnet einen neuen Prompt ab dem
+längsten gemeinsamen Anfang eines gemerkten weiter. Das übernommene Stück stammt aus einer anderen
+Rechnung und weicht minimal ab, und die Zerlegung bei Temperatur 0 kippt daran. Der Mehrrunden-Job
+lief deshalb auf schnellen Runnern rot: Endete die Indizierung vor Ablauf der fünf Minuten
+Keep-alive nach der Bereitschaftsprüfung, rechnete die Messung auf deren Runner weiter. Auf
+langsameren Runnern war das Modell bis dahin entladen. Beide Zustände waren für sich
+reproduzierbar, gemessen wurde also je nach Runner der eine oder der andere.
+
+Vor jedem zerlegenden Lauf entlädt der Harness das gepinnte Chat-Modell deshalb
+(`EvalChatRunner`, aufgerufen von `MehrfachlaufRule`) und wartet, bis `/api/ps` es nicht mehr
+führt. Jeder der drei Läufe beginnt so auf einem frisch geladenen Runner. Das ist der Zustand, aus
+dem die committeten Baselines stammen. Die drei Läufe sollen damit gleich ausfallen; eine Streuung
+über 0 zeigt eine verbliebene Quelle von Nichtdeterminismus an. Ein externes Chat-Modell
+(`-Dopaa.eval.chatBaseUrl`) und ein externer Ollama-Endpunkt (`-Dopaa.eval.ollamaBaseUrl`) werden
+nicht entladen. Herleitung: ADR-0012, Entscheidung 74.
+
 ### Stetige Einbettung langer Eingaben (Issue #2343)
 
 `ollama/ollama:0.6.5`, bis Oktober 2026 das gepinnte Image, wertete eine Eingabe über 511 Token in
@@ -359,6 +418,10 @@ Baseline-Vergleich damit ab.
 - Die Modell-Digest-Prüfung (`EXPECTED_EMBEDDING_MODEL_DIGEST`) läuft unverändert auch gegen den
   externen Endpunkt — ein Host-Ollama mit abweichendem Modellstand bricht mit derselben benannten
   Drift-Fehlermeldung ab wie ein abweichender Testcontainer-Pull.
+- Der Harness entlädt das Chat-Modell des Host-Ollama **nicht** vor den zerlegenden Läufen (siehe
+  „Frischer Chat-Runner je Lauf“): Das Host-Ollama gehört dem Entwickler, ein dort geladenes Modell
+  bleibt geladen. Die drei Läufe können deshalb auf einem Runner mit gemerkten Prompts rechnen und
+  voneinander abweichen.
 - Der Lauf weist das deutlich aus: eine Warnung im Log beim Start (`startOllamaIfNeeded()`) und
   `runConfiguration.externalOllamaEndpoint=true` im JSON-Report sowie eine ACHTUNG-Zeile in der
   Konsolen-Zusammenfassung.

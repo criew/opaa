@@ -105,7 +105,7 @@ function brandingErrors(values: InstallationBranding) {
         fieldError(
           'branding.primaryColor',
           'INVALID',
-          "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel #1292EE",
+          "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel #0055A4",
         ),
       ]
 }

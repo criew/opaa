@@ -39,7 +39,7 @@ export default function PendingPlanHint() {
       {(close) => (
         <>
           <Typography sx={{ fontSize: fontSize.meta, color: 'text.secondary', mb: 1.5 }}>
-            Ein Abgleich würde mehr Mitgliedschaften entziehen oder mehr Konten sperren, als OPAA
+            Ein Abgleich würde mehr Mitgliedschaften entziehen oder mehr Konten sperren, als opaa
             ohne Rückfrage anwendet. Bis Sie den Plan bestätigen oder verwerfen, bleibt der
             bisherige Stand in Kraft.
           </Typography>

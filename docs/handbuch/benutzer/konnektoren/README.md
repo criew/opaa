@@ -107,7 +107,7 @@ gegen den Namen. Wie lange die Bindung hält und was hinter dem Ausgangsproxy gi
 ### 1.3 Zertifikatsprüfung
 
 Jeder Konnektor, der über `https` liest, prüft das Zertifikat der Quelle gegen den Truststore von
-OPAA. Abschalten lässt sich das weder an einer Wissensbibliothek noch an einem Zugang: Ohne Prüfung
+opaa. Abschalten lässt sich das weder an einer Wissensbibliothek noch an einem Zugang: Ohne Prüfung
 könnte sich jeder Server im Netz als die Quelle ausgeben, Zugangsdaten abgreifen oder Inhalte
 unterschieben.
 
@@ -197,7 +197,7 @@ Ablage ab:
 |---|---|---|
 | nur in einem Lauf | S3, Google Drive, Nextcloud | Ein Abgleich über mehrere Läufe entfernt nichts. Er merkt sich aber, was er gesehen hat; der nächste Lauf passt dann meist in ein Budget und entfernt, was fehlt |
 | Ort ist Identität | SMB, Dropbox | Der Pfad ist die Identität des Dokuments. Eine Datei, die an keinem gelisteten Pfad vorkam, gibt es nicht mehr; der Abgleich entfernt, was keiner seiner Läufe gesehen hat |
-| Änderungsprotokoll | SharePoint, OneDrive | Am Ende des Abgleichs liest OPAA das Änderungsprotokoll ab dem Stand, der zu seinem Beginn galt. Nur wenn es vollständig gelesen wurde, entfernt der Abgleich, was weder seine Läufe noch das Protokoll gesehen haben |
+| Änderungsprotokoll | SharePoint, OneDrive | Am Ende des Abgleichs liest opaa das Änderungsprotokoll ab dem Stand, der zu seinem Beginn galt. Nur wenn es vollständig gelesen wurde, entfernt der Abgleich, was weder seine Läufe noch das Protokoll gesehen haben |
 
 Ein Lauf, der einen Bereich nicht lesen kann oder null Dateien sieht, entfernt dort nichts. Ein
 entzogenes Recht ist kein Löschbefund.

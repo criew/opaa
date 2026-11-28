@@ -73,7 +73,7 @@ public class SystemSettingsTransferController {
       return SettingsTransferResponseMapper.toDomain(
           jsonMapper.readValue(body, SettingsDocument.class));
     } catch (JacksonException unreadable) {
-      throw new ValidationException("Die Datei ist kein lesbares Einstellungsdokument von OPAA.");
+      throw new ValidationException("Die Datei ist kein lesbares Einstellungsdokument von opaa.");
     }
   }
 

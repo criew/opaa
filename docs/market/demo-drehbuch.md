@@ -237,7 +237,7 @@ Wissen aussieht, zeigt Schritt G.
   Stand 27.09.2026). Einen eigenen Verweigerungsmodus gibt es dafür nicht (mit #697 verworfen). Die
   Belegvalidierung greift, sobald ein Beleg tatsächlich ungültig wäre; hier bleibt die Kontextmenge
   schlicht leer. Das zeigt nur ein echtes Embedding-Modell, siehe „Verifikationsgrundlage".
-- **Zeigt:** dass OPAA bei fehlendem Wissen nichts erfindet — die Umkehrung des ersten
+- **Zeigt:** dass opaa bei fehlendem Wissen nichts erfindet — die Umkehrung des ersten
   Vorführ-Moments.
 
 **Neunte Frage mit tatsächlich ungültigem Beleg:** Ein Szenario, in dem die Suche einen Treffer
@@ -304,7 +304,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   läuft sie unter <http://localhost:8180/admin>, Anmeldung mit `admin`/`admin` (Vorgabe in
   `docker-compose.yml`).
 - **Ausgangslage:** Die Keycloak-Gruppen „Bürgerbüro Rheinfurt", „Meldewesen" und „Kfz-Zulassung"
-  kommen über den Verzeichnisabgleich des Anbieters „Verzeichnisdienst" nach OPAA. Was an ihnen
+  kommen über den Verzeichnisabgleich des Anbieters „Verzeichnisdienst" nach opaa. Was an ihnen
   hängt, hängt allein an ihnen: Thomas liest „Leistungen Kfz-Zulassung" nur über „Kfz-Zulassung",
   „Meldewesen" ist Eigentümerin der „Leistungen Meldewesen & Ausweise", und „Bürgerbüro Rheinfurt"
   bringt alle fünf Konten in den Space „Infotheke Bürgerbüro".
@@ -312,7 +312,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   - Die drei Keycloak-Gruppen haben die Herkunft „Verzeichnisdienst", die internen Gruppen die
     Herkunft „Intern". Unter dem Namen steht bei Keycloak-Gruppen der Quellpfad aus dem Verzeichnis,
     etwa `/Kfz-Zulassung`.
-  - Das Info-Symbol neben „Verzeichnisdienst" erklärt die Herkunft: „OPAA liest Gruppen und
+  - Das Info-Symbol neben „Verzeichnisdienst" erklärt die Herkunft: „opaa liest Gruppen und
     Mitglieder von „Verzeichnisdienst“ selbst aus, zurzeit stündlich. Änderungen dort gelten hier
     nach dem nächsten Abgleich, auch für Personen, die sich nicht anmelden."
   - Die Spalte „Verwendung" zeigt für „Bürgerbüro Rheinfurt" einen Space, für „Meldewesen" Space
@@ -328,15 +328,15 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   1. In der Keycloak-Adminkonsole (englische Oberfläche) im Realm `opaa` den Benutzer
      `thomas.klein` öffnen und auf dem Reiter „Groups" die Gruppe „Kfz-Zulassung" verlassen
      („Leave").
-  2. In OPAA auf „Trockenlauf" klicken: „Mitgliedschaften je Gruppe" nennt „Kfz-Zulassung", entfernt
+  2. In opaa auf „Trockenlauf" klicken: „Mitgliedschaften je Gruppe" nennt „Kfz-Zulassung", entfernt
      Thomas Klein. Der Anteil liegt unter der Schwelle von 30 %.
   3. Auf „Jetzt abgleichen" klicken: Stand „Angewendet", „Mitgliedschaften: +0 / −1".
 - **Erwartetes Ergebnis:**
   - Als Thomas (neu laden) fehlt im „Katalog" die Bibliothek „Leistungen Kfz-Zulassung".
   - Frage 4 liefert keine Quelle mehr aus `008_wunschkennzeichen.txt`.
-  - In OPAA wurde kein Recht angefasst.
+  - In opaa wurde kein Recht angefasst.
 - **Zurücksetzen (Pflicht):** in Keycloak Thomas wieder in „Kfz-Zulassung" aufnehmen („Join
-  Group"), in OPAA „Jetzt abgleichen" klicken. Ohne den Klick holt der stündliche Abgleich es erst
+  Group"), in opaa „Jetzt abgleichen" klicken. Ohne den Klick holt der stündliche Abgleich es erst
   später nach. Unterbleibt dagegen die Rückgabe in Keycloak, macht der stündliche Abgleich den
   Verlust dauerhaft: Frage 4 und die Kfz-Hälfte von Frage 7 fallen für alle aus. Auch ein erneuter
   Seed stellt das nicht wieder her, denn er ändert keine Keycloak-Mitgliedschaften, und ein Keycloak
@@ -407,7 +407,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
   - Erwartet: 7,6 Millionen Euro, aus
     `2026-02-24-stadtrat-vorlage-feuerwache-sued-anlage-2-kostenaufstellung.pdf`.
   - Die Vorlage selbst nennt nur den Kostenrahmen von 14,5 Millionen Euro.
-- **Zeigt:** OPAA übernimmt die Ablage so, wie die Verwaltung sie führt: Aktenplan beim Hochladen,
+- **Zeigt:** opaa übernimmt die Ablage so, wie die Verwaltung sie führt: Aktenplan beim Hochladen,
   Jahrgang und Gremium aus dem Objektspeicher. Eine Mail kommt mit ihren Anlagen, und jede Anlage ist
   ein eigenes, belegbares Dokument.
 

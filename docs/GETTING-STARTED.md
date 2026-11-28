@@ -1,4 +1,4 @@
-# Einstieg in die OPAA-Dokumentation
+# Einstieg in die opaa-Dokumentation
 
 Nicht sicher, wo Sie anfangen sollen? Dieser Leitfaden führt Sie zu den Dokumenten, die zu Ihrer Frage
 passen. Er ist nicht nach Software-Rollen geschnitten, sondern nach dem, was Sie in einer Behörde
@@ -8,7 +8,7 @@ verantworten.
 
 ## Für alle: die ersten zwanzig Minuten
 
-1. **[README](../README.md)** — was OPAA ist und für wen
+1. **[README](../README.md)** — was opaa ist und für wen
 2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien Belegbarkeit und Verteilbarkeit
 3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
 
@@ -16,13 +16,13 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 > **Ein Hinweis vorweg.** [VISION.md](./VISION.md) beschreibt das Zielbild, der [Gesamtstand](./fortschritt/gesamtstand.md) den
 > tatsächlich gebauten Stand. Wenn Sie eine Entscheidung auf eine Fähigkeit stützen wollen, prüfen Sie
-> beides. OPAA ist im Aufbau, und die Dokumentation sagt das an jeder Stelle.
+> beides. opaa ist im Aufbau, und die Dokumentation sagt das an jeder Stelle.
 
 ---
 
 ## Fachbereich und Amtsleitung
 
-**Ihre Frage:** Was tut OPAA im Alltag, und kann ich mich auf das Ergebnis verlassen?
+**Ihre Frage:** Was tut opaa im Alltag, und kann ich mich auf das Ergebnis verlassen?
 
 **Lesepfad:**
 
@@ -107,7 +107,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 - Sichtbarkeit ist eine Handlung, keine Automatik; private Inhalte bleiben unbeobachtet
 - Es gibt keinen personenbezogenen Auswertungspfad und keine Ranglisten — nicht abgeschaltet, sondern nicht
   gebaut
-- OPAA ist **nicht zertifiziert**. Das Ziel ist, dass ein Betreiber die Prüfung mit OPAA im Prüfumfang
+- opaa ist **nicht zertifiziert**. Das Ziel ist, dass ein Betreiber die Prüfung mit opaa im Prüfumfang
   besteht
 
 ---
@@ -120,9 +120,8 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [Glossar](handbuch/referenz/glossar.md) — die gemeinsame Sprache im Repository
 2. [VISION.md](./VISION.md) — besonders die elf Themenbereiche und die vier Phasen
-3. [Gesamtstand](./fortschritt/gesamtstand.md) — **hier stehen die Lücken.** Die Bereiche **D** und **K**
-   sind noch nicht begonnen; die priorisierte Restliste für Phase 1 steht im aktuellen
-   [Zeitraumsbericht](./fortschritt/20260831/report.md)
+3. [Gesamtstand](./fortschritt/gesamtstand.md) — was gebaut ist; was noch fehlt, steht in der
+   [Roadmap](./ROADMAP.md)
 4. [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — Ablauf, Branch-Regel, Contributor License Agreement
 5. [`../AGENTS.md`](../AGENTS.md) — Konventionen, Build- und Testbefehle, Pre-Push-Checkliste
 6. [AGENT-ORGANIZATION.md](./AGENT-ORGANIZATION.md) — Rollen und der Weg von der Idee bis zum Merge
@@ -175,7 +174,7 @@ steht, ist ein Vorhaben.
 
 ```
 Einstieg
-├── README.md              — was OPAA ist und für wen
+├── README.md              — was opaa ist und für wen
 ├── docs/VISION.md         — Zielbild: Prinzipien, elf Bereiche, vier Phasen
 ├── docs/USE-CASES.md      — Abläufe aus dem Verwaltungsalltag
 ├── docs/INDEX.md          — vollständiger Index

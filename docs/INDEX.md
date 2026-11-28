@@ -1,6 +1,6 @@
-# OPAA Dokumentations-Index
+# opaa Dokumentations-Index
 
-OPAA ist die souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung. Dieser Index führt durch
+opaa ist die souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung. Dieser Index führt durch
 die vollständige Dokumentation.
 
 Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu genau einer:
@@ -15,7 +15,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 ## Hier anfangen
 
-1. **[README](../README.md)** — was OPAA ist und für wen
+1. **[README](../README.md)** — was opaa ist und für wen
 2. **[VISION.md](./VISION.md)** — Nordstern, die beiden Leitprinzipien, die elf Themenbereiche, die vier
    Phasen
 3. **[USE-CASES.md](./USE-CASES.md)** — wie sich das im Arbeitsalltag anfühlt
@@ -75,7 +75,7 @@ Personalvertretung. Entscheidung zu Katalog und Zuordnung:
 
 ### D · Agenten, Prompts & Werkzeuge
 
-**[ADR-0070](./decisions/0070-werkzeugaufrufe-im-chat.md)** · **[Roadmap](./ROADMAP.md)**
+**[ADR-0070](./decisions/0070-werkzeugaufrufe-im-chat.md)** · **[ADR-0074](./decisions/0074-verantwortliche-stelle-und-sperre.md)** · **[Roadmap](./ROADMAP.md)**
 
 Agenten als teilbare Pakete mit Aufgabenbeschreibung · geführtes Onboarding · Agenten-Prüfstand vor der
 Freigabe · Prüfagenten · isolierte Ausführungsumgebung · Werkzeuge und MCP · schreibende Aktionen mit
@@ -125,7 +125,7 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 
 **[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** ·
 **[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** ·
-**[ADR-0074](./decisions/0074-betriebsarchitekturen-klein-mittel-gross.md)** · **[Roadmap](./ROADMAP.md)**
+**[ADR-0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md)** · **[Roadmap](./ROADMAP.md)**
 
 Betriebsarchitekturen klein, mittel und groß mit ihren Hindernissen · Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -147,7 +147,7 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ### Handbuch — das gebaute Produkt benutzen
 
-- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, was OPAA ist, Aufbau
+- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, was opaa ist, Aufbau
   und Lesewege. Die Ordner folgen den Kapiteln:
   - Benutzer ([`benutzer/`](handbuch/benutzer/README.md)): eine Seite je Aufgabe für jedes Konto,
     von der ersten Frage bis zu Spaces, Bibliotheken und Gruppen, dazu
@@ -201,7 +201,9 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     Fristen und Prüfsummen der System-Prompts
   - [0053](./decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) — Mehrinstanzbetrieb: Aktiv/Aktiv in
     Stufen, koordiniert über Postgres; ersetzt ADR-0021
-  - [0074](./decisions/0074-betriebsarchitekturen-klein-mittel-gross.md) — Betriebsarchitekturen
+  - [0075](./decisions/0075-ein-datenspeicher-fuer-metadaten-und-abschnitte.md) — Ein Datenspeicher
+    für Metadaten und Abschnitte: keine Trennung, Lesereplik als erste Ausbaustufe
+  - [0076](./decisions/0076-betriebsarchitekturen-klein-mittel-gross.md) — Betriebsarchitekturen
     klein, mittel und groß mit belegten Hindernissen
 
 ### Demo und Vorführung
@@ -283,7 +285,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
 → [Berechtigungen](handbuch/referenz/rechte-matrix.md)
 
-**Läuft OPAA ohne Internetverbindung?**
+**Läuft opaa ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
 [Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md)
 

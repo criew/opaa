@@ -11,15 +11,15 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die OPAA vor einer Vergabe oder einem Pilot mit eigenen Beständen
+**Gilt für:** alle Behörden, die opaa vor einer Vergabe oder einem Pilot mit eigenen Beständen
 prüfen.
 
-Eine Teststellung prüft, ob OPAA mit den Dokumenten der Behörde die erwarteten Antworten liefert.
+Eine Teststellung prüft, ob opaa mit den Dokumenten der Behörde die erwarteten Antworten liefert.
 Was gut ist, legt die Behörde vor dem Start fest: Prüffragen mit erwarteter Fundstelle sowie Erfolgs-
 und Abbruchkriterien. Eine Teststellung mit Demodaten sagt über die eigenen Bestände wenig.
 Verantwortlich ist die Projektleitung zusammen mit dem Fachbereich.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Erster Eindruck ohne eigene Daten:** die [Demo](../../../demo/README.md) mit fiktivem
   Verwaltungsbestand.
@@ -49,7 +49,7 @@ Verantwortlich ist die Projektleitung zusammen mit dem Fachbereich.
 Vor dem Start auszufüllen:
 
 ```text
-OPAA-Version:        [X.Y.Z], Commit [ ]
+opaa-Version:        [X.Y.Z], Commit [ ]
 Modelle:             Chat [ ], Embedding [ ], Reranking [ / aus]
 Referenzwerte:       [aus betrieb/antwortqualitaet.md der Version, Messdatum]
 Bestände:            [Bibliotheken, Zahl der Dokumente, Formate]; nicht freigegeben: [ ]
@@ -77,7 +77,7 @@ Festgelegt durch:    [Name, Funktion]          am: [TT.MM.JJJJ, vor dem Start]
 - Die Antwortqualität hängt stark an Chat- und Embedding-Modell. Ein Ergebnis gilt nur für die
   festgehaltenen Modelle.
 - Die Referenzwerte des Projekts stammen aus dessen Testkorpus; erst die eigenen Prüffragen zeigen,
-  was OPAA für die Behörde leistet.
+  was opaa für die Behörde leistet.
 
 ## Zum Nachlesen
 

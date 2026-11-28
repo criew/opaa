@@ -1,5 +1,5 @@
 [Unit]
-Description=Mirror the OPAA landing page every five minutes
+Description=Mirror the opaa landing page every five minutes
 
 [Timer]
 OnBootSec=2min

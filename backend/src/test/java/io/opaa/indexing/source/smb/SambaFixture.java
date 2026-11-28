@@ -44,7 +44,7 @@ final class SambaFixture {
   static final String SHARE = "daten";
   static final String LOCKED_SHARE = "gesperrt";
   static final String LINK_SHARE = "verweise";
-  static final String DOMAIN = "OPAA";
+  static final String DOMAIN = "opaa";
   static final String USER = "opaa";
   static final String PASSWORD = "Opaa-Smb-Test-2026!";
   private static final String WRITER = "writer";
@@ -55,7 +55,7 @@ final class SambaFixture {
       """
       [global]
          server role = standalone server
-         workgroup = OPAA
+         workgroup = opaa
          map to guest = never
          server min protocol = SMB2_10
          load printers = no

@@ -1,6 +1,6 @@
 # Barrierefreiheits-Richtlinie
 
-OPAA zielt auf die öffentliche Verwaltung — dort ist Barrierefreiheit nach **BITV 2.0** keine
+opaa zielt auf die öffentliche Verwaltung — dort ist Barrierefreiheit nach **BITV 2.0** keine
 Kür, sondern Pflicht. Diese Richtlinie legt das Zielniveau fest und macht es prüfbar: Die
 Prüfliste in Abschnitt 2 ist für **jedes UI-Issue und jeden Frontend-PR verbindlich**; das
 PR-Template verweist hierher. Gestaltungsregeln (Farben, Fokusring, Zustände) stehen in den

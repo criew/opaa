@@ -1,13 +1,13 @@
 # Mehrere Backend-Instanzen
 
-Dieses Kapitel erklärt, wie mehrere Backend-Instanzen von OPAA gleichzeitig arbeiten, wie sie sich
+Dieses Kapitel erklärt, wie mehrere Backend-Instanzen von opaa gleichzeitig arbeiten, wie sie sich
 über die Datenbank abstimmen und was daraus für den Betrieb folgt. Es beschreibt, wie es
 funktioniert und warum; wie man die Instanzen einrichtet, steht bei den Betriebswegen
 [Docker Compose](docker-compose.md#mehrere-backend-instanzen) und
 [Kubernetes](kubernetes.md#mehrere-backend-instanzen). Die Bausteine einer Installation beschreibt
 die [Betriebsübersicht](README.md).
 
-> **Beispiel.** Ein Landratsamt betreibt OPAA mit zwei Backend-Instanzen unter Kubernetes. In der
+> **Beispiel.** Ein Landratsamt betreibt opaa mit zwei Backend-Instanzen unter Kubernetes. In der
 > Nacht fällt ein Knoten aus und nimmt eine Instanz mit. Die andere beantwortet die Fragen weiter,
 > der nächtliche Löschlauf läuft trotzdem genau einmal, und den Indexierungslauf, den die
 > ausgefallene Instanz gerade ausführte, gibt die verbliebene nach kurzer Zeit frei; er lässt sich
@@ -40,7 +40,7 @@ Was man davon hat:
 
 - **Ausfallsicherheit:** Fällt eine Instanz aus, beantworten die übrigen die Anfragen weiter.
 - **Update ohne Ausfall:** Eine neue Version wird Instanz für Instanz eingespielt, soweit sie die
-  laufende neben sich zulässt; OPAA bleibt dabei erreichbar ([Update ohne Ausfall](#update-ohne-ausfall)).
+  laufende neben sich zulässt; opaa bleibt dabei erreichbar ([Update ohne Ausfall](#update-ohne-ausfall)).
 - **Mehr Arbeit gleichzeitig:** Indexierungsläufe und Uploads verteilen sich auf mehr Prozesse.
 
 Was es bewusst nicht ist:
@@ -112,7 +112,7 @@ geschieht, hängt von der Art der Anfrage ab:
 ## Abstimmung nur über die Datenbank
 
 Mehrere Instanzen müssen sich absprechen: Wer startet den nächtlichen Lauf? Wer verschickt die
-Erinnerungsmail? Wie erfährt Instanz B, dass auf Instanz A gerade ein Recht entzogen wurde? OPAA
+Erinnerungsmail? Wie erfährt Instanz B, dass auf Instanz A gerade ein Recht entzogen wurde? opaa
 löst das ohne zusätzliche Infrastruktur, ohne Nachrichtenvermittler und ohne Zwischenspeicher-Dienst.
 Alles läuft über die Datenbank, die ohnehin da ist, gesichert und überwacht wird.
 
@@ -219,7 +219,7 @@ sich selbst; die Notizen des Release sagen es. Eine Instanz außerhalb des Fenst
 sie älter ist oder neuer. **Bis zum ersten Release mit dieser Zusage läuft nur dieselbe Version
 nebeneinander.** Images des Stands `main` tragen alle dieselbe Entwicklungsversion: Zwischen ihnen
 prüft das Fenster nichts, sie gelten als gleich. Ob sie nebeneinander laufen, sichert nur ihr
-Abstand, nicht OPAA.
+Abstand, nicht opaa.
 
 Einen Wert des Abdrucks ändert deshalb **nur ein Neustart aller Instanzen**: erst alle beenden, dann
 mit dem neuen Wert starten. Ein Update, das zugleich einen solchen Wert ändert, bleibt an der ersten
@@ -255,7 +255,7 @@ Sitzungen gilt so auf jeder Instanz mit deren nächster Anfrage.
 - **Abmelden und Sperren wirken überall.** Bei der Abmeldung einer lokalen Sitzung kommt ihr Token
   auf eine Sperrliste in der Datenbank, die jede Instanz bei jeder Anfrage liest. Einen Passwortwechsel,
   eine Sperre, das Zurücksetzen durch die Verwaltung, das Ausschalten der lokalen Konten und ein
-  erkannter wiederverwendeter Token beantwortet OPAA, indem es einen Zähler am Konto hochzählt; ein
+  erkannter wiederverwendeter Token beantwortet opaa, indem es einen Zähler am Konto hochzählt; ein
   Token mit altem Zählerstand gilt auf jeder Instanz als ungültig. Beides braucht keinen Vergleich von
   Uhrzeiten zwischen Rechnern.
 - **Voraussetzung an die Datenbank:** Die Hörverbindung braucht eine direkte Verbindung oder einen
@@ -264,7 +264,7 @@ Sitzungen gilt so auf jeder Instanz mit deren nächster Anfrage.
 
 ## Geplante Läufe laufen genau einmal
 
-OPAA hat zeitgesteuerte Aufgaben: Indexierung nach Zeitplan, Verzeichnisabgleich, Lösch- und
+opaa hat zeitgesteuerte Aufgaben: Indexierung nach Zeitplan, Verzeichnisabgleich, Lösch- und
 Aufbewahrungsläufe, Erinnerungen, die Prüfung der Modellrollen. Jede Instanz kennt dieselben
 Termine, also wollen alle gleichzeitig loslegen. Zwei Mechanismen verhindern doppelte Arbeit.
 
@@ -324,7 +324,7 @@ lässt aber die Anfragen von Personen zu Ende laufen
 ## Eine Uhr für alle
 
 Zwei Rechner gehen trotz Zeitabgleich um Millisekunden bis Sekunden auseinander. Für alles, was eine
-Instanz schreibt und eine andere liest und vergleicht, nimmt OPAA deshalb die Uhr der Datenbank.
+Instanz schreibt und eine andere liest und vergleicht, nimmt opaa deshalb die Uhr der Datenbank.
 
 | Uhr | Wofür |
 |---|---|
@@ -335,7 +335,7 @@ Instanz schreibt und eine andere liest und vergleicht, nimmt OPAA deshalb die Uh
 ## Mails ohne Verlust
 
 Eine Mail, auf deren Versand niemand in derselben Anfrage wartet, etwa eine Einladung, ein
-Rücksetzlink oder eine Erinnerung, legt OPAA zusammen mit dem Vorgang, den sie meldet, in eine
+Rücksetzlink oder eine Erinnerung, legt opaa zusammen mit dem Vorgang, den sie meldet, in eine
 Warteschlange in der Datenbank. Wird der Vorgang verworfen, verschwindet auch die Mail.
 
 ```mermaid
@@ -355,12 +355,12 @@ Kennung der Nachricht.
 
 Eine Ausnahme sind „Passwort vergessen“ und die Selbstregistrierung: Ihre Bearbeitung samt Mail
 wartet zunächst im Speicher der Instanz, nur Millisekunden lang. Stoppt die Instanz genau dann, geht
-die Anfrage verloren, und wer keine Mail bekommt, fragt erneut ([Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)). Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
+die Anfrage verloren, und wer keine Mail bekommt, fragt erneut ([Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)). Wiederholungen, Verschlüsselung und die Mails, die opaa sofort versendet,
 beschreibt [E-Mail-Versand](../administration/e-mail.md#zustellung-über-die-warteschlange).
 
 ## Grenzen und Budgets
 
-OPAA begrenzt an vielen Stellen, wie viel in einem Zeitfenster oder gleichzeitig geschehen darf, etwa
+opaa begrenzt an vielen Stellen, wie viel in einem Zeitfenster oder gleichzeitig geschehen darf, etwa
 Fragen je Adresse und Konto, gleichzeitige Einbettungen oder Transkriptionen. Mit mehreren Instanzen
 stellt sich für jede Grenze die Frage: Gilt sie für die ganze Installation oder je Instanz?
 
@@ -467,7 +467,7 @@ vorige Version danach Fehler, bleibt die Sicherung von vor dem Update der Rückf
 Release mit dieser Zusage und über eine Versionsgrenze hinweg führt der Rückweg nur über diese
 Sicherung.
 
-**Wechsel des Embedding-Modells.** Während eines Updates lehnt OPAA Wechsel, Verwerfen und
+**Wechsel des Embedding-Modells.** Während eines Updates lehnt opaa Wechsel, Verwerfen und
 Endpunktwechsel des Embedding-Modells ab: Alle laufenden Instanzen müssen dieselbe Version haben,
 zwei Builds derselben Version gelten dabei als gleich. Umgekehrt gehört ein Rückweg auf die vorige
 Version nicht in die Zeit eines laufenden Wechsels ([Modell wechseln](modell-endpunkte.md#modell-wechseln)).
@@ -529,7 +529,7 @@ sind drei Fragen wichtig:
 
 | Begriff | Bedeutung |
 |---|---|
-| **Instanz** | ein laufender Backend-Prozess von OPAA; unter Kubernetes ein Pod, unter Compose ein Container |
+| **Instanz** | ein laufender Backend-Prozess von opaa; unter Kubernetes ein Pod, unter Compose ein Container |
 | **Instanzregister** | das Verzeichnis in der Datenbank, in das sich jede Instanz einträgt und in dem sie sich regelmäßig meldet |
 | **Herzschlag** | das regelmäßige Lebenszeichen einer Instanz im Register |
 | **Konfigurationsabdruck** | die Prüfwerte der Einstellungen, die auf allen Instanzen gleich sein müssen; weicht einer ab, startet eine neue Instanz nicht |

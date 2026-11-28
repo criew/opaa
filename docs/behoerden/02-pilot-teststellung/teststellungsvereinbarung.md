@@ -18,11 +18,11 @@ Daten der Behörde dabei wohin gehen und wie sie danach gelöscht werden. Der L�
 das Ende. Verantwortlich für die Daten bleibt die Behörde; liegen personenbezogene Daten beim
 Dienstleister, braucht es in der Regel einen Vertrag zur Auftragsverarbeitung (AVV).
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Wo Daten liegen:** Speicherort und Löschmechanismus je Datum im {{faktenblatt:datenkatalog}};
   Datenbank und Originalablage als die beiden Bestände
-  ([Was OPAA ist](../../handbuch/README.md#was-opaa-ist),
+  ([Was opaa ist](../../handbuch/README.md#was-opaa-ist),
   [Sicherung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md#sicherung)).
 - **Wohin Daten gehen:** {{faktenblatt:datenfluesse}}.
 - **Wie die Installation eingestellt ist:** die
@@ -43,7 +43,7 @@ Dienstleister, braucht es in der Regel einen Vertrag zur Auftragsverarbeitung (A
 | Regelung | Eintrag |
 |---|---|
 | Parteien | Behörde: [ ]; Dienstleister: [ ] |
-| Gegenstand | Teststellung von OPAA [X.Y.Z] nach dem Teststellungsszenario vom [ ] |
+| Gegenstand | Teststellung von opaa [X.Y.Z] nach dem Teststellungsszenario vom [ ] |
 | Dauer | von [ ] bis [ ] |
 | Betriebsort | [Rechenzentrum, Staat]; Unterauftragnehmer: [keine / Liste] |
 | Modelle und Ziele nach außen | [Modelle, Anbieter]; nur die vereinbarten Ziele aus {{faktenblatt:datenfluesse}} |
@@ -75,8 +75,8 @@ Geprüft für die Behörde:        [Name, Datum]
 
 ## Gut zu wissen
 
-- Gelöscht werden muss auch, was außerhalb von OPAA liegt: Sicherungen, Log-Sammler und der
-  Modelldienst. Der Datenkatalog nennt nur, was OPAA selbst speichert.
+- Gelöscht werden muss auch, was außerhalb von opaa liegt: Sicherungen, Log-Sammler und der
+  Modelldienst. Der Datenkatalog nennt nur, was opaa selbst speichert.
 - Zugänge zu Quellen, etwa ein Dienstkonto für eine Ablage, widerruft die Behörde bei der Quelle.
 
 ## Zum Nachlesen

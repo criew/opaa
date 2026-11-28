@@ -569,7 +569,7 @@ class QueryDecompositionServiceTest {
         .as("the guarded word really is in the heading the model sees")
         .contains("Person");
     assertThat(subQueries)
-        .as("a sub-query anchored only in OPAA's own heading is not a reformulation")
+        .as("a sub-query anchored only in opaa's own heading is not a reformulation")
         .isEmpty();
     verify(metrics).recordDegenerateDecomposition();
   }

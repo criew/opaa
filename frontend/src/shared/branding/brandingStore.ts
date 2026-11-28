@@ -39,11 +39,11 @@ const AI_NOTICE_DEFAULT =
   'Prüfen Sie wichtige Angaben anhand der Belege.'
 
 export const OPAA_BRANDING: BrandingResponse = {
-  productName: 'OPAA',
-  claim: 'Fragen. Belegen. Entscheiden.',
+  productName: 'opaa',
+  claim: 'opaa weiß, was war, und hilft bei dem, was kommt.',
   aiNotice: AI_NOTICE_DEFAULT,
   aiNoticeDefault: AI_NOTICE_DEFAULT,
-  primaryColor: '#1292EE',
+  primaryColor: '#0055A4',
 }
 
 interface BrandingState {

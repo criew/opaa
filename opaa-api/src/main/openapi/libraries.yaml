@@ -864,7 +864,7 @@ paths:
         floor GET /api/v1/libraries/{libraryId} itself uses. sourceType UPLOAD/FILESYSTEM stream a
         local file directly; HTTP_DIRECTORY/RSS_FEED are proxied server-side from the document's own
         stored source URL instead - this closes the gap where that source is only reachable
-        from OPAA's own network (an internal fileserver/intranet site, the common case in a Behörde),
+        from opaa's own network (an internal fileserver/intranet site, the common case in a Behörde),
         never from the caller's browser. The proxy re-validates the target address against the same
         allowlist applied at indexing time, follows a redirect only within the same origin,
         goes through the outbound proxy like every other outbound request, applies the library's
@@ -2406,7 +2406,7 @@ components:
             including these two (that endpoint now proxies the original server-side from this
             same URL instead of answering 404) - this field is shown as secondary information
             alongside that link (e.g. a tooltip), since the source itself may only be reachable from
-            OPAA's own network, not the caller's browser. Null for UPLOAD/FILESYSTEM, whose local
+            opaa's own network, not the caller's browser. Null for UPLOAD/FILESYSTEM, whose local
             file path on the server must not be exposed here. A client prefers sourceEntryUrl over
             this field when both are set (an RSS attachment's own file location is less useful than
             the entry page it was found on).

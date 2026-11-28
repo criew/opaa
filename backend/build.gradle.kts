@@ -257,6 +257,7 @@ fun registerEvalHarnessTask(
             "opaa.eval.chatBaseUrl",
             "opaa.eval.chatModel",
             "opaa.eval.chatTemperature",
+            "opaa.eval.answerQuality.skipAnswers",
             "opaa.eval.rerankBaseUrl",
             "opaa.eval.rerankModel",
             "opaa.rerank.timeout",
@@ -428,6 +429,24 @@ tasks.named<Test>("evaluatePromptInjection") {
     doFirst { staleReports.forEach { it.get().asFile.delete() } }
 }
 
+// Answer-quality domain (eval/corpus/answer-quality): measures the prompt context of fully answerable
+// questions through the production retrieval and, unless -Dopaa.eval.answerQuality.skipAnswers=true,
+// the answers of the configured chat model, judged by patterns. Measures only, no baseline and no
+// gate. Needs Docker (or -Dopaa.eval.ollamaBaseUrl); not part of build/check.
+registerEvalHarnessTask(
+    "evaluateAnswerQuality",
+    "Runs the answer-quality cases against retrieval and the configured chat model and writes " +
+        "build/eval-reports/answer-quality.{json,md}. Needs Docker. Not part of build/check.",
+    "io.opaa.eval.AnswerQualityEvaluationHarnessTest",
+    emptyMap(),
+)
+tasks.named<Test>("evaluateAnswerQuality") {
+    val staleReports =
+        listOf("answer-quality.json", "answer-quality.md")
+            .map { layout.buildDirectory.file("eval-reports/$it") }
+    doFirst { staleReports.forEach { it.get().asFile.delete() } }
+}
+
 // Tool-calling case base (eval/corpus/tool-calling/SOURCE.md, files in main resources because the
 // model administration runs it too): measures one model endpoint against the mock tool or the agent
 // loop's search_knowledge and reports per case category. Measures only, no baseline and no gate. Needs the model
@@ -468,6 +487,7 @@ tasks.register<Test>("evalUnitTest") {
     filter {
         excludeTestsMatching("*RetrievalEvaluationHarnessTest")
         excludeTestsMatching("*PromptInjectionEvaluationHarnessTest")
+        excludeTestsMatching("*AnswerQualityEvaluationHarnessTest")
         excludeTestsMatching("*ToolCallingEvaluationHarnessTest")
         excludeTestsMatching("*BaselineRegressionTest")
     }
@@ -806,18 +826,17 @@ tasks.register<Test>("openAiIntegrationTest") {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
-        // Imported after the Spring Boot BOM, so these win over the Jackson versions it pins.
+        // Imported after the Spring Boot BOM, so these win over the Jackson and OpenTelemetry
+        // versions it pins.
         mavenBom(libs.jackson3.bom.get().toString())
         mavenBom(libs.jackson2.bom.get().toString())
+        mavenBom(libs.opentelemetry.bom.get().toString())
+        mavenBom(libs.opentelemetry.alpha.bom.get().toString())
     }
-    // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
-    // by spring-boot-dependencies and the Bouncy Castle versions Tika's parser modules resolve
-    // (CVE-2026-8763, CVE-2026-13506). Each entry states its own removal
-    // condition in libs.versions.toml, which is also where the versions live.
+    // Security overrides for artifacts nothing here declares directly: the Bouncy Castle versions
+    // Tika's parser modules resolve (CVE-2026-8763, CVE-2026-13506). Each entry states its own
+    // removal condition in libs.versions.toml, which is also where the versions live.
     dependencies {
-        dependency(libs.tomcat.embed.core.get().toString())
-        dependency(libs.tomcat.embed.el.get().toString())
-        dependency(libs.tomcat.embed.websocket.get().toString())
         dependency(libs.bouncycastle.bcprov.get().toString())
         dependency(libs.bouncycastle.bcutil.get().toString())
         dependency(libs.bouncycastle.bcpkix.get().toString())

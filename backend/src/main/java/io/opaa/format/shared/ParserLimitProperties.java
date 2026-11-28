@@ -48,6 +48,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     objects of every object stream it unpacks and the objects a brute-force search finds, added
  *     up. Bounds the heap of a cross-reference that declares millions of entries. Default 1 000
  *     000.
+ * @param maxPdfBrokenOperators the most content-stream operators PDFBox may fail on for one PDF (an
+ *     operator missing its operands, a resource it names that does not exist), added up over all
+ *     pages and reading passes: each one counts again in every pass that meets it. PDFBox skips
+ *     such an operator, but builds an exception for it and logs it as an error with its stack
+ *     trace, many times the cost of a working one; bounds the time and the log of a page of
+ *     millions of them. Default 50 000.
  */
 @PerInstance("bounds of a parser of this process")
 @NoDataImpact("parser bounds")
@@ -61,11 +67,12 @@ public record ParserLimitProperties(
     long maxPdfStreamBytes,
     long maxPdfParseSeconds,
     long maxPdfPages,
-    long maxPdfObjects) {
+    long maxPdfObjects,
+    long maxPdfBrokenOperators) {
 
   /** The defaults, for formats constructed without configuration (tests, single-format use). */
   public static final ParserLimitProperties DEFAULTS =
-      new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 0);
+      new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
   public ParserLimitProperties {
     maxTextCharacters = positiveOr(maxTextCharacters, 10_000_000L);
@@ -77,6 +84,7 @@ public record ParserLimitProperties(
     maxPdfParseSeconds = positiveOr(maxPdfParseSeconds, 120L);
     maxPdfPages = positiveOr(maxPdfPages, 10_000L);
     maxPdfObjects = positiveOr(maxPdfObjects, 1_000_000L);
+    maxPdfBrokenOperators = positiveOr(maxPdfBrokenOperators, 50_000L);
   }
 
   /**

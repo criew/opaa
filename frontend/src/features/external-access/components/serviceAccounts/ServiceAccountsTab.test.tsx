@@ -96,7 +96,7 @@ describe('ServiceAccountsTab', () => {
 
   it('meldet fehlende Angaben am Feld und setzt „Fehler:“ vor den Seitentitel', async () => {
     const user = userEvent.setup()
-    document.title = 'Anbindungen · OPAA'
+    document.title = 'Anbindungen · opaa'
     render()
 
     await user.click(await screen.findByRole('button', { name: 'Dienstkonto anlegen' }))
@@ -110,11 +110,11 @@ describe('ServiceAccountsTab', () => {
     expect(
       within(dialog).getByRole('combobox', { name: 'Verantwortliche Person' }),
     ).toHaveAccessibleDescription('Bitte eine Person auswählen.')
-    expect(document.title).toBe('Fehler: Anbindungen · OPAA')
+    expect(document.title).toBe('Fehler: Anbindungen · opaa')
 
     await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
     await waitForDialogClosed()
-    expect(document.title).toBe('Anbindungen · OPAA')
+    expect(document.title).toBe('Anbindungen · opaa')
   })
 
   it('führt vom Anlegen direkt zum ersten Token und zeigt dessen Wert einmal', async () => {
@@ -357,15 +357,15 @@ describe('ServiceAccountsTab', () => {
   it('nimmt „Fehler:“ erst mit dem letzten fehlerhaften Formular aus dem Titel', async () => {
     const { useErrorTitle } = await import('./serviceAccountHooks')
     const { renderHook } = await import('@testing-library/react')
-    document.title = 'Anbindungen · OPAA'
+    document.title = 'Anbindungen · opaa'
     const first = renderHook(({ on }) => useErrorTitle(on), { initialProps: { on: true } })
     const second = renderHook(({ on }) => useErrorTitle(on), { initialProps: { on: true } })
-    expect(document.title).toBe('Fehler: Anbindungen · OPAA')
+    expect(document.title).toBe('Fehler: Anbindungen · opaa')
 
     first.unmount()
-    expect(document.title).toBe('Fehler: Anbindungen · OPAA')
+    expect(document.title).toBe('Fehler: Anbindungen · opaa')
     second.rerender({ on: false })
-    expect(document.title).toBe('Anbindungen · OPAA')
+    expect(document.title).toBe('Anbindungen · opaa')
     second.unmount()
   })
 })

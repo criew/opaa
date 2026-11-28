@@ -20,7 +20,7 @@ describe('installation validation', () => {
   })
 
   it('accepts a six-digit hex colour', () => {
-    expect(hexColorError('#1292EE')).toBeUndefined()
+    expect(hexColorError('#0055A4')).toBeUndefined()
     expect(hexColorError('blau')).toMatch(/Hex-Wert/)
   })
 

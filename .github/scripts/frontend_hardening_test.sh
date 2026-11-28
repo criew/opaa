@@ -16,7 +16,8 @@
 # than GET and HEAD that a backend has received is never sent to a second one, neither when that
 # backend closes the connection without an answer nor when the answer outlasts
 # OPAA_BACKEND_READ_TIMEOUT; next to an address that refuses connections it is still answered.
-# The access log names neither the token of a mail link nor the code of a callback.
+# The access log names neither the token of a mail link nor the code of a callback. On a graceful
+# stop a request on a reused keep-alive connection is still answered, with "Connection: close".
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -691,6 +692,59 @@ elif ((refusals == 0)); then
 else
   echo "$(wc -l <<<"$refused_results" | tr -d ' ') parallel PUT and DELETE next to a refusing address answered, each by one backend ($refusals refused attempts)"
 fi
+
+echo "--- a graceful stop answers the next request on a reused connection"
+# A client keeps its keep-alive connection to a stopping frontend (a pod that left the Service while
+# conntrack still routes the connection to it) and sends its next request just after the stop
+# signal. It must get an answer that ends the connection, not a connection closed without one.
+docker rm -f "$probe" >/dev/null 2>&1 || true
+start_frontend "$probe" -e OPAA_BACKEND_UPSTREAM=echo:8080
+probe_port="$(docker port "$probe" 8080/tcp | head -n 1 | sed 's/.*://')"
+for _ in $(seq 1 30); do
+  curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:$probe_port/runtime-config.js" 2>/dev/null &&
+    break
+  sleep 1
+done
+reused="$(python3 -I - "$probe_port" "$probe" <<'EOF'
+import socket, subprocess, sys, time
+port, container = int(sys.argv[1]), sys.argv[2]
+request = b"GET /api/v1/health HTTP/1.1\r\nHost: opaa.example\r\n\r\n"
+def answer(sock):
+    sock.sendall(request)
+    data = b""
+    while b"\r\n\r\n" not in data:
+        chunk = sock.recv(65536)
+        if not chunk:
+            return "closed without an answer"
+        data += chunk
+    head = data.split(b"\r\n\r\n", 1)[0].decode("latin-1").lower().split("\r\n")
+    return " ".join(line for line in head if line.startswith(("http/1.1", "connection:")))
+with socket.create_connection(("127.0.0.1", port), timeout=10) as sock:
+    first = answer(sock)
+    subprocess.run(["docker", "kill", "--signal", "QUIT", container], check=True,
+                   capture_output=True)
+    time.sleep(0.5)
+    try:
+        second = answer(sock)
+    except OSError as error:
+        second = f"failed: {error}"
+print(f"{first} | {second}")
+EOF
+)" || reused="probe failed"
+if [[ "$reused" == "http/1.1 200 ok connection: keep-alive | http/1.1 200 ok connection: close" ]]; then
+  echo "the request after the stop signal is answered and ends the connection"
+else
+  fail "a request on a reused connection after the stop signal: ${reused:-no result}"
+fi
+stopped=false
+for _ in $(seq 1 15); do
+  if [[ "$(docker container inspect --format '{{.State.Running}}' "$probe")" == false ]]; then
+    stopped=true
+    break
+  fi
+  sleep 1
+done
+$stopped || fail "nginx was still running 15 s after the stop signal"
 
 if ((failures > 0)); then
   echo "$failures hardening check(s) failed." >&2

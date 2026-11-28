@@ -128,6 +128,10 @@ spring:
     # Observations carry no content (ADR-0071): no prompt, answer, retrieved chunk or tool argument
     # goes into a log, span or metric. Set explicitly so a changed library default cannot switch
     # one on; SpringAiContentPropertiesTest requires every such property Spring AI declares here.
+    audio:
+      transcription:
+        observations:
+          log-transcript: false
     chat:
       observations:
         log-prompt: false
@@ -356,10 +360,12 @@ opaa:
       max-scan-tuples: ${OPAA_QUERY_VECTOR_INDEX_MAX_SCAN_TUPLES:20000}
     # The neighbours of every selected chunk the answer prompt additionally carries
     # (NeighborChunkProperties): chunk_index +- radius of the same document, bounded in characters.
-    # Radius 0 switches it off.
+    # Radius 0 switches it off. A hit in a table of at most whole-table-max-characters brings the
+    # whole table from the same budget; 0 loads no table whole.
     neighbor-chunks:
       radius: ${OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS:1}
       max-added-characters: ${OPAA_QUERY_NEIGHBOR_CHUNKS_MAX_ADDED_CHARACTERS:40000}
+      whole-table-max-characters: ${OPAA_QUERY_NEIGHBOR_CHUNKS_WHOLE_TABLE_MAX_CHARACTERS:12000}
     # The entry condition of the core-field filter - the fill level a field must reach in the asking
     # person's search scope before the filter interface offers it. Committed before the first
     # measurement (ADR-0012); overridable for tests and deliberate experiments, not an
@@ -370,6 +376,12 @@ opaa:
       document-date-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD:0.75}
       library-field-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_LIBRARY_FIELD_THRESHOLD:0.75}
       options-cache-ttl: ${OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL:5m}
+    # An answer claiming that something is missing from the sources is checked once: the key terms
+    # of the question are searched within the same scope, and new passages carrying them lead to
+    # one further answer (AbsenceRecheckProperties). Chat and agent runs alike.
+    absence-recheck:
+      enabled: ${OPAA_QUERY_ABSENCE_RECHECK_ENABLED:true}
+      max-passages: ${OPAA_QUERY_ABSENCE_RECHECK_MAX_PASSAGES:4}
   # The reading path without generation. The hit count is cut out of the retrieval's own selection
   # (opaa.query.top-k), it never searches further. The fetch cap is the one place a single call can
   # return a whole document, and it is deliberately finite.
@@ -603,7 +615,7 @@ opaa:
     # DoS-hardening limits for the structure formats (PDF, DOCX, PPTX, XLSX/CSV, HTML, Markdown),
     # see ParserLimitProperties: text per document, the unpacked XML of an OOXML package and the
     # content-stream operators, decoded content bytes (per document and per stream), reading
-    # time, pages and objects of a PDF.
+    # time, pages, objects and operators PDFBox fails on of a PDF.
     parser-limits:
       max-text-characters: ${OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS:10000000}
       max-ooxml-part-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_PART_BYTES:33554432}
@@ -614,6 +626,7 @@ opaa:
       max-pdf-parse-seconds: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS:120}
       max-pdf-pages: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PAGES:10000}
       max-pdf-objects: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OBJECTS:1000000}
+      max-pdf-broken-operators: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_BROKEN_OPERATORS:50000}
     # ADR-0018 Entscheidung 6: own opaa.indexing.filesystem.* property block, own binding prefix
     # (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist: absolute base
     # directories a FILESYSTEM library's sourcePath must resolve underneath. No default on purpose -

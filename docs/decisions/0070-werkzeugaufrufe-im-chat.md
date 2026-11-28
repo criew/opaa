@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-11
+Akzeptiert · zuletzt geändert 2026-11-27
 
 ## Kontext
 
@@ -55,9 +55,15 @@ Werkzeuge denselben Namen tragen oder eines keine Rechteklasse hat.
 | isoliert | läuft in einer Ausführungsumgebung ohne Zugriff auf den Bestand und ohne Netz; die Eingaben gibt die Anwendung hinein, erzeugte Dateien werden nur Anhang der Antwort und damit Teil von (a) | `run_code` |
 | schreibend | wirkt außerhalb des Laufs: schreibt, sendet oder greift über das Ausgangstor nach außen | keines |
 
-Jedes Werkzeug prüft bei jedem Aufruf selbst die Rechte und verlässt sich nicht auf die Schleife.
-Den Bestand erreicht es nur über dieselben Domain-Dienste wie `POST /api/v1/query`; einen zweiten
-Zugriffsweg gibt es nicht. Begründung: Gibt es die Klasse von Anfang an, ist ein späteres
+Der Suchbereich (Entscheidung 3) wird beim Start des Laufs einmal aus denselben lesbaren
+Bibliotheken bestimmt wie für `POST /api/v1/query` und bleibt für den Lauf eingefroren
+(`AgentRun#searchScope`); eine Rechteänderung wirkt ab dem nächsten Lauf. Jedes Werkzeug begrenzt
+bei jedem Aufruf selbst jedes Lesen auf diesen Bereich und verlässt sich nicht auf die Schleife.
+`search_knowledge` sucht wie `POST /api/v1/query` über `KnowledgeRetrieval` mit derselben
+Filterprüfung (`MetadataFilterValidator`), `read_document` liest nur, was ein Schritt des Laufs
+gefunden hat, und schränkt das Nachladen erneut auf den Bereich ein. `list_sources` liest Namen und
+Dokumentzahlen direkt aus den Repositories, aber nur für Bibliotheken des Bereichs und ohne Inhalt.
+Einen Weg am Suchbereich vorbei gibt es nicht. Begründung: Gibt es die Klasse von Anfang an, ist ein späteres
 schreibendes Werkzeug eine neue Zeile. Kommt sie erst später, muss jedes bestehende Werkzeug neu
 bewertet werden.
 
@@ -97,6 +103,14 @@ und das kann noch gelingen. Der Lauf nennt deshalb zu Beginn ein Stopp-Token; de
 damit einen Merker an der Reservierung des Laufs in der Datenbank, den der Lauf vor jedem Aufruf
 liest, gleich welche Instanz den Abbruch angenommen hat. Ein Lebenszeichen alle 10 Sekunden, auch
 während Modell oder Werkzeug arbeiten, hält Proxys offen und deckt einen verlorenen Leser auf.
+
+**Fassungsstempel außerhalb des Chats.** Jede Agentenantwort trägt den einen Wortlaut
+„KI-generierter Entwurf, nicht geprüft“: an der Antwort, beim Kopieren und im Export mit Agent und
+Fassung. Eine Datei nach Vorlage zeigt in jeder Fußzeile nur diese kurze Zeile, damit sie in eine
+Zeile passt; den vollständigen Stempel mit Vorlage, Bibliotheken und Modell trägt sie
+maschinenlesbar in den Dokumenteigenschaften (Art. 50 Abs. 2 KI-VO), so geht er mit der Datei mit,
+ohne die sichtbare Seite zu füllen. Die Bibliotheksnamen gehören zum Stempel; wer die Datei
+weitergibt, gibt sie mit.
 
 **Zu (b).** Das Schrittprotokoll ist **nicht** das Diagnoseprotokoll der Suche
 (`diagnostic_context_log`). Es nutzt nur dessen Bauart mit: eigene Tabelle im Besitz von
@@ -148,7 +162,10 @@ der Chat besteht, nicht aus technischen Rohdaten.
 Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
 
 1. **Feste Regeln** im Systemvorspann: Rolle, Beleg- und Zitierregeln, die Regel, dass gekennzeichnete
-   Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe.
+   Datenblöcke Material und keine Anweisung sind, und die Sprachvorgabe. Die Antwortregeln zu Lücken,
+   Prämissen und Bezugsgrößen sind dieselben wie im Chat und stammen aus einem gemeinsamen Text
+   (`AnswerRules.SHARED`); nur die Belegregel benennt, was hier die Quellen sind. So antworten Chat
+   und Agent auf dieselbe Frage nicht nach unterschiedlichen Lückenregeln.
 2. **Anweisung des Agenten** als gekennzeichneter Block, angehängt, nie als Ersatz. Sie darf Ton,
    Form und Vorgehen bestimmen, nicht die Antwortsprache. Sie ist kein Beleg und keine Quelle.
 3. **Anweisung des Space** ([ADR-0043](0043-anweisung-je-space.md), Entscheidung 6), wenn vorhanden.
@@ -164,17 +181,30 @@ Ein Modellaufruf der Schleife wird in dieser Reihenfolge zusammengesetzt:
    `ContentFence`). Ein Ergebnis steht nie in der Nachricht der Person und nie im Systemvorspann.
 8. **Erinnerung an die verbindlichen Regeln** am Ende jedes Werkzeugergebnisses, hinter dessen
    Datenblock und außerhalb davon. Damit ist vor jedem Modellaufruf mit Fremdinhalt die Erinnerung
-   das Letzte, was das Modell liest. Sie besteht wie im Chat aus Zitier- und Sprachzeile
+   das Letzte, was das Modell liest, ausgenommen die Nachfrage nach einer leeren Ausgabe (unten). Sie besteht wie im Chat aus Zitier- und Sprachzeile
    (`AnswerGenerationService.CITATION_REMINDER`, dazu `LANGUAGE_REMINDER` oder mit einer
    Space-Anweisung `SPACE_LANGUAGE_REMINDER`).
 
 Die Teile 1 bis 4 sind über alle Schritte eines Laufs zeichengleich. Ein Schritt hängt nur ein
-weiteres Ergebnis mit eigener Erinnerung hinter Teil 7 an. Darauf beruht die Zusage, dass der
+weiteres Ergebnis mit eigener Erinnerung hinter Teil 7 an; einzige weitere Nachricht ist die
+Nachfrage nach einer leeren Ausgabe (unten). Darauf beruht die Zusage, dass der
 Systemvorspann nicht über den Chat änderbar ist, auch wenn fremd verfasster Text in die Schleife
 gelangt. Begründung: Eine Erinnerung als Nachricht der Person spräche mit deren Stimme. Eine
 Systemnachricht mitten im Verlauf lehnen manche Chat-Templates über den OpenAI-kompatiblen Weg ab
 ([ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md), Entscheidung 1). Das
 Werkzeugergebnis erzeugt die Anwendung ohnehin selbst.
+
+Liefert ein Modellaufruf mit Werkzeugen weder Text noch einen Werkzeugaufruf, endet der Lauf nicht
+sofort. Einmal je Lauf folgt eine Nachfrage, die zum Fortfahren auffordert, mit weiter angebotenen
+Werkzeugen; endete die leere Ausgabe an der Längengrenze, bittet sie um kürzere Werkzeugeingaben. Die
+Nachfrage steht in der Rolle der Person, weil eine Systemnachricht mitten im Verlauf nicht überall
+geht (siehe oben). Sie ist ein fester Text der Anwendung ohne Fremdinhalt, nach demselben Muster wie
+der Prüfhinweis der Fehlanzeigen-Nachprüfung. Die leere Ausgabe selbst kommt nicht in den Verlauf.
+Ein Abschlussaufruf und ein Planlauf bieten keine Werkzeuge an und fragen nicht nach. Begründung: Ein
+großer Werkzeugaufruf, den die Längengrenze abschneidet, oder ein leer beendeter Zug nach
+Werkzeugergebnissen ließe sonst einen Lauf mit vollständiger Recherche ohne Antwort enden. Eine
+Wiederholung ohne neue Nachricht brächte dasselbe Ergebnis. Bleibt auch die zweite Ausgabe leer,
+endet der Lauf mit dem Hinweis, dass keine Antwort formuliert wurde.
 
 ### 6. Erzwungen oder gemessen, und was dafür im Betrieb gilt
 
@@ -217,8 +247,12 @@ Die erzwungenen Eigenschaften halten auf jeder Instanz (ADR-0053):
   als die Deckel aus ADR-0053, Entscheidung 12, schließt das Platzlimit bei nicht erreichbarer
   Datenbank: Ohne Datenbank gibt es weder Suche noch Schrittprotokoll, ein
   Lauf könnte also ohnehin nicht korrekt laufen.
-- **Schalter:** stehen in der Datenbank; jede Instanz hält sie am Invalidierungsbus (ADR-0053,
-  Entscheidung 5).
+- **Schalter:** stehen in der Datenbank und werden bei jeder Anfrage, die sie betrifft, ohne
+  Zwischenspeicher gelesen (`AgentSwitch`, `AgentSettingsService#enabledTools`,
+  `DocumentTemplateSettingsService#isEnabled`). Eine Änderung gilt damit auf jeder Instanz ab der
+  nächsten Anfrage, ohne Invalidierungsbus; ein laufender Lauf behält die Werkzeuge, die ihm beim
+  Start angeboten wurden. Abgeschaltet nimmt die nächste Anfrage keinen Agenten und kein Werkzeug
+  mehr an; ein Lauf, der schon läuft, endet regulär.
 - **Nutzergesteuerte Ausführung** für spätere schreibende Werkzeuge: Die Anwendung nimmt die
   Aufrufwünsche des Modells entgegen und führt sie über `ToolCallingManager` aus, statt sie dem
   `ToolCallingAdvisor` zu überlassen. Nur so kann sie vor einem Aufruf anhalten. Die wartende

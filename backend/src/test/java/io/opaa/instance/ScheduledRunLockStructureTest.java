@@ -49,9 +49,6 @@ class ScheduledRunLockStructureTest {
               "io.opaa.indexing.run.SourceEventIntake#drainDue",
               "each instance drains the batches it has a target for, one claim at a time (ADR-0053, E10)"),
           Map.entry(
-              "io.opaa.audit.AuditStorageMetrics#refresh",
-              "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)"),
-          Map.entry(
               "io.opaa.audit.AuditChainService#refreshMetrics",
               "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)"),
           Map.entry(

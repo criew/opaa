@@ -5,7 +5,7 @@ import { chatAsMarkdown, exportFileName, exportTimestamp } from './chatExport'
 const ASKED = '2026-03-05T09:15:00Z'
 const ANSWERED = '2026-03-05T09:15:30Z'
 const EXPORTED = new Date('2026-03-06T07:00:00Z')
-const NOTE = 'Antworten werden von einer KI erzeugt. – OPAA, 06.03.2026'
+const NOTE = 'Antworten werden von einer KI erzeugt. – opaa, 06.03.2026'
 const BESCHEID = '11111111-1111-1111-1111-111111111111'
 const MERKBLATT = '22222222-2222-2222-2222-222222222222'
 
@@ -205,9 +205,9 @@ describe('chatAsMarkdown', () => {
     )
 
     expect(markdown).toContain(
-      'Ein Monat.\n\n_Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3_',
+      'Ein Monat.\n\n_KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3_',
     )
-    expect(markdown.match(/Entwurf, nicht geprüft/g)).toHaveLength(1)
+    expect(markdown.match(/KI-generierter Entwurf, nicht geprüft/g)).toHaveLength(1)
   })
 
   it('ends with the note under a rule', () => {

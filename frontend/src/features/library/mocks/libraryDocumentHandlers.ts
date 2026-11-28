@@ -2,6 +2,11 @@ import { http, HttpResponse } from 'msw'
 import { GETTING_STARTED_PDF_OUTLINE, GETTING_STARTED_PDF_PAGES, mockPdf } from './mockPdf'
 import { mockScanPdf, SCAN_DOCUMENT_IDS, SCAN_PASSAGES } from './mockScanPdf'
 import {
+  OFFICE_DOCUMENT_IDS,
+  officeDocumentContent,
+  officeDocumentPassages,
+} from './officeDocuments'
+import {
   mockLibraries,
   mockLibraryDetails,
   mockLibraryDocuments,
@@ -493,6 +498,7 @@ export const libraryDocumentHandlers = [
     const known =
       documentId === 'doc-slides' ||
       SCAN_DOCUMENT_IDS.includes(documentId) ||
+      OFFICE_DOCUMENT_IDS.includes(documentId) ||
       Object.values(mockLibraryDocuments)
         .flat()
         .some((doc) => doc.id === documentId)
@@ -504,6 +510,8 @@ export const libraryDocumentHandlers = [
 
   http.get('/api/v1/documents/:documentId/content', ({ params }) => {
     const documentId = String(params.documentId)
+    const office = officeDocumentContent(documentId)
+    if (office) return office
     // the scanned PDFs the mocked answer from text recognition cites
     if (SCAN_DOCUMENT_IDS.includes(documentId)) {
       return pdfResponse(
@@ -574,11 +582,11 @@ export const libraryDocumentHandlers = [
 
 /** The mocked „einfuehrung-opaa.pptx“, one passage per slide and two for the cited slide 3. */
 const INTRODUCTION_SLIDES: { slide: number; title: string; text: string }[] = [
-  { slide: 1, title: 'OPAA – Einführung', text: 'Open Project AI Assistant\nStand: Januar 2025' },
+  { slide: 1, title: 'opaa – Einführung', text: 'open project ai assistant\nStand: Januar 2025' },
   {
     slide: 2,
     title: 'Worum es geht',
-    text: 'OPAA beantwortet Fragen zu den Unterlagen eines Projekts und belegt jede Aussage mit der Fundstelle im Original.',
+    text: 'opaa beantwortet Fragen zu den Unterlagen eines Projekts und belegt jede Aussage mit der Fundstelle im Original.',
   },
   {
     slide: 3,
@@ -618,14 +626,16 @@ function documentText(documentId: string, request: Request) {
             quoteStart: quoteStart(entry.text),
           },
         }))
-      : SCAN_DOCUMENT_IDS.includes(documentId)
-        ? SCAN_PASSAGES.map((passage) => ({ ...passage, anchor: null }))
-        : [0, 1, 2].map((chunkIndex) => ({
-            chunkIndex,
-            text: `Abschnitt ${chunkIndex + 1} der Beispieldatei.`,
-            location: null,
-            anchor: null,
-          }))
+      : OFFICE_DOCUMENT_IDS.includes(documentId)
+        ? officeDocumentPassages(documentId)
+        : SCAN_DOCUMENT_IDS.includes(documentId)
+          ? SCAN_PASSAGES.map((passage) => ({ ...passage, anchor: null }))
+          : [0, 1, 2].map((chunkIndex) => ({
+              chunkIndex,
+              text: `Abschnitt ${chunkIndex + 1} der Beispieldatei.`,
+              location: null,
+              anchor: null,
+            }))
   const first = 0
   const last = passages.length - 1
   const from = Number(url.searchParams.get('from') ?? first)
@@ -671,7 +681,7 @@ const ARCHITECTURE_OVERVIEW_MD = [
   '',
   '## Module',
   '',
-  'OPAA besteht aus drei Modulen: **api**, **indexing** und **query**.',
+  'opaa besteht aus drei Modulen: **api**, **indexing** und **query**.',
   '',
   ...Array.from({ length: 12 }, (_, i) => [
     `Absatz ${i + 1} zur Modulstruktur und ihren Grenzen.`,

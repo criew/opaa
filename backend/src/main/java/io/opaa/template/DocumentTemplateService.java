@@ -148,7 +148,9 @@ public class DocumentTemplateService {
                       caller.organizationId(), name, description, caller.id(), admitted.file());
           DocumentTemplate saved = repository.saveAndFlush(template);
           files.store(saved.getId(), admitted.content());
-          shellService.registerCreated(saved, caller.id(), auditPayload(saved));
+          Map<String, Object> created = auditPayload(saved);
+          created.putAll(AssetResponsibilityService.unitPayload(responsible));
+          shellService.registerCreated(saved, caller.id(), created);
           responsibilityService.establish(saved, responsible);
           return view(saved, AssetRole.OWNER, caller);
         });
@@ -303,6 +305,7 @@ public class DocumentTemplateService {
    */
   @Transactional
   public AssetResponsibilityView lock(UUID templateId, String reason, CurrentUser caller) {
+    // checked before the lookup so a non-admin cannot tell a template from no template
     caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen sperren.");
     return responsibilityService.lock(load(templateId, caller), reason, caller);
   }
@@ -310,6 +313,7 @@ public class DocumentTemplateService {
   /** Lifts the lock of the template (system administration only), whatever its cause. */
   @Transactional
   public AssetResponsibilityView unlock(UUID templateId, CurrentUser caller) {
+    // checked before the lookup so a non-admin cannot tell a template from no template
     caller.requireSystemAdmin("Nur die Systemverwaltung darf Vorlagen entsperren.");
     return responsibilityService.unlock(load(templateId, caller), caller);
   }

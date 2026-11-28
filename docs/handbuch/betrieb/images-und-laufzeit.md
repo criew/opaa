@@ -54,8 +54,8 @@ nichts gebaut. Backend, Frontend und das Texterkennungs-Image laufen immer mit *
 
 ### Installation ohne Internetzugang
 
-Erreicht das Netz der Installation GHCR nicht, kommt OPAA über das Offline-Bündel hinein. Es
-enthält alles von OPAA selbst und lässt sich hinter der Schleuse ohne Netz prüfen.
+Erreicht das Netz der Installation GHCR nicht, kommt opaa über das Offline-Bündel hinein. Es
+enthält alles von opaa selbst und lässt sich hinter der Schleuse ohne Netz prüfen.
 
 | Im Bündel | Inhalt |
 |---|---|
@@ -162,7 +162,7 @@ Java 21 auf einem Distroless-Image, ohne Shell, Coreutils, `curl` und Paketmanag
 - **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`. Nur eine Option, die schon vor der Anwendung einen
   Hostnamen auflöst, verhindert den Start: JMX-Remote (`-Dcom.sun.management.jmxremote.*`),
   `-Djdk.net.hosts.file` und ein `-javaagent`, der beim Laden Namen auflöst. Speicheroptionen und JFR
-  sind unschädlich. OPAA muss die Namensauflösung der JVM selbst übernehmen, um geprüfte Ziele zu
+  sind unschädlich. opaa muss die Namensauflösung der JVM selbst übernehmen, um geprüfte Ziele zu
   binden ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)); die Meldung beim
   Abbruch nennt diese Ursache.
 
@@ -275,6 +275,8 @@ noch nicht auf; die Indexierung liest gescannte Dokumente weiter ohne Texterkenn
 | `chat-model` | welches Chat-Modell aktiv ist, ohne Aufruf |
 | `embedding-model` | einen echten Embedding-Aufruf, Ergebnis kurz zwischengespeichert |
 | `transcription-model` | letzten bekannten Zustand der Spracherkennung |
+| `rerank-model` | letzten bekannten Zustand des Rerankings |
+| `text-recognition-model` | letzten bekannten Zustand der Texterkennung |
 | `vector-store` | eine echte Ähnlichkeitssuche, Ergebnis kurz zwischengespeichert |
 | `upload-store` | den S3-Objektspeicher der Originalablage |
 | `mail` | den letzten SMTP-Versand |
@@ -298,5 +300,10 @@ Beim Stopp nimmt das Backend keine neuen Verbindungen an und lässt laufende Anf
   das Modell zu warten. Die Person sieht einen Hinweis, die Runde wird nicht gespeichert, und die
   Frage steht wieder im Eingabefeld.
 - **Mails** liegen bis zur Zustellung in der Datenbank und gehen nicht verloren.
+- **Das Frontend** nimmt beim Stopp keine neuen Verbindungen mehr an. Auf einer Verbindung, die in
+  den letzten 5 Sekunden benutzt wurde, beantwortet es noch die nächste Anfrage und schließt die
+  Verbindung danach; der Stopp dauert dadurch bis zu 5 Sekunden länger. Ein vorgeschalteter Proxy,
+  der Verbindungen zum Frontend länger als 5 Sekunden ungenutzt offen hält, sollte seine
+  Leerlaufzeit darunter setzen, sonst kann eine Anfrage beim Stopp ohne Antwort bleiben.
 - Bei einem Rolling Update stellt der Helm-Chart die Zeitfenster passend ein
   ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).

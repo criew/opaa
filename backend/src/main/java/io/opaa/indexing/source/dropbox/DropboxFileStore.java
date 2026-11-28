@@ -430,7 +430,7 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
                   + area.label()
                   + "“ ist "
                   + (listed.complete() ? "kein Team-Ordner des Teams." : "nicht auffindbar.")
-                  + " OPAA liest nur Team-Ordner.");
+                  + " opaa liest nur Team-Ordner.");
         }
       }
     } else if (settings.teamSpace()) {

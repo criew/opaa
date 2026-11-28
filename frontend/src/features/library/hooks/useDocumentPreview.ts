@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { openDocumentContent, opensAsTextVersion } from '../utils/documentContent'
 import type {
   PdfPreviewResult,
@@ -11,6 +11,28 @@ import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 import { withTextFragment } from '../utils/textFragment'
+import {
+  loadOfficeOriginal,
+  originalFormat,
+  type OfficeOriginal,
+  type OriginalFallback,
+} from '../utils/officeOriginal'
+
+/** What an original view shows while its file is fetched: the name and, for the card, the anchor. */
+export interface PendingOriginal {
+  fileName: string
+  anchor?: ChunkAnchor | null
+}
+
+const FALLBACK_NOTICES: Record<OriginalFallback | 'unreadable', (fileName: string) => string> = {
+  'too-large': (fileName) =>
+    `${fileName} ist zu groß für die Originalansicht – die Textfassung wird gezeigt.`,
+  'no-plain-text': (fileName) => `${fileName} hat keinen Textteil – die Textfassung wird gezeigt.`,
+  failed: (fileName) =>
+    `Das Original von ${fileName} konnte nicht geladen werden – die Textfassung wird gezeigt.`,
+  unreadable: (fileName) =>
+    `${fileName} lässt sich nicht als Original darstellen – die Textfassung wird gezeigt.`,
+}
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
@@ -49,6 +71,20 @@ export function useDocumentPreview() {
   const [previewDocument, setPreviewDocument] = useState<TextPreviewResult | null>(null)
   const [pdfPreview, setPdfPreview] = useState<PdfPreviewResult | null>(null)
   const [textVersion, setTextVersion] = useState<TextVersionPreview | null>(null)
+  const [officeOriginal, setOfficeOriginal] = useState<OfficeOriginal | null>(null)
+  const [pendingOriginal, setPendingOriginal] = useState<PendingOriginal | null>(null)
+  // counts the original fetches; one that is closed or overtaken is not shown when it arrives
+  const originalRequest = useRef(0)
+  const originalAbort = useRef<AbortController | null>(null)
+
+  function openTextVersion(document: OpenableDocument) {
+    setTextVersion({
+      documentId: document.id,
+      fileName: document.fileName,
+      chunkIndex: document.chunkIndex,
+      anchor: document.anchor,
+    })
+  }
 
   async function openDocument(document: OpenableDocument) {
     // ADR-0023: a source whose original is the page at the source (Confluence) has no file of its
@@ -64,14 +100,39 @@ export function useDocumentPreview() {
       window.open(withTextFragment(target, document.anchor), '_blank', 'noopener,noreferrer')
       return
     }
+    // Word, CSV and mail open as themselves, the view loading while the file is fetched; one too
+    // large to show, a mail without plain text or an original that cannot be fetched opens as its
+    // Textfassung, which the index still holds, and a notice says so
+    const format = originalFormat(document.fileName)
+    if (format) {
+      const request = ++originalRequest.current
+      originalAbort.current?.abort()
+      const abort = new AbortController()
+      originalAbort.current = abort
+      setPendingOriginal({ fileName: document.fileName, anchor: document.anchor })
+      const outcome = await loadOfficeOriginal(
+        format,
+        {
+          documentId: document.id,
+          fileName: document.fileName,
+          anchor: document.anchor,
+          chunkIndex: document.chunkIndex,
+        },
+        abort.signal,
+      ).catch(() => ({ fallback: 'failed' as const }))
+      if (request !== originalRequest.current) return
+      setPendingOriginal(null)
+      if ('fallback' in outcome) {
+        notify(FALLBACK_NOTICES[outcome.fallback](document.fileName), 'info')
+        openTextVersion(document)
+      } else {
+        setOfficeOriginal(outcome)
+      }
+      return
+    }
     // a format the browser cannot show opens as its Textfassung; the original is not fetched
     if (opensAsTextVersion(document.fileName)) {
-      setTextVersion({
-        documentId: document.id,
-        fileName: document.fileName,
-        chunkIndex: document.chunkIndex,
-        anchor: document.anchor,
-      })
+      openTextVersion(document)
       return
     }
     try {
@@ -87,7 +148,7 @@ export function useDocumentPreview() {
           chunkIndex: document.chunkIndex,
         })
       } else if (result.kind === 'download') {
-        // Every format without a preview (DOCX among them) must give visible feedback - a click
+        // Every format without a preview must give visible feedback - a click
         // that only starts a silent download otherwise looks like it did nothing. A Markdown/plain
         // text original that only fell back to
         // a download because it exceeded the size cap gets its own, more informative message.
@@ -113,6 +174,26 @@ export function useDocumentPreview() {
     closePdfPreview: () => setPdfPreview(null),
     textVersion,
     closeTextVersion: () => setTextVersion(null),
+    officeOriginal,
+    /** The original whose file is being fetched; its view shows it loading. */
+    pendingOriginal,
+    closeOfficeOriginal: () => {
+      originalRequest.current++
+      originalAbort.current?.abort()
+      setPendingOriginal(null)
+      setOfficeOriginal(null)
+    },
+    /** The original view could not render its file: the Textfassung takes its place. */
+    replaceOriginalByTextVersion: (original: OfficeOriginal) => {
+      notify(FALLBACK_NOTICES.unreadable(original.fileName), 'info')
+      setOfficeOriginal(null)
+      openTextVersion({
+        id: original.documentId,
+        fileName: original.fileName,
+        anchor: original.anchor,
+        chunkIndex: original.chunkIndex,
+      })
+    },
     openDocument,
   }
 }

@@ -6,7 +6,7 @@
 **Wer:** Werte ab *Bearbeiter*, eigene Felder ab *Verwalter*
 {: .kopf }
 
-Jedes Dokument trägt **Titel**, **Dokumentart** und **Datum/Stand**. OPAA füllt sie selbst, nach
+Jedes Dokument trägt **Titel**, **Dokumentart** und **Datum/Stand**. opaa füllt sie selbst, nach
 der Regel **lieber leer als geraten**: Ein Dokument ohne Wert schließt kein Filter aus.
 
 ## Fehlende Werte nachtragen

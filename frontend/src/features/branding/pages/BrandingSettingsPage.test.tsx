@@ -214,7 +214,7 @@ describe('BrandingSettingsPage', () => {
 
     const colorField = screen.getByLabelText('Primärfarbe (optional)')
     await user.clear(colorField)
-    await user.type(colorField, '#0B6FBC')
+    await user.type(colorField, '#1A5FA0')
 
     expect(screen.queryByText('Kontrast unterschritten')).not.toBeInTheDocument()
   })
@@ -305,7 +305,7 @@ describe('BrandingSettingsPage', () => {
     expect(alertTexts()).toMatch(/höchstens 2048 KiB/i)
   })
 
-  it('resets every field back to the OPAA standard', async () => {
+  it('resets every field back to the opaa standard', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     useBrandingStore.setState({
@@ -314,13 +314,13 @@ describe('BrandingSettingsPage', () => {
         claim: 'Kurz und klar',
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
-        primaryColor: '#0B6FBC',
+        primaryColor: '#1A5FA0',
       },
       isLoaded: true,
     })
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
-    await user.click(screen.getByRole('button', { name: /OPAA-Standard/i }))
+    await user.click(screen.getByRole('button', { name: /opaa-Standard/i }))
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() => {

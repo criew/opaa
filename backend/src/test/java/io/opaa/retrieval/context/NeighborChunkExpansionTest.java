@@ -3,6 +3,8 @@ package io.opaa.retrieval.context;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.chunk.ChunkTable;
 import io.opaa.knowledge.VectorTable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +25,8 @@ class NeighborChunkExpansionTest {
 
   private final List<Collection<ChunkPosition>> lookups = new ArrayList<>();
 
+  private final List<Collection<TableReference>> tableLookups = new ArrayList<>();
+
   private final NeighborChunkLookup lookup =
       new NeighborChunkLookup(null, null, new VectorTable("public", "vector_store")) {
         @Override
@@ -36,6 +40,20 @@ class NeighborChunkExpansionTest {
                   found.put(position, index.get(position));
                 }
               });
+          return found;
+        }
+
+        @Override
+        public Map<ChunkPosition, Document> findTables(
+            Collection<TableReference> tables, Set<UUID> libraryIds) {
+          tableLookups.add(List.copyOf(tables));
+          Map<ChunkPosition, Document> found = new HashMap<>();
+          index.forEach(
+              (position, chunk) ->
+                  ChunkTable.of(chunk.getMetadata())
+                      .map(table -> new TableReference(position.documentId(), table.id()))
+                      .filter(tables::contains)
+                      .ifPresent(table -> found.put(position, chunk)));
           return found;
         }
       };
@@ -214,36 +232,147 @@ class NeighborChunkExpansionTest {
     assertThat(expansion(1, 40_000).expand(selection, SCOPE)).isSameAs(selection);
   }
 
+  // --- Whole tables ----------------------------------------------------------------------------
+
+  @Test
+  void aHitInASmallTableBringsTheWholeTableInIndexOrder() {
+    store("a", 0, 6);
+    storeTable("a", 1, 1, 5);
+
+    List<Document> result = expansion(1, 40_000, 500).expand(List.of(index(chunk("a", 3))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#1", "a#2", "a#3", "a#4", "a#5");
+  }
+
+  @Test
+  void aTableLargerThanTheThresholdBringsOnlyTheNeighbours() {
+    storeTable("a", 1, 1, 5);
+
+    List<Document> result = expansion(1, 40_000, 400).expand(List.of(index(chunk("a", 3))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#2", "a#3", "a#4");
+    assertThat(tableLookups).isEmpty();
+  }
+
+  @Test
+  void aTableThatNoLongerFitsTheBudgetIsLeftOutWholeAndTheNeighboursStillCome() {
+    storeTable("a", 1, 1, 5);
+
+    // 250: the first round takes a#4, the remaining 150 cannot hold a#1, a#2 and a#5.
+    List<Document> result = expansion(1, 250, 500).expand(List.of(index(chunk("a", 3))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#2", "a#3", "a#4");
+  }
+
+  @Test
+  void loadsAllTablesOfTheSelectionInOneLookupAndEachTableOnce() {
+    storeTable("a", 1, 0, 2);
+    storeTable("a", 2, 3, 4);
+    storeTable("b", 1, 0, 1);
+
+    List<Document> result =
+        expansion(1, 40_000, 500)
+            .expand(
+                List.of(index(chunk("b", 0)), index(chunk("a", 0)), index(chunk("a", 1))), SCOPE);
+
+    assertThat(tableLookups).hasSize(1);
+    assertThat(tableLookups.getFirst())
+        .containsExactlyInAnyOrder(new TableReference("b", 1), new TableReference("a", 1));
+    assertThat(positions(result)).containsExactly("b#0", "b#1", "a#0", "a#1", "a#2");
+  }
+
+  @Test
+  void looksUpNoTableTheSelectionAlreadyHoldsWhole() {
+    storeTable("a", 1, 0, 1);
+    storeTable("b", 1, 0, 0);
+
+    List<Document> result =
+        expansion(1, 40_000, 500)
+            .expand(
+                List.of(index(chunk("a", 0)), index(chunk("a", 1)), index(chunk("b", 0))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#0", "a#1", "b#0");
+    assertThat(tableLookups).isEmpty();
+  }
+
+  @Test
+  void aThresholdOfZeroLoadsNoTableWhole() {
+    storeTable("a", 1, 1, 5);
+
+    List<Document> result = expansion(1, 40_000, 0).expand(List.of(index(chunk("a", 3))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#2", "a#3", "a#4");
+    assertThat(tableLookups).isEmpty();
+  }
+
+  @Test
+  void aSwitchedOffExpansionLoadsNoTableEither() {
+    storeTable("a", 1, 1, 5);
+    List<Document> selection = List.of(index(chunk("a", 3)));
+
+    assertThat(expansion(0, 40_000, 500).expand(selection, SCOPE)).isSameAs(selection);
+    assertThat(tableLookups).isEmpty();
+  }
+
   @Test
   void aBudgetOfZeroSwitchesTheExpansionOffWithoutLookingUpAnything() {
     store("a", 0, 1, 2);
     List<Document> selection = List.of(index(chunk("a", 1)));
 
-    assertThat(new NeighborChunkProperties(1, 0).enabled()).isFalse();
+    assertThat(new NeighborChunkProperties(1, 0, 12_000).enabled()).isFalse();
     assertThat(expansion(1, 0).expand(selection, SCOPE)).isSameAs(selection);
     assertThat(lookups).isEmpty();
   }
 
   @Test
   void acceptsTheBudgetBoundsAndRejectsValuesOutsideThem() {
-    assertThat(new NeighborChunkProperties(1, 1_000_000).maxAddedCharacters()).isEqualTo(1_000_000);
-    assertThatThrownBy(() -> new NeighborChunkProperties(1, -1))
+    assertThat(new NeighborChunkProperties(1, 1_000_000, 0).maxAddedCharacters())
+        .isEqualTo(1_000_000);
+    assertThatThrownBy(() -> new NeighborChunkProperties(1, -1, 0))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new NeighborChunkProperties(1, 1_000_001))
+    assertThatThrownBy(() -> new NeighborChunkProperties(1, 1_000_001, 0))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new NeighborChunkProperties(1, 1000, -1))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new NeighborChunkProperties(1, 1000, 1_000_001))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void rejectsARadiusOutsideItsBounds() {
-    assertThatThrownBy(() -> new NeighborChunkProperties(4, 1000))
+    assertThatThrownBy(() -> new NeighborChunkProperties(4, 1000, 0))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new NeighborChunkProperties(-1, 1000))
+    assertThatThrownBy(() -> new NeighborChunkProperties(-1, 1000, 0))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   private NeighborChunkExpansion expansion(int radius, int maxAddedCharacters) {
+    return expansion(radius, maxAddedCharacters, 0);
+  }
+
+  private NeighborChunkExpansion expansion(
+      int radius, int maxAddedCharacters, int wholeTableMaxCharacters) {
     return new NeighborChunkExpansion(
-        lookup, new NeighborChunkProperties(radius, maxAddedCharacters));
+        lookup, new NeighborChunkProperties(radius, maxAddedCharacters, wholeTableMaxCharacters));
+  }
+
+  /** Stores chunks {@code from..to} of {@code documentId} as one table of 100 characters each. */
+  private void storeTable(String documentId, int tableId, int from, int to) {
+    int characters = (to - from + 1) * 100;
+    for (int chunkIndex = from; chunkIndex <= to; chunkIndex++) {
+      Map<String, Object> metadata = new HashMap<>();
+      metadata.put("document_id", documentId);
+      metadata.put("chunk_index", chunkIndex);
+      metadata.put(
+          ChunkMetadataKeys.TABLE_METADATA_KEY, new ChunkTable(tableId, characters).toMetadata());
+      index.put(
+          new ChunkPosition(documentId, chunkIndex),
+          Document.builder()
+              .id(documentId + "-" + chunkIndex)
+              .text("x".repeat(100))
+              .metadata(metadata)
+              .build());
+    }
   }
 
   private void store(String documentId, int... chunkIndexes) {

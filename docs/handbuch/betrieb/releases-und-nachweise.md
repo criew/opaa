@@ -1,6 +1,6 @@
 # Releases und Nachweise
 
-Wer OPAA betreibt oder beschafft, muss wissen, welche Version er einsetzt, wie lange sie
+Wer opaa betreibt oder beschafft, muss wissen, welche Version er einsetzt, wie lange sie
 Sicherheitsupdates bekommt und wie sich belegen lässt, woraus sie besteht und woher sie stammt.
 Dieses Kapitel fasst zusammen, was ein Release liefert, wie man es prüft und wie das Projekt mit
 Schwachstellen und Lizenzen umgeht. Es gehört zum Teil Betrieb des [Handbuchs](../README.md).
@@ -28,12 +28,12 @@ Sicherung ([Aktualisierung](aktualisierung.md)).
 
 ### Linien und Supportzeiträume
 
-OPAA erscheint zweimal im Jahr mit einem Funktionsrelease `X.Y.0`, etwa im Juni und im Dezember,
+opaa erscheint zweimal im Jahr mit einem Funktionsrelease `X.Y.0`, etwa im Juni und im Dezember,
 jeweils 4–6 Wochen nach einer neuen Version von Spring Boot, der Basis des Backends. Jedes finale
 `X.Y.0` eröffnet die **Linie** `X.Y`. Ihre Patch-Releases bringen nur Sicherheitskorrekturen und
 Behebungen kritischer Fehler, keine neue Funktion und keinen Bruch; eine Behörde kann sie deshalb
 sofort einspielen. Kritisch ist ein Fehler ohne zumutbaren Workaround, der Daten verliert oder
-verfälscht, OPAA oder eine Kernfunktion ausfallen lässt oder Rechte falsch auswertet.
+verfälscht, opaa oder eine Kernfunktion ausfallen lässt oder Rechte falsch auswertet.
 
 | Linie | Patch-Releases bis |
 |---|---|
@@ -82,9 +82,9 @@ Zu jeder Version gehören:
 |---|---|
 | GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` und `ghcr.io/criew/opaa-ocr:X.Y.Z` (Texterkennung, optional) für `linux/amd64` und `linux/arm64`, je mit SBOM, Provenance und signierter Provenance |
 | GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance; es verweist per Digest auf die Images von Backend und Frontend |
-| GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
-| GitHub-Release `OPAA vX.Y.Z` | SBOM und Lizenzübersicht des Texterkennungs-Images, attestiert |
-| GitHub-Release `OPAA vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert, wegen seiner Größe in Teilen ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
+| GitHub-Release `opaa vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
+| GitHub-Release `opaa vX.Y.Z` | SBOM und Lizenzübersicht des Texterkennungs-Images, attestiert |
+| GitHub-Release `opaa vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert, wegen seiner Größe in Teilen ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
 
 Die **Release-Notizen** enthalten:
 
@@ -98,7 +98,7 @@ Die **Release-Notizen** enthalten:
 <a id="herkunft-prüfen"></a>
 
 **Herkunft prüfen.** Images und Chart tragen je eine signierte Provenance des Release-Laufs. Sie
-belegt, dass genau dieses Image aus dem Release-Workflow von OPAA zum Tag `vX.Y.Z` stammt. Die
+belegt, dass genau dieses Image aus dem Release-Workflow von opaa zum Tag `vX.Y.Z` stammt. Die
 Prüfung nennt deshalb Workflow und Tag; eine Signatur aus einem anderen Workflow oder einem anderen
 Stand besteht sie nicht:
 
@@ -143,7 +143,7 @@ Aufbau im Einzelnen, Prüfung der Provenance und Delta über mehrere Versionen:
 
 ## Provenance und Software-Stückliste
 
-Eine **Software-Stückliste** (SBOM) zählt auf, welche Bestandteile in einem Artefakt stecken. OPAA
+Eine **Software-Stückliste** (SBOM) zählt auf, welche Bestandteile in einem Artefakt stecken. opaa
 liefert sie auf zwei Wegen:
 
 - **Am Image.** Jedes veröffentlichte Image, Release wie `main`, trägt je Architektur eine SBOM und
@@ -177,14 +177,14 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
   deren Supportende, das Texterkennungs-Image eingeschlossen.
 - **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
-- **Melden:** Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
+- **Melden:** Lücken in opaa vertraulich über das Private Vulnerability Reporting von GitHub
   (Reiter „Security“ im Repository), nicht über öffentliche Issues. Behobene Lücken erscheinen dort
   als Security Advisory. Einzelheiten regelt `SECURITY.md` im Repository.
 
 ## Lizenzen
 
-- **OPAA** steht unter der GNU Affero General Public License v3.0 (Datei `LICENSE` im Repository).
-  Wer OPAA verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
+- **opaa** steht unter der GNU Affero General Public License v3.0 (Datei `LICENSE` im Repository).
+  Wer opaa verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
   Fassung anbieten.
 - **Abhängigkeiten:** Die CI lässt nur Lizenzen zu, die mit der GPLv3 verträglich sind, sonst eine
   begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter `lizenzen/`. Für das

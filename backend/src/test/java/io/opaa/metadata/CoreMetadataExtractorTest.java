@@ -76,6 +76,38 @@ class CoreMetadataExtractorTest {
           .contains(ExtractedDate.day(LocalDate.of(2026, 3, 5)));
     }
 
+    // regression guard: a hyphen separates a date from a word, never from another number
+    @Test
+    void aHyphenInFrontOfTheDateSeparatesItFromAWord() {
+      assertThat(extract("finanzplanung-2024.xlsx", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.year(2024));
+      assertThat(extract("bericht_stand-2026-11.xlsx", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.month(2026, 11));
+      assertThat(extract("plan-2024-entwurf.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.year(2024));
+      assertThat(extract("sitzung-2025-11-entwurf.md", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.month(2025, 11));
+    }
+
+    @Test
+    void aYearJoinedByAHyphenToAnotherNumberIsNoDate() {
+      for (String fileName :
+          List.of(
+              "AA-2024-017.pdf",
+              "AA-2024-12.pdf",
+              "KW-2024-07.pdf",
+              "TOP-2024-10.pdf",
+              "Az_2024-123.pdf",
+              "Az-12-2024.pdf",
+              "konzept-1.2-2024.pdf",
+              "release-2.2024.pdf",
+              "planung-2020-2026.xlsx",
+              "haushalt-2024-25.xlsx",
+              "liste-2024-11-3.pdf")) {
+        assertThat(extract(fileName, DocumentProperties.EMPTY).date()).as(fileName).isEmpty();
+      }
+    }
+
     // No two-letter synonym - a lower-cased "DA" is indistinguishable from the German
     // filler word, and a second code would empty an otherwise unambiguous Dokumentart.
     @Test
@@ -616,6 +648,47 @@ class CoreMetadataExtractorTest {
                           .withFormatExtension(".eml"))
                   .title())
           .contains("nachricht");
+    }
+
+    // regression guard: a mail's file name is its Betreff, no naming convention for the Dokumentart
+    @Test
+    void aMailFileNameNamesNoDokumentart() {
+      for (String extension : List.of(".eml", ".msg")) {
+        assertThat(
+                extract(
+                        "entwurf-vertrag" + extension,
+                        DocumentProperties.EMPTY
+                            .withTitle("Entwurf Vertrag")
+                            .withFormatExtension(extension))
+                    .documentTypeCode())
+            .as(extension)
+            .isEmpty();
+        assertThat(
+                extract(
+                        "Protokoll der Sitzung" + extension,
+                        DocumentProperties.EMPTY.withFormatExtension(extension))
+                    .documentTypeCode())
+            .as(extension)
+            .isEmpty();
+      }
+      // The same name outside a mail still carries its convention.
+      assertThat(
+              extract(
+                      "Protokoll der Sitzung.pdf",
+                      DocumentProperties.EMPTY.withFormatExtension(".pdf"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    // The file name stays a date source for a mail: only the Dokumentart reads it as a Betreff.
+    @Test
+    void aMailFileNameStillCarriesItsDate() {
+      assertThat(
+              extract(
+                      "2026-03-12_Protokoll.eml",
+                      DocumentProperties.EMPTY.withFormatExtension(".eml"))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
     }
 
     // Outside a mail the title comes from an export, where a file name anywhere in it is one.

@@ -90,8 +90,8 @@ class ChatTranscriptTest {
     assertThat(transcript.entries())
         .extracting(ChatTranscript.Entry::draftNote)
         .containsExactly(
-            "Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3",
-            "Entwurf, nicht geprüft",
+            "KI-generierter Entwurf, nicht geprüft · Agent „Prüfhilfe“, Fassung 3",
+            "KI-generierter Entwurf, nicht geprüft",
             null);
   }
 

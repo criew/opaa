@@ -110,7 +110,7 @@ class MailGreenMailIntegrationTest {
     assertThat(greenMail.waitForIncomingEmail(10_000, 1)).isTrue();
     MimeMessage received = greenMail.getReceivedMessages()[0];
     assertThat(received.getAllRecipients()[0].toString()).isEqualTo(RECIPIENT);
-    assertThat(received.getFrom()[0].toString()).contains("opaa@intern.example").contains("OPAA");
+    assertThat(received.getFrom()[0].toString()).contains("opaa@intern.example").contains("opaa");
     assertThat(mailSettingsService.status().lastSuccessAt()).isNotNull();
     assertThat(mailSettingsService.status().lastAttemptFailed()).isFalse();
   }
@@ -199,7 +199,7 @@ class MailGreenMailIntegrationTest {
             SMTP_PASSWORD,
             MailEncryption.NONE,
             "opaa@intern.example",
-            "OPAA"));
+            "opaa"));
   }
 
   private static Map<String, Object> testMailVariables() {

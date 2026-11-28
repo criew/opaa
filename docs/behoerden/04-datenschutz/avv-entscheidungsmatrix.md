@@ -16,11 +16,11 @@ Landesdatenschutzbeauftragten sind.
 
 Verarbeitet ein Partner personenbezogene Daten im Auftrag der Behörde, etwa ein Rechenzentrum oder
 ein Modellanbieter, braucht es einen Vertrag zur Auftragsverarbeitung (AVV), der regelt, was der
-Partner mit den Daten tun darf. Diese Matrix zeigt, mit wem das beim Einsatz von OPAA der Fall sein
+Partner mit den Daten tun darf. Diese Matrix zeigt, mit wem das beim Einsatz von opaa der Fall sein
 kann. Ob im Einzelfall Auftragsverarbeitung oder eine andere Form der Verantwortung vorliegt,
 bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 
-## Was OPAA liefert
+## Was opaa liefert
 
 Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}}. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
 [Modelle](../../handbuch/betrieb/modell-endpunkte.md#fünf-modellrollen), welche Quellen Cloud-Dienste sind, unter
@@ -41,7 +41,7 @@ Spalte; die Partner aller vier Antworten zusammen sind die AVV-Partner.
 | Wo läuft die Texterkennung? | **T1** ausgeschaltet, im Haus (auch der mitgelieferte OCR-Container) oder beim Dienstleister aus B2 | niemandem weiter; bei B2 im Vertrag des Dienstleisters | auch beim mitgelieferten OCR-Container festhalten, wer ihn betreibt und in welchem Netz er läuft; ein Container bei einem weiteren Dienstleister ist eine Antwort aus B2 |
 | | **T2** bei einem externen Anbieter | dem Anbieter des OCR-Dienstes oder Vision-Modells | er bekommt ganze Seiten gescannter Dokumente mit allem, was darauf steht ({{faktenblatt:datenfluesse#text-recognition-model}}); vorab mit DSB und Personalvertretung abstimmen |
 | Wo liegen die Quellen? | **K1** im eigenen Netz oder beim Dienstleister | niemandem weiter | — |
-| | **K2** mindestens eine in der Cloud | dem Cloud-Anbieter, meist schon vorhanden | deckt der Vertrag den Abruf durch OPAA ab ([Zugänge](../../handbuch/administration/zugaenge.md))? |
+| | **K2** mindestens eine in der Cloud | dem Cloud-Anbieter, meist schon vorhanden | deckt der Vertrag den Abruf durch opaa ab ([Zugänge](../../handbuch/administration/zugaenge.md))? |
 
 Mischformen, etwa Betrieb durch einen Dienstleister und Wartung durch einen weiteren, ergeben sich als
 Summe der Antworten.
@@ -65,7 +65,7 @@ Summe der Antworten.
 Einordnung:             Betrieb [B1/B2/B3] · Sprachmodell [M1/M2] · Texterkennung [T1/T2] · Quellen [K1/K2]
 Partner mit AVV:        [Name, Gegenstand, Vertrag vom, Unterauftragnehmer]
 Drittlandübermittlung:  [keine / Anbieter, Land, Garantie]
-Weitere Ziele geprüft:  [Liste aus dem Faktenblatt Datenflüsse der Version [OPAA-Version]]
+Weitere Ziele geprüft:  [Liste aus dem Faktenblatt Datenflüsse der Version [opaa-Version]]
 Geprüft am:             [Datum]        durch: [ ]
 ```
 

@@ -1,6 +1,6 @@
 # Branding
 
-**Ziel:** OPAA trägt Namen, Farben und Bilder des Hauses.
+**Ziel:** opaa trägt Namen, Farben und Bilder des Hauses.
 {: .kopf }
 
 **Wer:** Systemverwaltung, „Administration → Allgemein & Branding“
@@ -10,8 +10,8 @@ Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe und drei Bilder gehören
 der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration → Allgemein & Branding**, von
 einem Systemverwalter; gespeichert wird in der Datenbank, nicht im Dateisystem. Jede Änderung ist
 sofort für alle wirksam — ohne Neustart, ohne neues Image — und steht im Nachweisprotokoll. Ein leer
-gelassenes Feld bedeutet nicht „leer", sondern „der OPAA-Standard gilt wieder", und zwar je Feld:
-Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Texte und Akzentfarbe
+gelassenes Feld bedeutet nicht „leer", sondern „der opaa-Standard gilt wieder", und zwar je Feld:
+Wer nur ein Logo hinterlegt, behält den Produktnamen „opaa". Texte und Akzentfarbe
 lassen sich schon bei der Einrichtung im optionalen Schritt Branding des
 [Einrichtungs-Assistenten](../betrieb/installation.md#einrichtungs-assistent-im-browser) festlegen, mit
 denselben Regeln; die Bilder nur hier. Welche Anmeldewege die Anmeldeseite
@@ -26,8 +26,12 @@ Einrichtungs-Assistenten, in der Antwortdatei und beim Übertragen von Einstellu
 
 - **Ohne sichtbares Zeichen gilt das Feld als leer.** Sichtbar sind Buchstaben, Ziffern,
   Satzzeichen und Symbole. Ein Wert nur aus Leerzeichen, geschützten oder unsichtbaren Zeichen
-  (etwa geschütztes Leerzeichen, Leerzeichen ohne Breite, Füllzeichen) stellt den OPAA-Standard
+  (etwa geschütztes Leerzeichen, Leerzeichen ohne Breite, Füllzeichen) stellt den opaa-Standard
   wieder her, statt Fenstertitel oder Anmeldeseite ohne Namen zu lassen.
+- **Standardname und Standard-Claim gelten als leer.** Wer Produktname oder Claim unverändert
+  speichert, legt keinen eigenen fest:
+  Die Installation zeigt dann immer den aktuellen opaa-Standard, auch wenn er sich mit einer neuen
+  Version ändert.
 - **Am Anfang und Ende wird still gekürzt.** Leerzeichen, unsichtbare Zeichen und Steuerzeichen wie
   ein Zeilenumbruch an den Rändern werden ohne Meldung entfernt: Aus einem Namen mit Umbruch davor
   und danach wird der Name allein.
@@ -42,7 +46,7 @@ Einrichtungs-Assistenten, in der Antwortdatei und beim Übertragen von Einstellu
 
 Ein gespeicherter Wert, der gegen diese Regel verstößt, wird nicht gezeigt: Überall dort, wo der
 Text erscheint, auch in E-Mails, im Chat-Export und in einer Exportdatei der Einstellungen, gilt dann
-der OPAA-Standard. Gespeichert bleibt er, bis das Feld das nächste Mal gespeichert wird; die
+der opaa-Standard. Gespeichert bleibt er, bis das Feld das nächste Mal gespeichert wird; die
 Verwaltung zeigt bis dahin den Standard im Feld.
 
 Der Vermerk aus Hinweis und Produktname, den der Kopierknopf einer Antwort und der Chat-Export
@@ -70,6 +74,15 @@ Standard zurücksetzen**. Wird der Standardtext unverändert gespeichert, bleibt
 „Standard" und folgt einer späteren Änderung des Standards. Der Text ist wie die anderen Felder ohne
 Anmeldung lesbar und steht im Nachweisprotokoll, wenn er sich ändert.
 
+## Akzentfarbe
+
+Die Akzentfarbe färbt Schaltflächen, Links, Fußnotenziffern und Fundstellen. Ohne eigene Farbe gilt
+das Mittelblau `#0055A4` des opaa-Standards; im dunklen Farbschema zeigt opaa Links und Ziffern dann
+in Hellblau `#009DDB`. Eine eigene Farbe wird als sechsstelliger Hex-Wert mit `#` eingetragen. Ist sie
+für weiße Schrift auf Schaltflächen zu hell oder als Text auf einer Fläche zu schwach, dunkelt oder
+hellt opaa sie so weit ab, wie der Kontrast es verlangt. Reicht auch das nicht, warnt die Verwaltung,
+sperrt aber nicht.
+
 ## Die drei Bilder
 
 | Feld | Wo es erscheint | Grenzen |
@@ -82,22 +95,22 @@ Drei Punkte dazu, die regelmäßig Rückfragen auslösen:
 
 - **SVG wird nicht angenommen.** Eine SVG-Datei ist ein Dokument und kann Skripte enthalten; die
   Anmeldeseite ist zugleich die einzige Seite, die ein nicht angemeldeter Besucher erreicht. Statt
-  eine SVG-Datei zu säubern — wobei ein einziges übersehenes Konstrukt genügt —, nimmt OPAA nur
+  eine SVG-Datei zu säubern — wobei ein einziges übersehenes Konstrukt genügt —, nimmt opaa nur
   Rasterformate an. Eine Wortmarke als PNG in doppelter Darstellungsgröße sieht auf jedem Bildschirm
   gut aus und kostet wenige Kilobyte.
 - **Entscheidend sind die Bytes, nicht der Dateiname.** Was als `logo.png` hochgeladen wird, aber
   keines ist, wird abgelehnt; ausgeliefert wird später genau der Typ, den der Dienst selbst erkannt
   hat.
 - **Über dem Hintergrundbild liegt ein fester dunkler Schleier.** Welches Bild eine Installation
-  hochlädt, weiß OPAA vorher nicht — der Schleier sorgt dafür, dass Produktname und Claim darüber
+  hochlädt, weiß opaa vorher nicht — der Schleier sorgt dafür, dass Produktname und Claim darüber
   auch über einem rein weißen Bild lesbar bleiben (mindestens 4,5:1 Kontrast). Das Bild wirkt damit
   als Atmosphäre, nicht als Motiv in voller Leuchtkraft. Wer ein ruhiges, eher dunkles Motiv wählt,
   bekommt das bessere Ergebnis.
 
-Ohne hinterlegtes Hintergrundbild zeigt die Markenfläche das mitgelieferte OPAA-Motiv: den Lesesaal
+Ohne hinterlegtes Hintergrundbild zeigt die Markenfläche das mitgelieferte opaa-Motiv: den Lesesaal
 eines Verwaltungsgebäudes, aus dessen Aktenregalen belegte Dokumentkarten aufsteigen, mit einem
 Rathaus im Morgenlicht hinter dem Fenster. Über ihm liegt ein schwächerer Schleier als über
 hochgeladenen Bildern, weil seine Helligkeit bekannt ist und der Kontrastnachweis gegen seine
 tatsächlich hellste Stelle geführt wird. Ein
 hochgeladenes Bild ersetzt es; wird der Upload entfernt, erscheint es wieder. Ohne eigenes
-Anmeldelogo greift die Seite auf das Logo der Anwendung zurück, und ohne beides auf die OPAA-Marke.
+Anmeldelogo greift die Seite auf das Logo der Anwendung zurück, und ohne beides auf die opaa-Marke.

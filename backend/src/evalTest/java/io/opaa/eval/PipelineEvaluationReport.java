@@ -139,8 +139,11 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 22: {@code PdfOcrDocumentFormat} ({@code pdf-ocr:1}) joined the registry -
    * fingerprint-only, no corpus document reaches a stored text recognition.
+   *
+   * <p>Version 23: {@code TabularDocumentFormat} moved 5 → 6 - fingerprint-only, no corpus holds a
+   * spreadsheet.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 22;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 23;
 
   /**
    * {@code opaa.query.fusion.*} of a run. The whole set is pinned, including {@code vectorWeight}

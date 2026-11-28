@@ -118,8 +118,11 @@ public record EvaluationReport(
    * <p><b>Bumped to 17:</b> {@code PdfOcrDocumentFormat} ({@code pdf-ocr:1}) joined the registry,
    * shifting the collective fingerprint. Fingerprint-only: it only cuts a stored text recognition,
    * and the harness configures no recognition service, so no corpus document reaches it.
+   *
+   * <p><b>Bumped to 18:</b> {@code TabularDocumentFormat#version()} moved 5 → 6 (a title row above
+   * the header names the table). Fingerprint-only: no corpus holds a spreadsheet.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 17;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 18;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

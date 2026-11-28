@@ -13,7 +13,7 @@
    neue Frage beantwortet er mit der aktuellen Fassung; die Fassung steht auf seiner Seite im
    Katalog.
 
-**Entwurf, nicht geprüft:** Jede Antwort eines Agenten ist eine Vorlage für Ihre Bearbeitung, kein
+**KI-generierter Entwurf, nicht geprüft:** Jede Antwort eines Agenten ist eine Vorlage für Ihre Bearbeitung, kein
 geprüftes Arbeitsergebnis. Prüfen Sie Inhalt und [Belege](belege-pruefen.md), bevor Sie sie
 weitergeben. Eine gewöhnliche Antwort ohne Agent trägt weder Stempel noch Entwurfskennzeichnung.
 
@@ -26,7 +26,10 @@ Vorlage bekommt eine neue Fassung, sobald jemand ihre Datei ersetzt
 
 - An der Antwort sehen den Stempel nur Sie; er bleibt so lange wie der Chat.
 - Dürfen Sie den Agenten nicht mehr sehen, fehlt nur der Vergleich mit der aktuellen Fassung.
-- Eine Word-Datei oder ein PDF aus einer Vorlage trägt den Stempel in jeder Fußzeile und in den
-  Dokumenteigenschaften, mit Agent, Vorlage, Bibliotheken und Modell; er geht beim Weitergeben mit
-  ([Vorlage anlegen](vorlage-anlegen.md)). Dateien, die ein Agent mit eigenem Code erzeugt, tragen
+- Kopieren Sie die Antwort oder exportieren Sie den Chat, steht „KI-generierter Entwurf, nicht
+  geprüft“ mit Agent und Fassung daran.
+- Eine Word-Datei oder ein PDF aus einer Vorlage trägt in jeder Fußzeile eine kurze Zeile,
+  „KI-generierter Entwurf, nicht geprüft · Agent „Name“, Fassung 3“. Den vollständigen Stempel mit
+  Agent, Vorlage, Bibliotheken und Modell enthalten die Dokumenteigenschaften (Kommentar und Thema,
+  im PDF das Thema); er geht beim Weitergeben mit ([Vorlage anlegen](vorlage-anlegen.md)). Dateien, die ein Agent mit eigenem Code erzeugt, tragen
   ihn nur an der Antwort, an der sie hängen.

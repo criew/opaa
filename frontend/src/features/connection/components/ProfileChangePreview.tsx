@@ -166,7 +166,7 @@ function ProfileChangeDiscards({
       )}
       {impact.confirmation && (
         <Typography variant="body2" sx={{ mt: 1 }} data-testid="profile-change-confirmation">
-          Vor dem Speichern fragt OPAA noch einmal nach: „{impact.confirmation}“
+          Vor dem Speichern fragt opaa noch einmal nach: „{impact.confirmation}“
         </Typography>
       )}
     </Alert>

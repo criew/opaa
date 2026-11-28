@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
@@ -247,7 +247,7 @@ describe('DocumentTextPreviewDialog', () => {
       renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
 
       await screen.findByText(/Fundstelle markiert/)
-      const content = document.querySelector('pre')!.parentElement!
+      const content = screen.getByTestId('document-text-content')
       expect(content.scrollTop).toBe(900)
       expect(document.activeElement).toBe(document.querySelector('pre'))
     })
@@ -291,6 +291,105 @@ describe('DocumentTextPreviewDialog', () => {
       rerender(<DocumentTextPreviewDialog previewDocument={null} onClose={vi.fn()} />)
 
       expect(highlights.size).toBe(0)
+    })
+  })
+
+  describe('outline', () => {
+    const GUIDE = [
+      '# Antrag',
+      '',
+      'Allgemeines.',
+      '',
+      '## Unterlagen',
+      '',
+      'Was beizulegen ist.',
+      '',
+      '### Nachweise',
+      '',
+      'Einkommen.',
+      '',
+      '# Bescheid',
+      '',
+      'Wann er ergeht.',
+    ].join('\n')
+
+    it('lists the headings as a tree beside the document and jumps to one', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <DocumentTextPreviewDialog previewDocument={markdownDoc(GUIDE)} onClose={vi.fn()} />,
+      )
+      // a narrow window starts with the outline folded away
+      await user.click(await screen.findByRole('button', { name: 'Gliederung' }))
+      const outline = screen.getByRole('navigation', { name: 'Gliederung' })
+      expect(within(outline).getByRole('button', { name: 'Antrag' })).toBeVisible()
+      expect(within(outline).getByRole('button', { name: 'Unterlagen' })).toBeVisible()
+      // deeper levels stay folded until expanded
+      expect(within(outline).queryByRole('button', { name: 'Nachweise' })).toBeNull()
+      await user.click(within(outline).getByRole('button', { name: 'Unterlagen aufklappen' }))
+      expect(within(outline).getByRole('button', { name: 'Nachweise' })).toBeVisible()
+
+      const content = screen.getByTestId('document-text-content')
+      const scrollTo = vi.fn()
+      content.scrollTo = scrollTo as unknown as typeof content.scrollTo
+      await user.click(within(outline).getByRole('button', { name: 'Bescheid' }))
+
+      // vertically only: the horizontal position stays where the reader left it
+      expect(scrollTo).toHaveBeenCalledWith({ top: expect.any(Number) })
+      expect(within(outline).getByRole('button', { name: 'Bescheid' })).toHaveAttribute(
+        'aria-current',
+        'location',
+      )
+      expect(screen.getByRole('heading', { name: 'Bescheid' })).toHaveFocus()
+    })
+
+    it('marks the section of the cited passage, also after a detour through the outline', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <DocumentTextPreviewDialog
+          previewDocument={{ ...markdownDoc(GUIDE), anchor: { quoteStart: 'Was beizulegen ist.' } }}
+          onClose={vi.fn()}
+        />,
+      )
+      await user.click(await screen.findByRole('button', { name: 'Gliederung' }))
+      const outline = screen.getByRole('navigation', { name: 'Gliederung' })
+      expect(within(outline).getByRole('button', { name: 'Unterlagen' })).toHaveAttribute(
+        'aria-current',
+        'location',
+      )
+
+      await user.click(within(outline).getByRole('button', { name: 'Bescheid' }))
+      expect(within(outline).getByRole('button', { name: 'Bescheid' })).toHaveAttribute(
+        'aria-current',
+        'location',
+      )
+      await user.click(screen.getByRole('button', { name: 'Zur Fundstelle' }))
+      await waitFor(() =>
+        expect(within(outline).getByRole('button', { name: 'Unterlagen' })).toHaveAttribute(
+          'aria-current',
+          'location',
+        ),
+      )
+    })
+
+    it('shows no outline for a document without headings', () => {
+      renderWithProviders(
+        <DocumentTextPreviewDialog
+          previewDocument={markdownDoc('Nur ein Absatz.\n\nUnd noch einer.')}
+          onClose={vi.fn()}
+        />,
+      )
+      expect(screen.queryByRole('button', { name: 'Gliederung' })).toBeNull()
+      expect(screen.queryByRole('navigation', { name: 'Gliederung' })).toBeNull()
+    })
+
+    it('shows no outline for plain text', () => {
+      renderWithProviders(
+        <DocumentTextPreviewDialog
+          previewDocument={plainTextDoc('# kein Kopf')}
+          onClose={vi.fn()}
+        />,
+      )
+      expect(screen.queryByRole('button', { name: 'Gliederung' })).toBeNull()
     })
   })
 })

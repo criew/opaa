@@ -70,7 +70,7 @@ export default function BrandingStep({ step, submit, onBack, onSkip }: BrandingS
       title={STEP_INFO.BRANDING.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.BRANDING.laterUnder}
-      description="Name, Claim, Hinweis zur KI-Nutzung und Akzentfarbe Ihres Hauses. Übersprungen gilt der OPAA-Standard; Logo und Hintergrundbild lädt die Systemverwaltung später unter „Administration → Allgemein & Branding“ hoch."
+      description="Name, Claim, Hinweis zur KI-Nutzung und Akzentfarbe Ihres Hauses. Übersprungen gilt der opaa-Standard; Logo und Hintergrundbild lädt die Systemverwaltung später unter „Administration → Allgemein & Branding“ hoch."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Branding wird gespeichert und geprüft"

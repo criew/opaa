@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Browser-based end-to-end tests for OPAA (Playwright).",
+  "description": "Browser-based end-to-end tests for opaa (Playwright).",
   "scripts": {
     "test": "node scripts/run-e2e.mjs",
     "test:demo-smoke": "node scripts/run-e2e.mjs --target demo",

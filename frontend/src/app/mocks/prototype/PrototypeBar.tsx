@@ -89,7 +89,7 @@ export default function PrototypeBar({ navigate }: PrototypeBarProps) {
         onClick={toggle}
         aria-expanded={!collapsed}
         style={toggleStyle}
-        title="Steuerung des Prototyps, nicht Teil von OPAA"
+        title="Steuerung des Prototyps, nicht Teil von opaa"
       >
         {collapsed ? '◆ Prototyp' : '◆ Prototyp – einklappen'}
       </button>

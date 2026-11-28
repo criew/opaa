@@ -114,7 +114,7 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 
 Leere Seiten ohne eigenes Bild zählen nicht als eingescannt. Auch eine Bilddokumentation oder ein
 Foliensatz mit überwiegend reinen Bildseiten wird so abgewiesen; ihr Text auf den übrigen Seiten ist
-dann nicht durchsuchbar. Formularfelder und Anmerkungen liest OPAA nicht (Abschnitt 7), ein
+dann nicht durchsuchbar. Formularfelder und Anmerkungen liest opaa nicht (Abschnitt 7), ein
 ausgefülltes Formular über einem Scanbild zählt deshalb als eingescannt. Die Regel gilt, sobald ein
 PDF neu oder geändert indiziert wird oder die Bibliothek vollständig neu indiziert wird; ein
 unverändertes, schon indiziertes PDF behält bis dahin seinen bisherigen Stand.
@@ -128,7 +128,7 @@ Listen und Tabellen; Kopf- und Fußzeilen der Seiten fallen weg. Geschnitten wir
 Überschriften, Tabellen zeilenweise mit ihrer Kopfzeile, wie bei einem PDF mit Textebene. Die
 Ortsangabe nennt Seiten und Abschnitt, „S. 2–3 · Abschn. § 4 Gebühren“; jeder Abschnitt trägt
 zusätzlich die Rahmen seiner Zeilen auf der Seite und den Vermerk, dass sein Text erkannt wurde.
-Ein Vision-Modell liefert je Seite Text ohne Rahmen; dafür stellt OPAA jede Seite als Bild dar, unter den Grenzen beim Lesen für jede Seite neu und in festen Grenzen für Seitenmaß und Bilder ([Feste Grenzen](../wie-indexierung-arbeitet.md#feste-grenzen)). Eine Seite darüber sperrt die Texterkennung des Scans mit ihrer Seitennummer. Der erkannte Text wird mit dem Dokument
+Ein Vision-Modell liefert je Seite Text ohne Rahmen; dafür stellt opaa jede Seite als Bild dar, unter den Grenzen beim Lesen für jede Seite neu und in festen Grenzen für Seitenmaß und Bilder ([Feste Grenzen](../wie-indexierung-arbeitet.md#feste-grenzen)). Eine Seite darüber sperrt die Texterkennung des Scans mit ihrer Seitennummer. Der erkannte Text wird mit dem Dokument
 gespeichert, ohne Seitenbilder; ein erneutes Indizieren der unveränderten Datei braucht den Dienst
 nicht. Erkennungsfehler sind möglich, maßgeblich bleibt das Original.
 
@@ -143,12 +143,12 @@ Stelle nicht umrahmt ist.
 ## 6. Grenzwerte
 
 Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
-Rechenschritte, gelesene Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite,
-für die Größe eines einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt
-werden, und für die Gliederung
-([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
-Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
-Dateigrößengrenze des Konnektors.
+Rechenschritte, fehlerhafte Zeichenanweisungen (`max-pdf-broken-operators`), gelesene
+Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Zeichen je Seite, für die Größe eines
+einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt werden, und für die
+Gliederung ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des
+gemeinsamen Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift
+zusätzlich die Dateigrößengrenze des Konnektors.
 
 **Zeichnungslastige PDFs** wie Bebauungs- oder Lagepläne bestehen aus Millionen von
 Zeichenanweisungen je Seite und können `max-pdf-operators`, `max-pdf-stream-bytes`,

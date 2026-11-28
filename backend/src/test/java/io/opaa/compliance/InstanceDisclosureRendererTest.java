@@ -146,7 +146,7 @@ class InstanceDisclosureRendererTest {
 
     assertThat(markdown)
         .startsWith("# Auskunft über die Datenerhebung\n")
-        .contains("OPAA-Version: `1.4.0`")
+        .contains("opaa-Version: `1.4.0`")
         .contains("Commit: `abc123`")
         .contains("2026-10-17T08:00:00Z")
         .contains(FactSheetRenderer.NOTICE);

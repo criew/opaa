@@ -27,14 +27,14 @@ flowchart LR
   Datenbanken, archivierte Seiten und der Papierkorb.
 - **Dokument:** Jede Seite trägt Space, Gliederungspfad (die Titel der übergeordneten Seiten), Titel
   und Version; die Fundstelle im Chat verlinkt auf die Seite bzw. den Anhang in Confluence.
-- **Rechte** aus Confluence übernimmt OPAA nicht: Was das Token in den gewählten Spaces lesen darf,
+- **Rechte** aus Confluence übernimmt opaa nicht: Was das Token in den gewählten Spaces lesen darf,
   sehen alle Leseberechtigten der Bibliothek.
 
 ## 2. Einrichtung
 
 1. Selbst betriebene Instanz im privaten Netz: ihren Hostnamen für die
    [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben. Ein eigenes Zertifikat der
-   Behörden-CA gehört in den Truststore von OPAA
+   Behörden-CA gehört in den Truststore von opaa
    ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)).
 2. **Ein Dienstkonto je Leserkreis**, kein persönliches Konto — ein persönliches Token trägt die
    Rechte einer Person und verfällt mit ihrem Austritt. Das Token bestimmt die Obergrenze dessen,
@@ -52,7 +52,7 @@ flowchart LR
 Die Zeile **„Verbindung"** fragt:
 
 1. **„Adresse"** — Cloud mit oder ohne `/wiki`, Data Center mit Kontextpfad, etwa
-   `https://wiki.behoerde.example/confluence`. Kurz nach der Eingabe erkennt OPAA ohne
+   `https://wiki.behoerde.example/confluence`. Kurz nach der Eingabe erkennt opaa ohne
    Zugangsdaten am Antwortverhalten der Instanz, ob es Cloud oder Data Center ist, auch hinter
    eigener Domain, und nennt es unter dem Feld („Edition: …"). Die Edition ist danach
    unveränderlich; eine migrierte Instanz bekommt eine neue Bibliothek.
@@ -60,7 +60,7 @@ Die Zeile **„Verbindung"** fragt:
    Zugriffstoken", je mit dem Hinweis, wo man es beim Anbieter findet. Beim Bearbeiten bleibt ein
    leeres Feld beim hinterlegten Token; eine Adresse auf einem anderen Server verlangt ein neues.
 
-Beim Wechsel in die Zeile **„Umfang"** testet OPAA die Verbindung. Lehnt die Instanz die
+Beim Wechsel in die Zeile **„Umfang"** testet opaa die Verbindung. Lehnt die Instanz die
 Zugangsdaten ab, scheitert der Test an der Stufe „Anmeldung"; antwortet sie mit `403`, sind sie
 angenommen, und er nennt die Stufe „Rechte". Scheitert er vorher an Zieladressprüfung, TLS, Netz,
 Edition oder einem Serverfehler, nennt er die Stufe „Adresse". Dort steht der Umfang:
@@ -78,7 +78,7 @@ Den Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage" im Zeitplan (1 bi
 Spaces sieht jede Leseberechtigung; Adresse, Webhook-Zustand und Laufprotokoll nur Verwaltende.
 
 **Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Gibt der Zugang die
-Edition vor, steht sie nur lesbar da, und OPAA erkennt sie nicht neu. Solange Bibliotheken auf
+Edition vor, steht sie nur lesbar da, und opaa erkennt sie nicht neu. Solange Bibliotheken auf
 einem Zugang liegen, lässt
 sich seine Edition nicht ändern und keine Bibliothek der anderen Edition zuordnen. Wer eine
 Bibliothek vom Zugang löst, behält dessen Edition.
@@ -130,7 +130,7 @@ weil nur er Löschungen nachvollzieht. Sein Rhythmus ist verlängerbar, nicht ab
 Ein Webhook verkürzt die Zeit bis zur Aufnahme einer Änderung auf Sekunden. Ohne ihn ist nichts
 falsch, nur später.
 
-**Einrichten.** Im Reiter „Quelle" unter den Zeilen, Abschnitt „Webhook", **„Webhook einrichten"**. OPAA zeigt das
+**Einrichten.** Im Reiter „Quelle" unter den Zeilen, Abschnitt „Webhook", **„Webhook einrichten"**. opaa zeigt das
 Geheimnis **einmal**, zusammen mit der Adresse des Eingangs
 `https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`. „Geheimnis neu erzeugen" rotiert: Das
 alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetragen werden — sonst
@@ -139,16 +139,16 @@ gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Än
 TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen
 ([Vertraute Proxys](../../betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)), sonst greift die Ratenbegrenzung je Client nicht.
 
-- **Data Center:** Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus OPAA.
-  Confluence signiert jede Nachricht (`X-Hub-Signature`), OPAA prüft sie. Ereignisse: Seite
+- **Data Center:** Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus opaa.
+  Confluence signiert jede Nachricht (`X-Hub-Signature`), opaa prüft sie. Ereignisse: Seite
   erstellt, aktualisiert, entfernt, in den Papierkorb verschoben, wiederhergestellt; Anhang
   erstellt, aktualisiert, entfernt.
 - **Cloud:** ohne App über eine **Automation-Regel** (Umfang je nach Atlassian-Tarif). Auslöser
   „Seite veröffentlicht" und „Seite aktualisiert", Aktion „Web-Anfrage senden" mit `POST`, Body
   `{"pageId": "{{page.id}}"}` und der Kopfzeile `X-OPAA-Webhook-Secret` mit dem Geheimnis. Eine
-  site-weite Regel genügt; Seiten außerhalb der Auswahl lässt OPAA liegen.
+  site-weite Regel genügt; Seiten außerhalb der Auswahl lässt opaa liegen.
 
-**Was eine Nachricht auslöst.** OPAA liest nur Seitenkennungen; was mit der Seite geschah, sagt der
+**Was eine Nachricht auslöst.** opaa liest nur Seitenkennungen; was mit der Seite geschah, sagt der
 Abruf. Nachrichten werden je Bibliothek gesammelt (`opaa.indexing.events.debounce`) und in **einem**
 kurzen Lauf geholt; mehr als `max-pending-keys` Seiten ergeben einen gewöhnlichen Lauf. Gesammelt
 wird in der Datenbank: Ein Neustart verliert keine Nachricht, und bei mehreren Backend-Instanzen
@@ -186,7 +186,7 @@ Unter „Alle Spaces" entfernt ein Vollabgleich im selben Lauf, was aus einem Sp
 den das Token nicht mehr sieht oder der archiviert wurde; nach einem inkrementellen Lauf tut es der
 nächste Vollabgleich.
 
-Wer den Bestand eines Spaces aus OPAA entfernen will, nimmt ihn aus der Auswahl, startet
+Wer den Bestand eines Spaces aus opaa entfernen will, nimmt ihn aus der Auswahl, startet
 „Vollabgleich starten" (Menü „Weitere Aktionen") und prüft, dass dieser Lauf vollständig aufgelistet hat. Sofort wirkt nur das
 Löschen der Dokumente oder der Bibliothek.
 

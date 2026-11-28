@@ -44,7 +44,7 @@ const ADMIN_EMAIL = 'it-betrieb@stadt.example'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
 const TEST_RECIPIENT = 'it-betrieb@stadt.example'
 const FIRST_CHAT_MODEL = 'Chat-Modell nach der Installation'
-const OPAA_PRODUCT_NAME = 'OPAA'
+const OPAA_PRODUCT_NAME = 'opaa'
 const PRODUCT_NAME = 'Landesamt-Assistent'
 /** White text reaches 4.5:1 on it, so filled actions carry the colour unchanged. */
 const ACCENT = '#7A3E9D'
@@ -108,7 +108,7 @@ async function expectFooterOrder(page: Page) {
 }
 
 /** The danger role per scheme (frontend/src/shared/theme/tokens.ts) as computed by the browser. */
-const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 99, 105)' } as const
+const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 122, 128)' } as const
 
 /**
  * A field in error keeps the danger outline while it holds the focus, in both schemes: focus
@@ -352,7 +352,7 @@ test.describe('Einrichtungs-Assistent', () => {
       const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
       await expect(signIn).toBeVisible()
       // The skipped branding leaves the OPAA standard on the sign-in page and in the interface.
-      await expect(page.getByText(OPAA_PRODUCT_NAME, { exact: true }).first()).toBeVisible()
+      await expect(page.getByRole('img', { name: OPAA_PRODUCT_NAME, exact: true }).first()).toBeVisible()
       await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
       await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
       await signIn.getByRole('button', { name: 'Anmelden' }).click()
@@ -487,7 +487,7 @@ test.describe('Einrichtungs-Assistent', () => {
       await page.getByLabel('Port', { exact: true }).fill('1025')
       await page.getByRole('radio', { name: /Keine/ }).check()
       await page.getByLabel('Absenderadresse', { exact: true }).fill('opaa@stadt.example')
-      await page.getByLabel('Absendername (optional)').fill('OPAA')
+      await page.getByLabel('Absendername (optional)').fill('opaa')
       await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail ausgefüllt')
       await expectStepEdgesFlushAlsoNarrow(page)
 

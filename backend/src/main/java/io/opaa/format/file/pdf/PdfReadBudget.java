@@ -40,7 +40,8 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * since the budget was created. A single content stream may decode to no more than its own limit,
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
- * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. The objects PDFBox registers
+ * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. Every operator PDFBox fails on
+ * counts against its own limit, again in every pass that meets it. The objects PDFBox registers
  * while it loads the file count against their own limit. An image the renderer draws is checked by
  * {@link #requireImage} before PDFBox decodes it. Not thread-safe: one budget belongs to one read
  * of one document or one rendered page.
@@ -89,6 +90,7 @@ final class PdfReadBudget {
   private final long maxStreamBytes;
   private final long maxSeconds;
   private final long maxObjects;
+  private final long maxBrokenOperators;
   private final long maxNanos;
   private long deadline;
   private final Map<COSStream, Long> decodedLengths = new IdentityHashMap<>();
@@ -97,6 +99,7 @@ final class PdfReadBudget {
       Collections.newSetFromMap(new IdentityHashMap<>());
   private long usedCharacters;
   private long operators;
+  private long brokenOperators;
   private long contentBytes;
   private long objects;
 
@@ -106,13 +109,15 @@ final class PdfReadBudget {
       long maxContentBytes,
       long maxStreamBytes,
       long maxSeconds,
-      long maxObjects) {
+      long maxObjects,
+      long maxBrokenOperators) {
     this.maxCharacters = maxCharacters;
     this.maxOperators = maxOperators;
     this.maxContentBytes = maxContentBytes;
     this.maxStreamBytes = maxStreamBytes;
     this.maxSeconds = maxSeconds;
     this.maxObjects = maxObjects;
+    this.maxBrokenOperators = maxBrokenOperators;
     // capped so the difference in requireTime() cannot overflow
     this.maxNanos = Math.min(TimeUnit.SECONDS.toNanos(maxSeconds), Long.MAX_VALUE / 4);
     this.deadline = System.nanoTime() + maxNanos;
@@ -125,11 +130,13 @@ final class PdfReadBudget {
         limits.maxPdfContentBytes(),
         limits.maxPdfStreamBytes(),
         limits.maxPdfParseSeconds(),
-        limits.maxPdfObjects());
+        limits.maxPdfObjects(),
+        limits.maxPdfBrokenOperators());
   }
 
   static PdfReadBudget unbounded() {
     return new PdfReadBudget(
+        Long.MAX_VALUE,
         Long.MAX_VALUE,
         Long.MAX_VALUE,
         Long.MAX_VALUE,
@@ -166,13 +173,16 @@ final class PdfReadBudget {
 
   /**
    * Counts one processed operator and the elements of its array operands; throws once the document
-   * has used up its operators or its time.
+   * has used up its operators or its time. {@code operands} is null when PDFBox runs an operator on
+   * its own behalf, as the {@code T*} inside {@code '}; such an operator still counts as one.
    */
   void countOperator(List<COSBase> operands) {
     long units = 1;
-    for (COSBase operand : operands) {
-      if (operand instanceof COSArray array) {
-        units += elements(array);
+    if (operands != null) {
+      for (COSBase operand : operands) {
+        if (operand instanceof COSArray array) {
+          units += elements(array);
+        }
       }
     }
     operators += units;
@@ -181,6 +191,20 @@ final class PdfReadBudget {
           "PDF content exceeds the configured limit of " + maxOperators + " operators");
     }
     requireTime();
+  }
+
+  /**
+   * Counts one operator PDFBox failed to process, in the pass that met it: a page read in two
+   * passes counts each of its broken operators twice. Throws once the document's count, over all
+   * pages and passes, exceeds its limit.
+   */
+  void countBrokenOperator() {
+    if (++brokenOperators > maxBrokenOperators) {
+      throw new ParserLimitExceededException(
+          "PDF content exceeds the configured limit of "
+              + maxBrokenOperators
+              + " broken operators");
+    }
   }
 
   /**

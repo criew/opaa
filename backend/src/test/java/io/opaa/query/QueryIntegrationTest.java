@@ -83,6 +83,7 @@ class QueryIntegrationTest {
   @Autowired private RetrievalContextFactory retrievalContextFactory;
   @Autowired private SearchScopeResolver searchScopeResolver;
   @Autowired private ChatSourceAssembler chatSourceAssembler;
+  @Autowired private io.opaa.query.absence.AbsenceRecheck absenceRecheck;
   @Autowired private CitationParser citationParser;
   @Autowired private CitationValidator citationValidator;
   @Autowired private LibraryAccessService libraryAccessService;
@@ -155,7 +156,7 @@ class QueryIntegrationTest {
     // Index some test documents into the vector store, attributed to the granted library
     var doc1 =
         new Document(
-            "OPAA is an AI-powered project assistant built with Spring Boot.",
+            "opaa is an AI-powered project assistant built with Spring Boot.",
             Map.of(
                 "file_name",
                 "readme.md",
@@ -198,17 +199,17 @@ class QueryIntegrationTest {
           }
         };
     var metadata = ChatResponseMetadata.builder().model("gpt-4o").usage(usage).build();
-    var assistantMessage = new AssistantMessage("OPAA is an AI project assistant (readme.md).");
+    var assistantMessage = new AssistantMessage("opaa is an AI project assistant (readme.md).");
     var chatResponse = new ChatResponse(List.of(new Generation(assistantMessage)), metadata);
     when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
 
     // Execute the query
     QueryResult response =
         queryService.query(
-            "What is OPAA?", chatOf(userId), asCaller(userId), true, java.util.List.of());
+            "What is opaa?", chatOf(userId), asCaller(userId), true, java.util.List.of());
 
     // Verify the response
-    assertThat(response.answer()).isEqualTo("OPAA is an AI project assistant (readme.md).");
+    assertThat(response.answer()).isEqualTo("opaa is an AI project assistant (readme.md).");
     assertThat(response.sources()).isNotEmpty();
     assertThat(response.sources()).allMatch(s -> s.getFileName() != null);
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
@@ -253,7 +254,7 @@ class QueryIntegrationTest {
       vectorStore.add(
           List.of(
               new Document(
-                  "OPAA is an AI-powered project assistant built with Spring Boot.",
+                  "opaa is an AI-powered project assistant built with Spring Boot.",
                   Map.of(
                       "file_name",
                       "gehalt.md",
@@ -268,7 +269,7 @@ class QueryIntegrationTest {
       UUID chatId = chatOf(userId, privateLibraryId);
 
       QueryResult response =
-          queryService.query("What is OPAA?", chatId, asCaller(userId), true, List.of());
+          queryService.query("What is opaa?", chatId, asCaller(userId), true, List.of());
 
       assertThat(response.sources())
           .filteredOn(source -> documentId.equals(source.getDocumentId()))
@@ -1056,7 +1057,10 @@ class QueryIntegrationTest {
         searchScopeResolver,
         chatSourceAssembler,
         new AnswerGenerationService(
-            activeChatModelResolver, memoryOfB, new io.opaa.query.answer.ActiveAnswerStreams()),
+            activeChatModelResolver,
+            memoryOfB,
+            new io.opaa.query.answer.ActiveAnswerStreams(),
+            org.mockito.Mockito.mock(io.opaa.query.answer.DocumentPartCounts.class)),
         memoryOfB,
         citationParser,
         citationValidator,
@@ -1070,7 +1074,8 @@ class QueryIntegrationTest {
         neighborChunkExpansion,
         turn -> {
           throw new AssertionError("no agent in this test");
-        });
+        },
+        absenceRecheck);
   }
 
   /**

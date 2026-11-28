@@ -67,15 +67,21 @@ public class DocumentTemplateSettingsService {
         .orElse(new View(false, null, null));
   }
 
+  /**
+   * The switch with who changed it last; system administration only, checked by the
+   * {@code @PreAuthorize} of {@code DocumentTemplateSettingsController}.
+   */
   @Transactional(readOnly = true)
   public View get(CurrentUser caller) {
-    caller.requireSystemAdmin("Nur die Systemverwaltung darf den Schalter „Vorlagen“ sehen.");
     return view(row(), caller.organizationId());
   }
 
+  /**
+   * Sets the switch; system administration only, checked by the {@code @PreAuthorize} of {@code
+   * DocumentTemplateSettingsController} and, for an import, by {@code SettingsTransferService}.
+   */
   @Transactional
   public View update(boolean enabled, CurrentUser caller) {
-    caller.requireSystemAdmin("Nur die Systemverwaltung darf den Schalter „Vorlagen“ ändern.");
     boolean before = isEnabled();
     jdbc.update(
         "INSERT INTO document_template_settings (id, enabled, updated_at, updated_by)"

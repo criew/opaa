@@ -6,7 +6,7 @@
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Dokumentbibliotheken von SharePoint Online** über **Microsoft Graph v1.0** und
-hält sie über dessen Änderungsprotokoll aktuell. Eine Bibliothek in OPAA liest alle
+hält sie über dessen Änderungsprotokoll aktuell. Eine Bibliothek in opaa liest alle
 Dokumentbibliotheken gewählter Sites oder eine bis fünfzig einzeln gewählte, auch aus verschiedenen
 Sites, wahlweise eingeschränkt auf Ordner. SharePoint
 ist eine der [Dateiablagen](README.md#2-dateiablagen); was alle Dateiablagen teilen, steht dort.
@@ -32,8 +32,8 @@ flowchart LR
 - **Dokument:** Laufwerk und Datei-Kennung sind die Identität. Umbenennen und Verschieben innerhalb
   einer Dokumentbibliothek behalten das Dokument; eine Datei in einer anderen Dokumentbibliothek ist
   dort ein neues. Einen Link in die SharePoint-Oberfläche gibt es nicht; **„Original öffnen"** lädt
-  die Datei durch OPAA, nur aus einer Dokumentbibliothek, die die Bibliothek noch gewählt hat.
-- **Rechte** aus SharePoint übernimmt OPAA nicht: Wer die Bibliothek lesen darf, liest alles, was die
+  die Datei durch opaa, nur aus einer Dokumentbibliothek, die die Bibliothek noch gewählt hat.
+- **Rechte** aus SharePoint übernimmt opaa nicht: Wer die Bibliothek lesen darf, liest alles, was die
   App in den gewählten Dokumentbibliotheken lesen darf.
 
 ## 2. Einrichtung
@@ -53,14 +53,14 @@ flowchart LR
    oder über Graph `POST /sites/{Site-ID}/permissions`.
 5. **Zugang.** Unter **Administration → Anbindungen → Zugänge** einen Zugang für SharePoint mit
    Mandant (ID oder Domäne, etwa `contoso.onmicrosoft.com`), Client-ID, Client-Secret und
-   „Ablaufdatum des Secrets" anlegen; „Scopes" leer lassen, OPAA fragt
+   „Ablaufdatum des Secrets" anlegen; „Scopes" leer lassen, opaa fragt
    `https://graph.microsoft.com/.default`. „Anmeldung testen" prüft die Angaben.
 6. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
    ([Berechtigungen](../../referenz/rechte-matrix.md), „Konnektor-Freigabe").
 
 Client-ID und Secret gehen nur an den Token-Endpunkt des Mandanten, das Zugriffstoken nur an
 `https://graph.microsoft.com`. Downloads leitet Graph auf eine kurzlebige Adresse von SharePoint um;
-OPAA folgt nur über `https`, prüft das Ziel und sendet dorthin kein Token.
+opaa folgt nur über `https`, prüft das Ziel und sendet dorthin kein Token.
 
 ## 3. Quellkonfiguration
 
@@ -88,14 +88,14 @@ Assistent gleich die Zeile „Umfang". Sie bietet zwei Wege:
    Site. Der Verbindungstest prüft jede gewählte Dokumentbibliothek samt Ordnern und ob sie noch
    zu ihrer Site gehört.
 
-OPAA merkt sich zu jeder Dokumentbibliothek die Site, in der sie gewählt wurde. Liegen alle
+opaa merkt sich zu jeder Dokumentbibliothek die Site, in der sie gewählt wurde. Liegen alle
 gewählten Dokumentbibliotheken in derselben Site, öffnet der Dialog beim Bearbeiten gleich dort.
 Ist zu einer Dokumentbibliothek keine Site gespeichert, etwa nach einem Update, beginnt der Dialog
 bei den Sites. Sobald man ihre Site öffnet, ordnet der Dialog die schon gewählte
 Dokumentbibliothek samt Ordnern dieser Site zu; „Übernehmen" speichert die Site.
 
 Eine bestehende Bibliothek behält ihre Auswahl, bis man den Umfang ändert. Eine Bibliothek nimmt
-entweder ganze Sites oder einzelne Dokumentbibliotheken auf, nicht beides; eine Mischung weist OPAA
+entweder ganze Sites oder einzelne Dokumentbibliotheken auf, nicht beides; eine Mischung weist opaa
 beim Speichern ab. Sites, Dokumentbibliotheken und
 Ordner einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste
 unvollständig.". Eine fehlende Site lässt sich über einen engeren Suchbegriff oder ihre Adresse
@@ -109,7 +109,7 @@ nicht.
 
 Weist Entra die App ab (Secret abgelaufen, falsch, Zustimmung fehlt), zeigen alle Bibliotheken des
 Zugangs „Abgelaufen" mit der Systemverwaltung als zuständig, bis ein neues Secret oder „Anmeldung
-testen" das aufhebt. „Alle Verbindungen trennen" löscht das Secret in OPAA; bei Microsoft widerruft
+testen" das aufhebt. „Alle Verbindungen trennen" löscht das Secret in opaa; bei Microsoft widerruft
 es die Verwaltung in der App-Registrierung. Liefert Entra einen bekannten Fehlercode, nennt die
 Meldung die Ursache, etwa die Geheime ID statt des Werts; die Fälle stehen unter „Protokoll und
 Fehlerbilder".
@@ -124,13 +124,13 @@ Fehlerbilder".
 Jede Dokumentbibliothek hat einen eigenen Änderungsstrom; meldet Graph eine Datei mehrfach, gilt die
 letzte Meldung. Eine Datei, die SharePoint dauerhaft verweigert, hält den Strom nicht an.
 
-**Unverändertes erkennen.** Vor dem Download vergleicht OPAA die Inhaltsprüfsumme von SharePoint
+**Unverändertes erkennen.** Vor dem Download vergleicht opaa die Inhaltsprüfsumme von SharePoint
 (`quickXorHash`), ersatzweise die Inhaltsversion oder die Änderungszeit, jeweils mit Größe, Name und
 Ordner; eine umbenannte Datei wird deshalb einmal geladen, bei gleichem Inhalt aber nicht neu
 verarbeitet.
 
 **Über mehrere Läufe.** Reicht das Budget nicht, setzt der nächste Lauf an der gemerkten Stelle der
-Auflistung fort. Am Ende liest OPAA das Änderungsprotokoll ab dem Stand, der zu Beginn galt, und
+Auflistung fort. Am Ende liest opaa das Änderungsprotokoll ab dem Stand, der zu Beginn galt, und
 entfernt erst dann ([Konnektoren](README.md#23-wann-eine-gelöschte-datei-als-nachgewiesen-gilt)).
 Scheitert das Lesen vorübergehend, liest der nächste Lauf nur das Protokoll erneut; ist es verfallen,
 endet der Abgleich ohne Entfernen; ist eine Dokumentbibliothek nicht erreichbar, beginnt der nächste
@@ -138,7 +138,7 @@ Lauf einen neuen Abgleich.
 
 ## 5. Löscherkennung
 
-| Ereignis in SharePoint | Verhalten in OPAA |
+| Ereignis in SharePoint | Verhalten in opaa |
 |---|---|
 | Datei gelöscht oder aus den gewählten Ordnern verschoben | der nächste Änderungslauf entfernt das Dokument |
 | Datei umbenannt oder innerhalb der Dokumentbibliothek verschoben | das Dokument bleibt; Titel, Ordner und Pfad folgen |
@@ -170,7 +170,7 @@ Parameter stehen unter `opaa.indexing.sharepoint.*` (`OPAA_INDEXING_SHAREPOINT_*
 
 - **Obergrenzen.** Höchstens fünfzig Einträge im Umfang, einzelne Dokumentbibliotheken und Sites
   zusammen, und fünfzig Ordner je Dokumentbibliothek; beides ist fest.
-- **Drosselung.** Bei `429` und `503` wartet OPAA die Zeit aus `Retry-After`, höchstens
+- **Drosselung.** Bei `429` und `503` wartet opaa die Zeit aus `Retry-After`, höchstens
   `max-retry-wait`, und wiederholt bis zu `max-retries`-mal. Erreicht die Summe der Wartezeiten
   `max-throttle-wait-per-run`, endet der Lauf als „unvollständig, wird fortgesetzt".
 - **Kosten eines Laufs.** Ein Änderungslauf ohne Änderungen kostet eine Anfrage je Dokumentbibliothek,
@@ -200,7 +200,7 @@ Parameter stehen unter `opaa.indexing.sharepoint.*` (`OPAA_INDEXING_SHAREPOINT_*
 
 Weist Entra die Anmeldung des Zugangs ab, beginnt die Meldung mit „Der Token-Endpunkt … hat die
 App-Registrierung des Zugangs abgewiesen" oder „… hat die Anmeldung abgewiesen". Den Text von Entra
-gibt OPAA nicht weiter; das Log nennt zusätzlich den Entra-Fehlercode (`AADSTS…`) mit Trace- und
+gibt opaa nicht weiter; das Log nennt zusätzlich den Entra-Fehlercode (`AADSTS…`) mit Trace- und
 Correlation-ID für eine Anfrage beim Microsoft-Support.
 
 | Meldung | Bedeutung | Abhilfe |

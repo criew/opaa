@@ -103,7 +103,7 @@ class MailTemplateServiceIntegrationTest {
                 "Zu viele Fehlversuche",
                 "chatDeletionNotice",
                 ""));
-    assertThat(rendered.subject()).isEqualTo("Gesperrt: OPAA");
+    assertThat(rendered.subject()).isEqualTo("Gesperrt: opaa");
     assertThat(rendered.bodyPlain()).isEqualTo("Hallo Erika, Grund: Zu viele Fehlversuche");
   }
 
@@ -338,7 +338,7 @@ class MailTemplateServiceIntegrationTest {
             new MailTemplateDraft("Entwurf für {{productName}}", null, null),
             null);
 
-    assertThat(preview.rendered().subject()).isEqualTo("Entwurf für OPAA");
+    assertThat(preview.rendered().subject()).isEqualTo("Entwurf für opaa");
     assertThat(ownOverrideCount()).isZero();
 
     assertThatThrownBy(

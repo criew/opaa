@@ -3,6 +3,7 @@ package io.opaa.query.toolloop;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.chat.AgentRunRecord;
 import io.opaa.chat.AgentRunRecord.EndState;
+import io.opaa.chat.AgentRunRecord.StepStatus;
 import io.opaa.chat.AgentRunStamp;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
@@ -23,10 +24,13 @@ import io.opaa.query.AgentTurn;
 import io.opaa.query.AgentTurnHandler;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
+import io.opaa.query.absence.AbsenceFollowUp;
+import io.opaa.query.absence.AbsenceRecheck;
 import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.answer.ConversationWindowMessages;
+import io.opaa.query.answer.DocumentBlock;
 import io.opaa.query.citation.AnswerEvidenceAssessor;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
@@ -39,12 +43,14 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -108,6 +114,13 @@ class AgentToolLoop implements AgentTurnHandler {
   static final String NO_PLAN =
       "Der Agent hat keinen Plan vorgelegt. Bitte stellen Sie die Frage erneut.";
 
+  /**
+   * The answer of a run that ended on its own without the model writing any text; the turn keeps
+   * the completeness {@code EMPTY}, so no Belegstand is assessed for it.
+   */
+  static final String NO_ANSWER =
+      "Der Agent hat keine Antwort formuliert. Bitte stellen Sie die Frage erneut.";
+
   /** The answer of a run that reached a limit before the model wrote any text. */
   static final String NO_ANSWER_AT_LIMIT =
       "Der Lauf wurde an einer Grenze beendet, bevor eine Antwort entstand.";
@@ -133,6 +146,7 @@ class AgentToolLoop implements AgentTurnHandler {
   private final AgentRunLogWriter runLogWriter;
   private final ActiveAnswerStreams activeAnswerStreams;
   private final Clock clock;
+  private final AbsenceRecheck absenceRecheck;
 
   /**
    * Pings the readers of this instance's streamed runs while their run works, one daemon thread for
@@ -164,7 +178,8 @@ class AgentToolLoop implements AgentTurnHandler {
       ObjectMapper objectMapper,
       AgentRunLogWriter runLogWriter,
       ActiveAnswerStreams activeAnswerStreams,
-      Clock clock) {
+      Clock clock,
+      AbsenceRecheck absenceRecheck) {
     this.specResolver = specResolver;
     this.toolSwitches = toolSwitches;
     this.registry = registry;
@@ -184,6 +199,7 @@ class AgentToolLoop implements AgentTurnHandler {
     this.runLogWriter = runLogWriter;
     this.activeAnswerStreams = activeAnswerStreams;
     this.clock = clock;
+    this.absenceRecheck = absenceRecheck;
   }
 
   @Override
@@ -403,6 +419,7 @@ class AgentToolLoop implements AgentTurnHandler {
 
     int tokens = 0;
     boolean closing = false;
+    boolean followedUpBlank = false;
     ChatResponse response;
     while (true) {
       if (!closing && !clock.instant().isBefore(run.deadline())) {
@@ -417,8 +434,25 @@ class AgentToolLoop implements AgentTurnHandler {
       String callSystem = closing ? system + "\n\n" + AgentPrompt.CLOSING_RULES : system;
       response = run.modelCall(() -> call(client, callSystem, asked, offered, toolContext));
       tokens += ChatResponses.totalTokens(response);
-      if (closing || callbacks.isEmpty() || !response.hasToolCalls()) {
+      if (closing || callbacks.isEmpty()) {
         break;
+      }
+      if (!response.hasToolCalls()) {
+        // A working call with neither text nor a tool call - e.g. a tool call cut off at the
+        // output limit - is followed up once instead of ending the run without an answer.
+        if (followedUpBlank || !ChatResponses.text(response).isBlank()) {
+          break;
+        }
+        followedUpBlank = true;
+        log.warn(
+            "Agent run {} got neither text nor a tool call (finish reason {}), following up once",
+            run.runId(),
+            ChatResponses.finishReason(response));
+        history = new ArrayList<>(history);
+        history.add(
+            new UserMessage(
+                AgentPrompt.afterBlankOutput(ChatResponses.endedAtOutputLimit(response))));
+        continue;
       }
       ToolExecutionResult executed =
           toolCallingManager.executeToolCalls(
@@ -435,7 +469,6 @@ class AgentToolLoop implements AgentTurnHandler {
         break;
       }
     }
-
     // A run that works a confirmed plan off but answers without a single tool call has put a new
     // plan to the person instead of researching: it ends as a plan again, so it can be confirmed.
     // Only once in a row and only when it could search, so a confirmation never loops.
@@ -446,6 +479,18 @@ class AgentToolLoop implements AgentTurnHandler {
             && run.toolCalls() == 0
             && run.question() == null
             && run.limitReached() == null;
+    // A finished answer that claims something is missing is checked once against the run's scope.
+    if (searchOffered
+        && !replannedWithoutWork
+        && phase != AgentPrompt.PlanPhase.PLAN
+        && run.question() == null
+        && run.limitReached() == null) {
+      ChatResponse rechecked = recheckAbsence(turn, run, client, system, history, response);
+      if (rechecked != null) {
+        tokens += ChatResponses.totalTokens(rechecked);
+        response = rechecked;
+      }
+    }
     EndState endState =
         phase == AgentPrompt.PlanPhase.PLAN || replannedWithoutWork
             ? EndState.PLAN
@@ -456,8 +501,8 @@ class AgentToolLoop implements AgentTurnHandler {
     String text = endState == EndState.ASK_USER ? run.question() : ChatResponses.text(response);
     if (text.isBlank() && endState == EndState.PLAN) {
       text = NO_PLAN;
-    } else if (text.isBlank() && endState != EndState.COMPLETED) {
-      text = NO_ANSWER_AT_LIMIT;
+    } else if (text.isBlank()) {
+      text = endState == EndState.COMPLETED ? NO_ANSWER : NO_ANSWER_AT_LIMIT;
     }
     // The answer is shown as provisional while its citations are validated and the turn is kept.
     String provisional = text;
@@ -474,12 +519,23 @@ class AgentToolLoop implements AgentTurnHandler {
     boolean asked = endState == EndState.ASK_USER || endState == EndState.PLAN;
     AnswerCompleteness completeness =
         asked ? AnswerCompleteness.COMPLETE : ChatResponses.completeness(response);
-    List<String> searchQueries =
-        run.steps().stream()
-            .filter(step -> ToolNames.SEARCH_KNOWLEDGE.equals(step.tool()))
-            .map(AgentRunRecord.Step::detail)
-            .filter(detail -> detail != null)
-            .toList();
+    // Each searched question is a sub-query of the assessment: a confirmed citation covers every
+    // question a search found its document for, as the retrieval's attribution does for a
+    // decomposed question.
+    List<AgentRun.SearchStep> searches = run.searches();
+    List<String> searchQueries = searches.stream().map(AgentRun.SearchStep::query).toList();
+    Map<String, Set<Integer>> subQueriesByDocument = new HashMap<>();
+    for (int i = 0; i < searches.size(); i++) {
+      int subQuery = i + 1;
+      searches
+          .get(i)
+          .documents()
+          .forEach(
+              document ->
+                  subQueriesByDocument
+                      .computeIfAbsent(document, key -> new TreeSet<>())
+                      .add(subQuery));
+    }
     AnswerEvidence evidence =
         asked
             ? null
@@ -489,7 +545,7 @@ class AgentToolLoop implements AgentTurnHandler {
                 !passages.isEmpty(),
                 true,
                 searchQueries,
-                Map.of(),
+                subQueriesByDocument,
                 completeness);
     AgentRunRecord record =
         new AgentRunRecord(
@@ -546,6 +602,82 @@ class AgentToolLoop implements AgentTurnHandler {
         evidence,
         generatedFiles,
         record);
+  }
+
+  /**
+   * The answer once more when {@code response} claims something is missing and the run's scope
+   * holds passages with the question's key terms that no step handed the model ({@link
+   * AbsenceRecheck}): they follow the answer as a message in the same loop, and the model answers
+   * once more without tools. The search is kept as a step of the run. {@code null} - the first
+   * answer stands - when there is nothing to recheck, the second answer is blank, or anything after
+   * the first answer fails; a reader that went away, a stopped run and a shutdown still end it.
+   */
+  private ChatResponse recheckAbsence(
+      AgentTurn turn,
+      AgentRun run,
+      ChatClient client,
+      String system,
+      List<Message> history,
+      ChatResponse response) {
+    if (response.getResult() == null || response.getResult().getOutput() == null) {
+      return null;
+    }
+    try {
+      long started = clock.millis();
+      AbsenceRecheck.Outcome outcome =
+          absenceRecheck.recheck(
+              QueryMetrics.Mode.AGENT,
+              turn.question(),
+              ChatResponses.text(response),
+              run.searchScope(),
+              run.metadataFilter(),
+              run.passages());
+      if (outcome.searched()) {
+        StepStatus status = outcome.passages().isEmpty() ? StepStatus.EMPTY : StepStatus.DONE;
+        run.recordStep(
+            new AgentRunRecord.Step(
+                ToolNames.SEARCH_KNOWLEDGE,
+                outcome.searchQuery(),
+                outcome.passages().size(),
+                status));
+        run.traceStep(
+            ToolNames.SEARCH_KNOWLEDGE,
+            status.name(),
+            outcome.passages().size(),
+            clock.millis() - started,
+            null);
+      }
+      if (outcome.passages().isEmpty()) {
+        return null;
+      }
+      List<Message> asked = new ArrayList<>(history);
+      asked.add(response.getResult().getOutput());
+      asked.add(
+          new UserMessage(
+              AbsenceFollowUp.render(DocumentBlock.render(run.blockId(), outcome.passages()))));
+      run.checkpoint();
+      signal(turn, AnswerStreamListener::idle);
+      ChatResponse rechecked =
+          run.modelCall(() -> call(client, system, asked, List.of(), Map.of()));
+      if (ChatResponses.text(rechecked).isBlank()) {
+        // a blank second answer would replace a real one with nothing
+        return null;
+      }
+      run.addRecheckPassages(outcome.passages());
+      absenceRecheck.replaced(QueryMetrics.Mode.AGENT);
+      return rechecked;
+    } catch (RuntimeException e) {
+      if (AbsenceRecheck.mustPropagate(e)) {
+        throw e;
+      }
+      // a stopped run or a shutdown under the call ends the run as it would without the recheck
+      run.checkpoint();
+      log.warn(
+          "Absence recheck of agent run {} failed, the first answer stands: {}",
+          run.runId(),
+          e.getClass().getSimpleName());
+      return null;
+    }
   }
 
   /**

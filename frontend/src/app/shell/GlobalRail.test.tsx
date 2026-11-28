@@ -85,10 +85,10 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('shows the brand emblem without the product name - the rail has no room for text', () => {
+  it('shows the wordmark without the product name as text - the rail has no room for text', () => {
     renderRailAt('/spaces')
 
-    expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+    expect(screen.queryByText('opaa')).not.toBeInTheDocument()
   })
 
   it('links the handbook page of the current view in a new window', () => {
@@ -185,10 +185,10 @@ describe('GlobalRail', () => {
     renderRailAt('/spaces')
 
     await user.click(screen.getByRole('button', { name: 'Profil und Einstellungen' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Info zu OPAA' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Info zu opaa' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'Info zu OPAA' })
-    expect(dialog).toHaveTextContent('OPAA v0.0.0-dev')
+    const dialog = screen.getByRole('dialog', { name: 'Info zu opaa' })
+    expect(dialog).toHaveTextContent('opaa v0.0.0-dev')
 
     await user.click(screen.getByRole('button', { name: 'Schließen' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

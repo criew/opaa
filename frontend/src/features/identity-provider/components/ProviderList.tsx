@@ -41,7 +41,7 @@ function ClaimCell({ provider }: { provider: OidcProviderResponse }) {
   ].filter((wert): wert is string => wert !== null)
   const roles = rolesClaim
     ? `Rollen aus dem Token: ${rollenwerte.length > 0 ? rollenwerte.join(', ') : 'keine Rollenwerte gesetzt'}`
-    : 'Rollen in OPAA verwaltet'
+    : 'Rollen in opaa verwaltet'
   return (
     <>
       <ListText>{roles}</ListText>

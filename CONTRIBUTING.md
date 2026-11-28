@@ -1,12 +1,12 @@
-# Mitwirken an OPAA
+# Mitwirken an opaa
 
-Vielen Dank für Ihr Interesse, zu OPAA beizutragen! Dieses Projekt heißt Beiträge von Menschen und KI-Coding-Agenten gleichermaßen willkommen.
+Vielen Dank für Ihr Interesse, zu opaa beizutragen! Dieses Projekt heißt Beiträge von Menschen und KI-Coding-Agenten gleichermaßen willkommen.
 
 ## Contributor License Agreement (CLA)
 
 **Bevor Ihr erster Pull Request zusammengeführt werden kann, müssen Sie die CLA unterzeichnen.**
 
-OPAA verwendet ein duales Lizenzmodell: Der Kern ist quelloffen, und kommerzielle Lizenzen werden für Organisationen angeboten, die die Open-Source-Lizenz nicht einhalten können. Die CLA gewährt dem Projekt das Recht, Ihre Beiträge sowohl unter Open-Source- als auch kommerziellen Bedingungen unterzulizenzieren — das macht das duale Lizenzmodell rechtlich möglich.
+opaa verwendet ein duales Lizenzmodell: Der Kern ist quelloffen, und kommerzielle Lizenzen werden für Organisationen angeboten, die die Open-Source-Lizenz nicht einhalten können. Die CLA gewährt dem Projekt das Recht, Ihre Beiträge sowohl unter Open-Source- als auch kommerziellen Bedingungen unterzulizenzieren — das macht das duale Lizenzmodell rechtlich möglich.
 
 **So unterzeichnen Sie:** Lesen Sie [CLA.md](./CLA.md) (kurz und bündig), dann posten Sie diesen Kommentar in Ihrem ersten PR:
 

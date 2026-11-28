@@ -17,7 +17,7 @@ niemand; ohne es fehlt die Kachel „Agenten“ unter „Neuer Katalogeintrag“
 3. Der Agent startet leer: ohne Auftrag, mit allem Wissen, das die aufrufende Person lesen darf,
    und mit den Werkzeugen „Im Wissen suchen“ und „Dokument lesen“.
 4. Auf seiner Seite jede Zeile mit „Ändern“ einrichten:
-    - **Auftrag:** was der Agent tun soll. Er ergänzt die festen Regeln von OPAA, ersetzt sie nicht.
+    - **Auftrag:** was der Agent tun soll. Er ergänzt die festen Regeln von opaa, ersetzt sie nicht.
     - **Wissen und Werkzeuge:** Bibliotheken zur Eingrenzung, die Werkzeuge, die er nutzen darf,
       und die Vorlagen, nach denen er sein Ergebnis als Datei ablegt (siehe unten).
     - **Ablauf:** gleich loslegen oder erst den Plan bestätigen lassen; unter „Erweitert“ eigene
@@ -65,7 +65,7 @@ länger als die Frist der Systemverwaltung, wird der Agent gesperrt
 
 **Gut zu wissen:**
 
-- Den Agenten „Recherche“ legt OPAA beim Einschalten an. Er ist ein gewöhnlicher Agent: sichtbar
+- Den Agenten „Recherche“ legt opaa beim Einschalten an. Er ist ein gewöhnlicher Agent: sichtbar
   für alle Konten und von seinem Eigentümer änderbar.
 - Ein Werkzeug, das die Systemverwaltung abgeschaltet hat, bietet ein Lauf nicht an, auch wenn der
   Agent es nennt.

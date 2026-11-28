@@ -43,9 +43,9 @@ jobs:
           open(path, "w", encoding="utf-8").write(text)
           EOF
 
-      # help resolves every resolvable configuration of both projects; plugins come through
-      # gradlePluginPortal() as in every other job, so the POM-only metadata of that repository is
-      # recorded. spotlessCheck and cyclonedxBom resolve further artifacts only while executing
+      # help resolves every resolvable configuration of both projects; plugins come through the
+      # pluginManagement repositories of settings.gradle.kts (Central first) as in every other job.
+      # spotlessCheck and cyclonedxBom resolve further artifacts only while executing
       # (the formatter, POMs read for license data), bootJar and javadoc cover the image build and
       # the CI step; hence --rerun-tasks without build cache.
       - name: Prüfsummen erzeugen

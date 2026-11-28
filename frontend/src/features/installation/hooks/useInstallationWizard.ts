@@ -50,7 +50,7 @@ const INITIAL: WizardState = {
 const SAVE_FAILED = 'Die Angaben konnten nicht gespeichert werden.'
 const CHECK_FAILED = 'Die Prüfung ist fehlgeschlagen.'
 const CHECK_STILL_RUNNING =
-  'Die Prüfung dauert länger, als der Assistent wartet; OPAA prüft im Hintergrund weiter. Bitte etwas warten und die Seite dann neu laden: Ist der Schritt geprüft, geht es ohne neue Prüfung weiter.'
+  'Die Prüfung dauert länger, als der Assistent wartet; opaa prüft im Hintergrund weiter. Bitte etwas warten und die Seite dann neu laden: Ist der Schritt geprüft, geht es ohne neue Prüfung weiter.'
 const COMPLETE_FAILED = 'Die Installation konnte nicht abgeschlossen werden.'
 const LOAD_FAILED = 'Der Stand der Einrichtung konnte nicht geladen werden.'
 const DISCOVERY_FAILED = 'Die Modelle konnten nicht abgerufen werden.'

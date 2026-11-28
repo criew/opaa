@@ -178,7 +178,7 @@ public class ConnectionAuthorizationService {
             .orElseThrow(
                 () ->
                     new ConflictException(
-                        "Für die Anmeldung beim Anbieter fehlt die öffentliche Adresse von OPAA"
+                        "Für die Anmeldung beim Anbieter fehlt die öffentliche Adresse von opaa"
                             + " (OPAA_PUBLIC_BASE_URL). Zuständig ist die Systemverwaltung.",
                         PUBLIC_BASE_URL_MISSING));
     ClientRegistration registration = registrations.registrationOf(profileId);

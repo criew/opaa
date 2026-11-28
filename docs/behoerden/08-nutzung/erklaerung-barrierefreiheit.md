@@ -19,7 +19,7 @@ Behinderungen nutzbar ist, wo es Lücken hat und wie man Barrieren meldet. Die B
 nach dem amtlichen Muster und verantwortet sie. Diese Vorlage liefert die Angaben zum Produkt: was
 geprüft ist, womit, auf welchem Stand und mit welchen Lücken.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 - **Prüfmaßstab:** BITV 2.0 bzw. WCAG 2.1, Stufe AA (die verbindlichen Anforderungen an barrierefreie
   Software), im hellen und im dunklen Farbschema.
@@ -64,11 +64,11 @@ einer veröffentlichten Version steht aus.
    eingesetzte Version halten.
 4. **Stand der Vereinbarkeit bewerten:** „vollständig vereinbar“ lässt sich ohne Prüfstand für die
    eingesetzte Version nicht belegen.
-5. **Eigene Teile ergänzen:** eigene Dokumente (sie öffnen sich im Originalformat, OPAA ändert ihre
+5. **Eigene Teile ergänzen:** eigene Dokumente (sie öffnen sich im Originalformat, opaa ändert ihre
    Barrierefreiheit nicht), Branding (geprüft ist die Warnung bei kontrastschwacher Akzentfarbe, nicht
    jede Farbe), die Anmeldeseite eines eigenen Anmeldedienstes, Kontakt für Rückmeldungen,
    Schlichtungsverfahren und Datum.
-6. **Weitere Pflichten klären,** etwa Informationen in Leichter Sprache oder Gebärdensprache; OPAA
+6. **Weitere Pflichten klären,** etwa Informationen in Leichter Sprache oder Gebärdensprache; opaa
    bringt sie nicht mit.
 
 ## Ergebnis festhalten
@@ -86,7 +86,7 @@ Eigene Prüfung der Behörde für ihre Installation: [ja, Datum / nein]
 
 ## Gut zu wissen
 
-- Automatische Werkzeuge finden nur einen Teil der Barrieren. Ob sich OPAA mit Tastatur und
+- Automatische Werkzeuge finden nur einen Teil der Barrieren. Ob sich opaa mit Tastatur und
   Screenreader bedienen lässt, belegen nur Prüfungen von Hand.
 - Eine eigene Prüfung der Installation macht die Erklärung belastbarer, vor allem mit eigenem
   Branding.

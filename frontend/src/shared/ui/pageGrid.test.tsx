@@ -59,8 +59,8 @@ describe('page grid (guidelines 4.6 and 5.1)', () => {
       'app/shell/Sidebar.tsx',
       'app/shell/SidebarSpaceList.tsx',
       'features/chat/components/ChatList.tsx',
-      // zoom in, an icon-only button of the viewer's toolbar
-      'features/library/components/PdfViewer.tsx',
+      // zoom in, an icon-only button of the PDF view's floating tools
+      'features/library/components/documentView/PdfTools.tsx',
     ]
     expect(
       offenders(

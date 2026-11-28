@@ -166,7 +166,7 @@ describe('ConnectedAccountsSection', () => {
     renderSection()
 
     expect(await screen.findByText(/Sie haben kein Konto verbunden/)).toBeInTheDocument()
-    expect(screen.getByText(/alles andere in OPAA funktioniert ohne/)).toBeInTheDocument()
+    expect(screen.getByText(/alles andere in opaa funktioniert ohne/)).toBeInTheDocument()
     expect(await screen.findByText(/noch keine Quellart verbundene Konten an/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Warum fehlt mein Zugang?' })).toBeInTheDocument()
     expect(screen.getByText(MISSING.text)).toBeInTheDocument()
@@ -554,7 +554,7 @@ describe('ConnectedAccountsSection', () => {
   it.each([
     [
       409,
-      'Für die Anmeldung beim Anbieter fehlt die öffentliche Adresse von OPAA (OPAA_PUBLIC_BASE_URL). Zuständig ist die Systemverwaltung.',
+      'Für die Anmeldung beim Anbieter fehlt die öffentliche Adresse von opaa (OPAA_PUBLIC_BASE_URL). Zuständig ist die Systemverwaltung.',
       'PUBLIC_BASE_URL_MISSING',
     ],
     [

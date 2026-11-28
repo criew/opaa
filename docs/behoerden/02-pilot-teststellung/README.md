@@ -1,7 +1,7 @@
 # Pilot und Teststellung
 
 Vorlagen für die Erprobung vor einer Vergabe oder einem breiten Einsatz. Eine Teststellung prüft
-OPAA mit eigenen Dokumenten der Behörde gegen vorher festgelegte Kriterien; ein Pilot lässt einen
+opaa mit eigenen Dokumenten der Behörde gegen vorher festgelegte Kriterien; ein Pilot lässt einen
 begrenzten Kreis von Beschäftigten damit arbeiten. Beides kann schon mitbestimmungspflichtig sein.
 
 | Dokument | Worum es geht |

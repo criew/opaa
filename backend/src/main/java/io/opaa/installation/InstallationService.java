@@ -247,11 +247,7 @@ public class InstallationService {
       acquireMalwareScanCheck();
     }
     if (recipient != null) {
-      RateLimitService.Decision decision = testMailBudget.tryAcquire(TEST_MAIL_BUDGET_KEY);
-      if (!decision.allowed()) {
-        throw new TooManyRequestsException(
-            TEST_MAIL_LIMIT_MESSAGE, decision.retryAfterSeconds(), TEST_MAIL_LIMIT_CODE);
-      }
+      testMailBudget.acquire(TEST_MAIL_BUDGET_KEY, TEST_MAIL_LIMIT_MESSAGE, TEST_MAIL_LIMIT_CODE);
     }
     StepChecks.Outcome outcome = checks.check(step, saved.payload(), saved.secret(), recipient);
     return transactions.execute(
@@ -471,11 +467,7 @@ public class InstallationService {
    * @throws TooManyRequestsException past the budget
    */
   private void acquireMailCheck() {
-    RateLimitService.Decision decision = mailCheckBudget.tryAcquire(MAIL_CHECK_BUDGET_KEY);
-    if (!decision.allowed()) {
-      throw new TooManyRequestsException(
-          MAIL_CHECK_LIMIT_MESSAGE, decision.retryAfterSeconds(), MAIL_CHECK_LIMIT_CODE);
-    }
+    mailCheckBudget.acquire(MAIL_CHECK_BUDGET_KEY, MAIL_CHECK_LIMIT_MESSAGE, MAIL_CHECK_LIMIT_CODE);
   }
 
   /**
@@ -484,14 +476,10 @@ public class InstallationService {
    * @throws TooManyRequestsException past the budget
    */
   private void acquireMalwareScanCheck() {
-    RateLimitService.Decision decision =
-        malwareScanCheckBudget.tryAcquire(MALWARE_SCAN_CHECK_BUDGET_KEY);
-    if (!decision.allowed()) {
-      throw new TooManyRequestsException(
-          MALWARE_SCAN_CHECK_LIMIT_MESSAGE,
-          decision.retryAfterSeconds(),
-          MALWARE_SCAN_CHECK_LIMIT_CODE);
-    }
+    malwareScanCheckBudget.acquire(
+        MALWARE_SCAN_CHECK_BUDGET_KEY,
+        MALWARE_SCAN_CHECK_LIMIT_MESSAGE,
+        MALWARE_SCAN_CHECK_LIMIT_CODE);
   }
 
   /** One answer, validated as it will be stored, with the outcome of its check. */

@@ -29,7 +29,7 @@ Wissen ([Agentenverzeichnis einsehen](agentenverzeichnis.md)).
    Systemverwaltung“. Darunter steht, was danach gilt.
 4. „Speichern“. Den Entzug von „Alle Konten“ bestätigen Sie eigens.
 
-**Einschränken** heißt: „Alle Konten“ entziehen und einer benannten Gruppe geben. OPAA erteilt
+**Einschränken** heißt: „Alle Konten“ entziehen und einer benannten Gruppe geben. opaa erteilt
 dabei zuerst und entzieht danach, sodass zu keinem Zeitpunkt weniger Konten anlegen dürfen als
 vorher und nachher. Ein Entzug wirkt sofort; bestehende Spaces und Bibliotheken bleiben.
 

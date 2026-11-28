@@ -317,7 +317,7 @@ class InstallationMailStepIntegrationTest {
         + SMTP_USER
         + "\",\"password\":\""
         + password
-        + "\",\"fromAddress\":\"opaa@stadt.example\",\"fromName\":\"OPAA\"}";
+        + "\",\"fromAddress\":\"opaa@stadt.example\",\"fromName\":\"opaa\"}";
   }
 
   private String answers(String mail) {

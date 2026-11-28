@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Checks the queries of the dashboards and alerts against the metrics OPAA has.
+"""Checks the queries of the dashboards and alerts against the metrics opaa has.
 
 Every metric a dashboard or alert names must appear in the metric table of the handbook
-(docs/handbuch/betrieb/ueberwachung-und-fehlerbehebung.md) or come from outside OPAA
+(docs/handbuch/betrieb/ueberwachung-und-fehlerbehebung.md) or come from outside opaa
 (kube-state-metrics, Prometheus itself). With --probe the names are checked against a real scrape
 of /actuator/prometheus instead. With --promtool every dashboard query is parsed by
 `promtool check rules`, after the Grafana variables are replaced by plain values.

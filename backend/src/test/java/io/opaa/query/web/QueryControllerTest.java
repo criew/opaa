@@ -115,7 +115,7 @@ class QueryControllerTest {
             post("/api/v1/query")
                 .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"question\": \"What is OPAA?\"}"))
+                .content("{\"question\": \"What is opaa?\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.answer").value("The answer"))
         .andExpect(jsonPath("$.generatedByAi").value(true))
@@ -224,7 +224,7 @@ class QueryControllerTest {
             post("/api/v1/query")
                 .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"question\": \"What is OPAA?\"}"))
+                .content("{\"question\": \"What is opaa?\"}"))
         .andExpect(status().isOk());
 
     ArgumentCaptor<Boolean> useKnowledgeCaptor = ArgumentCaptor.forClass(Boolean.class);
@@ -267,7 +267,7 @@ class QueryControllerTest {
                 .with(asTestUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    "{\"question\": \"What is OPAA?\", \"useKnowledge\": false, \"libraryIds\":"
+                    "{\"question\": \"What is opaa?\", \"useKnowledge\": false, \"libraryIds\":"
                         + " [\""
                         + libraryId1
                         + "\", \""

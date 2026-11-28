@@ -1,6 +1,6 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
-Pipeline `tabular`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht
+Pipeline `tabular`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht
 im Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -26,7 +26,13 @@ Welcher der drei Leser läuft, entscheidet das **erkannte** Format, nicht die En
 
 Je Tabellenblatt (bei CSV: die eine Tabelle):
 
-1. Die **erste nicht-leere Zeile ist die Kopfzeile**.
+1. Die **erste nicht-leere Zeile ist die Kopfzeile**. Ausnahme **Titelzeile**: Haben die ersten
+   nicht-leeren Zeilen (höchstens drei) genau eine belegte Zelle und die Zeile danach mindestens
+   zwei, sind sie der Titel der Tabelle, auch über verbundenen Zellen oder Leerzeilen; die Zeile
+   danach ist die Kopfzeile. Dafür müssen ab der Kopfzeile mindestens so viele Zeilen folgen, wie
+   es Titelzeilen gibt, und mindestens die Hälfte davon zwei oder mehr Zellen belegen. Mehrere
+   Titelzeilen werden mit „ – " verbunden. Eine einspaltige Liste, auch mit vereinzelt belegter
+   zweiter Spalte, behält ihre erste Zeile als Kopfzeile.
 2. Die Datenzeilen werden zu **Gruppen von höchstens 50 Zeilen** zusammengefasst. Eine Gruppe
    endet früher, wenn die nächste Zeile den Chunk über die Zielgröße `chunk-target-characters`
    brächte. Sind Kontext- und Kopfzeile allein schon länger als die halbe Zielgröße (eine sehr
@@ -48,6 +54,17 @@ Reisepass | 60,00 EUR | § 15 PassV
 ```
 
 Bei CSV heißt die Kontextzeile „Tabelle: …" mit einem aus dem Dateinamen abgeleiteten Namen.
+Hat die Tabelle eine Titelzeile, steht deren Text als Tabellenname in der Kontextzeile, bei XLSX
+und ODS statt des Blattnamens, bei CSV statt des Dateinamens:
+
+```
+Blatt: Gebühren · Tabelle: Gebührenordnung 2026
+Kennung | Leistung | Gebühr
+AB-08 | Beglaubigung | 12,00 EUR
+```
+
+Bei der Erkennung des CSV-Trennzeichens zählen bis zu drei führende Zeilen nicht mit, die sich mit
+keinem Kandidaten teilen lassen (Titelzeilen ohne Trennzeichen).
 
 Kontextzeile und Kopfzeile zusammen werden vor jedem Chunk auf die halbe Zielgröße gekürzt
 (mindestens 500 Zeichen, bei 4.000 Zeichen also 2.000), damit eine sehr breite Tabelle ihre
@@ -69,11 +86,21 @@ Keine Überlappung zwischen Chunks.
 | Ortsangabe XLSX/ODS, eine Zeile | Blatt und Zeile | `Blatt Gebühren · Zeile 12` |
 | Ortsangabe CSV | Zeilenbereich | `Zeilen 12–61` |
 | Fundstellen-Anker (`anchor`) | Blatt (nicht bei CSV), erste und letzte Zeile, Zitat von Anfang und Ende | Blatt `Gebühren`, Zeilen `12`–`61` |
+| Tabelle (`table`) | laufende Nummer der Tabelle im Dokument und Zeichen aller ihrer Chunks zusammen; gleich an jedem Chunk der Tabelle | `{"id": 1, "characters": 2480}` |
+
+Über `table` lädt die Antwort eine kleine Tabelle ganz, wenn die Suche einen ihrer Chunks trifft
+(`OPAA_QUERY_NEIGHBOR_CHUNKS_WHOLE_TABLE_MAX_CHARACTERS`, [Konfiguration](../konfiguration.md)).
+
+**Altbestand.** Mit einer Pipeline-Version unter 6 indizierte Tabellen tragen eine Titelzeile noch
+als Kopfzeile und kein Feld `table`; eine kleine Tabelle kommt dann nur mit ihren Nachbar-Chunks in
+die Antwort. Der Indexstatus zeigt „Nachzug ausstehend", der Pipeline-Nachzug für `tabular` mit
+`belowVersion` 6 holt beides nach ([Bestand nachziehen](../../administration/suche-und-indexierung.md#bestand-nachziehen)).
 
 Zeilennummern sind 1-basiert wie in der Tabellenkalkulation.
 
-**Dokumenteigenschaften:** keine. Für Tabellen stehen dem Metadatenschema nur Dateiname und
-Struktur zur Verfügung.
+**Dokumenteigenschaften:** Bei XLSX Titel, Erstell- und Änderungsdatum aus den
+Dokumenteigenschaften der Datei (`docProps/core.xml`), wie bei DOCX. CSV und ODS liefern keine; für
+sie stehen dem Metadatenschema nur Dateiname und Struktur zur Verfügung.
 
 ## 5. Fehler
 
@@ -106,6 +133,7 @@ verarbeitet keine externen XML-Entitäten.
 
 - Formeln als solche; es zählt der gespeicherte Wert
 - Zellkommentare, Diagramme, Pivot-Tabellen, benannte Bereiche
-- Verbundzellen werden nicht aufgelöst, ausgeblendete Zeilen und Blätter nicht unterschieden
+- Verbundzellen werden nicht aufgelöst (eine verbundene Titelzeile zählt als eine belegte Zelle),
+  ausgeblendete Zeilen und Blätter nicht unterschieden
 - Zellformatierung als Signal (Fettdruck, Farbe)
 - Excel-„Tabellen" als Objekte; Blattname und Tabellenname sind dasselbe

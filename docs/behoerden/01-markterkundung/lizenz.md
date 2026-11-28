@@ -11,18 +11,18 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** alle Behörden, die OPAA einsetzen, anpassen lassen oder anderen bereitstellen.
+**Gilt für:** alle Behörden, die opaa einsetzen, anpassen lassen oder anderen bereitstellen.
 
 Die Lizenz regelt, was die Behörde mit der Software tun darf und welche Pflichten daraus folgen.
-OPAA steht unter der GNU Affero General Public License v3.0 (AGPL-3.0), einer Lizenz für freie
+opaa steht unter der GNU Affero General Public License v3.0 (AGPL-3.0), einer Lizenz für freie
 Software. Die enthaltenen Bibliotheken anderer Projekte, die Abhängigkeiten, haben eigene Lizenzen.
 Ob die Bedingungen zum eigenen Vorhaben passen, prüft die Rechtsabteilung der Behörde.
 
-## Was OPAA liefert
+## Was opaa liefert
 
 | Thema | Stand | Nachweis |
 |---|---|---|
-| Lizenz von OPAA | AGPL-3.0, kein Lizenzentgelt, vollständiger Quellcode öffentlich | [`LICENSE`](../../../LICENSE) |
+| Lizenz von opaa | AGPL-3.0, kein Lizenzentgelt, vollständiger Quellcode öffentlich | [`LICENSE`](../../../LICENSE) |
 | Nutzen und Ändern | erlaubt, auch ohne Rückfrage beim Projekt | [`LICENSE`](../../../LICENSE) |
 | Pflicht bei Bereitstellung über ein Netz | wer eine veränderte Fassung anderen über ein Netz bereitstellt, bietet deren Quellcode an | [Lizenzen](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) |
 | Lizenzen der Abhängigkeiten | nur mit der GPLv3 verträgliche Lizenzen oder begründete Ausnahmen; die CI prüft das bei jeder Änderung | [Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird) |
@@ -43,7 +43,7 @@ Ob die Bedingungen zum eigenen Vorhaben passen, prüft die Rechtsabteilung der B
 ## Gut zu wissen
 
 - Die EVB-IT behandeln Open Source seit 2026 als Regelfall; eine Überlassung der Software ist bei
-  OPAA meist unnötig ([EVB-IT](../03-vergabe/evb-it-hinweise.md)).
+  opaa meist unnötig ([EVB-IT](../03-vergabe/evb-it-hinweise.md)).
 - Die Lizenzprüfung belegt das Verfahren des Projekts, keine rechtliche Bewertung jeder Lizenz.
 
 ## Zum Nachlesen

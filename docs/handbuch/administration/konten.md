@@ -6,7 +6,7 @@
 **Wer:** Systemverwaltung, „Administration → Benutzer“
 {: .kopf }
 
-Lokale Konten führt OPAA selbst. Sie werden gebraucht, solange kein Identitätsanbieter angebunden
+Lokale Konten führt opaa selbst. Sie werden gebraucht, solange kein Identitätsanbieter angebunden
 ist, und immer für das Notanker-Konto der Systemverwaltung. Konten eines Identitätsanbieters stehen
 in derselben Liste, ihren Lebenszyklus führt aber der Anbieter; hier lässt sich nur ihre
 [Systemrolle](systemrollen.md) ändern.
@@ -24,9 +24,9 @@ im Haus automatisch entzieht. Abgeschaltet melden sich nur noch lokale Systemver
    ihren eigenen Einstellungen; nichts zu Gesundheit, Leistung oder Beschäftigungsverhältnis.
 4. **Ablaufdatum** prüfen; es ist vorbelegt. Ohne Datum verlangt das Formular „Kein Ablaufdatum“.
 5. Weg wählen: „Einladung per E-Mail“ (die Person setzt ihr Passwort selbst) oder ein
-   Anfangspasswort, das OPAA einmal anzeigt und beim ersten Anmelden wechseln lässt.
+   Anfangspasswort, das opaa einmal anzeigt und beim ersten Anmelden wechseln lässt.
 
-Ohne Mailversand zeigt OPAA den Einladungslink **einmal** an; Sie geben ihn auf anderem Weg weiter.
+Ohne Mailversand zeigt opaa den Einladungslink **einmal** an; Sie geben ihn auf anderem Weg weiter.
 Ein Link gilt einmal, ein neuer macht den alten ungültig.
 
 ## Sperren statt löschen
@@ -44,10 +44,10 @@ Ein Link gilt einmal, ein neuer macht den alten ungültig.
 das Löschen blockiert, solange er liegt. Was mit Bibliotheken und Spaces der Person geschieht,
 regelt [Ausscheiden und Nachfolge](ausscheiden.md).
 
-**Chats gesperrter Konten** löscht OPAA nach einer Frist ab der Sperre durch die Verwaltung, in
+**Chats gesperrter Konten** löscht opaa nach einer Frist ab der Sperre durch die Verwaltung, in
 allen Spaces. Bei Konten eines Identitätsanbieters beginnt die Frist mit der Sperre durch den
 [Verzeichnisabgleich](../betrieb/authentifizierung.md#verzeichnisabgleich-je-anbieter): Wer im
-Verzeichnis deaktiviert wird oder dort fehlt, ist auch in OPAA gesperrt. Ohne Verzeichnisabgleich
+Verzeichnis deaktiviert wird oder dort fehlt, ist auch in opaa gesperrt. Ohne Verzeichnisabgleich
 greift die Frist für Anbieterkonten nicht. Entsperren beendet die Frist.
 
 Bei lokalen Konten steht das Datum im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Die
@@ -55,7 +55,7 @@ Anhaltung gibt es nur dort; bei Anbieterkonten setzt allein eine offene anlassbe
 Löschung aus. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
 Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung, und erst eine
 **zweite** Person gibt frei. Die Freigabe gilt genau dem angezeigten Antrag: Wurde er inzwischen
-zurückgezogen und neu gestellt, lehnt OPAA sie ab und zeigt den aktuellen Antrag. Einen Antrag,
+zurückgezogen und neu gestellt, lehnt opaa sie ab und zeigt den aktuellen Antrag. Einen Antrag,
 der älter als 14 Tage ist, kann niemand mehr freigeben: „Ablehnen“ und neu beantragen. Gelöschte
 Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).

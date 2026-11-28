@@ -161,7 +161,7 @@ public class LlmModelConnectionTester {
       if (LeadingReasoningText.startsWithBlock(answerText(body))) {
         return TestOutcome.success(
             "Verbindung erfolgreich, Modell hat geantwortet. Die Antwort beginnt mit Denktext"
-                + " des Modells; OPAA entfernt ihn vor der Weiterverarbeitung.");
+                + " des Modells; opaa entfernt ihn vor der Weiterverarbeitung.");
       }
       return TestOutcome.success("Verbindung erfolgreich, Modell hat geantwortet.");
     }

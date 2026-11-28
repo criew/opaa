@@ -29,7 +29,7 @@ export function hexColorError(value: string): string | undefined {
   if (isBlank(value)) return 'Bitte eine Farbe angeben.'
   return HEX_COLOR_PATTERN.test(value.trim())
     ? undefined
-    : 'Die Farbe steht als Hex-Wert mit sechs Stellen, etwa #1292EE.'
+    : 'Die Farbe steht als Hex-Wert mit sechs Stellen, etwa #0055A4.'
 }
 
 /** Only the fields that carry a message. */

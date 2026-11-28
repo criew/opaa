@@ -39,9 +39,9 @@ describe('prototypeOutput', () => {
 
   it('replaces the page title', () => {
     const transform = prototypeOutput().transformIndexHtml as (html: string) => string
-    expect(transform('<head><title>OPAA</title></head>')).toBe(
+    expect(transform('<head><title>opaa</title></head>')).toBe(
       `<head><title>${PROTOTYPE_TITLE}</title></head>`,
     )
-    expect(PROTOTYPE_TITLE).toBe('OPAA-Prototyp')
+    expect(PROTOTYPE_TITLE).toBe('opaa-Prototyp')
   })
 })
